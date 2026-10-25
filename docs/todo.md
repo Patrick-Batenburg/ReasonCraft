@@ -1,7 +1,7 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** [docs/plans/2026-10-26-step3-text-panel.md](plans/2026-10-26-step3-text-panel.md) — step 3, text panel
+**Active plan:** [docs/plans/2026-10-26-step4-output-essay.md](plans/2026-10-26-step4-output-essay.md) — step 4, output and essay
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
 ## Step 1 — Core editor
@@ -43,7 +43,19 @@
   - [x] Task 8: Drag a snippet selection onto the map
   - [x] Task 9: Document language
   - [x] Task 10: End-to-end verification and docs
-- [ ] Step 4 — Output: exports, print, Essay tab
+- [ ] Step 4 — Output: exports, print, Essay tab ([plan](plans/2026-10-26-step4-output-essay.md))
+  - [ ] Task 1: Unified edit session and file splits
+  - [ ] Task 2: Scene builder and screen painter on the scene
+  - [ ] Task 3: SVG writer
+  - [ ] Task 4: PNG export and copy as image
+  - [ ] Task 5: PDF export, page setup and print
+  - [ ] Task 6: Core outline Markdown and linking words
+  - [ ] Task 7: Export ribbon tab, dialog and background jobs
+  - [ ] Task 8: Core essay plan
+  - [ ] Task 9: Essay tab
+  - [ ] Task 10: Word export
+  - [ ] Task 11: Image insert off the UI thread
+  - [ ] Task 12: End-to-end verification and docs
 - [ ] Step 5 — Interchange & polish: Argdown, connector styles, layout directions, minimap, numbering, find/replace, spellcheck, autosave, Search commands
 - [ ] Step 6 — Release readiness: Dutch, accessibility, help, examples, templates, installers
 
