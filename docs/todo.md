@@ -7,7 +7,7 @@
 - [x] Task 1: Workspace, licences and core ID/model types
 - [x] Task 2: Structure rules and add operations
 - [x] Task 3: Move, connect, parking area and removal
-- [ ] Task 4: Undo/redo history
+- [x] Task 4: Undo/redo history
 - [ ] Task 5: `.rcraft` file format
 - [ ] Task 6: Automatic layout
 - [ ] Task 7: Connector geometry
