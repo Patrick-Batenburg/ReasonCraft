@@ -46,6 +46,8 @@ pub enum Action {
     /// Close the window, asking first about each tab with unsaved changes.
     CloseWindow,
     ResolveUnsaved(UnsavedChoice),
+    /// The answer to "replace the existing file?" (true: replace).
+    ResolveReplace(bool),
     /// Close the error message.
     DismissModal,
     Undo,
@@ -116,6 +118,7 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         Action::CloseTab(i) => file_ops::request_close_tab(app, i),
         Action::CloseWindow => file_ops::request_close_window(app),
         Action::ResolveUnsaved(choice) => file_ops::resolve_unsaved(app, choice),
+        Action::ResolveReplace(replace) => file_ops::resolve_replace(app, replace),
         Action::DismissModal => app.modal = None,
         Action::ActivateTab(i) => {
             if i < app.tabs.len() {
@@ -211,6 +214,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::CloseTab(_)
         | Action::CloseWindow
         | Action::ResolveUnsaved(_)
+        | Action::ResolveReplace(_)
         | Action::DismissModal
         | Action::ActivateTab(_)
         | Action::SetTheme(_)

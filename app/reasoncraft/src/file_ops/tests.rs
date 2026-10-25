@@ -75,7 +75,10 @@ fn failed_save_keeps_path_and_dirty() {
 fn cancelled_save_dialog_changes_nothing() {
     let mut tab = dirty_tab();
     let fake = FakeDialogs::default();
-    assert!(save_tab(&mut tab, &fake, false).is_ok());
+    assert!(matches!(
+        save_tab(&mut tab, &fake, false),
+        Ok(SaveOutcome::Cancelled)
+    ));
     assert_eq!(tab.path, None);
     assert!(tab.is_dirty());
 }
@@ -87,7 +90,8 @@ fn save_uses_known_path_without_dialog() {
     let mut tab = dirty_tab();
     tab.path = Some(path.clone());
     // No dialog answer queued: a dialog would cancel the save.
-    save_tab(&mut tab, &FakeDialogs::default(), false).unwrap();
+    let outcome = save_tab(&mut tab, &FakeDialogs::default(), false).unwrap();
+    assert_eq!(outcome, SaveOutcome::Saved);
     assert!(path.is_file());
     assert!(!tab.is_dirty());
 }
@@ -136,4 +140,19 @@ fn command_line_skips_non_files_and_reports_bad_ones() {
         Some(Modal::Error { title, .. }) => assert!(title.contains("bad.rcraft"), "{title}"),
         other => panic!("expected an error modal, got {other:?}"),
     }
+}
+
+#[test]
+fn appended_extension_onto_existing_file_needs_confirm() {
+    let dir = tempfile::tempdir().unwrap();
+    let existing = dir.path().join("robots.rcraft");
+    std::fs::write(&existing, "old bytes").unwrap();
+    let mut tab = dirty_tab();
+    let fake = FakeDialogs::default();
+    fake.set_save(dir.path().join("robots"));
+    let outcome = save_tab(&mut tab, &fake, true).unwrap();
+    assert_eq!(outcome, SaveOutcome::NeedsReplaceConfirm(existing.clone()));
+    assert_eq!(std::fs::read(&existing).unwrap(), b"old bytes");
+    assert_eq!(tab.path, None);
+    assert!(tab.is_dirty());
 }

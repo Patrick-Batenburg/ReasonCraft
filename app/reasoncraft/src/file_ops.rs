@@ -87,6 +87,34 @@ pub enum Modal {
         tab: usize,
         window: bool,
     },
+    /// Saving tab `tab` to `path` would replace an existing file that the
+    /// save dialog never checked (`.rcraft` was appended to the chosen name).
+    ConfirmReplace {
+        tab: usize,
+        path: PathBuf,
+        then: AfterSave,
+    },
+}
+
+/// What a save was part of, so it can carry on once the file is written.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AfterSave {
+    Nothing,
+    /// Close the tab (the unsaved-changes prompt of a tab close).
+    CloseTab,
+    /// Ask about the next dirty tab (the prompt of a window close).
+    ContinueWindowClose,
+}
+
+/// How a save ended, short of an error.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SaveOutcome {
+    Saved,
+    /// The save dialog was cancelled; nothing was written.
+    Cancelled,
+    /// Nothing was written yet: `.rcraft` was appended to the chosen name
+    /// and that file exists, so the user must confirm replacing it.
+    NeedsReplaceConfirm(PathBuf),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -220,12 +248,13 @@ fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
 }
 
 /// Save `tab` to its path, asking for one when it has none or `save_as` is
-/// set. A cancelled dialog is `Ok` and leaves the tab dirty.
+/// set. Only [`SaveOutcome::Saved`] wrote the file; otherwise, and on
+/// error, the tab keeps its path and stays dirty.
 pub fn save_tab(
     tab: &mut DocTab,
     dialogs: &dyn FileDialogs,
     save_as: bool,
-) -> Result<(), FileError> {
+) -> Result<SaveOutcome, FileError> {
     save_tab_at(tab, dialogs, save_as).map_err(|(_, err)| err)
 }
 
@@ -234,31 +263,50 @@ fn save_tab_at(
     tab: &mut DocTab,
     dialogs: &dyn FileDialogs,
     save_as: bool,
-) -> Result<(), (PathBuf, FileError)> {
+) -> Result<SaveOutcome, (PathBuf, FileError)> {
     tab.commit_edit();
     let path = match (&tab.path, save_as) {
         (Some(path), false) => path.clone(),
         _ => {
             let suggested = format!("{}.{EXTENSION}", tab.name());
-            match dialogs.pick_save(&suggested) {
-                Some(path) => with_rcraft_extension(path),
-                None => return Ok(()),
+            let Some(chosen) = dialogs.pick_save(&suggested) else {
+                return Ok(SaveOutcome::Cancelled);
+            };
+            let path = with_rcraft_extension(chosen.clone());
+            // The dialog asked about overwriting `chosen`, not this file.
+            if path != chosen && path.exists() {
+                return Ok(SaveOutcome::NeedsReplaceConfirm(path));
             }
+            path
         }
     };
+    write_tab(tab, path)?;
+    Ok(SaveOutcome::Saved)
+}
+
+/// Write `tab` to `path`. Only on success does the tab take the path and
+/// count as saved.
+fn write_tab(tab: &mut DocTab, path: PathBuf) -> Result<(), (PathBuf, FileError)> {
     file::save(&tab.doc, &path).map_err(|err| (path.clone(), err))?;
     tab.path = Some(path);
     tab.history.mark_saved();
     Ok(())
 }
 
-/// Save tab `i`; on failure show why. True when the tab is now clean.
-fn save_and_report(app: &mut ReasonCraftApp, i: usize, save_as: bool) -> bool {
+/// Save tab `i`. On failure show why; when a file would be replaced, ask
+/// first (`then` runs once the user agrees). True when the tab was saved
+/// now, so the caller may carry on.
+fn save_and_report(app: &mut ReasonCraftApp, i: usize, save_as: bool, then: AfterSave) -> bool {
     let Some(tab) = app.tabs.get_mut(i) else {
         return false;
     };
     match save_tab_at(tab, &*app.dialogs, save_as) {
-        Ok(()) => !app.tabs[i].is_dirty(),
+        Ok(SaveOutcome::Saved) => true,
+        Ok(SaveOutcome::Cancelled) => false,
+        Ok(SaveOutcome::NeedsReplaceConfirm(path)) => {
+            app.modal = Some(Modal::ConfirmReplace { tab: i, path, then });
+            false
+        }
         Err((path, err)) => {
             show_error(app, FileOp::Save, &path, &err);
             false
@@ -268,7 +316,32 @@ fn save_and_report(app: &mut ReasonCraftApp, i: usize, save_as: bool) -> bool {
 
 /// Save the active tab (Save / Save As).
 pub fn save_active(app: &mut ReasonCraftApp, save_as: bool) {
-    save_and_report(app, app.active, save_as);
+    save_and_report(app, app.active, save_as, AfterSave::Nothing);
+}
+
+/// The answer to "replace the existing file?". Cancel ends the save and
+/// whatever it was part of (a tab or window close).
+pub fn resolve_replace(app: &mut ReasonCraftApp, replace: bool) {
+    let Some(Modal::ConfirmReplace { tab, path, then }) = app.modal.take() else {
+        return;
+    };
+    let Some(doc_tab) = app.tabs.get_mut(tab).filter(|_| replace) else {
+        return;
+    };
+    if let Err((path, err)) = write_tab(doc_tab, path) {
+        show_error(app, FileOp::Save, &path, &err);
+        return;
+    }
+    carry_on(app, tab, then);
+}
+
+/// Continue what a save of tab `tab` was part of.
+fn carry_on(app: &mut ReasonCraftApp, tab: usize, then: AfterSave) {
+    match then {
+        AfterSave::Nothing => {}
+        AfterSave::CloseTab => remove_tab(app, tab),
+        AfterSave::ContinueWindowClose => ask_from(app, tab + 1),
+    }
 }
 
 /// Close tab `i`, asking first if it has unsaved changes.
@@ -331,19 +404,20 @@ pub fn resolve_unsaved(app: &mut ReasonCraftApp, choice: UnsavedChoice) {
     let Some(Modal::Unsaved { tab, window }) = app.modal.take() else {
         return;
     };
+    let then = if window {
+        AfterSave::ContinueWindowClose
+    } else {
+        AfterSave::CloseTab
+    };
     let proceed = match choice {
         UnsavedChoice::Cancel => false,
         UnsavedChoice::Discard => true,
-        // A failed save shows its error, which also ends a window close.
-        UnsavedChoice::Save => save_and_report(app, tab, false),
+        // A failed or cancelled save ends the close (a failure shows its
+        // error); after a replace prompt, `then` runs once it is answered.
+        UnsavedChoice::Save => save_and_report(app, tab, false, then),
     };
-    if !proceed {
-        return;
-    }
-    if window {
-        ask_from(app, tab + 1);
-    } else {
-        remove_tab(app, tab);
+    if proceed {
+        carry_on(app, tab, then);
     }
 }
 

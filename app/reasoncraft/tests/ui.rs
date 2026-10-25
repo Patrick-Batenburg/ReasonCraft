@@ -512,11 +512,7 @@ fn close_dirty_tab_asks_to_save() {
     h.run();
     let path = dir.path().join("draft.rcraft");
     fake.set_save(path.clone());
-    // The title bar's Save button has the same name; the modal's comes last.
-    h.get_all_by_label(&t("unsaved.save"))
-        .last()
-        .expect("the modal's Save button")
-        .click();
+    h.get_by_label(&t("unsaved.save_changes")).click();
     h.run();
     assert!(h.state().modal.is_none());
     assert!(path.is_file());
@@ -588,4 +584,136 @@ fn window_title_uses_i18n_separator() {
         reasoncraft::i18n::t_args("window.title", &args),
         "robots — ReasonCraft"
     );
+}
+
+fn replace_title(name: &str) -> String {
+    let mut args = reasoncraft::i18n::FluentArgs::new();
+    args.set("file", name);
+    reasoncraft::i18n::t_args("replace.title", &args)
+}
+
+fn root_text_in(path: &std::path::Path) -> String {
+    let doc = reasoncraft_core::file::open(path).unwrap();
+    doc.boxes[&doc.root].text.clone()
+}
+
+/// The dialog checked `robots` for overwriting, not `robots.rcraft`: the app
+/// asks before replacing the file the appended extension points at.
+#[test]
+fn appended_extension_asks_before_replacing() {
+    let dir = tempfile::tempdir().unwrap();
+    let existing = dir.path().join("robots.rcraft");
+    reasoncraft_core::file::save(&reasoncraft_core::Document::new("Old"), &existing).unwrap();
+    let before = std::fs::read(&existing).unwrap();
+    let (mut h, fake) = file_harness();
+    h.run();
+    type_claim(&mut h, "New");
+
+    fake.set_save(dir.path().join("robots"));
+    cmd(&mut h, egui::Key::S);
+    assert!(h.state().modal.is_some());
+    h.get_by_label(&replace_title("robots.rcraft"));
+    h.get_by_label(&t("replace.cancel")).click();
+    h.run();
+    assert!(h.state().modal.is_none());
+    assert_eq!(std::fs::read(&existing).unwrap(), before);
+    let tab = h.state().active_tab();
+    assert!(tab.is_dirty());
+    assert_eq!(tab.path, None);
+
+    fake.set_save(dir.path().join("robots"));
+    cmd(&mut h, egui::Key::S);
+    h.get_by_label(&t("replace.confirm")).click();
+    h.run();
+    assert!(h.state().modal.is_none());
+    assert_eq!(root_text_in(&existing), "New");
+    let tab = h.state().active_tab();
+    assert!(!tab.is_dirty());
+    assert_eq!(tab.path.as_deref(), Some(existing.as_path()));
+}
+
+/// A name that already ends in `.rcraft` was checked by the dialog itself.
+#[test]
+fn chosen_rcraft_name_saves_without_extra_confirm() {
+    let dir = tempfile::tempdir().unwrap();
+    let existing = dir.path().join("robots.rcraft");
+    reasoncraft_core::file::save(&reasoncraft_core::Document::new("Old"), &existing).unwrap();
+    let (mut h, fake) = file_harness();
+    h.run();
+    type_claim(&mut h, "New");
+    fake.set_save(existing.clone());
+    cmd(&mut h, egui::Key::S);
+    assert!(h.state().modal.is_none());
+    assert_eq!(root_text_in(&existing), "New");
+    assert!(!h.state().active_tab().is_dirty());
+}
+
+fn two_dirty_tabs() -> (Harness<'static, ReasonCraftApp>, FakeDialogs) {
+    let (mut h, fake) = file_harness();
+    h.run();
+    type_claim(&mut h, "One");
+    h.get_by_label(&t("tabs.new")).click();
+    h.run();
+    type_claim(&mut h, "Two");
+    (h, fake)
+}
+
+#[test]
+fn failed_save_during_window_close_aborts_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let (mut h, fake) = two_dirty_tabs();
+    h.state_mut()
+        .push(reasoncraft::actions::Action::CloseWindow);
+    h.run();
+    fake.set_save(dir.path().join("no/such/dir/one.rcraft"));
+    h.get_by_label(&t("unsaved.save_changes")).click();
+    h.run();
+    assert!(matches!(
+        h.state().modal,
+        Some(reasoncraft::file_ops::Modal::Error { .. })
+    ));
+    assert!(!h.state().close_confirmed());
+    h.get_by_label(&t("modal.ok")).click();
+    h.run();
+    let app = h.state();
+    assert!(app.modal.is_none());
+    assert!(!app.close_confirmed());
+    assert_eq!(app.tabs.len(), 2);
+    assert!(app.tabs.iter().all(|tab| tab.is_dirty()));
+}
+
+#[test]
+fn replace_prompt_during_window_close() {
+    let dir = tempfile::tempdir().unwrap();
+    let existing = dir.path().join("one.rcraft");
+    reasoncraft_core::file::save(&reasoncraft_core::Document::new("Old"), &existing).unwrap();
+    let (mut h, fake) = two_dirty_tabs();
+
+    // Cancel at the replace prompt aborts the whole close.
+    h.state_mut()
+        .push(reasoncraft::actions::Action::CloseWindow);
+    h.run();
+    fake.set_save(dir.path().join("one"));
+    h.get_by_label(&t("unsaved.save_changes")).click();
+    h.run();
+    h.get_by_label(&t("replace.cancel")).click();
+    h.run();
+    assert!(h.state().modal.is_none());
+    assert!(!h.state().close_confirmed());
+    assert_eq!(root_text_in(&existing), "Old");
+
+    // Replace saves tab 0, then the close moves on to tab 1.
+    h.state_mut()
+        .push(reasoncraft::actions::Action::CloseWindow);
+    h.run();
+    fake.set_save(dir.path().join("one"));
+    h.get_by_label(&t("unsaved.save_changes")).click();
+    h.run();
+    h.get_by_label(&t("replace.confirm")).click();
+    h.run();
+    assert_eq!(root_text_in(&existing), "One");
+    assert_eq!(h.state().active, 1);
+    h.get_by_label(&t("unsaved.discard")).click();
+    h.run();
+    assert!(h.state().close_confirmed());
 }
