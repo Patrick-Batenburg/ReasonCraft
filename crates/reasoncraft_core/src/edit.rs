@@ -197,12 +197,17 @@ impl Document {
     /// Everything under `item` (not including it): premises, whole-card
     /// children and all that hangs below. Iterative, so deep chains are safe.
     pub fn descendants(&self, item: Item) -> Vec<Item> {
+        // `seen` stops a damaged, cyclic structure from looping forever.
+        let mut seen = std::collections::HashSet::from([item]);
         let mut out = Vec::new();
         let mut stack = vec![item];
         while let Some(cur) = stack.pop() {
-            let children = self.child_items(cur);
-            out.extend_from_slice(&children);
-            stack.extend(children);
+            for child in self.child_items(cur) {
+                if seen.insert(child) {
+                    out.push(child);
+                    stack.push(child);
+                }
+            }
         }
         out
     }
@@ -389,44 +394,62 @@ impl Document {
         Ok(())
     }
 
-    /// Panic with a clear message if the document is inconsistent: a
-    /// dangling id, an item owned twice, or an unowned non-root box or card.
-    #[cfg(debug_assertions)]
-    pub(crate) fn check_invariants(&self) {
-        use std::collections::HashMap;
+    /// Check that the document is structurally sound: every referenced id
+    /// exists; the root exists, is a claim and is owned by nothing; every
+    /// other box and card is owned exactly once (box children, card premises,
+    /// whole-card children or parking); premise boxes appear only in card
+    /// premise lists and other boxes never do; every card has a premise; and
+    /// everything is reachable from the root or a parking entry.
+    ///
+    /// Exactly-once ownership plus reachability also rules out cycles: a
+    /// cycle has no way in from the root or parking without giving one of
+    /// its members a second owner.
+    pub fn validate(&self) -> Result<(), String> {
+        use std::collections::{HashMap, HashSet};
+        let root = self
+            .boxes
+            .get(&self.root)
+            .ok_or_else(|| "the root box is missing".to_owned())?;
+        if root.kind != BoxKind::Claim {
+            return Err("the root box is not a claim".to_owned());
+        }
         let mut owners: HashMap<Item, usize> = HashMap::new();
-        let mut claim = |what: &str, item: Item| {
-            assert!(
-                self.exists(item),
-                "invariant violated: dangling id {item:?} in {what}"
-            );
+        let mut claim = |what: &str, item: Item| -> Result<(), String> {
+            if !self.exists(item) {
+                return Err(format!("{what} refer to a missing item {item:?}"));
+            }
             *owners.entry(item).or_insert(0) += 1;
+            Ok(())
         };
-        for item in &self.parking {
-            claim("parking", *item);
+        for &item in &self.parking {
+            if self.is_premise(item) {
+                return Err(format!("premise {item:?} is in the parking area"));
+            }
+            claim("the parking area entries", item)?;
         }
         for node in self.boxes.values() {
-            for item in &node.children {
-                claim("box children", *item);
+            for &item in &node.children {
+                if self.is_premise(item) {
+                    return Err(format!("premise {item:?} is a child of box {:?}", node.id));
+                }
+                claim("box children", item)?;
             }
         }
         for card in self.cards.values() {
-            assert!(
-                !card.premises.is_empty(),
-                "invariant violated: card {:?} has no premises",
-                card.id
-            );
-            for p in &card.premises {
-                claim("card premises", Item::Box(*p));
+            if card.premises.is_empty() {
+                return Err(format!("card {:?} has no premises", card.id));
             }
-            for k in &card.children {
-                claim("card children", Item::Card(*k));
+            for &p in &card.premises {
+                let item = Item::Box(p);
+                claim("card premises", item)?;
+                if !self.is_premise(item) {
+                    return Err(format!("card {:?} lists non-premise box {p:?}", card.id));
+                }
+            }
+            for &k in &card.children {
+                claim("whole-card children", Item::Card(k))?;
             }
         }
-        assert!(
-            self.boxes.contains_key(&self.root),
-            "invariant violated: root box missing"
-        );
         let all = self
             .boxes
             .keys()
@@ -435,13 +458,37 @@ impl Document {
         for item in all {
             let n = owners.get(&item).copied().unwrap_or(0);
             if item == Item::Box(self.root) {
-                assert!(n == 0, "invariant violated: root is owned {n} times");
-            } else {
-                assert!(
-                    n == 1,
-                    "invariant violated: {item:?} is owned {n} times (expected 1)"
-                );
+                if n != 0 {
+                    return Err(format!("the root is owned {n} times"));
+                }
+            } else if n != 1 {
+                return Err(format!("{item:?} is owned {n} times (expected 1)"));
             }
+        }
+        let mut seen: HashSet<Item> = HashSet::new();
+        let mut stack: Vec<Item> = vec![Item::Box(self.root)];
+        stack.extend_from_slice(&self.parking);
+        while let Some(cur) = stack.pop() {
+            if seen.insert(cur) {
+                stack.extend(self.child_items(cur));
+            }
+        }
+        let total = self.boxes.len() + self.cards.len();
+        if seen.len() != total {
+            return Err(format!(
+                "{} items are unreachable (part of a cycle)",
+                total - seen.len()
+            ));
+        }
+        Ok(())
+    }
+
+    /// Panic with the [`Document::validate`] message if the document is
+    /// inconsistent. Debug builds run this after every edit.
+    #[cfg(debug_assertions)]
+    pub(crate) fn check_invariants(&self) {
+        if let Err(e) = self.validate() {
+            panic!("invariant violated: {e}");
         }
     }
 }
@@ -748,5 +795,91 @@ mod tests {
             .children
             .push(Item::Card(CardId::new()));
         d.check_invariants();
+    }
+
+    /// A root with one reason card `a` (premise `p`) whose premise has an
+    /// objection card `b` (premise `q`).
+    fn two_level() -> (Document, CardId, NodeId, CardId, NodeId) {
+        let mut d = Document::new("C");
+        let (a, p) = card_under_root(&mut d, "P");
+        let (b, q) = d
+            .add_card(Parent::Box(p), CardKind::Objection, "Q")
+            .unwrap();
+        (d, a, p, b, q)
+    }
+
+    #[test]
+    fn validate_accepts_edited_documents() {
+        let (mut d, a, _, _, _) = two_level();
+        d.add_card(Parent::Card(a), CardKind::Objection, "W")
+            .unwrap();
+        d.add_loose(NewLoose::Note, "n");
+        assert_eq!(d.validate(), Ok(()));
+    }
+
+    #[test]
+    fn validate_rejects_damage() {
+        let (d, a, p, b, q) = two_level();
+        let root = d.root;
+        let broken = |f: &dyn Fn(&mut Document)| {
+            let mut x = d.clone();
+            f(&mut x);
+            x.validate()
+        };
+        // Dangling id.
+        assert!(broken(&|x| x.parking.push(Item::Card(CardId::new()))).is_err());
+        // Root missing, or not a claim, or owned.
+        assert!(broken(&|x| x.root = NodeId::new()).is_err());
+        assert!(broken(&|x| x.boxes[&root].kind = BoxKind::Note).is_err());
+        assert!(broken(&|x| x.parking.push(Item::Box(root))).is_err());
+        // Owned twice.
+        assert!(broken(&|x| x.parking.push(Item::Card(b))).is_err());
+        // Unowned.
+        assert!(broken(&|x| x.boxes[&p].children.clear()).is_err());
+        // A premise moved out of its card into a box or the parking area.
+        let out_of_card = |to_parking: bool| {
+            move |x: &mut Document| {
+                x.cards[&b].premises.push(NodeId::new());
+                let extra = *x.cards[&b].premises.last().unwrap();
+                x.boxes
+                    .insert(extra, BoxNode::new(extra, BoxKind::Premise, "x"));
+                x.cards[&b].premises.retain(|i| *i != q);
+                if to_parking {
+                    x.parking.push(Item::Box(q));
+                } else {
+                    x.boxes[&root].children.push(Item::Box(q));
+                }
+            }
+        };
+        assert!(broken(&out_of_card(true)).unwrap_err().contains("premise"));
+        assert!(broken(&out_of_card(false)).unwrap_err().contains("premise"));
+        // A non-premise box listed as a premise.
+        assert!(broken(&|x| x.boxes[&q].kind = BoxKind::Note).is_err());
+        // A card without premises.
+        assert!(broken(&|x| x.cards[&b].premises.clear()).is_err());
+        // A card removed from the map but still referenced.
+        assert!(
+            broken(&|x| {
+                x.cards.shift_remove(&a);
+            })
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn validate_rejects_cycles_and_descendants_terminates() {
+        let (mut d, a, p, b, _) = two_level();
+        // Detach `a` from the root and hang it under its own descendant:
+        // a -> p -> b -> q, and q now owns a.
+        let root = d.root;
+        d.boxes[&root].children.clear();
+        let q = d.cards[&b].premises[0];
+        d.boxes[&q].children.push(Item::Card(a));
+        let err = d.validate().unwrap_err();
+        assert!(err.contains("unreachable"), "{err}");
+        let under = d.descendants(Item::Card(a));
+        assert!(under.contains(&Item::Box(p)));
+        assert!(under.contains(&Item::Card(b)));
+        assert!(!under.contains(&Item::Card(a)));
     }
 }

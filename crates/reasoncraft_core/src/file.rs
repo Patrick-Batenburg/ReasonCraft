@@ -12,6 +12,9 @@ use crate::model::{Document, SCHEMA_VERSION};
 
 const DOCUMENT_ENTRY: &str = "document.json";
 
+/// Largest `document.json` that [`open`] will read (256 MiB).
+const MAX_DOCUMENT_BYTES: u64 = 256 << 20;
+
 /// Why a file could not be read or written.
 #[derive(Debug, thiserror::Error)]
 pub enum FileError {
@@ -68,8 +71,14 @@ pub fn save(doc: &Document, path: &Path) -> Result<(), FileError> {
     result
 }
 
-/// Open a `.rcraft` file.
+/// Open a `.rcraft` file. A damaged file whose JSON parses but whose
+/// structure is inconsistent is refused as [`FileError::Malformed`].
 pub fn open(path: &Path) -> Result<Document, FileError> {
+    open_with_limit(path, MAX_DOCUMENT_BYTES)
+}
+
+/// [`open`] with a cap of `limit` bytes on the uncompressed document.
+fn open_with_limit(path: &Path, limit: u64) -> Result<Document, FileError> {
     let file = File::open(path)?;
     let mut zip = zip::ZipArchive::new(file).map_err(|e| match e {
         ZipError::Io(e) => FileError::Io(e),
@@ -77,10 +86,17 @@ pub fn open(path: &Path) -> Result<Document, FileError> {
     })?;
     let mut text = String::new();
     match zip.by_name(DOCUMENT_ENTRY) {
-        Ok(mut entry) => {
-            entry
+        Ok(entry) => {
+            // Read one byte past the limit to tell "exactly at" from "over".
+            let read = entry
+                .take(limit.saturating_add(1))
                 .read_to_string(&mut text)
                 .map_err(|e| FileError::Malformed(e.to_string()))?;
+            if read as u64 > limit {
+                return Err(FileError::Malformed(format!(
+                    "the document is larger than {limit} bytes"
+                )));
+            }
         }
         Err(ZipError::FileNotFound) => return Err(FileError::MissingDocument),
         Err(e) => return Err(zip_to_io(e)),
@@ -93,7 +109,10 @@ pub fn open(path: &Path) -> Result<Document, FileError> {
             supported: SCHEMA_VERSION,
         });
     }
-    serde_json::from_str(&text).map_err(|e| FileError::Malformed(e.to_string()))
+    let doc: Document =
+        serde_json::from_str(&text).map_err(|e| FileError::Malformed(e.to_string()))?;
+    doc.validate().map_err(FileError::Malformed)?;
+    Ok(doc)
 }
 
 #[cfg(test)]
@@ -196,6 +215,54 @@ mod tests {
                 supported: 1
             })
         ));
+    }
+
+    /// Save `d` unchecked, as a damaged file would look on disk.
+    fn write_doc(path: &Path, d: &Document) {
+        write_zip(path, &serde_json::to_string(d).unwrap());
+    }
+
+    #[test]
+    fn open_rejects_dangling_ids() {
+        let mut d = Document::new("C");
+        let root = d.root;
+        d.boxes[&root]
+            .children
+            .push(crate::Item::Card(crate::CardId::new()));
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("x.rcraft");
+        write_doc(&p, &d);
+        assert!(matches!(open(&p), Err(FileError::Malformed(m)) if m.contains("missing")));
+    }
+
+    #[test]
+    fn open_rejects_cycles() {
+        let mut d = Document::new("C");
+        let (a, p) = d
+            .add_card(Parent::Box(d.root), CardKind::Reason, "P")
+            .unwrap();
+        // Move card `a` under its own premise.
+        let root = d.root;
+        d.boxes[&root].children.clear();
+        d.boxes[&p].children.push(crate::Item::Card(a));
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("x.rcraft");
+        write_doc(&path, &d);
+        assert!(matches!(open(&path), Err(FileError::Malformed(m)) if m.contains("unreachable")));
+    }
+
+    #[test]
+    fn open_rejects_oversize_document() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("x.rcraft");
+        save(&Document::new("C"), &p).unwrap();
+        let size = raw_json(&p).to_string().len() as u64;
+        // The pretty-printed entry is larger than its compact form.
+        assert!(matches!(
+            open_with_limit(&p, size),
+            Err(FileError::Malformed(m)) if m.contains("larger")
+        ));
+        assert!(open_with_limit(&p, size * 4).is_ok());
     }
 
     #[test]
