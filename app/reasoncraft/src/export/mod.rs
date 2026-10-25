@@ -2,6 +2,7 @@
 //! with the fonts the screen uses, so a file looks like the canvas on any
 //! machine.
 
+mod pdf;
 mod raster;
 mod svg;
 
@@ -11,6 +12,10 @@ use eframe::egui::FontDefinitions;
 use eframe::egui::emath::GuiRounding as _;
 use resvg::usvg::fontdb;
 
+pub use pdf::{
+    Fit, MAX_PAGES, Orientation, PRINT_FILE_MAX_AGE, PageSetup, Paper, clean_old_print_files,
+    clean_print_files, print_via_pdf, print_via_pdf_with, svg_to_pdf,
+};
 pub use raster::{
     ClipboardSink, MAX_PIXELS, MAX_SIDE_PX, PngOptions, SystemClipboard, copy_image,
     copy_png_to_clipboard, png_to_rgba, svg_to_png, svg_to_rgba,
@@ -29,6 +34,10 @@ pub enum ExportError {
     Io(std::io::Error),
     Render(String),
     Clipboard(String),
+    /// The PDF could not be made.
+    Pdf(String),
+    /// The PDF viewer could not be opened to print.
+    Open(String),
 }
 
 impl ExportError {
@@ -39,6 +48,8 @@ impl ExportError {
             Self::Io(_) => "export-error-io",
             Self::Render(_) => "export-error-render",
             Self::Clipboard(_) => "export-error-clipboard",
+            Self::Pdf(_) => "export-error-pdf",
+            Self::Open(_) => "export-error-open",
         }
     }
 
@@ -47,7 +58,7 @@ impl ExportError {
         match self {
             Self::TooLarge { w, h } => format!("{w} × {h}"),
             Self::Io(e) => e.to_string(),
-            Self::Render(s) | Self::Clipboard(s) => s.clone(),
+            Self::Render(s) | Self::Clipboard(s) | Self::Pdf(s) | Self::Open(s) => s.clone(),
         }
     }
 }
@@ -156,6 +167,8 @@ impl TextFace {
     }
 }
 
+#[cfg(test)]
+mod pdf_tests;
 #[cfg(test)]
 mod raster_tests;
 #[cfg(test)]

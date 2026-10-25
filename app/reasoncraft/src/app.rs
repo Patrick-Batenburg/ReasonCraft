@@ -95,6 +95,9 @@ impl ReasonCraftApp {
             .storage
             .and_then(|s| eframe::get_value::<Settings>(s, SETTINGS_KEY))
             .unwrap_or_default();
+        // Print files from earlier runs; off the UI thread, as the temp
+        // folder can be large.
+        std::thread::spawn(crate::export::clean_old_print_files);
         Self::with_settings(settings, Box::new(RfdDialogs), Box::new(SystemOpener))
     }
 

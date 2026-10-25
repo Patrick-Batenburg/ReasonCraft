@@ -900,6 +900,12 @@ fn settings_from_old_storage_fill_defaults() {
             disabled: vec![reasoncraft_core::checks::CheckKind::KeyTerm],
         },
         default_doc_language: "nl".to_owned(),
+        page_setup: reasoncraft::export::PageSetup {
+            paper: reasoncraft::export::Paper::Letter,
+            orientation: reasoncraft::export::Orientation::Landscape,
+            fit: reasoncraft::export::Fit::Tile { scale: 1.5 },
+            margin_mm: 5.0,
+        },
     };
     eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
     assert_eq!(

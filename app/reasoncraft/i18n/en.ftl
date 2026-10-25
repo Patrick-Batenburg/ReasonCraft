@@ -360,3 +360,5 @@ export-error-too_large = This map is too large to export as an image ({ $detail 
 export-error-io = The file could not be written: { $detail }
 export-error-render = The image could not be drawn: { $detail }
 export-error-clipboard = The image could not be copied: { $detail }
+export-error-pdf = The PDF could not be made: { $detail }
+export-error-open = The PDF could not be opened for printing: { $detail }

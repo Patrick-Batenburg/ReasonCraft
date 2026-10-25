@@ -4,6 +4,7 @@ use reasoncraft_core::checks::{CheckKind, CheckSet};
 use reasoncraft_core::outline::OutlineOptions;
 use serde::{Deserialize, Serialize};
 
+use crate::export::PageSetup;
 use crate::theme::ThemeChoice;
 
 /// eframe storage key for [`Settings`].
@@ -33,6 +34,8 @@ pub struct Settings {
     pub checks: CheckSet,
     /// The language new documents start with: `"en"` or `"nl"`.
     pub default_doc_language: String,
+    /// Paper, orientation, fit and margins for PDF export and printing.
+    pub page_setup: PageSetup,
 }
 
 /// One of the Outline tab's toolbar switches.
@@ -102,6 +105,7 @@ impl Default for Settings {
             outline_colour: true,
             checks: CheckSet::default(),
             default_doc_language: "en".to_owned(),
+            page_setup: PageSetup::default(),
         }
     }
 }

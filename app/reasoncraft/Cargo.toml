@@ -20,12 +20,15 @@ resvg = { version = "0.45", default-features = false, features = ["text", "raste
 base64 = "0.22"
 arboard = { version = "3", default-features = false, features = ["image-data"] }
 skrifa = "0.44"
+svg2pdf = { version = "0.13", default-features = false, features = ["text", "image"] }
+pdf-writer = "0.12"
 
 [dev-dependencies]
 egui_kittest = "0.37"
 reasoncraft_core = { path = "../../crates/reasoncraft_core", features = ["test-fixtures"] }
 tempfile.workspace = true
 serde_json.workspace = true
+miniz_oxide = "0.8"
 
 [lints]
 workspace = true
