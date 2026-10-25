@@ -5,6 +5,8 @@
 //! (text is measured with egui) or a copy of the document, with a copy of
 //! the assets. The rest runs on a worker (see [`crate::export::ExportJobs`]).
 
+use std::path::PathBuf;
+
 use eframe::egui;
 use reasoncraft_core::{Item, LayoutParams, layout};
 
@@ -25,7 +27,11 @@ use crate::theme::Tokens;
 pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
     match action {
         Action::OpenExport(format) if format.is_image() => {
-            let dialog = ExportDialog::export(format, app.settings.export, app.settings.page_setup);
+            let mut options = app.settings.export;
+            if app.active_tab().selection.is_none() {
+                options.scope = ExportScope::Map;
+            }
+            let dialog = ExportDialog::export(format, options, app.settings.page_setup);
             app.export_dialog = Some(dialog);
         }
         Action::OpenExport(format) => {
@@ -69,13 +75,21 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
             let target = Target::Print(app.export.print_dir.clone());
             start(app, ExportFormat::Pdf, options, snapshot, target);
         }
+        Action::ResolveExportReplace(replace) => {
+            let Some(Modal::ConfirmExportReplace { path, request }) = app.modal.take() else {
+                return;
+            };
+            if replace {
+                export_to(app, request, path);
+            }
+        }
         Action::OpenExportFolder => {
             let Some(Notice::Saved(path)) = &app.export.notice else {
                 return;
             };
             let Some(dir) = path.parent() else { return };
             if let Err(e) = app.link_opener.open(&dir.to_string_lossy()) {
-                show_error(app, &ExportError::Open(e));
+                show_error(app, ExportError::Open(e));
             }
         }
         _ => {}
@@ -83,21 +97,33 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
 }
 
 /// Ask where `request` goes and start it. A cancelled dialog does nothing.
+/// When the extension had to be added and that file exists, ask before
+/// replacing it: the dialog only checked the name without it.
 fn run(app: &mut ReasonCraftApp, request: ExportRequest) {
+    let format = request.format;
+    if !format.is_available() {
+        return;
+    }
+    let suggested = format!("{}.{}", app.active_tab().name(), format.extension());
+    let Some(chosen) = app.dialogs.pick_export(format, &suggested) else {
+        return;
+    };
+    let path = with_extension(chosen.clone(), format.extension());
+    if path != chosen && path.exists() {
+        app.modal = Some(Modal::ConfirmExportReplace { path, request });
+        return;
+    }
+    export_to(app, request, path);
+}
+
+/// Start `request`, written to `path`.
+fn export_to(app: &mut ReasonCraftApp, request: ExportRequest, path: PathBuf) {
     let ExportRequest {
         format,
         options,
         page,
     } = request;
-    if !format.is_available() {
-        return;
-    }
     let tab = &app.tabs[app.active];
-    let suggested = format!("{}.{}", tab.name(), format.extension());
-    let Some(path) = app.dialogs.pick_export(format, &suggested) else {
-        return;
-    };
-    let path = with_extension(path, format.extension());
     let snapshot = if format.is_image() {
         let only = match options.scope {
             ExportScope::Map => None,
@@ -199,15 +225,25 @@ pub fn poll_exports(app: &mut ReasonCraftApp) {
             Ok(Outcome::Copied) => app.export.notice = Some(Notice::Copied),
             Ok(Outcome::ReadyToPrint(path)) => {
                 if let Err(e) = app.link_opener.open(&path.to_string_lossy()) {
-                    show_error(app, &ExportError::Open(e));
+                    show_error(app, ExportError::Open(e));
                 }
             }
-            Err(e) => show_error(app, &e),
+            Err(e) => show_error(app, e),
         }
+    }
+    if app.modal.is_none()
+        && let Some(err) = app.export.waiting_errors.pop_front()
+    {
+        show_error(app, err);
     }
 }
 
-fn show_error(app: &mut ReasonCraftApp, err: &ExportError) {
+/// Shows `err`, or keeps it for later when another message is showing.
+fn show_error(app: &mut ReasonCraftApp, err: ExportError) {
+    if app.modal.is_some() {
+        app.export.waiting_errors.push_back(err);
+        return;
+    }
     let mut args = FluentArgs::new();
     args.set("detail", err.detail());
     app.modal = Some(Modal::Error {

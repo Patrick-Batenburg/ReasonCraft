@@ -97,7 +97,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::SetPageSetup(_)
         | Action::CopyAsImage
         | Action::Print
-        | Action::OpenExportFolder => export::apply(app, action),
+        | Action::OpenExportFolder
+        | Action::ResolveExportReplace(_) => export::apply(app, action),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap => {
             let doc = reasoncraft_core::fixtures::sample_iot_like(117);
@@ -220,7 +221,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetPageSetup(_)
         | Action::CopyAsImage
         | Action::Print
-        | Action::OpenExportFolder => unreachable!("app-level action"),
+        | Action::OpenExportFolder
+        | Action::ResolveExportReplace(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

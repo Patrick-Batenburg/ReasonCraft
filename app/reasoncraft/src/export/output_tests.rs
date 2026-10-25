@@ -156,3 +156,50 @@ fn print_file_is_written_without_opening() {
     assert_eq!(path.parent().unwrap(), dir.path());
     assert_eq!(std::fs::read(path).unwrap(), b"%PDF-1.7 x");
 }
+
+#[test]
+fn copy_survives_a_poisoned_clipboard_lock() {
+    let fake = FakeClipboard::default();
+    let shared: SharedClipboard = std::sync::Arc::new(std::sync::Mutex::new(fake.clone()));
+    let poison = shared.clone();
+    let _ = std::thread::spawn(move || {
+        let _guard = poison.lock().unwrap();
+        panic!("poison the lock");
+    })
+    .join();
+    assert!(shared.is_poisoned());
+    let work = ExportWork {
+        format: ExportFormat::Png,
+        options: ExportOptions::default(),
+        page: PageSetup::default(),
+        snapshot: Snapshot::Scene {
+            scene: rect_scene(10.0, 10.0),
+            assets: Assets::default(),
+            tokens: Tokens::light(),
+        },
+        target: Target::Clipboard(shared),
+    };
+    assert_eq!(work.run().unwrap(), Outcome::Copied);
+    assert_eq!(fake.images.lock().unwrap().len(), 1);
+}
+
+#[test]
+fn a_job_that_dies_is_reported_as_stopped() {
+    let job: Job<u8> = Job::spawn(None, || panic!("worker dies"));
+    let start = std::time::Instant::now();
+    loop {
+        match job.poll() {
+            JobState::Running => {
+                assert!(start.elapsed().as_secs() < 30);
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+            JobState::Lost => break,
+            JobState::Done(_) => panic!("no result expected"),
+        }
+    }
+    assert_eq!(ExportError::Stopped.key(), "export-error-stopped");
+    assert_eq!(
+        ExportError::Unsupported(ExportFormat::EssayDocx).key(),
+        "export-error-unsupported"
+    );
+}

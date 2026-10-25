@@ -225,6 +225,9 @@ pub enum Action {
     Print,
     /// Show the folder of the last exported file.
     OpenExportFolder,
+    /// The answer to "replace the existing file?" for an export (true:
+    /// replace and export).
+    ResolveExportReplace(bool),
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,

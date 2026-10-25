@@ -1,5 +1,5 @@
 //! The window-wide modal: a file error, "save changes before closing?" or
-//! "replace the existing file?".
+//! "replace the existing file?" (for a save or an export).
 
 use eframe::egui::{self, Role, WidgetInfo};
 
@@ -67,7 +67,7 @@ fn texts(app: &ReasonCraftApp, modal: &Modal) -> (String, String) {
             args.set("name", name);
             (t_args("unsaved.title", &args), t("unsaved.message"))
         }
-        Modal::ConfirmReplace { path, .. } => {
+        Modal::ConfirmReplace { path, .. } | Modal::ConfirmExportReplace { path, .. } => {
             let mut args = FluentArgs::new();
             let file = path.file_name().unwrap_or(path.as_os_str());
             args.set("file", file.to_string_lossy().into_owned());
@@ -118,6 +118,21 @@ fn buttons(modal: &Modal) -> (Vec<Button>, Action) {
                 ),
             ],
             Action::ResolveReplace(false),
+        ),
+        Modal::ConfirmExportReplace { .. } => (
+            vec![
+                (
+                    "replace.cancel",
+                    "replace.cancel",
+                    Action::ResolveExportReplace(false),
+                ),
+                (
+                    "replace.confirm",
+                    "replace.confirm",
+                    Action::ResolveExportReplace(true),
+                ),
+            ],
+            Action::ResolveExportReplace(false),
         ),
     }
 }

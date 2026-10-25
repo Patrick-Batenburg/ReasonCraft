@@ -7,7 +7,8 @@
 //! exported. The frame loop polls [`ExportJobs::finished`] and repaints
 //! while [`ExportJobs::busy`].
 
-use std::path::PathBuf;
+use std::collections::VecDeque;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -124,9 +125,9 @@ impl ExportWork {
             ) => {
                 if let Target::Clipboard(sink) = &self.target {
                     let opts = png_options(&self.options);
-                    let mut sink = sink
-                        .lock()
-                        .map_err(|_| ExportError::Clipboard("clipboard lock poisoned".into()))?;
+                    // A copy that panicked earlier leaves nothing half done in
+                    // the sink, so a poisoned lock is safe to take over.
+                    let mut sink = sink.lock().unwrap_or_else(|e| e.into_inner());
                     copy_scene_to_clipboard(scene, assets, tokens, &opts, &fonts, &mut *sink)?;
                     return Ok(Outcome::Copied);
                 }
@@ -144,7 +145,7 @@ impl ExportWork {
                     ExportFormat::Svg => svg(self.options.svg_outlines).into_bytes(),
                     // The PDF embeds the fonts and keeps text selectable.
                     ExportFormat::Pdf => svg_to_pdf(&svg(false), &self.page, &fonts)?,
-                    other => return Err(unavailable(other)),
+                    other => return Err(ExportError::Unsupported(other)),
                 }
             }
             (Snapshot::Doc { doc, outline }, format) => {
@@ -153,18 +154,18 @@ impl ExportWork {
                 match format {
                     ExportFormat::OutlineMarkdown => outline_markdown(&lines, outline, lang),
                     ExportFormat::OutlineText => outline_plain_text_lang(&lines, outline, lang),
-                    other => return Err(unavailable(other)),
+                    other => return Err(ExportError::Unsupported(other)),
                 }
                 .into_bytes()
             }
         };
         match self.target {
             Target::File(path) => {
-                std::fs::write(&path, bytes)?;
+                write_atomically(&path, &bytes)?;
                 Ok(Outcome::Saved(path))
             }
             Target::Print(dir) => Ok(Outcome::ReadyToPrint(write_print_file(&bytes, &dir)?)),
-            Target::Clipboard(_) => Err(ExportError::Clipboard("not an image".into())),
+            Target::Clipboard(_) => Err(ExportError::Unsupported(self.format)),
         }
     }
 }
@@ -176,8 +177,17 @@ fn png_options(options: &ExportOptions) -> PngOptions {
     }
 }
 
-fn unavailable(format: ExportFormat) -> ExportError {
-    ExportError::Render(format!("{format:?} cannot be exported from this snapshot"))
+/// Writes `bytes` to `path` through a temporary file next to it, so an
+/// existing file is replaced whole or not at all.
+fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), ExportError> {
+    let mut tmp = path.as_os_str().to_owned();
+    tmp.push(".tmp");
+    let tmp = PathBuf::from(tmp);
+    let result = std::fs::write(&tmp, bytes).and_then(|()| std::fs::rename(&tmp, path));
+    if result.is_err() && tmp.is_file() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    Ok(result?)
 }
 
 /// A message about the last export, shown in the status bar.
@@ -201,6 +211,8 @@ pub struct ExportJobs {
     /// Where print files are written.
     pub print_dir: PathBuf,
     pub notice: Option<Notice>,
+    /// Export errors waiting for the message on screen to close.
+    pub waiting_errors: VecDeque<ExportError>,
 }
 
 impl ExportJobs {
@@ -211,6 +223,7 @@ impl ExportJobs {
             clipboard,
             print_dir,
             notice: None,
+            waiting_errors: VecDeque::new(),
         }
     }
 
@@ -236,7 +249,7 @@ impl ExportJobs {
                 false
             }
             JobState::Lost => {
-                done.push(Err(ExportError::Render("the export stopped".into())));
+                done.push(Err(ExportError::Stopped));
                 false
             }
         });

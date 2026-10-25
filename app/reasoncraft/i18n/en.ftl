@@ -413,3 +413,5 @@ export-done = Export done.
 export-open_folder = Open folder
 export-copied = Copied to the clipboard.
 status-exporting = Exporting…
+export-error-stopped = The export stopped unexpectedly. Please try again.
+export-error-unsupported = This kind of export is not available yet ({ $detail }).

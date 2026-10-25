@@ -117,7 +117,7 @@ impl ReasonCraftApp {
             settings,
             Box::new(RfdDialogs),
             Box::new(SystemOpener),
-            Arc::new(Mutex::new(SystemClipboard)),
+            Arc::new(Mutex::new(SystemClipboard::default())),
         )
     }
 

@@ -41,6 +41,12 @@ pub enum Modal {
         path: PathBuf,
         then: AfterSave,
     },
+    /// An export to `path` would replace an existing file that the file
+    /// dialog never checked (the extension was added to the chosen name).
+    ConfirmExportReplace {
+        path: PathBuf,
+        request: crate::export::ExportRequest,
+    },
 }
 
 /// What a save was part of, so it can carry on once the file is written.

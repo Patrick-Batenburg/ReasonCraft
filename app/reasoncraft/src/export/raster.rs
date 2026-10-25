@@ -130,12 +130,28 @@ pub trait ClipboardSink {
 }
 
 /// The system clipboard. Only the running app uses this; tests use a fake.
-pub struct SystemClipboard;
+///
+/// It keeps one `arboard::Clipboard` for as long as it lives (the app
+/// keeps it for its whole run). On Linux (X11, and Wayland through its
+/// data-control protocol) the copied image is served by that object and
+/// is gone as soon as it is dropped, unless a clipboard manager took a
+/// copy; a clipboard made and dropped per copy would report success while
+/// pasting gives nothing. `SetExtLinux::wait` is not used: it blocks until
+/// another program takes over the clipboard. arboard's `Clipboard` is
+/// `Send + Sync` on every platform, so the worker threads can use it.
+#[derive(Default)]
+pub struct SystemClipboard {
+    board: Option<arboard::Clipboard>,
+}
 
 impl ClipboardSink for SystemClipboard {
     fn set_image(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<(), ExportError> {
-        let mut board =
-            arboard::Clipboard::new().map_err(|e| ExportError::Clipboard(e.to_string()))?;
+        let board = match &mut self.board {
+            Some(board) => board,
+            empty => empty.insert(
+                arboard::Clipboard::new().map_err(|e| ExportError::Clipboard(e.to_string()))?,
+            ),
+        };
         board
             .set_image(arboard::ImageData {
                 width: width as usize,
@@ -180,8 +196,11 @@ pub fn copy_image(
 }
 
 /// Puts an RGBA image on the system clipboard.
+///
+/// The clipboard object is dropped afterwards, so on Linux the image may
+/// not outlive this call; the app keeps a [`SystemClipboard`] instead.
 pub fn copy_png_to_clipboard(png_rgba: (u32, u32, Vec<u8>)) -> Result<(), ExportError> {
-    copy_image(&mut SystemClipboard, png_rgba)
+    copy_image(&mut SystemClipboard::default(), png_rgba)
 }
 
 /// `scene` in the colours of `tokens` as the live-text SVG a raster is

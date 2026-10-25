@@ -50,6 +50,10 @@ pub enum ExportError {
     Pdf(String),
     /// The PDF viewer could not be opened to print.
     Open(String),
+    /// The export's worker stopped without a result.
+    Stopped,
+    /// This build cannot make this export (yet).
+    Unsupported(ExportFormat),
 }
 
 impl ExportError {
@@ -63,6 +67,8 @@ impl ExportError {
             Self::Clipboard(_) => "export-error-clipboard",
             Self::Pdf(_) => "export-error-pdf",
             Self::Open(_) => "export-error-open",
+            Self::Stopped => "export-error-stopped",
+            Self::Unsupported(_) => "export-error-unsupported",
         }
     }
 
@@ -72,6 +78,8 @@ impl ExportError {
             Self::TooLarge { w, h } | Self::ClipboardTooLarge { w, h } => format!("{w} × {h}"),
             Self::Io(e) => e.to_string(),
             Self::Render(s) | Self::Clipboard(s) | Self::Pdf(s) | Self::Open(s) => s.clone(),
+            Self::Stopped => String::new(),
+            Self::Unsupported(format) => format.extension().to_owned(),
         }
     }
 }
