@@ -10,6 +10,7 @@ use reasoncraft_core::layout::BOX_TEXT_PAD;
 use reasoncraft_core::{BoxKind, Layout, NodeId};
 
 use super::boxes::SOURCE_HEADER;
+use super::images::content_rect;
 use super::measure::font_for;
 use super::paint::screen_font;
 use crate::actions::Action;
@@ -35,6 +36,8 @@ pub(super) fn show(
     let (Some(&world), Some(node)) = (layout.boxes.get(&b), tab.doc.boxes.get(&b)) else {
         return;
     };
+    // The text sits below the box's image, if it has one.
+    let world = content_rect(world, node);
     let mut area = world.shrink(BOX_TEXT_PAD);
     let hint = match &node.kind {
         BoxKind::Source { source_type } => {

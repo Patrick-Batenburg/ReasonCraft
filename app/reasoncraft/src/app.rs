@@ -1,6 +1,7 @@
 //! The application: open tabs, settings and the per-frame loop.
 
 use crate::actions::{self, Action, FakeOpener, LinkOpener, SystemOpener};
+use crate::canvas::images::ImageCache;
 use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
 use crate::file_ops::{FakeDialogs, FileDialogs, Modal, RfdDialogs};
@@ -37,6 +38,8 @@ pub struct ReasonCraftApp {
     pub tokens: Tokens,
     /// Text heights measured by the canvas, shared by all tabs.
     pub measure_cache: MeasureCache,
+    /// Textures of box images, shared by all tabs.
+    pub images: ImageCache,
     /// File pickers: the platform's own, or fakes in tests.
     pub dialogs: Box<dyn FileDialogs>,
     /// The error message or unsaved-changes prompt being shown.
@@ -72,6 +75,7 @@ impl ReasonCraftApp {
             pending: Vec::new(),
             ribbon_tab: RibbonTab::default(),
             measure_cache: MeasureCache::default(),
+            images: ImageCache::default(),
             dialogs,
             modal: None,
             link_edit: None,

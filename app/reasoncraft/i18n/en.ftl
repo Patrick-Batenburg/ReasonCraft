@@ -62,6 +62,8 @@ action-comment = Comment
 action-connect = Connect to…
 action-box_type = Type
 action-link = Link
+action-image = Image
+action-remove_image = Remove image
 action-delete = Delete
 action-delete_branch = Delete branch
 action-zoom_fit = Fit
@@ -94,6 +96,7 @@ eval-tip-clear_map = Clear every rating in the map
 
 ## Files
 file-filter = ReasonCraft map
+file-images = Images
 modal-ok = OK
 unsaved-title = Save changes to { $name }?
 unsaved-message = Your changes will be lost if you don't save them.
@@ -254,3 +257,11 @@ link-open_failed = Could not open the link
 link-open_failed_detail = { $url } could not be opened: { $detail }
 link-unsafe = { $url } was not opened: only web links (http, https) and e-mail links (mailto) can be opened. Edit the link to fix it.
 link-unsafe_label = Link that cannot be opened: { $url }
+
+## Images in boxes
+image-missing = Image missing
+image-error-title = Could not use { $file }
+image-error-too_large = The image is too large. Use an image under 40 MB and at most 12000 × 12000 pixels.
+image-error-unsupported = This file is not a PNG, JPEG or WebP image.
+image-error-corrupt = The image is damaged and cannot be read.
+image-error-read = The file could not be read: { $detail }

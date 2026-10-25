@@ -2,8 +2,9 @@
 
 use eframe::egui::{Align2, Color32, Rect, Shape, Stroke, StrokeKind, Vec2, pos2, vec2};
 use reasoncraft_core::layout::BOX_TEXT_PAD;
-use reasoncraft_core::{BoxKind, SourceType};
+use reasoncraft_core::{BoxKind, BoxNode, SourceType};
 
+use super::images::content_rect;
 use super::measure;
 use super::paint::{Pass, screen_font};
 use crate::i18n::t;
@@ -30,12 +31,13 @@ pub(super) fn box_radius(kind: &BoxKind) -> f32 {
 }
 
 impl Pass<'_> {
-    /// A box of any kind. `border` is the colour of the card a premise sits in.
-    /// `text` is `None` while the inline editor shows the text instead.
+    /// A box of any kind: its image on top, then its content. `border` is
+    /// the colour of the card a premise sits in. `text` is `None` while the
+    /// inline editor shows the text instead.
     pub(super) fn box_(
         &self,
         world: Rect,
-        kind: &BoxKind,
+        node: &BoxNode,
         text: Option<&str>,
         border_colour: Option<Color32>,
         is_root: bool,
@@ -45,6 +47,7 @@ impl Pass<'_> {
             return;
         }
         let tk = self.t;
+        let kind = &node.kind;
         let radius = box_radius(kind) * self.cam.zoom;
         let border = |c: Color32| Stroke::new(1.0, c);
         let (fill, stroke, text_colour) = match kind {
@@ -64,6 +67,9 @@ impl Pass<'_> {
         }
 
         let text_width = world.width() - 2.0 * BOX_TEXT_PAD;
+        self.box_image(world, node);
+        // Header and text go below the image, as the layout measured them.
+        let world = content_rect(world, node);
         match kind {
             BoxKind::Source { source_type } => {
                 self.source_header(world, source_type);

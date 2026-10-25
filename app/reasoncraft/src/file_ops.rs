@@ -4,75 +4,22 @@
 //! [`FakeDialogs`]. Failures never touch open work: a failed open changes no
 //! tabs, and a failed save keeps the tab dirty and its old path.
 
-use std::cell::RefCell;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
+use reasoncraft_core::Package;
 use reasoncraft_core::file::{self, FileError};
 
 use crate::actions::UnsavedChoice;
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
-use crate::i18n::{FluentArgs, t, t_args};
+use crate::i18n::{FluentArgs, t_args};
+
+mod dialogs;
+pub use dialogs::{FakeDialogs, FileDialogs, RfdDialogs};
 
 /// The file extension of ReasonCraft maps.
 pub const EXTENSION: &str = "rcraft";
-
-/// Native file pickers. `None` means the user cancelled.
-pub trait FileDialogs {
-    fn pick_open(&self) -> Option<PathBuf>;
-    /// `suggested` is the proposed file name, extension included.
-    fn pick_save(&self, suggested: &str) -> Option<PathBuf>;
-}
-
-/// The platform's own dialogs, filtered to `.rcraft` files.
-pub struct RfdDialogs;
-
-impl RfdDialogs {
-    fn dialog() -> rfd::FileDialog {
-        rfd::FileDialog::new().add_filter(t("file.filter"), &[EXTENSION])
-    }
-}
-
-impl FileDialogs for RfdDialogs {
-    fn pick_open(&self) -> Option<PathBuf> {
-        Self::dialog().pick_file()
-    }
-
-    fn pick_save(&self, suggested: &str) -> Option<PathBuf> {
-        Self::dialog().set_file_name(suggested).save_file()
-    }
-}
-
-/// Test dialogs: each answer is queued with `set_open` / `set_save` and used
-/// once; with nothing queued the dialog counts as cancelled. Clones share
-/// their queue, so a test keeps a clone to steer the app's copy.
-#[derive(Clone, Default)]
-pub struct FakeDialogs {
-    pub open: Rc<RefCell<Option<PathBuf>>>,
-    pub save: Rc<RefCell<Option<PathBuf>>>,
-}
-
-impl FakeDialogs {
-    pub fn set_open(&self, path: PathBuf) {
-        self.open.replace(Some(path));
-    }
-
-    pub fn set_save(&self, path: PathBuf) {
-        self.save.replace(Some(path));
-    }
-}
-
-impl FileDialogs for FakeDialogs {
-    fn pick_open(&self) -> Option<PathBuf> {
-        self.open.take()
-    }
-
-    fn pick_save(&self, _suggested: &str) -> Option<PathBuf> {
-        self.save.take()
-    }
-}
 
 /// A dialog shown over the whole window.
 #[derive(Clone, Debug, PartialEq)]
@@ -235,8 +182,7 @@ fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
         app.active = i;
         return Ok(());
     }
-    let doc = file::open(path)?;
-    let mut tab = DocTab::from_document(doc);
+    let mut tab = DocTab::from_package(file::open_package(path)?);
     tab.path = Some(path.to_path_buf());
     if app.tabs.get(app.active).is_some_and(is_untouched) {
         app.tabs[app.active] = tab;
@@ -287,7 +233,16 @@ fn save_tab_at(
 /// Write `tab` to `path`. Only on success does the tab take the path and
 /// count as saved.
 fn write_tab(tab: &mut DocTab, path: PathBuf) -> Result<(), (PathBuf, FileError)> {
-    file::save(&tab.doc, &path).map_err(|err| (path.clone(), err))?;
+    // Only the assets the document refers to are written; the tab keeps
+    // the rest, so a redo after the save still finds its image.
+    let pkg = Package {
+        doc: tab.doc.clone(),
+        assets: tab.assets.clone(),
+        other_entries: std::mem::take(&mut tab.other_entries),
+    };
+    let result = file::save_package(&pkg, &path);
+    tab.other_entries = pkg.other_entries;
+    result.map_err(|err| (path.clone(), err))?;
     tab.path = Some(path);
     tab.history.mark_saved();
     Ok(())

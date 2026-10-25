@@ -12,7 +12,7 @@ use indexmap::IndexMap;
 
 use crate::connector::Strength;
 use crate::ids::{CardId, Item, NodeId};
-use crate::model::{BoxKind, CardStrength, Document, Role};
+use crate::model::{BoxKind, CardStrength, Document, ImageRef, Role};
 
 /// Horizontal and vertical padding between a box's edge and its text.
 /// A [`Measure`] is asked for the height of text wrapped at
@@ -21,6 +21,14 @@ pub const BOX_TEXT_PAD: f32 = 6.0;
 
 /// Vertical gap between a box's image and its text.
 pub const IMAGE_GAP: f32 = 6.0;
+
+/// The height a box `width` wide reserves above its text for `image`:
+/// padding, the image at the text width, and [`IMAGE_GAP`]. Painters draw
+/// the image at `(BOX_TEXT_PAD, BOX_TEXT_PAD)` from the box's top-left,
+/// `width - 2 * BOX_TEXT_PAD` wide, and the box's content below this block.
+pub fn image_height(width: f32, image: &ImageRef) -> f32 {
+    (width - 2.0 * BOX_TEXT_PAD) * image.aspect.clamp(0.05, 4.0) + BOX_TEXT_PAD + IMAGE_GAP
+}
 
 /// Measures wrapped text. Implemented by the UI with its real fonts.
 pub trait Measure {

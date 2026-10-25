@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use eframe::egui::Rect;
-use reasoncraft_core::{Document, EditError, History, Item, NodeId};
+use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Package};
 
 use crate::canvas::Camera;
 use crate::i18n::t;
@@ -14,6 +14,14 @@ pub const HISTORY_LIMIT: usize = 500;
 pub struct DocTab {
     pub doc: Document,
     pub history: History,
+    /// The image bytes the document's boxes refer to, kept outside
+    /// [`History`] so undo snapshots never hold bytes. Add-only while the
+    /// tab is open: an undone image insert leaves its bytes unused, and a
+    /// save writes only the referenced ones.
+    pub assets: Assets,
+    /// Zip entries of the opened file that this build does not understand,
+    /// written back unchanged on save.
+    pub other_entries: Vec<(String, Vec<u8>)>,
     /// Where the document was last saved or opened from.
     pub path: Option<PathBuf>,
     pub selection: Option<Item>,
@@ -56,10 +64,23 @@ impl DocTab {
 
     /// A clean tab showing `doc`, with its claim selected.
     pub fn from_document(doc: Document) -> Self {
+        Self::from_package(Package::new(doc))
+    }
+
+    /// A clean tab showing an opened file's document, with its assets and
+    /// unknown entries.
+    pub fn from_package(pkg: Package) -> Self {
+        let Package {
+            doc,
+            assets,
+            other_entries,
+        } = pkg;
         let selection = Some(Item::Box(doc.root));
         Self {
             doc,
             history: History::new(HISTORY_LIMIT),
+            assets,
+            other_entries,
             path: None,
             selection,
             editing: None,

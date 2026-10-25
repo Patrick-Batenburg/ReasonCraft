@@ -11,7 +11,7 @@ use std::ops::Range;
 use emath::{Pos2, Rect, Vec2};
 
 use super::ports::{Pending, PortKey};
-use super::{BOX_TEXT_PAD, ConnectorKind, IMAGE_GAP, Layout, LayoutParams, Measure};
+use super::{BOX_TEXT_PAD, ConnectorKind, Layout, LayoutParams, Measure, image_height};
 use crate::connector::Strength;
 use crate::ids::{Item, NodeId, Parent};
 use crate::model::{BoxKind, BoxNode, Card, CardKind, CardStrength, Document, Role, owner_index};
@@ -248,9 +248,10 @@ fn box_size(node: &BoxNode, m: &dyn Measure, p: &LayoutParams) -> Vec2 {
     };
     let width = node.width.unwrap_or(default_width);
     let text_height = m.text_height(&node.text, width - 2.0 * BOX_TEXT_PAD, &node.kind);
-    let image_height = node.image.as_ref().map_or(0.0, |img| {
-        (width - 2.0 * BOX_TEXT_PAD) * img.aspect.clamp(0.05, 4.0) + BOX_TEXT_PAD + IMAGE_GAP
-    });
+    let image_height = node
+        .image
+        .as_ref()
+        .map_or(0.0, |img| image_height(width, img));
     let height = if is_source {
         // Room for the icon and the source type line.
         text_height + 30.0 + image_height

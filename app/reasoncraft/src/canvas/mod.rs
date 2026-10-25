@@ -1,6 +1,6 @@
 //! The map canvas: camera, text measurement, painting, hit testing and
 //! editing interactions (selection, inline text, keyboard, "+" menu, drag,
-//! drops from the building panel, comments, link glyphs).
+//! drops from the building panel, comments, link glyphs, box images).
 
 mod boxes;
 pub mod camera;
@@ -9,6 +9,7 @@ pub mod connect;
 pub mod drag;
 pub mod editor;
 pub mod hit;
+pub mod images;
 pub mod input;
 pub mod links;
 pub mod measure;
@@ -57,9 +58,12 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         measure_cache,
         pending,
         settings,
+        images,
         ..
     } = app;
+    images.evict_closed(tabs);
     let tab = &mut tabs[*active];
+    images.load(&ctx, &tab.doc, &tab.assets);
     // Recomputed every frame: about 0.3 ms for 500 boxes, and never stale.
     let layout = layout(
         &tab.doc,
@@ -104,6 +108,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             show_markers: settings.show_markers,
             eval_shading: settings.eval_shading,
         },
+        images,
     );
     comments::badges(ui, tab, &layout, pending);
     links::glyphs(ui, tab, &layout, pending);

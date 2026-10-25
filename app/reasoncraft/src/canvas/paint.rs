@@ -21,6 +21,7 @@ use reasoncraft_core::{
 
 use super::Camera;
 use super::boxes::{BOX_RADIUS, box_radius};
+use super::images::ImageCache;
 use super::rating::{
     card_colour, connector_strength, frame_alpha, frame_border, mark_for, rating_label,
 };
@@ -104,11 +105,13 @@ pub fn paint(
     selection: Option<Item>,
     editing: Option<NodeId>,
     opts: PaintOptions,
+    images: &ImageCache,
 ) {
     let p = Pass {
         painter,
         cam,
         t: tokens,
+        images,
         clip: painter.clip_rect(),
         shading: opts.eval_shading,
     };
@@ -145,7 +148,7 @@ pub fn paint(
         if let Some(node) = doc.boxes.get(id) {
             let text = (editing != Some(*id)).then_some(node.text.as_str());
             let border = premise_colour.get(id).copied();
-            p.box_(rect, &node.kind, text, border, *id == doc.root);
+            p.box_(rect, node, text, border, *id == doc.root);
             if opts.show_markers
                 && let Some(mark) = mark_for(node)
             {
@@ -187,6 +190,8 @@ pub(super) struct Pass<'a> {
     pub painter: &'a Painter,
     pub cam: &'a Camera,
     pub t: &'a Tokens,
+    /// Textures of box images.
+    pub images: &'a ImageCache,
     pub clip: Rect,
     /// Evaluation shading is on.
     pub shading: bool,

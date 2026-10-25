@@ -1,5 +1,5 @@
-//! End to end: build a map through actions only, save it, open it again and
-//! check that nothing was lost.
+//! End to end: build a map through actions only (an image included), save
+//! it, open it again and check that nothing was lost.
 
 use reasoncraft::actions::{Action, apply};
 use reasoncraft::app::ReasonCraftApp;
@@ -113,6 +113,21 @@ fn e2e_build_save_reopen() {
     );
     let parked = app.active_tab().doc.parking[0];
 
+    // A photo in the first premise (stored as PNG, outside history).
+    let dir = tempfile::tempdir().unwrap();
+    let photo = dir.path().join("air.png");
+    image::RgbImage::from_pixel(300, 200, image::Rgb([90, 140, 200]))
+        .save(&photo)
+        .unwrap();
+    fake.set_image(photo);
+    run(
+        &mut app,
+        [Action::Select(Some(Item::Box(r1))), Action::InsertImage],
+    );
+    assert!(app.modal.is_none(), "image insert failed: {:?}", app.modal);
+    let asset = app.active_tab().doc.boxes[&r1].image.clone().unwrap().asset;
+    let asset_bytes = app.active_tab().assets.get(&asset).unwrap();
+
     // The map is what was asked for.
     {
         let doc = &app.active_tab().doc;
@@ -140,7 +155,6 @@ fn e2e_build_save_reopen() {
     let built = app.active_tab().doc.clone();
 
     // Save (the dialog answers with a path) and close the clean tab.
-    let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("cars.rcraft");
     fake.set_save(path.clone());
     run(&mut app, [Action::Save]);
@@ -164,6 +178,7 @@ fn e2e_build_save_reopen() {
     assert_eq!(reopened.path.as_deref(), Some(path.as_path()));
     assert!(!reopened.is_dirty());
     assert_eq!(reopened.doc, built);
+    assert_eq!(reopened.assets.get(&asset), Some(asset_bytes));
 
     // Same layout, box for box.
     let p = LayoutParams::default();

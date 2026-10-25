@@ -65,6 +65,10 @@ pub enum Icon {
     BoxType,
     /// Two chain links (a box's link).
     Link,
+    /// A framed landscape (put an image in a box).
+    Image,
+    /// A framed landscape, crossed out (take a box's image out).
+    RemoveImage,
 }
 
 /// Draw `icon` in `rect` (a square). `fg` is the main colour, `bg` the
@@ -319,6 +323,8 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         | Icon::Shading
         | Icon::Comment
         | Icon::Connect => evaluate::paint(&pen, icon, fg, t),
-        Icon::BoxType | Icon::Link => box_group::paint(&pen, icon, fg, t),
+        Icon::BoxType | Icon::Link | Icon::Image | Icon::RemoveImage => {
+            box_group::paint(&pen, icon, fg, t)
+        }
     }
 }

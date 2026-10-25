@@ -1,5 +1,5 @@
 //! The Home ribbon tab: clipboard, adding items, editing and the
-//! selected box's type and link.
+//! selected box's type, link and image.
 
 use eframe::egui::{Button, Popup, Ui};
 use reasoncraft_core::{BoxKind, CardKind, Item, SourceType};
@@ -101,7 +101,8 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     app.pending.extend(out);
 }
 
-/// "Type ▾" (a card's kind, a source's type) and "Link".
+/// "Type ▾" (a card's kind, a source's type), "Link", "Image" and
+/// "Remove image".
 fn box_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     let tk = app.tokens;
     let tab = app.active_tab();
@@ -143,10 +144,19 @@ fn box_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
                 }
             }
         });
-        let link = Action::EditLink;
-        let label = t("action.link");
-        if large(ui, &tk, Icon::Link, &label, is_enabled(tab, &link), false).clicked() {
-            out.push(link);
+        let buttons = [
+            (Icon::Link, "action.link", Action::EditLink),
+            (Icon::Image, "action.image", Action::InsertImage),
+            (
+                Icon::RemoveImage,
+                "action.remove_image",
+                Action::RemoveImage,
+            ),
+        ];
+        for (icon, key, action) in buttons {
+            if large(ui, &tk, icon, &t(key), is_enabled(tab, &action), false).clicked() {
+                out.push(action);
+            }
         }
     });
 }

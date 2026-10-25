@@ -1,5 +1,5 @@
-//! Icons of the Home ribbon's Box group; the link icon is also the link
-//! glyph on the canvas.
+//! Icons of the Home ribbon's Box group (type, link, image); the link icon
+//! is also the link glyph on the canvas.
 
 use std::f32::consts::PI;
 
@@ -27,8 +27,28 @@ pub(super) fn paint(pen: &Pen, icon: Icon, fg: Color32, t: &Tokens) {
             link(pen, (0.36, 0.64));
             link(pen, (0.64, 0.36));
         }
+        Icon::Image => picture(pen, muted(t.accent)),
+        Icon::RemoveImage => {
+            picture(pen, muted(t.accent));
+            let cross = muted(t.objection);
+            pen.line_c(&[(0.58, 0.58), (0.9, 0.9)], cross);
+            pen.line_c(&[(0.9, 0.58), (0.58, 0.9)], cross);
+        }
         _ => {}
     }
+}
+
+/// A framed landscape: hills and a sun (`sun` colour).
+fn picture(pen: &Pen, sun: Color32) {
+    pen.rect(0.12, 0.2, 0.88, 0.8, pen.stroke.color);
+    pen.line(&[
+        (0.18, 0.74),
+        (0.4, 0.48),
+        (0.55, 0.63),
+        (0.66, 0.52),
+        (0.82, 0.72),
+    ]);
+    pen.disc(0.66, 0.35, 0.07, sun);
 }
 
 /// One chain link: a stadium centred at `c`, slanted at 45°.

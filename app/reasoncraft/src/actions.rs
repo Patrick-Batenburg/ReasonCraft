@@ -17,6 +17,7 @@ pub use box_group::{FakeOpener, LinkOpener, SystemOpener};
 pub use enabled::is_enabled;
 mod comments;
 mod evaluate;
+mod images;
 pub use evaluate::{Rate, Rated, rate_action, rated};
 mod insert;
 pub use insert::{Insertable, target_allowed};
@@ -90,6 +91,9 @@ pub enum Action {
     SetLink(Option<String>),
     /// Open box `node`'s link in the browser (a click on its link glyph).
     OpenLink(NodeId),
+    /// Pick an image file and put it in the selected box (replacing its image).
+    InsertImage,
+    RemoveImage,
     /// Add a card that targets the whole selected card (or the card of the selected premise).
     TargetWholeCard(CardKind),
     Delete,
@@ -226,6 +230,7 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         Action::SetCardKind(_) | Action::EditLink | Action::SetLink(_) | Action::OpenLink(_) => {
             box_group::apply(app, action)
         }
+        Action::InsertImage | Action::RemoveImage => images::apply(app, action),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap => {
             let doc = reasoncraft_core::fixtures::sample_iot_like(117);
@@ -343,6 +348,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::EditLink
         | Action::SetLink(_)
         | Action::OpenLink(_)
+        | Action::InsertImage
+        | Action::RemoveImage
         | Action::TogglePanel(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
