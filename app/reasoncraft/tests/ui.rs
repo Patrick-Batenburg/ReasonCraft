@@ -896,6 +896,9 @@ fn settings_from_old_storage_fill_defaults() {
         },
         outline_indent: false,
         outline_colour: true,
+        checks: reasoncraft_core::checks::CheckSet {
+            disabled: vec![reasoncraft_core::checks::CheckKind::KeyTerm],
+        },
     };
     eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
     assert_eq!(

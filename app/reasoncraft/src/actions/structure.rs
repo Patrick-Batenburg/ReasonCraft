@@ -3,7 +3,7 @@
 
 use reasoncraft_core::{BoxKind, CardKind, Document, Item, NewLoose, Parent, RemoveMode};
 
-use super::{Action, Dir, select_new, selected_card};
+use super::{Action, Dir, selected_card};
 use crate::doc_tab::DocTab;
 
 /// Moves and reorders.
@@ -192,3 +192,16 @@ pub(super) fn delete(tab: &mut DocTab, mode: RemoveMode) {
 
 #[cfg(test)]
 mod tests;
+
+/// Select a newly added item, scroll it into view and start editing its
+/// text (a card's: its first premise). The add itself is the history step
+/// for that text.
+pub(super) fn select_new(tab: &mut DocTab, item: Option<Item>) {
+    let b = match item {
+        Some(Item::Box(b)) => b,
+        Some(Item::Card(c)) => tab.doc.cards[&c].premises[0],
+        None => return,
+    };
+    tab.begin_edit(b, true);
+    tab.reveal_pending = true;
+}

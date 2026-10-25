@@ -1,5 +1,6 @@
 //! Every command the user can give, and the one place that carries them out.
 
+use reasoncraft_core::checks::CheckKind;
 use reasoncraft_core::{
     Acceptance, BoxKind, CardId, CardKind, CardStrength, ClearScope, Item, NewLoose, NodeId,
     Parent, RemoveMode, SourceRating, SourceType, Uuid, Verdict,
@@ -27,8 +28,9 @@ pub use connect::connect_item;
 mod sources;
 mod structure;
 mod view;
-use structure::{add_box, add_card, add_co_premise, delete};
+use structure::{add_box, add_card, add_co_premise, delete, select_new};
 pub use structure::{is_attachment, moves_nowhere, sibling_list};
+use view::set_zoom;
 
 pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 const ZOOM_STEP: f32 = 1.25;
@@ -180,10 +182,14 @@ pub enum Action {
         on: Option<NodeId>,
     },
     TogglePanel(Panel),
+    /// Open a side panel (it stays open if it already is).
+    ShowPanel(Panel),
     /// Show this tab in the Text panel.
     SetTextTab(TextTab),
     /// Turn one of the Outline tab's switches on or off.
     SetOutlineOption(OutlineToggle, bool),
+    /// Turn one course-rule check on or off.
+    SetCheckEnabled(CheckKind, bool),
     /// Switch to the tab at this index.
     ActivateTab(usize),
     /// Open the built-in sample map in a new tab (debug builds only).
@@ -233,8 +239,10 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::ToggleMarkers
         | Action::ToggleShading
         | Action::TogglePanel(_)
+        | Action::ShowPanel(_)
         | Action::SetTextTab(_)
-        | Action::SetOutlineOption(..) => view::apply(app, action),
+        | Action::SetOutlineOption(..)
+        | Action::SetCheckEnabled(..) => view::apply(app, action),
         Action::AddComment { .. }
         | Action::RemoveComment { .. }
         | Action::OpenComments(_)
@@ -358,34 +366,13 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::InsertImage
         | Action::RemoveImage
         | Action::TogglePanel(_)
+        | Action::ShowPanel(_)
         | Action::SetTextTab(_)
-        | Action::SetOutlineOption(..) => unreachable!("app-level action"),
+        | Action::SetOutlineOption(..)
+        | Action::SetCheckEnabled(..) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }
-}
-
-/// Zoom around the centre of the view (or the world origin before the
-/// canvas has been shown), clamped to the zoom range.
-fn set_zoom(tab: &mut DocTab, zoom: f32) {
-    let centre = tab
-        .viewport
-        .map_or(eframe::egui::Pos2::ZERO, |v| v.center());
-    let factor = zoom.clamp(ZOOM_MIN, ZOOM_MAX) / tab.camera.zoom;
-    tab.camera.zoom_at(centre, factor);
-}
-
-/// Select a newly added item, scroll it into view and start editing its
-/// text (a card's: its first premise). The add itself is the history step
-/// for that text.
-fn select_new(tab: &mut DocTab, item: Option<Item>) {
-    let b = match item {
-        Some(Item::Box(b)) => b,
-        Some(Item::Card(c)) => tab.doc.cards[&c].premises[0],
-        None => return,
-    };
-    tab.begin_edit(b, true);
-    tab.reveal_pending = true;
 }
 
 /// The card a whole-card target or co-premise goes to: the selected card,

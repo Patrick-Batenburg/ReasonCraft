@@ -3,7 +3,10 @@
 
 use eframe::egui::{self, RichText, Stroke, Ui};
 
+mod check;
 mod outline;
+
+pub use check::check_key;
 
 use super::tab_button;
 use crate::actions::Action;
@@ -36,8 +39,9 @@ pub fn show(
     ui.add_space(8.0);
     let body = match settings.text_tab {
         TextTab::Outline => return outline::show(ui, tab, settings, tk, out),
+        TextTab::Check => return check::show(ui, tab, settings, tk, out),
         TextTab::Essay => t("text.essay.coming"),
-        TextTab::Check | TextTab::Snippets => t("panel.coming_later"),
+        TextTab::Snippets => t("panel.coming_later"),
     };
     ui.label(RichText::new(body).color(tk.text_muted));
     ui.take_available_space();

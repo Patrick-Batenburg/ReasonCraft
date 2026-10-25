@@ -151,7 +151,7 @@ fn lead(line: &OutlineLine, settings: &Settings) -> (String, String) {
 }
 
 /// The row's text on one line (a box's line breaks become spaces).
-fn one_line(text: &str) -> String {
+pub(super) fn one_line(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 

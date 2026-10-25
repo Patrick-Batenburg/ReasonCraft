@@ -1,5 +1,6 @@
 //! Personal preferences that survive restarts.
 
+use reasoncraft_core::checks::{CheckKind, CheckSet};
 use reasoncraft_core::outline::OutlineOptions;
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +29,8 @@ pub struct Settings {
     pub outline_indent: bool,
     /// Mark outline rows with their role colour.
     pub outline_colour: bool,
+    /// Which course-rule checks the Check tab and the status bar report.
+    pub checks: CheckSet,
 }
 
 /// One of the Outline tab's toolbar switches.
@@ -63,6 +66,15 @@ impl Settings {
         };
         *field = on;
     }
+
+    /// Turn the check `kind` on or off (a set, not a flip).
+    pub fn set_check_enabled(&mut self, kind: CheckKind, on: bool) {
+        let disabled = &mut self.checks.disabled;
+        disabled.retain(|k| *k != kind);
+        if !on {
+            disabled.push(kind);
+        }
+    }
 }
 
 /// The tabs of the Text panel.
@@ -86,6 +98,7 @@ impl Default for Settings {
             outline: OutlineOptions::default(),
             outline_indent: true,
             outline_colour: true,
+            checks: CheckSet::default(),
         }
     }
 }

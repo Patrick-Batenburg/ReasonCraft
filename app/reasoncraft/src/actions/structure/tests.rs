@@ -234,6 +234,8 @@ fn connect_mode_survives_theme_and_panel_toggles() {
         Action::SetTheme(crate::theme::ThemeChoice::Light),
         Action::TogglePanel(crate::actions::Panel::Left),
         Action::TogglePanel(crate::actions::Panel::Right),
+        Action::ShowPanel(crate::actions::Panel::Right),
+        Action::SetCheckEnabled(reasoncraft_core::checks::CheckKind::Question, false),
         Action::ToggleMarkers,
         Action::ToggleShading,
         Action::SetTextTab(crate::settings::TextTab::Check),

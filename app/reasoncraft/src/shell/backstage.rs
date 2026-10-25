@@ -10,7 +10,9 @@ use super::icons::{self, Icon};
 use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::i18n::t;
+use crate::shell::text_panel::check_key;
 use crate::theme::{ThemeChoice, Tokens};
+use reasoncraft_core::checks::CheckKind;
 
 /// What a backstage entry does.
 enum Entry {
@@ -105,7 +107,7 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, settings: &mut bool) {
     }
 }
 
-/// The author name and the theme.
+/// The author name, the theme and which checks run.
 fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -134,6 +136,26 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             }
         }
     });
+    ui.add_space(8.0);
+    checks(ui, app, &tk);
+}
+
+/// One checkbox per course-rule check, its rule as the tooltip.
+fn checks(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
+    ui.label(RichText::new(t("settings.checks")).color(tk.box_text));
+    ui.label(RichText::new(t("settings.checks_hint")).color(tk.text_muted));
+    ui.spacing_mut().item_spacing.y = 4.0;
+    for kind in CheckKind::ALL {
+        let key = check_key(kind);
+        let mut on = app.settings.checks.is_on(kind);
+        if ui
+            .checkbox(&mut on, t(&format!("check.kind.{key}")))
+            .on_hover_text(t(&format!("check.help.{key}")))
+            .changed()
+        {
+            app.push(Action::SetCheckEnabled(kind, on));
+        }
+    }
 }
 
 /// The author name field. While it has focus it shows what is typed (so

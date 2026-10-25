@@ -47,7 +47,8 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
 
 /// End "Connect to…" for every action but picking a target (selecting,
 /// navigating, revealing, zooming), starting it again and view preferences
-/// (theme, rating display, panels, the Text panel tab and outline switches).
+/// (theme, rating display, panels, the Text panel tab, outline switches and
+/// checks).
 /// A connecting move ends it too. The inline editor's own "stop editing"
 /// (sent when it loses focus, e.g. to the ribbon's "Connect to…") keeps it:
 /// `apply` committed the edit when the mode started, and Esc reaches here as
@@ -68,10 +69,12 @@ pub(super) fn end_unless_kept(tab: &mut DocTab, action: &Action) {
             | Action::StopEditing
             | Action::SetTheme(_)
             | Action::TogglePanel(_)
+            | Action::ShowPanel(_)
             | Action::ToggleMarkers
             | Action::ToggleShading
             | Action::SetTextTab(_)
             | Action::SetOutlineOption(..)
+            | Action::SetCheckEnabled(..)
     );
     if !keeps {
         tab.connect_mode = None;

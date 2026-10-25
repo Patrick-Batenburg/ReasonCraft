@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use eframe::egui::Rect;
+use reasoncraft_core::checks::{CheckSet, Issue, run_checks};
 use reasoncraft_core::outline::{OutlineLine, OutlineOptions, build_outline};
 use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Package};
 
@@ -55,6 +56,9 @@ pub struct DocTab {
     /// The outline last built, with the revision and options it was built
     /// for (see [`Self::outline`]).
     pub outline_cache: Option<(u64, OutlineOptions, Vec<OutlineLine>)>,
+    /// The issues last found, with the revision and checks they were found
+    /// for (see [`Self::issues`]).
+    pub issue_cache: Option<(u64, CheckSet, Vec<Issue>)>,
 }
 
 impl Default for DocTab {
@@ -102,6 +106,7 @@ impl DocTab {
             connect_mode: None,
             revision: 0,
             outline_cache: None,
+            issue_cache: None,
         }
     }
 
@@ -129,6 +134,20 @@ impl DocTab {
             self.outline_cache = Some((self.revision, opts, lines));
         }
         self.outline_cache.as_ref().map_or(&[], |(_, _, l)| l)
+    }
+
+    /// The document's issues for the checks in `set`, found again only when
+    /// the document or the set changed since the last call.
+    pub fn issues(&mut self, set: &CheckSet) -> &[Issue] {
+        let fresh = self
+            .issue_cache
+            .as_ref()
+            .is_some_and(|(rev, s, _)| *rev == self.revision && s == set);
+        if !fresh {
+            let issues = run_checks(&self.doc, set);
+            self.issue_cache = Some((self.revision, set.clone(), issues));
+        }
+        self.issue_cache.as_ref().map_or(&[], |(_, _, i)| i)
     }
 
     /// Note that a file was loaded into this tab, in place of a tab at
@@ -318,6 +337,25 @@ mod tests {
             ..opts
         };
         assert_eq!(tab.outline(bare).len(), 3);
+    }
+
+    #[test]
+    fn issues_are_found_again_only_for_new_revision_or_checks() {
+        use reasoncraft_core::checks::CheckKind;
+        let mut tab = DocTab::new();
+        let all = CheckSet::default();
+        assert!(tab.issues(&all).is_empty());
+        // A change made behind the cache's back is not seen…
+        tab.doc.add_loose(reasoncraft_core::NewLoose::Note, "n");
+        assert!(tab.issues(&all).is_empty());
+        // …until the revision moves on, or the checks change.
+        tab.bump_revision();
+        assert_eq!(tab.issues(&all).len(), 1);
+        let none = CheckSet {
+            disabled: vec![CheckKind::NotConnected],
+        };
+        assert!(tab.issues(&none).is_empty());
+        assert_eq!(tab.issues(&all).len(), 1);
     }
 
     #[test]
