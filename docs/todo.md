@@ -53,7 +53,7 @@
   - [x] Task 7: Export ribbon tab, dialog and background jobs
   - [x] Task 8: Core essay plan
   - [x] Task 9: Essay tab
-  - [ ] Task 10: Word export
+  - [x] Task 10: Word export
   - [ ] Task 11: Image insert off the UI thread
   - [ ] Task 12: End-to-end verification and docs
 - [ ] Step 5 — Interchange & polish: Argdown, connector styles, layout directions, minimap, numbering, find/replace, spellcheck, autosave, Search commands
