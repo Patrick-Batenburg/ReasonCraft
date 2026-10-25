@@ -14,10 +14,12 @@ pub mod layout;
 pub mod meta;
 pub mod model;
 pub mod outline;
+pub mod outline_md;
 pub mod package;
 pub mod roles;
 pub mod rules;
 pub mod snippets;
+pub mod words;
 
 pub use edit::{EditError, NewLoose, RemoveMode};
 pub use evaluate::ClearScope;

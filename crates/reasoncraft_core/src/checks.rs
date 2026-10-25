@@ -3,7 +3,7 @@
 //! Checks never change the document and never block an action; they only
 //! list [`Issue`]s for the Check tab.
 
-mod stopwords;
+pub(crate) mod stopwords;
 mod tokens;
 mod walk;
 
