@@ -44,7 +44,7 @@
   - [x] Task 9: Document language
   - [x] Task 10: End-to-end verification and docs
 - [ ] Step 4 — Output: exports, print, Essay tab ([plan](plans/2026-10-26-step4-output-essay.md))
-  - [ ] Task 1: Unified edit session and file splits
+  - [x] Task 1: Unified edit session and file splits
   - [ ] Task 2: Scene builder and screen painter on the scene
   - [ ] Task 3: SVG writer
   - [ ] Task 4: PNG export and copy as image
