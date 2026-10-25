@@ -54,7 +54,7 @@
   - [x] Task 8: Core essay plan
   - [x] Task 9: Essay tab
   - [x] Task 10: Word export
-  - [ ] Task 11: Image insert off the UI thread
+  - [x] Task 11: Image insert off the UI thread
   - [ ] Task 12: End-to-end verification and docs
 - [ ] Step 5 — Interchange & polish: Argdown, connector styles, layout directions, minimap, numbering, find/replace, spellcheck, autosave, Search commands
 - [ ] Step 6 — Release readiness: Dutch, accessibility, help, examples, templates, installers
