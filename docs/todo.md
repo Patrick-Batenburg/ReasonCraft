@@ -36,7 +36,7 @@
   - [x] Task 1: Carry-over fixes, revision counter, text panel tab shell
   - [x] Task 2: Core outline builder
   - [x] Task 3: Outline tab
-  - [ ] Task 4: Core checks
+  - [x] Task 4: Core checks
   - [ ] Task 5: Check tab, settings and status bar count
   - [ ] Task 6: Core snippets
   - [ ] Task 7: Snippets tab
