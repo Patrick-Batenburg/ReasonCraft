@@ -47,13 +47,13 @@ pub struct Snippet {
 
 /// `text` cut to at most [`MAX_SNIPPET_CHARS`] characters.
 fn capped(text: &str) -> String {
-    text[..capped_len(text)].to_owned()
+    text[..capped_len(text, MAX_SNIPPET_CHARS)].to_owned()
 }
 
-/// The byte length of `text` cut to at most [`MAX_SNIPPET_CHARS`]
-/// characters (always on a char boundary).
-fn capped_len(text: &str) -> usize {
-    match text.char_indices().nth(MAX_SNIPPET_CHARS) {
+/// The byte length of `text` cut to at most `max` characters (always on
+/// a char boundary).
+pub(crate) fn capped_len(text: &str, max: usize) -> usize {
+    match text.char_indices().nth(max) {
         Some((end, _)) => end,
         None => text.len(),
     }
@@ -65,7 +65,7 @@ impl Document {
     /// UI. Not an edit: the modified time is left alone.
     pub(crate) fn cap_snippet_texts(&mut self) {
         for s in &mut self.snippets {
-            let end = capped_len(&s.text);
+            let end = capped_len(&s.text, MAX_SNIPPET_CHARS);
             s.text.truncate(end);
         }
     }

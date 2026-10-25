@@ -77,3 +77,14 @@ fn leading_list_markers_escaped_without_prefix() {
     };
     assert!(md(&d, &o, "en").contains("\n- \\- dash\n"));
 }
+
+#[test]
+fn markdown_escapes_tables_entities_strike_and_trims_blank_lines() {
+    let d = sample("Claim", "\n  \na | b & ~c~\n\nafter gap\n \n");
+    let o = OutlineOptions::default();
+    let out = md(&d, &o, "en");
+    assert!(
+        out.contains("- **1** *because* a \\| b \\& \\~c\\~\n\n  after gap\n  - _Law:_"),
+        "{out}"
+    );
+}

@@ -181,6 +181,7 @@ fn open_package_with_limits(
         serde_json::from_str(&text).map_err(|e| FileError::Malformed(e.to_string()))?;
     doc.validate().map_err(FileError::Malformed)?;
     doc.cap_snippet_texts();
+    doc.cap_essay_texts();
 
     let mut assets = Assets::default();
     let mut other_entries = Vec::new();

@@ -22,6 +22,7 @@ pub mod snippets;
 pub mod words;
 
 pub use edit::{EditError, NewLoose, RemoveMode};
+pub use essay::{EssayPlan, EssaySlot, essay_markdown, essay_order, essay_plain_text};
 pub use evaluate::ClearScope;
 pub use history::History;
 pub use ids::{CardId, Item, NodeId, Parent};

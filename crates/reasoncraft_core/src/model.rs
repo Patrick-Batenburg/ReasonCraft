@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
+use crate::essay::EssayPlan;
 use crate::snippets::Snippet;
 
 use crate::ids::{CardId, Item, NodeId, Parent};
@@ -308,6 +309,9 @@ pub struct Document {
     /// Source text kept beside the map.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub snippets: Vec<Snippet>,
+    /// The essay written from the map.
+    #[serde(default, skip_serializing_if = "EssayPlan::is_empty")]
+    pub essay: EssayPlan,
     /// Unknown fields, kept so files roundtrip.
     #[serde(flatten)]
     pub extra: Map<String, Value>,
@@ -334,6 +338,7 @@ impl Document {
             cards: IndexMap::new(),
             parking: Vec::new(),
             snippets: Vec::new(),
+            essay: EssayPlan::default(),
             extra: Map::new(),
         }
     }

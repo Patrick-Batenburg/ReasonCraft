@@ -78,6 +78,28 @@ pub fn not_connected_heading(lang: &str) -> &'static str {
     }
 }
 
+/// The headings of the essay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EssayHeading {
+    Introduction,
+    /// Followed by the section number.
+    Section,
+    Conclusion,
+}
+
+/// An essay heading word in the document language.
+pub fn essay_heading(lang: &str, which: EssayHeading) -> &'static str {
+    let nl = is_dutch(lang);
+    match which {
+        EssayHeading::Introduction if nl => "Inleiding",
+        EssayHeading::Introduction => "Introduction",
+        EssayHeading::Section if nl => "Deel",
+        EssayHeading::Section => "Section",
+        EssayHeading::Conclusion if nl => "Conclusie",
+        EssayHeading::Conclusion => "Conclusion",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,5 +131,18 @@ mod tests {
         assert_eq!(source_word(&SourceType::Law, "nl"), "Wet");
         assert_eq!(source_word(&SourceType::Other("x".into()), "nl"), "Bron");
         assert_eq!(source_word(&SourceType::MyBasis, "fr"), "My own basis");
+    }
+
+    #[test]
+    fn essay_headings_nl_and_fallback() {
+        let all = [
+            EssayHeading::Introduction,
+            EssayHeading::Section,
+            EssayHeading::Conclusion,
+        ];
+        let nl = all.map(|h| essay_heading("nl-BE", h));
+        assert_eq!(nl, ["Inleiding", "Deel", "Conclusie"]);
+        let en = all.map(|h| essay_heading("de", h));
+        assert_eq!(en, ["Introduction", "Section", "Conclusion"]);
     }
 }

@@ -325,6 +325,11 @@ impl Document {
         if src != dst && self.descendants(item).contains(&Item::Card(dst)) {
             return Err(EditError::Cycle);
         }
+        if src != dst && self.cards.get(&src).is_some_and(|c| c.premises.len() == 1) {
+            // The card is about to vanish; label its paragraph while it
+            // still lists the moved premise.
+            self.salvage_essay_text(&[Item::Card(src)]);
+        }
         self.detach(owner, item);
         let dst_card = self.cards.get_mut(&dst).ok_or(EditError::NotFound)?;
         let at = index.map_or(dst_card.premises.len(), |i| i.min(dst_card.premises.len()));
@@ -379,6 +384,7 @@ impl Document {
                 self.parking.extend(promoted);
             }
         }
+        self.salvage_essay_text(&doomed);
         for gone in doomed {
             match gone {
                 Item::Box(b) => {

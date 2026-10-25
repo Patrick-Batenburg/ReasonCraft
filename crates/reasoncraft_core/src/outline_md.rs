@@ -4,9 +4,10 @@ use crate::model::SourceType;
 use crate::outline::{LineKind, OutlineLine, OutlineOptions, outline_plain_text};
 use crate::words::{linking_words, not_connected_heading, source_word};
 
-/// Escape Markdown specials in `s`. At the start of a line, a leading
+/// Escape Markdown specials in `s` (including `|` for tables, `&` for
+/// entities and `~` for strikethrough). At the start of a line, a leading
 /// `-`, `+` or `1.` would begin a list, so those are escaped too.
-fn escape(s: &str, line_start: bool) -> String {
+pub(crate) fn escape(s: &str, line_start: bool) -> String {
     let mut out = String::with_capacity(s.len() + 4);
     let mut rest = s;
     if line_start {
@@ -20,12 +21,27 @@ fn escape(s: &str, line_start: bool) -> String {
         }
     }
     for c in rest.chars() {
-        if matches!(c, '\\' | '*' | '_' | '#' | '`' | '[' | ']' | '<' | '>') {
+        if matches!(
+            c,
+            '\\' | '*' | '_' | '#' | '`' | '[' | ']' | '<' | '>' | '|' | '&' | '~'
+        ) {
             out.push('\\');
         }
         out.push(c);
     }
     out
+}
+
+/// The lines of `s` without its leading and trailing blank
+/// (whitespace-only) lines; blank lines inside are kept.
+pub(crate) fn content_lines(s: &str) -> Vec<&str> {
+    let lines: Vec<&str> = s.lines().collect();
+    let blank = |l: &&str| l.trim().is_empty();
+    let Some(first) = lines.iter().position(|l| !blank(l)) else {
+        return Vec::new();
+    };
+    let last = lines.iter().rposition(|l| !blank(l)).unwrap_or(first);
+    lines[first..=last].to_vec()
 }
 
 fn push_item(
@@ -37,7 +53,8 @@ fn push_item(
 ) {
     let pad = " ".repeat(indent);
     let mut head: Vec<String> = Vec::with_capacity(3);
-    let mut text = line.text.lines();
+    let lines = content_lines(&line.text);
+    let mut text = lines.iter().copied();
     let first = text.next().unwrap_or_default();
     if let LineKind::Source(t) = &line.kind {
         head.push(format!("_{}:_", source_word(t, lang)));
