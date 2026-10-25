@@ -26,20 +26,31 @@ pub fn can_attach(doc: &Document, parent: Parent, new: NewItem) -> bool {
             let Some(node) = doc.boxes.get(&id) else {
                 return false;
             };
-            match node.kind {
-                BoxKind::Claim => match new {
-                    NewItem::Source | NewItem::Note => true,
-                    NewItem::Card(_) => !has_category(doc, &node.children),
-                    NewItem::Category => !node.children.iter().any(|i| matches!(i, Item::Card(_))),
-                },
-                BoxKind::Premise => {
-                    matches!(new, NewItem::Card(_) | NewItem::Source | NewItem::Note)
+            if !allowed_child(&node.kind, &new) {
+                return false;
+            }
+            // A claim holds cards or categories, never both.
+            match (&node.kind, new) {
+                (BoxKind::Claim, NewItem::Card(_)) => !has_category(doc, &node.children),
+                (BoxKind::Claim, NewItem::Category) => {
+                    !node.children.iter().any(|i| matches!(i, Item::Card(_)))
                 }
-                BoxKind::Category => matches!(new, NewItem::Category | NewItem::Note),
-                BoxKind::Source { .. } => matches!(new, NewItem::Note),
-                BoxKind::Note => false,
+                _ => true,
             }
         }
+    }
+}
+
+/// Whether a box of kind `parent` may hold `child` at all, leaving aside
+/// what it already holds. The table behind [`can_attach`] and
+/// `Document::validate`.
+pub(crate) fn allowed_child(parent: &BoxKind, child: &NewItem) -> bool {
+    match parent {
+        BoxKind::Claim => true,
+        BoxKind::Premise => matches!(child, NewItem::Card(_) | NewItem::Source | NewItem::Note),
+        BoxKind::Category => matches!(child, NewItem::Category | NewItem::Note),
+        BoxKind::Source { .. } => matches!(child, NewItem::Note),
+        BoxKind::Note => false,
     }
 }
 

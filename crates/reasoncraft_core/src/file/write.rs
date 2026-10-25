@@ -1,0 +1,59 @@
+//! Writing `.rcraft` files.
+
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
+
+use zip::write::SimpleFileOptions;
+
+use super::{DOCUMENT_ENTRY, FileError, IMAGES_DIR, zip_to_io};
+use crate::model::Document;
+use crate::package::Package;
+
+fn write_archive(pkg: &Package, tmp: &Path) -> Result<(), FileError> {
+    let json =
+        serde_json::to_vec_pretty(&pkg.doc).map_err(|e| FileError::Malformed(e.to_string()))?;
+    let file = File::create(tmp)?;
+    let mut zip = zip::ZipWriter::new(file);
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    zip.start_file(DOCUMENT_ENTRY, options).map_err(zip_to_io)?;
+    zip.write_all(&json)?;
+    zip.add_directory(IMAGES_DIR, options).map_err(zip_to_io)?;
+    // Images are already compressed (PNG): stored as they are, so a save
+    // never deflates them again.
+    let stored = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    for (key, bytes) in pkg.assets.referenced(&pkg.doc) {
+        zip.start_file(format!("{IMAGES_DIR}{key}"), stored)
+            .map_err(zip_to_io)?;
+        zip.write_all(bytes)?;
+    }
+    for (name, bytes) in &pkg.other_entries {
+        if name.ends_with('/') {
+            zip.add_directory(name, options).map_err(zip_to_io)?;
+        } else {
+            zip.start_file(name, options).map_err(zip_to_io)?;
+            zip.write_all(bytes)?;
+        }
+    }
+    let file = zip.finish().map_err(zip_to_io)?;
+    file.sync_all()?;
+    Ok(())
+}
+
+/// Save `pkg` to `path`. Writes a temporary file next to it and renames it
+/// over `path`, so a failed save never damages an existing file. Assets the
+/// document does not refer to are not written.
+pub fn save_package(pkg: &Package, path: &Path) -> Result<(), FileError> {
+    let tmp = path.with_extension("rcraft.tmp");
+    let result =
+        write_archive(pkg, &tmp).and_then(|()| std::fs::rename(&tmp, path).map_err(Into::into));
+    if result.is_err() && tmp.is_file() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    result
+}
+
+/// Save `doc` alone (no assets) to `path`.
+pub fn save(doc: &Document, path: &Path) -> Result<(), FileError> {
+    save_package(&Package::new(doc.clone()), path)
+}
