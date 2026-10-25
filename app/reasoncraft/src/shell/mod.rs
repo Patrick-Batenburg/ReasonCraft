@@ -3,6 +3,7 @@
 pub mod backstage;
 pub mod icons;
 pub mod modal;
+pub mod resize;
 pub mod ribbon;
 pub mod statusbar;
 pub mod tabs;

@@ -146,6 +146,7 @@ impl ReasonCraftApp {
         shell::show_side_panels(ui, self);
         shell::show_central(ui, self);
         shell::modal::show(&ctx, self);
+        shell::resize::show(&ctx);
         self.pending.extend(keys);
 
         let actions = std::mem::take(&mut self.pending);
