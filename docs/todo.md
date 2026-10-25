@@ -21,7 +21,7 @@
 ## Later steps (plans to be written)
 - [ ] Step 2 — Sources, evaluation, notes, comments, building panel ([plan](plans/2026-10-25-step2-sources-evaluation.md))
   - [x] Task 1: Core model — source types, ratings, comments, links, images
-  - [ ] Task 2: Layout carries roles and strength; image space
+  - [x] Task 2: Layout carries roles and strength; image space
   - [ ] Task 3: Package format — assets and unknown zip entries
   - [ ] Task 4: Settings, evaluation actions, Evaluate ribbon tab, keyboard
   - [ ] Task 5: Evaluation visuals on the map
