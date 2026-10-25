@@ -10,15 +10,31 @@ use eframe::egui::{
 };
 use reasoncraft_core::SourceType;
 
-use super::icons::Pen;
+use crate::scene::{Shape, ShapePen, paint_shapes};
 
-/// Draw the glyph for `t` in `rect` (a square) in `colour`. Unknown types
-/// share the generic page of [`SourceType::Source`].
+/// Draw the glyph for `t` in `rect` (a square, screen px) in `colour`.
 pub fn paint_source_icon(painter: &Painter, rect: Rect, t: &SourceType, colour: Color32) {
-    let pen = Pen::new(painter, rect, colour);
+    paint_shapes(painter, &source_icon_shapes(rect, t, colour));
+}
+
+/// The glyph for `t` in `rect` (a square) in `colour`, as shapes. Unknown
+/// types share the generic page of [`SourceType::Source`].
+pub fn source_icon_shapes(rect: Rect, t: &SourceType, colour: Color32) -> Vec<Shape> {
+    source_icon_shapes_px(rect, t, colour, 1.0)
+}
+
+/// [`source_icon_shapes`] for a canvas drawn at a zoom where one screen px
+/// is `px` world units: the thinnest stroke stays 1.25 screen px.
+pub fn source_icon_shapes_px(rect: Rect, t: &SourceType, colour: Color32, px: f32) -> Vec<Shape> {
+    let pen = ShapePen::new(rect, colour, px);
+    glyph(&pen, t, colour);
+    pen.finish()
+}
+
+fn glyph(pen: &ShapePen, t: &SourceType, colour: Color32) {
     match t {
         SourceType::Source | SourceType::Other(_) => {
-            page(&pen, 0.2, 0.8);
+            page(pen, 0.2, 0.8);
             for y in [0.46, 0.62, 0.78] {
                 pen.line(&[(0.34, y), (0.66, y)]);
             }
@@ -186,7 +202,7 @@ pub fn paint_source_icon(painter: &Painter, rect: Rect, t: &SourceType, colour: 
 }
 
 /// A page from `x0` to `x1`, full height, with a folded top-right corner.
-fn page(pen: &Pen, x0: f32, x1: f32) {
+fn page(pen: &ShapePen, x0: f32, x1: f32) {
     let fold = 0.22;
     pen.closed(&[
         (x0, 0.1),

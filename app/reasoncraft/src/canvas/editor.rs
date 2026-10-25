@@ -9,13 +9,13 @@ use eframe::egui::{
 use reasoncraft_core::layout::BOX_TEXT_PAD;
 use reasoncraft_core::{BoxKind, Layout, NodeId};
 
-use super::boxes::SOURCE_HEADER;
 use super::images::content_rect;
 use super::measure::font_for;
 use super::paint::screen_font;
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
+use crate::scene::SOURCE_HEADER;
 use crate::theme::Tokens;
 
 /// The widget id of the inline editor for box `b`.

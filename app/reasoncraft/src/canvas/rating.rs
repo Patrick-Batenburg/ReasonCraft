@@ -1,12 +1,13 @@
 //! Rating visuals (spec §5): card tint and border by strength, the rating
 //! label, and the ✓ / ? / × markers on rated boxes.
 
-use eframe::egui::{Align2, Color32, FontId, Painter, Pos2, Rect, Shape, Stroke, Vec2, pos2, vec2};
+use eframe::egui::{Color32, Painter, Pos2, Rect, vec2};
 use reasoncraft_core::connector::Strength;
 use reasoncraft_core::{Acceptance, BoxNode, CardStrength, Role, SourceRating};
 
-use super::paint::{Pass, role_colour};
+use super::paint::role_colour;
 use crate::i18n::t;
+use crate::scene::{PathEl, Shape, paint_shapes};
 use crate::theme::Tokens;
 
 /// Card frame fill alpha without evaluation shading (and when unrated).
@@ -16,7 +17,7 @@ pub const FRAME_ALPHA: f32 = 0.12;
 pub const STRONG_ALPHA: f32 = 0.22;
 /// Marker diameter in world px; hidden below [`MARKER_MIN_ZOOM`].
 const MARKER_SIZE: f32 = 16.0;
-pub(super) const MARKER_MIN_ZOOM: f32 = 0.35;
+pub const MARKER_MIN_ZOOM: f32 = 0.35;
 
 /// Fill alpha of a card frame.
 pub fn frame_alpha(strength: Option<CardStrength>, shading: bool) -> f32 {
@@ -114,65 +115,56 @@ pub fn marker_circle(world: Rect) -> (Pos2, f32) {
     (world.left_top(), MARKER_SIZE / 2.0)
 }
 
-impl Pass<'_> {
-    /// `label` right-aligned and vertically centred on `at` (screen), its
-    /// leading "●" dots painted as filled circles.
-    pub(super) fn label_with_dots(&self, at: Pos2, label: &str, font: FontId, colour: Color32) {
-        let (dots, text) = split_dots(label);
-        let size = font.size;
-        let galley = self.painter.layout_no_wrap(text.to_owned(), font, colour);
-        let text_rect = Align2::RIGHT_CENTER.anchor_size(at, galley.size());
-        self.painter.galley(text_rect.min, galley, colour);
-        let r = size * 0.24;
-        let step = size * 0.62;
-        let mut x = text_rect.left() - size * 0.4 - r;
-        for _ in 0..dots {
-            self.painter.circle_filled(pos2(x, at.y), r, colour);
-            x -= step;
-        }
-    }
-
-    /// A ✓ / ? / × marker in a small circle on the box at `world`.
-    pub(super) fn marker(&self, world: Rect, mark: Mark) {
-        let z = self.cam.zoom;
-        if z < MARKER_MIN_ZOOM {
-            return;
-        }
-        let (centre, radius) = marker_circle(world);
-        let c = self.cam.world_to_screen(centre);
-        let r = radius * z;
-        if !self.visible(Rect::from_center_size(c, Vec2::splat(2.0 * r))) {
-            return;
-        }
-        paint_mark(self.painter, c, r, mark, self.t);
-    }
-}
-
 /// A ✓ / ? / × marker: a circle of radius `r` (screen px) centred on `c`,
 /// with strokes scaled to the canvas marker's at that size.
 pub fn paint_mark(painter: &Painter, c: Pos2, r: f32, mark: Mark, t: &Tokens) {
+    paint_shapes(painter, &mark_shapes(c, r, mark, t, 1.0));
+}
+
+/// A ✓ / ? / × marker as shapes: a circle of radius `r` centred on `c`,
+/// strokes scaled to the canvas marker's at that size. `px` is the world
+/// size of a screen px: strokes stay at least about one screen px wide.
+pub fn mark_shapes(c: Pos2, r: f32, mark: Mark, t: &Tokens, px: f32) -> Vec<Shape> {
     let z = r / (MARKER_SIZE / 2.0);
     let colour = match mark {
         Mark::Yes => t.reason,
         Mark::Maybe => t.rebuttal,
         Mark::No => t.objection,
     };
-    let width = (1.6 * z).max(1.25);
-    painter.circle(c, r, t.box_fill, Stroke::new((1.2 * z).max(1.0), colour));
-    let stroke = Stroke::new(width, colour);
+    let width = (1.6 * z).max(1.25 * px);
+    let stroke = Some((width, colour));
     // Glyph coordinates in units of the radius, centred on `c`.
     let at = |x: f32, y: f32| c + vec2(x, y) * r;
+    let line = |pts: &[Pos2]| Shape::Path {
+        points: pts
+            .iter()
+            .enumerate()
+            .map(|(i, &p)| {
+                if i == 0 {
+                    PathEl::MoveTo(p)
+                } else {
+                    PathEl::LineTo(p)
+                }
+            })
+            .collect(),
+        stroke,
+        fill: None,
+        dashed: false,
+    };
+    let mut shapes = vec![Shape::Circle {
+        center: c,
+        radius: r,
+        fill: Some(t.box_fill),
+        stroke: Some(((1.2 * z).max(px), colour)),
+    }];
     match mark {
         Mark::Yes => {
-            painter.add(Shape::line(
-                vec![at(-0.45, 0.02), at(-0.12, 0.35), at(0.45, -0.32)],
-                stroke,
-            ));
+            shapes.push(line(&[at(-0.45, 0.02), at(-0.12, 0.35), at(0.45, -0.32)]));
         }
         Mark::No => {
             let d = 0.36;
-            painter.line_segment([at(-d, -d), at(d, d)], stroke);
-            painter.line_segment([at(-d, d), at(d, -d)], stroke);
+            shapes.push(line(&[at(-d, -d), at(d, d)]));
+            shapes.push(line(&[at(-d, d), at(d, -d)]));
         }
         Mark::Maybe => {
             // The hook of a "?": an arc over the top, then the stem.
@@ -184,15 +176,22 @@ pub fn paint_mark(painter: &Painter, c: Pos2, r: f32, mark: Mark, t: &Tokens) {
                 })
                 .collect();
             points.push(at(0.0, 0.18));
-            painter.add(Shape::line(points, stroke));
-            painter.circle_filled(at(0.0, 0.46), width * 0.65, colour);
+            shapes.push(line(&points));
+            shapes.push(Shape::Circle {
+                center: at(0.0, 0.46),
+                radius: width * 0.65,
+                fill: Some(colour),
+                stroke: None,
+            });
         }
     }
+    shapes
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use eframe::egui::pos2;
     use reasoncraft_core::layout::BOX_TEXT_PAD;
 
     #[test]

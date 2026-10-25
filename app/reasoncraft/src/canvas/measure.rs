@@ -13,6 +13,8 @@ use std::sync::Arc;
 use eframe::egui::{self, Color32, FontId, Galley, text::LayoutJob};
 use reasoncraft_core::{BoxKind, Measure};
 
+use crate::scene::TextRows;
+
 /// Box text size at 100% zoom.
 pub const BOX_FONT_SIZE: f32 = 13.0;
 /// Citation text size in source boxes at 100% zoom.
@@ -123,9 +125,34 @@ impl Measure for EguiMeasure<'_> {
     }
 }
 
+impl TextRows for EguiMeasure<'_> {
+    fn rows(&self, text: &str, width: f32, kind: &BoxKind) -> Vec<String> {
+        wrapped_rows(self.ctx, text, width, kind)
+    }
+
+    /// The height of a laid-out row, which egui rounds to whole points:
+    /// the step between the rows of [`wrapped_rows`].
+    fn line_height(&self, size: f32) -> f32 {
+        let font = FontId::proportional(size);
+        self.ctx
+            .fonts_mut(|f| f.layout_no_wrap("M".to_owned(), font, Color32::PLACEHOLDER))
+            .size()
+            .y
+    }
+
+    fn text_width(&self, text: &str, size: f32) -> f32 {
+        let font = FontId::proportional(size);
+        self.ctx
+            .fonts_mut(|f| f.layout_no_wrap(text.to_owned(), font, Color32::PLACEHOLDER))
+            .size()
+            .x
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scene::TextRows;
     use eframe::egui;
     use reasoncraft_core::{BoxKind, Measure};
 
@@ -167,6 +194,25 @@ mod tests {
             // Cached: a second lookup adds nothing.
             EguiMeasure::new(ctx, &mut cache).text_height(text, 144.0, &BoxKind::Premise);
             assert_eq!(cache.len(), 1);
+        });
+    }
+
+    #[test]
+    fn text_rows_step_like_the_galley() {
+        with_ctx(|ctx| {
+            let mut cache = MeasureCache::default();
+            let m = EguiMeasure::new(ctx, &mut cache);
+            let text = "Studies show footfall rises after pedestrianisation";
+            let kind = BoxKind::Premise;
+            let g = galley(ctx, text, 144.0, &kind);
+            assert!(g.rows.len() >= 3);
+            let step = m.line_height(font_for(&kind).size);
+            for (i, row) in g.rows.iter().enumerate() {
+                assert_eq!(row.pos.y, i as f32 * step, "row {i}");
+            }
+            assert_eq!(m.rows(text, 144.0, &kind).len(), g.rows.len());
+            let w = m.text_width("supports", 10.5);
+            assert!(w > 20.0 && w < 80.0, "{w}");
         });
     }
 }

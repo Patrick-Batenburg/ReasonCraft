@@ -24,12 +24,6 @@ impl<'a> Pen<'a> {
         let pts: Vec<Pos2> = pts.iter().map(|&(x, y)| self.p(x, y)).collect();
         self.painter.add(Shape::closed_line(pts, self.stroke));
     }
-    /// A filled convex polygon through `pts`.
-    pub(in crate::shell) fn polygon(&self, pts: &[(f32, f32)]) {
-        let pts: Vec<Pos2> = pts.iter().map(|&(x, y)| self.p(x, y)).collect();
-        self.painter
-            .add(Shape::convex_polygon(pts, self.stroke.color, Stroke::NONE));
-    }
     pub(in crate::shell) fn p(&self, x: f32, y: f32) -> Pos2 {
         self.rect.min + Vec2::new(x, y) * self.rect.width()
     }

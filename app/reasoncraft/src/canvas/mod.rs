@@ -2,7 +2,6 @@
 //! editing interactions (selection, inline text, keyboard, "+" menu, drag,
 //! drops from the building panel, comments, link glyphs, box images).
 
-mod boxes;
 pub mod camera;
 pub mod comments;
 pub mod connect;
@@ -67,11 +66,8 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         ctx.request_repaint();
     }
     // Recomputed every frame: about 0.3 ms for 500 boxes, and never stale.
-    let layout = layout(
-        &tab.doc,
-        &EguiMeasure::new(&ctx, measure_cache),
-        &LayoutParams::default(),
-    );
+    let measure = EguiMeasure::new(&ctx, measure_cache);
+    let layout = layout(&tab.doc, &measure, &LayoutParams::default());
 
     tab.viewport = Some(rect);
     if tab.fit_pending {
@@ -111,6 +107,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             eval_shading: settings.eval_shading,
         },
         images,
+        &measure,
     );
     comments::badges(ui, tab, &layout, pending);
     links::glyphs(ui, tab, &layout, pending);

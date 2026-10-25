@@ -6,17 +6,18 @@ use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
 
 use eframe::egui::{
-    self, Align2, ColorImage, Rect, Shape, Stroke, TextureFilter, TextureHandle, TextureOptions,
-    pos2,
+    self, Align2, ColorImage, Painter, Rect, Shape, Stroke, TextureFilter, TextureHandle,
+    TextureOptions, pos2,
 };
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader, Limits};
 use reasoncraft_core::layout::{BOX_TEXT_PAD, IMAGE_GAP, image_height};
 use reasoncraft_core::{Assets, BoxNode, Document, ImageRef};
 
-use super::paint::{Pass, screen_font};
+use super::paint::screen_font;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
+use crate::theme::Tokens;
 
 /// Larger picked files are refused before they are decoded.
 pub const MAX_INPUT_BYTES: u64 = 40 * 1024 * 1024;
@@ -252,52 +253,49 @@ pub fn content_rect(world: Rect, node: &BoxNode) -> Rect {
     rest
 }
 
-impl Pass<'_> {
-    /// Box `node`'s image in its block at the top of `world`: a plain block
-    /// while it waits to be decoded, a dashed placeholder when its asset is
-    /// missing or broken.
-    pub(super) fn box_image(&self, world: Rect, node: &BoxNode) {
-        let Some(img) = &node.image else { return };
-        let r = self.screen(image_rect(world, img));
-        if !self.visible(r) {
+/// Asset `asset`'s image in screen rect `r`: a plain block while it waits
+/// to be decoded, a dashed placeholder when it is missing or broken.
+pub fn paint_image(
+    painter: &Painter,
+    r: Rect,
+    asset: &str,
+    images: &ImageCache,
+    tk: &Tokens,
+    zoom: f32,
+) {
+    match images.state(asset) {
+        ImageState::Ready(texture) => {
+            let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+            painter.image(texture.id(), r, uv, egui::Color32::WHITE);
             return;
         }
-        match self.images.state(&img.asset) {
-            ImageState::Ready(texture) => {
-                let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-                self.painter
-                    .image(texture.id(), r, uv, egui::Color32::WHITE);
-                return;
-            }
-            ImageState::Pending => {
-                self.painter.rect_filled(r, 0.0, self.t.panel);
-                return;
-            }
-            ImageState::Missing => {}
+        ImageState::Pending => {
+            painter.rect_filled(r, 0.0, tk.panel);
+            return;
         }
-        let colour = self.t.text_muted;
-        let stroke = Stroke::new(1.0, colour);
-        let (dash, gap) = (5.0, 4.0);
-        let corners = [
-            r.left_top(),
-            r.right_top(),
-            r.right_bottom(),
-            r.left_bottom(),
-        ];
-        for i in 0..4 {
-            let edge = [corners[i], corners[(i + 1) % 4]];
-            self.painter
-                .extend(Shape::dashed_line(&edge, stroke, dash, gap));
-        }
-        if let Some(font) = screen_font(PLACEHOLDER_TEXT, self.cam.zoom) {
-            self.painter.text(
-                r.center(),
-                Align2::CENTER_CENTER,
-                t("image.missing"),
-                font,
-                colour,
-            );
-        }
+        ImageState::Missing => {}
+    }
+    let colour = tk.text_muted;
+    let stroke = Stroke::new(1.0, colour);
+    let (dash, gap) = (5.0, 4.0);
+    let corners = [
+        r.left_top(),
+        r.right_top(),
+        r.right_bottom(),
+        r.left_bottom(),
+    ];
+    for i in 0..4 {
+        let edge = [corners[i], corners[(i + 1) % 4]];
+        painter.extend(Shape::dashed_line(&edge, stroke, dash, gap));
+    }
+    if let Some(font) = screen_font(PLACEHOLDER_TEXT, zoom) {
+        painter.text(
+            r.center(),
+            Align2::CENTER_CENTER,
+            t("image.missing"),
+            font,
+            colour,
+        );
     }
 }
 
