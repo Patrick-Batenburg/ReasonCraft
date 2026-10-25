@@ -97,7 +97,7 @@ fn text_drop_on_premise_adds_reason_with_source_in_one_step() {
     assert_text_with_source(&t.doc, premise, "Robots save time");
     assert_eq!(t.history.undo.len(), 1, "card and source: one step");
     assert_eq!(t.selection, Some(Item::Box(premise)));
-    assert_eq!(t.editing, None, "the text is already there");
+    assert_eq!(t.editing(), None, "the text is already there");
 
     apply(&mut a, Action::Undo);
     let t = tab(&a);

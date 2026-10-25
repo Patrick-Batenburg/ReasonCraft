@@ -2,7 +2,7 @@ use reasoncraft_core::{Item, MAX_SNIPPET_CHARS, SnippetSource, SourceType, Uuid}
 
 use crate::actions::{Action, apply, is_enabled};
 use crate::app::ReasonCraftApp;
-use crate::doc_tab::DocTab;
+use crate::doc_tab::{DocTab, EditSession};
 
 fn tab(app: &ReasonCraftApp) -> &DocTab {
     &app.tabs[app.active]
@@ -54,7 +54,10 @@ fn snippet_edit_is_one_history_entry() {
 
     apply(&mut a, Action::StopEditing);
     assert_eq!(undo_len(&a), 1);
-    assert!(tab(&a).snippet_edit.is_none());
+    assert!(!matches!(
+        tab(&a).session(),
+        Some(EditSession::Snippet { .. })
+    ));
     apply(&mut a, Action::Undo);
     assert_eq!(texts(&a), ["Robots"]);
 }
@@ -103,13 +106,19 @@ fn box_edit_and_snippet_edit_are_exclusive() {
     );
     // Starting a snippet session commits the box edit.
     apply(&mut a, edit(ids[0], "s1"));
-    assert_eq!(tab(&a).editing, None);
+    assert_eq!(tab(&a).editing(), None);
     assert_eq!(undo_len(&a), 1);
-    assert!(tab(&a).snippet_edit.is_some());
+    assert!(matches!(
+        tab(&a).session(),
+        Some(EditSession::Snippet { .. })
+    ));
     // Starting a box edit commits the snippet session.
     apply(&mut a, Action::TypeText("!".into()));
-    assert!(tab(&a).snippet_edit.is_none());
-    assert_eq!(tab(&a).editing, Some(root));
+    assert!(!matches!(
+        tab(&a).session(),
+        Some(EditSession::Snippet { .. })
+    ));
+    assert_eq!(tab(&a).editing(), Some(root));
     assert_eq!(undo_len(&a), 2);
     apply(&mut a, Action::StopEditing);
     assert_eq!(tab(&a).doc.boxes[&root].text, "Claim!");
@@ -149,7 +158,10 @@ fn pasted_snippet_is_one_step() {
     assert_eq!(texts(&a), ["Pasted text"]);
     assert_eq!(undo_len(&a), 1);
     assert!(tab(&a).snippet_capped.is_none());
-    assert!(tab(&a).snippet_edit.is_none());
+    assert!(!matches!(
+        tab(&a).session(),
+        Some(EditSession::Snippet { .. })
+    ));
     let id = tab(&a).doc.snippets[0].id;
     assert_eq!(tab(&a).snippet_focus, Some(id), "shown and focused");
 }
@@ -341,7 +353,7 @@ fn typed_link_is_stored_only_while_valid() {
     // Invalid while typing: the link from before the session stays.
     apply(&mut a, link(ids[0], "new.example/a b"));
     assert_eq!(stored_link(&a).as_deref(), Some("https://old.example"));
-    assert!(!tab(&a).has_pending_snippet_edit());
+    assert!(!tab(&a).has_pending_session());
     apply(&mut a, Action::StopEditing);
     assert_eq!(undo_len(&a), 1, "an invalid link is no change");
 
@@ -360,7 +372,10 @@ fn undo_during_snippet_session_undoes_the_typing() {
     apply(&mut a, edit(ids[0], "ab"));
     apply(&mut a, Action::Undo);
     assert_eq!(texts(&a), ["a"]);
-    assert!(tab(&a).snippet_edit.is_none());
+    assert!(!matches!(
+        tab(&a).session(),
+        Some(EditSession::Snippet { .. })
+    ));
     assert_eq!(tab(&a).history.redo.len(), 1);
     apply(&mut a, Action::Redo);
     assert_eq!(texts(&a), ["ab"]);

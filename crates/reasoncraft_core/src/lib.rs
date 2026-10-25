@@ -3,6 +3,7 @@
 pub mod checks;
 pub mod connector;
 pub mod edit;
+pub mod essay;
 pub mod evaluate;
 pub mod file;
 #[cfg(feature = "test-fixtures")]
@@ -14,6 +15,7 @@ pub mod meta;
 pub mod model;
 pub mod outline;
 pub mod package;
+pub mod roles;
 pub mod rules;
 pub mod snippets;
 
@@ -24,10 +26,10 @@ pub use ids::{CardId, Item, NodeId, Parent};
 pub use layout::{Connector, ConnectorKind, Layout, LayoutParams, Measure, TargetKind, layout};
 pub use model::{
     Acceptance, BoxKind, BoxNode, Card, CardKind, CardStrength, Comment, DocMeta, Document,
-    ImageRef, MapKind, Role, SCHEMA_VERSION, SourceRating, SourceType, Verdict, card_roles,
-    owner_index,
+    ImageRef, MapKind, Role, SCHEMA_VERSION, SourceRating, SourceType, Verdict,
 };
 pub use package::{Assets, Package};
+pub use roles::{card_roles, owner_index, role_of};
 pub use rules::{NewItem, can_attach};
 pub use snippets::{MAX_SNIPPET_CHARS, Snippet, SnippetSource};
 /// Comment ids.

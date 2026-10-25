@@ -103,7 +103,7 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     let Some(tab) = app.tabs.get(app.active) else {
         return Vec::new();
     };
-    let editing = tab.editing;
+    let editing = tab.editing();
     let focused = ctx.memory(|m| m.focused());
     if Popup::is_any_open(ctx) {
         return Vec::new();

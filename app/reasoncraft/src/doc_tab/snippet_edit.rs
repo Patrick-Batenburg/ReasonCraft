@@ -4,7 +4,7 @@
 
 use reasoncraft_core::{Document, MAX_SNIPPET_CHARS, Snippet, SnippetSource, SourceType, Uuid};
 
-use super::DocTab;
+use super::{DocTab, EditSession};
 
 /// `text` cut to at most [`MAX_SNIPPET_CHARS`] characters, and whether it
 /// was cut.
@@ -30,7 +30,7 @@ fn snippet(doc: &Document, id: Uuid) -> Option<&Snippet> {
 
 /// Whether snippet `id` differs between `before` and `now`, counting its
 /// source as it will be stored.
-fn differs(before: &Document, now: &Document, id: Uuid) -> bool {
+pub(super) fn differs(before: &Document, now: &Document, id: Uuid) -> bool {
     match (snippet(before, id), snippet(now, id)) {
         (Some(a), Some(b)) => a.text != b.text || a.source != tidy_source(b.source.clone()),
         (a, b) => a.is_some() != b.is_some(),
@@ -38,37 +38,21 @@ fn differs(before: &Document, now: &Document, id: Uuid) -> bool {
 }
 
 impl DocTab {
-    /// True when committing the snippet session now would record a step
-    /// (for a snippet added by the session, always).
-    pub fn has_pending_snippet_edit(&self) -> bool {
-        self.snippet_edit
-            .as_ref()
-            .is_some_and(|(id, before)| differs(before, &self.doc, *id))
-    }
-
-    /// End the snippet session: store its source tidied, and record the
-    /// document as it was before as one history step if the snippet changed.
-    pub fn commit_snippet_edit(&mut self) {
-        let Some((id, before)) = self.snippet_edit.take() else {
-            return;
-        };
+    /// End a session on snippet `id` that started at `before`: store its
+    /// source tidied, and record `before` as one history step if the
+    /// snippet changed.
+    pub(super) fn finish_snippet(&mut self, id: Uuid, before: &Document) -> bool {
         if let Some(s) = snippet(&self.doc, id) {
             let tidy = tidy_source(s.source.clone());
             if s.source != tidy && self.doc.set_snippet_source(id, tidy).is_ok() {
                 self.bump_revision();
             }
         }
-        if differs(&before, &self.doc, id) {
-            self.history.record(&before);
+        let changed = differs(before, &self.doc, id);
+        if changed {
+            self.history.record(before);
         }
-    }
-
-    /// End every running edit (inline box text, snippet and title/author sessions), as
-    /// before a save, a close or any command.
-    pub fn commit_edits(&mut self) {
-        self.commit_edit();
-        self.commit_snippet_edit();
-        self.commit_meta_edit();
+        changed
     }
 
     /// Change snippet `id` live, without a history step: `change` gets a
@@ -80,17 +64,17 @@ impl DocTab {
             return;
         };
         let mut new = current.clone();
-        let before = match &self.snippet_edit {
-            Some((s, before)) if *s == id => before,
+        let this = EditSession::Snippet { id };
+        let before = match &self.session {
+            Some((s, before)) if *s == this => before,
             _ => &self.doc,
         };
         change(&mut new, before);
         if &new == current {
             return;
         }
-        if self.snippet_edit.as_ref().map(|(s, _)| *s) != Some(id) {
-            self.commit_edits();
-            self.snippet_edit = Some((id, self.doc.clone()));
+        if self.session() != Some(&this) {
+            self.begin_session(this);
         }
         let text_ok = self.doc.update_snippet_text(id, &new.text).is_ok();
         if text_ok && self.doc.set_snippet_source(id, new.source).is_ok() {
@@ -117,13 +101,7 @@ impl DocTab {
     /// longer exists (after undo, redo or removal).
     pub(super) fn fix_snippet_state(&mut self) {
         let gone = |doc: &Document, id: &Uuid| snippet(doc, *id).is_none();
-        if self
-            .snippet_edit
-            .as_ref()
-            .is_some_and(|(id, _)| gone(&self.doc, id))
-        {
-            self.snippet_edit = None;
-        }
+        self.drop_session_if(|doc, s| matches!(s, EditSession::Snippet { id } if gone(doc, id)));
         if self.snippet_focus.is_some_and(|id| gone(&self.doc, &id)) {
             self.snippet_focus = None;
         }

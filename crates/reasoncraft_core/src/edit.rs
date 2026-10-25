@@ -807,6 +807,8 @@ mod tests {
         assert_eq!(d.boxes.len(), 1);
     }
 
+    // `check_invariants` exists in debug builds only.
+    #[cfg(debug_assertions)]
     #[test]
     #[should_panic(expected = "invariant")]
     fn invariants_catch_dangling_ids() {

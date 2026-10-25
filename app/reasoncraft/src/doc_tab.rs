@@ -12,7 +12,9 @@ use crate::canvas::Camera;
 use crate::i18n::t;
 
 mod meta_edit;
+mod session;
 mod snippet_edit;
+pub use session::EditSession;
 pub use snippet_edit::{cap_snippet, tidy_source};
 
 /// How many undo steps a tab keeps.
@@ -32,14 +34,12 @@ pub struct DocTab {
     /// Where the document was last saved or opened from.
     pub path: Option<PathBuf>,
     pub selection: Option<Item>,
-    /// The box whose text is being edited inline.
-    pub editing: Option<NodeId>,
-    /// The inline editor's text (mirrors the edited box's text).
+    /// The running edit session (box text, snippet, title/author or essay
+    /// paragraph) with the document as it was when it began, recorded as
+    /// one history step when it ends (see [`Self::commit_session`]).
+    session: Option<(EditSession, Document)>,
+    /// The inline box editor's text (mirrors the edited box's text).
     pub edit_text: String,
-    /// The document as it was when the inline edit began, recorded as one
-    /// history step on commit if the text changed. `None` for a box that was
-    /// just added: the add is already the history step.
-    pub edit_snapshot: Option<Document>,
     /// The inline editor should take keyboard focus on its next frame.
     pub edit_focus: bool,
     pub camera: Camera,
@@ -55,14 +55,6 @@ pub struct DocTab {
     pub comments_open: Option<NodeId>,
     /// The parked item waiting for a target ("Connect to…").
     pub connect_mode: Option<Item>,
-    /// The snippet whose text is being edited, with the document as it was
-    /// before; recorded as one history step on commit if the text changed
-    /// (see [`Self::commit_snippet_edit`]).
-    pub snippet_edit: Option<(Uuid, Document)>,
-    /// The document as it was when a title or author edit began, recorded
-    /// as one history step on commit if they changed (see
-    /// [`Self::commit_meta_edit`]).
-    pub meta_edit: Option<Document>,
     /// The snippet whose text field should take keyboard focus next frame.
     pub snippet_focus: Option<Uuid>,
     /// The snippet whose last text was cut at the length limit (a notice
@@ -125,9 +117,8 @@ impl DocTab {
             other_entries,
             path: None,
             selection,
-            editing: None,
+            session: None,
             edit_text: String::new(),
-            edit_snapshot: None,
             edit_focus: false,
             camera: Camera::default(),
             viewport: None,
@@ -135,8 +126,6 @@ impl DocTab {
             reveal_pending: false,
             comments_open: None,
             connect_mode: None,
-            snippet_edit: None,
-            meta_edit: None,
             snippet_focus: None,
             snippet_capped: None,
             revision: 0,
@@ -192,13 +181,9 @@ impl DocTab {
         self.revision = self.revision.max(replaced) + 1;
     }
 
-    /// Unsaved changes, counting inline-edit and snippet text not yet
-    /// committed.
+    /// Unsaved changes, counting edit-session text not yet committed.
     pub fn is_dirty(&self) -> bool {
-        self.history.is_dirty()
-            || self.has_pending_edit()
-            || self.has_pending_snippet_edit()
-            || self.has_pending_meta_edit()
+        self.history.is_dirty() || self.has_pending_session()
     }
 
     /// The file stem, or "Untitled".
@@ -233,60 +218,6 @@ impl DocTab {
         Some(out)
     }
 
-    /// Start an inline edit of box `b` and select it. `fresh`: `b` was just
-    /// added, so its first text belongs to the add's history step.
-    pub fn begin_edit(&mut self, b: NodeId, fresh: bool) {
-        self.commit_edits();
-        let Some(node) = self.doc.boxes.get(&b) else {
-            return;
-        };
-        self.edit_text = node.text.clone();
-        self.edit_snapshot = (!fresh).then(|| self.doc.clone());
-        self.editing = Some(b);
-        self.selection = Some(Item::Box(b));
-        self.edit_focus = true;
-    }
-
-    /// Show the editor's text for box `b` live in the document, without a
-    /// history step. Text for a box that is no longer being edited (a late
-    /// update after the edit ended) is dropped.
-    pub fn set_edit_text(&mut self, b: NodeId, text: String) {
-        if self.editing != Some(b) {
-            return;
-        }
-        let changed = self.doc.boxes.get(&b).is_some_and(|n| n.text != text);
-        if self.doc.set_text(b, &text).is_ok() {
-            self.edit_text = text;
-            if changed {
-                self.bump_revision();
-            }
-        }
-    }
-
-    /// True when committing now would record a history step.
-    pub fn has_pending_edit(&self) -> bool {
-        match (self.editing, &self.edit_snapshot) {
-            (Some(b), Some(before)) => {
-                before.boxes.get(&b).map(|n| &n.text) != self.doc.boxes.get(&b).map(|n| &n.text)
-            }
-            _ => false,
-        }
-    }
-
-    /// End the inline edit, recording the pre-edit document as one history
-    /// step if the text changed.
-    pub fn commit_edit(&mut self) {
-        if self.has_pending_edit()
-            && let Some(before) = self.edit_snapshot.as_ref()
-        {
-            self.history.record(before);
-            self.bump_revision();
-        }
-        self.editing = None;
-        self.edit_snapshot = None;
-        self.edit_focus = false;
-    }
-
     pub fn contains(&self, item: Item) -> bool {
         match item {
             Item::Box(b) => self.doc.boxes.contains_key(&b),
@@ -317,13 +248,9 @@ impl DocTab {
         if self.selection.is_some_and(|s| !self.contains(s)) {
             self.selection = Some(Item::Box(self.doc.root));
         }
-        if self
-            .editing
-            .is_some_and(|b| !self.doc.boxes.contains_key(&b))
-        {
-            self.editing = None;
-            self.edit_snapshot = None;
-        }
+        self.drop_session_if(
+            |doc, s| matches!(s, EditSession::Box { node, .. } if !doc.boxes.contains_key(node)),
+        );
         if self
             .comments_open
             .is_some_and(|b| !self.doc.boxes.contains_key(&b))
@@ -338,73 +265,4 @@ impl DocTab {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use reasoncraft_core::{CardKind, Parent};
-
-    #[test]
-    fn title_marks_dirty_and_uses_file_stem() {
-        let mut tab = DocTab::new();
-        assert_eq!(tab.title(), "Untitled");
-        let root = tab.doc.root;
-        tab.edit(|d| d.add_card(Parent::Box(root), CardKind::Reason, ""))
-            .unwrap();
-        assert_eq!(tab.title(), "Untitled •");
-        tab.path = Some(PathBuf::from("maps/robots.rcraft"));
-        tab.history.mark_saved();
-        assert_eq!(tab.title(), "robots");
-    }
-
-    #[test]
-    fn outline_is_rebuilt_only_for_new_revision_or_options() {
-        let mut tab = DocTab::new();
-        let opts = OutlineOptions::default();
-        assert_eq!(tab.outline(opts).len(), 1);
-        // A change made behind the cache's back is not seen…
-        let root = tab.doc.root;
-        tab.doc
-            .add_card(Parent::Box(root), CardKind::Reason, "")
-            .unwrap();
-        assert_eq!(tab.outline(opts).len(), 1);
-        // …until the revision moves on, or the options change.
-        tab.bump_revision();
-        assert_eq!(tab.outline(opts).len(), 2);
-        tab.doc
-            .add_card(Parent::Box(root), CardKind::Reason, "")
-            .unwrap();
-        let bare = OutlineOptions {
-            numbering: false,
-            ..opts
-        };
-        assert_eq!(tab.outline(bare).len(), 3);
-    }
-
-    #[test]
-    fn issues_are_found_again_only_for_new_revision_or_checks() {
-        use reasoncraft_core::checks::CheckKind;
-        let mut tab = DocTab::new();
-        let all = CheckSet::default();
-        assert!(tab.issues(&all).is_empty());
-        // A change made behind the cache's back is not seen…
-        tab.doc.add_loose(reasoncraft_core::NewLoose::Category, "n");
-        assert!(tab.issues(&all).is_empty());
-        // …until the revision moves on, or the checks change.
-        tab.bump_revision();
-        assert_eq!(tab.issues(&all).len(), 1);
-        let none = CheckSet {
-            disabled: vec![CheckKind::NotConnected],
-        };
-        assert!(tab.issues(&none).is_empty());
-        assert_eq!(tab.issues(&all).len(), 1);
-    }
-
-    #[test]
-    fn refused_edit_records_no_history() {
-        let mut tab = DocTab::new();
-        let out =
-            tab.edit(|d| d.remove_item(Item::Box(d.root), reasoncraft_core::RemoveMode::Branch));
-        assert!(out.is_none());
-        assert!(tab.history.undo.is_empty());
-        assert!(!tab.is_dirty());
-    }
-}
+mod tests;

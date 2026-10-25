@@ -209,7 +209,10 @@ check-explain-compound = Does this say two things (joined by “{ $terms }”)? 
 check-explain-question = This is a question. Write it as a statement you can accept or reject.
 check-explain-unsupported = Nothing supports this premise yet. Add a reason or a source under it.
 check-explain-empty_category = This category has nothing under it. Add items or remove it.
-check-explain-incomplete_evaluation = { $count } items are not rated yet, while other parts are. Click to go to the next one.
+check-explain-incomplete_evaluation = { $count ->
+    [one] { $count } item is not rated yet, while other parts are. Click to go to the next one.
+   *[other] { $count } items are not rated yet, while other parts are. Click to go to the next one.
+}
 check-explain-inconsistent_evaluation = { $case ->
     [strong] This card is rated strong, but all its premises are rejected.
     [solid] This source is rated solid, but the premise it supports is rejected.

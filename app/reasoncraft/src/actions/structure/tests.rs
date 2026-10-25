@@ -306,7 +306,7 @@ fn stop_editing_keeps_connect_mode() {
         },
     );
     apply(&mut a, Action::StartConnect);
-    assert_eq!(tab(&a).editing, None);
+    assert_eq!(tab(&a).editing(), None);
     assert_eq!(tab(&a).history.undo.len(), 1, "edit committed");
     apply(&mut a, Action::StopEditing);
     assert_eq!(tab(&a).connect_mode, Some(note));

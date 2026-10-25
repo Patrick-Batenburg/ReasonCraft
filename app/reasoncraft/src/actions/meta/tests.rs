@@ -1,6 +1,6 @@
 use crate::actions::{Action, apply};
 use crate::app::ReasonCraftApp;
-use crate::doc_tab::DocTab;
+use crate::doc_tab::{DocTab, EditSession};
 use crate::settings::Settings;
 
 fn tab(app: &ReasonCraftApp) -> &DocTab {
@@ -36,7 +36,7 @@ fn typing_title_is_live_and_one_history_step() {
 fn unchanged_or_reverted_meta_records_nothing() {
     let mut a = ReasonCraftApp::new_for_test();
     apply(&mut a, meta("", ""));
-    assert!(tab(&a).meta_edit.is_none());
+    assert!(tab(&a).session() != Some(&EditSession::Meta));
     apply(&mut a, meta("x", ""));
     apply(&mut a, meta("", ""));
     assert!(!tab(&a).is_dirty());
@@ -48,7 +48,7 @@ fn unchanged_or_reverted_meta_records_nothing() {
 fn save_commits_a_running_meta_edit() {
     let mut a = ReasonCraftApp::new_for_test();
     apply(&mut a, meta("T", ""));
-    a.tabs[0].commit_edits();
+    a.tabs[0].commit_session();
     assert_eq!(a.tabs[0].history.undo.len(), 1);
 }
 

@@ -3,7 +3,7 @@
 use reasoncraft_core::{Snippet, SnippetSource, SourceType};
 
 use super::Action;
-use crate::doc_tab::{DocTab, cap_snippet, tidy_source};
+use crate::doc_tab::{DocTab, EditSession, cap_snippet, tidy_source};
 use crate::shell::link_modal::normalize_link;
 
 /// Carry out a snippet action. Changes that leave the snippet list as it
@@ -74,7 +74,7 @@ fn add(tab: &mut DocTab, text: &str) {
         let before = tab.doc.clone();
         let id = tab.doc.add_snippet("");
         tab.bump_revision();
-        tab.snippet_edit = Some((id, before));
+        tab.begin_session_with(EditSession::Snippet { id }, before);
         tab.snippet_focus = Some(id);
         id
     } else {

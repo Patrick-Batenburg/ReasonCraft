@@ -32,7 +32,7 @@ pub(super) fn show(
     tk: &Tokens,
     pending: &mut Vec<Action>,
 ) {
-    let Some(b) = tab.editing else { return };
+    let Some(b) = tab.editing() else { return };
     let (Some(&world), Some(node)) = (layout.boxes.get(&b), tab.doc.boxes.get(&b)) else {
         return;
     };

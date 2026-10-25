@@ -5,6 +5,7 @@
 
 use reasoncraft::actions::{Action, UnsavedChoice};
 use reasoncraft::app::ReasonCraftApp;
+use reasoncraft::doc_tab::EditSession;
 use reasoncraft::file_ops::Modal;
 
 use super::run;
@@ -24,7 +25,10 @@ fn app_with_typed_title() -> ReasonCraftApp {
         ],
     );
     let tab = &app.tabs[0];
-    assert!(tab.meta_edit.is_some(), "the session is running");
+    assert!(
+        tab.session() == Some(&EditSession::Meta),
+        "the session is running"
+    );
     assert!(tab.history.undo.is_empty(), "nothing committed yet");
     assert!(tab.is_dirty(), "a running session counts as unsaved");
     app
@@ -33,7 +37,7 @@ fn app_with_typed_title() -> ReasonCraftApp {
 /// Tab `i`'s session was committed: one step, the title trimmed.
 fn committed(app: &ReasonCraftApp, i: usize) {
     let tab = &app.tabs[i];
-    assert!(tab.meta_edit.is_none());
+    assert!(tab.session() != Some(&EditSession::Meta));
     assert_eq!(tab.history.undo.len(), 1);
     assert_eq!(tab.doc.meta.title, "Draft");
     assert!(tab.is_dirty());
@@ -52,7 +56,11 @@ fn switching_tabs_commits_the_title() {
     run(&mut app, [Action::ActivateTab(1)]);
     committed(&app, 0);
     // So a session only ever runs in the active tab.
-    assert!(app.tabs.iter().all(|t| t.meta_edit.is_none()));
+    assert!(
+        app.tabs
+            .iter()
+            .all(|t| t.session() != Some(&EditSession::Meta))
+    );
 }
 
 #[test]
@@ -89,7 +97,7 @@ fn closing_an_inactive_tab_commits_its_title_and_asks() {
     run(&mut app, [Action::New]);
     assert_eq!(app.active, 1);
     app.tabs[0].edit_meta_live("Draft ", "");
-    assert!(app.tabs[0].meta_edit.is_some());
+    assert!(app.tabs[0].session() == Some(&EditSession::Meta));
     run(&mut app, [Action::CloseTab(0)]);
     committed(&app, 0);
     assert_eq!(unsaved_prompt(&app), Some((0, false)));

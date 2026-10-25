@@ -186,7 +186,6 @@ pub(super) fn delete(tab: &mut DocTab, mode: RemoveMode) {
         Some(Parent::Card(c)) => Some(Item::Card(c)),
         Some(Parent::Parking) | None => None,
     };
-    tab.editing = None;
     tab.fix_selection();
 }
 

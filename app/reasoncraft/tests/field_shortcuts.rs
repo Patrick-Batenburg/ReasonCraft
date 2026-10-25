@@ -6,7 +6,7 @@ use eframe::egui::{self, Key, Modifiers};
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::app::RibbonTab;
-use reasoncraft::doc_tab::DocTab;
+use reasoncraft::doc_tab::{DocTab, EditSession};
 use reasoncraft::file_ops::FakeDialogs;
 use reasoncraft::i18n::t;
 use reasoncraft::settings::TextTab;
@@ -52,7 +52,10 @@ fn ctrl_s_in_snippet_field_records_the_session_and_saves() {
     assert_eq!(tab.path.as_deref(), Some(path.as_path()), "saved");
     assert!(!tab.is_dirty());
     assert_eq!(tab.history.undo.len(), 1, "the typing is one step");
-    assert!(tab.snippet_edit.is_none(), "the session ended");
+    assert!(
+        !matches!(tab.session(), Some(EditSession::Snippet { .. })),
+        "the session ended"
+    );
     assert_eq!(tab.doc.snippets[0].text, "Robots help", "no 's' typed");
     let saved = reasoncraft_core::file::open(&path).unwrap();
     assert_eq!(saved.snippets[0].text, "Robots help");

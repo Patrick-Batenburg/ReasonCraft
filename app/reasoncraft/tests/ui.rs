@@ -158,13 +158,13 @@ fn keyboard_builds_map() {
     h.key_press(Key::Tab);
     h.run();
     assert!(
-        h.state().tabs[0].editing.is_some(),
+        h.state().tabs[0].editing().is_some(),
         "a new reason is edited"
     );
     type_text(&mut h, "Reason one");
     h.key_press(Key::Escape);
     h.run();
-    assert_eq!(h.state().tabs[0].editing, None);
+    assert_eq!(h.state().tabs[0].editing(), None);
     assert_eq!(selected_text(&h), "Reason one");
 
     h.key_press_modifiers(Modifiers::SHIFT, Key::Tab);
@@ -193,7 +193,7 @@ fn typing_on_selected_root_starts_editing_and_records_one_step() {
     h.run();
     let root = h.state().tabs[0].doc.root;
     type_text(&mut h, "R");
-    assert_eq!(h.state().tabs[0].editing, Some(root));
+    assert_eq!(h.state().tabs[0].editing(), Some(root));
     type_text(&mut h, "obots help");
     h.key_press(Key::Escape);
     h.run();
@@ -236,7 +236,7 @@ fn whole_card_target_via_plus_menu() {
     assert_eq!(tab.doc.cards[&new].kind, CardKind::Objection);
     let premise = tab.doc.cards[&new].premises[0];
     assert_eq!(tab.selection, Some(Item::Box(premise)));
-    assert_eq!(tab.editing, Some(premise));
+    assert_eq!(tab.editing(), Some(premise));
 }
 
 /// Press at `from`, move to `to` over several frames, release.
@@ -314,12 +314,12 @@ fn text_and_tab_in_one_frame_finish_the_old_box() {
     h.run();
     h.key_press(Key::Tab);
     h.run();
-    let old = h.state().tabs[0].editing.expect("editing the new reason");
+    let old = h.state().tabs[0].editing().expect("editing the new reason");
     type_text(&mut h, "abc");
     one_frame(&mut h, vec![Event::Text("x".into()), key(Key::Tab)]);
     let tab = &h.state().tabs[0];
     assert_eq!(tab.doc.boxes[&old].text, "abcx");
-    let new = tab.editing.expect("editing the second reason");
+    let new = tab.editing().expect("editing the second reason");
     assert_ne!(new, old);
     assert_eq!(tab.doc.boxes[&new].text, "");
     assert_eq!(tab.edit_text, "");
@@ -334,10 +334,10 @@ fn text_and_escape_in_one_frame_keep_the_character() {
     h.run();
     let root = h.state().tabs[0].doc.root;
     type_text(&mut h, "ab");
-    assert_eq!(h.state().tabs[0].editing, Some(root));
+    assert_eq!(h.state().tabs[0].editing(), Some(root));
     one_frame(&mut h, vec![Event::Text("x".into()), key(Key::Escape)]);
     let tab = &h.state().tabs[0];
-    assert_eq!(tab.editing, None);
+    assert_eq!(tab.editing(), None);
     assert_eq!(tab.doc.boxes[&root].text, "abx");
     assert_eq!(tab.history.undo.len(), 1);
     assert_eq!(tab.history.undo[0].boxes[&root].text, "");
@@ -478,13 +478,13 @@ fn save_while_editing_commits_the_text() {
     let (mut h, fake) = file_harness();
     h.run();
     type_text(&mut h, "Half typed");
-    assert!(h.state().active_tab().editing.is_some());
+    assert!(h.state().active_tab().editing().is_some());
     assert!(h.state().active_tab().is_dirty(), "a pending edit is dirty");
     let path = dir.path().join("typed.rcraft");
     fake.set_save(path.clone());
     cmd(&mut h, egui::Key::S);
     let tab = h.state().active_tab();
-    assert_eq!(tab.editing, None);
+    assert_eq!(tab.editing(), None);
     assert!(!tab.is_dirty());
     let doc = reasoncraft_core::file::open(&path).unwrap();
     assert_eq!(doc.boxes[&doc.root].text, "Half typed");
@@ -931,7 +931,7 @@ fn alt_digit_rates_without_typing() {
     let tab = &h.state().tabs[0];
     assert_eq!(tab.doc.boxes[&root].acceptance, Some(Acceptance::Accept));
     assert_eq!(tab.doc.boxes[&root].text, "Claim");
-    assert_eq!(tab.editing, None);
+    assert_eq!(tab.editing(), None);
     assert_eq!(tab.history.undo.len(), 1);
     one_frame(&mut h, vec![alt(egui::Key::Num0)]);
     assert_eq!(h.state().tabs[0].doc.boxes[&root].acceptance, None);
@@ -1015,7 +1015,7 @@ fn plus_menu_source_submenu_adds_expert_opinion() {
         }
     );
     assert_eq!(tab.selection, Some(Item::Box(s)));
-    assert_eq!(tab.editing, Some(s));
+    assert_eq!(tab.editing(), Some(s));
     assert_eq!(tab.history.undo.len(), 1);
 }
 
@@ -1041,7 +1041,7 @@ fn ribbon_source_dropdown_adds_law_to_claim() {
             source_type: SourceType::Law
         }
     );
-    assert_eq!(tab.editing, Some(s));
+    assert_eq!(tab.editing(), Some(s));
 }
 
 // ---- Step 2, Task 7: comments ----

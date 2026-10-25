@@ -27,7 +27,7 @@ fn run(app: &mut ReasonCraftApp, actions: impl IntoIterator<Item = Action>) {
 
 /// The box the active tab is editing (every add starts an edit).
 fn editing(app: &ReasonCraftApp) -> NodeId {
-    app.active_tab().editing.expect("an add starts an edit")
+    app.active_tab().editing().expect("an add starts an edit")
 }
 
 /// The card that owns premise `b`.

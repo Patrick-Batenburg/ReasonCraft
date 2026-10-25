@@ -45,7 +45,7 @@ fn add_source_targets_selection() {
             source_type: SourceType::ExpertOpinion
         }
     );
-    assert_eq!(t.editing, Some(s));
+    assert_eq!(t.editing(), Some(s));
     assert_eq!(t.history.undo.len(), 1);
 
     // The claim takes sources too.

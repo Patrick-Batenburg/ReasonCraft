@@ -198,7 +198,7 @@ fn insert_at_target_and_refusals() {
         }
     );
     assert_eq!(t.selection, Some(Item::Box(s)));
-    assert_eq!(t.editing, Some(s), "a new box is edited");
+    assert_eq!(t.editing(), Some(s), "a new box is edited");
     assert_eq!(t.history.undo.len(), 3);
 }
 

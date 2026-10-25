@@ -310,7 +310,7 @@ fn connector_strength(out: &Layout, child: Item) -> (Strength, bool) {
 
 /// Fill `out.card_roles` and `out.card_strength` for every card.
 pub(super) fn card_roles(doc: &Document, out: &mut Layout) {
-    out.card_roles = crate::model::card_roles(doc);
+    out.card_roles = crate::roles::card_roles(doc);
     for (&id, card) in &doc.cards {
         out.card_strength.insert(id, card.strength);
     }
@@ -321,7 +321,7 @@ mod tests {
     use super::*;
     use crate::fixtures::{FixedMeasure, sample_iot_like};
     use crate::layout::layout;
-    use crate::model::owner_index;
+    use crate::roles::owner_index;
 
     #[test]
     fn owner_index_matches_owner_of() {

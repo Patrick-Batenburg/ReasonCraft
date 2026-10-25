@@ -205,7 +205,7 @@ fn connect_mode_enter_connects_to_selection() {
     h.key_press(Key::Enter);
     h.run();
     assert_eq!(h.state().tabs[0].connect_mode, Some(Item::Card(parked)));
-    assert_eq!(h.state().tabs[0].editing, None, "Enter does not edit");
+    assert_eq!(h.state().tabs[0].editing(), None, "Enter does not edit");
     h.key_press(Key::ArrowUp);
     h.key_press(Key::Enter);
     h.run();
@@ -237,7 +237,7 @@ fn altgr_digit_types_text_instead_of_rating() {
     }
     h.run();
     let tab = &h.state().tabs[0];
-    assert_eq!(tab.editing, Some(root));
+    assert_eq!(tab.editing(), Some(root));
     assert_eq!(tab.doc.boxes[&root].text, "²");
     assert_eq!(tab.doc.boxes[&root].acceptance, None, "no rating");
 }
@@ -282,7 +282,7 @@ fn connect_from_ribbon_while_editing_stays_on() {
     h.run();
     h.key_press(Key::F2);
     h.run();
-    assert_eq!(h.state().tabs[0].editing, Some(nb));
+    assert_eq!(h.state().tabs[0].editing(), Some(nb));
     h.event(egui::Event::Text("x".into()));
     h.run();
     h.get_by_label(&t("action.connect")).click();
@@ -290,7 +290,7 @@ fn connect_from_ribbon_while_editing_stays_on() {
     h.run();
     let tab = &h.state().tabs[0];
     assert_eq!(tab.connect_mode, Some(note));
-    assert_eq!(tab.editing, None);
+    assert_eq!(tab.editing(), None);
     assert_eq!(tab.doc.boxes[&nb].text, "nx");
     assert_eq!(tab.history.undo.len(), 1);
     h.get_by_label(&t("connect.hint"));

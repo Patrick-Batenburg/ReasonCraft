@@ -81,7 +81,7 @@ pub(super) fn show(
     tk: &Tokens,
     pending: &mut Vec<Action>,
 ) {
-    if tab.editing.is_some() {
+    if tab.editing().is_some() {
         return;
     }
     let world = match tab.selection {

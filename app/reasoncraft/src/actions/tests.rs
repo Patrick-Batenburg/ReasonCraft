@@ -177,7 +177,7 @@ fn is_enabled_follows_attach_rules() {
 fn add_starts_editing_and_text_joins_the_add_step() {
     let mut a = app();
     apply(&mut a, Action::AddReason);
-    let p = tab(&a).editing.expect("new premise is edited");
+    let p = tab(&a).editing().expect("new premise is edited");
     apply(
         &mut a,
         Action::EditText {
@@ -214,7 +214,7 @@ fn edit_session_records_one_step_only_when_text_changed() {
     assert_eq!(tab(&a).doc.boxes[&root].text, "AB!");
     apply(&mut a, Action::Undo);
     assert_eq!(tab(&a).doc.boxes[&root].text, "AB");
-    assert_eq!(tab(&a).editing, None);
+    assert_eq!(tab(&a).editing(), None);
 }
 
 #[test]
@@ -268,7 +268,7 @@ fn edit_text_for_another_box_is_dropped() {
     let mut a = app();
     let root = tab(&a).doc.root;
     apply(&mut a, Action::AddReason);
-    let p = tab(&a).editing.unwrap();
+    let p = tab(&a).editing().unwrap();
     // A late update for the root must not land on the new premise.
     apply(&mut a, edit_text(root, "stale"));
     assert_eq!(tab(&a).doc.boxes[&p].text, "");

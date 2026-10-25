@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::ids::{CardId, Item, NodeId};
 use crate::layout::display_children;
-use crate::model::{BoxKind, CardStrength, Document, Role, SourceType, card_roles};
+use crate::model::{BoxKind, CardStrength, Document, Role, SourceType};
+use crate::roles::card_roles;
 
 /// The linking word before a premise.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

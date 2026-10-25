@@ -177,7 +177,7 @@ fn noisy_png(w: u32, h: u32) -> Vec<u8> {
 fn app_with_premise(dir: &Path, fake: &FakeDialogs) -> (ReasonCraftApp, NodeId) {
     let mut app = ReasonCraftApp::new_for_test_with(Box::new(fake.clone()));
     apply(&mut app, Action::AddReason);
-    let premise = app.active_tab().editing.unwrap();
+    let premise = app.active_tab().editing().unwrap();
     apply(&mut app, Action::StopEditing);
     let file = dir.join("photo.png");
     std::fs::write(&file, noisy_png(240, 180)).unwrap();
@@ -328,7 +328,7 @@ fn image_actions_commit_a_running_text_edit_first() {
         let steps = app.active_tab().history.undo.len();
         apply(&mut app, action);
         let tab = app.active_tab();
-        assert_eq!(tab.editing, None, "the edit ended");
+        assert_eq!(tab.editing(), None, "the edit ended");
         assert_eq!(
             tab.history.undo.len(),
             steps + 2,

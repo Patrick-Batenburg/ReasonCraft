@@ -18,12 +18,12 @@ pub(super) fn apply(tab: &mut DocTab, action: Action) {
         Action::StopEditing => {}
         Action::EditText { node, text } => tab.set_edit_text(node, text),
         Action::TypeText(typed) => {
-            if tab.editing.is_none()
+            if tab.editing().is_none()
                 && let Some(Item::Box(b)) = tab.selection
             {
                 tab.begin_edit(b, false);
             }
-            if let Some(b) = tab.editing {
+            if let Some(b) = tab.editing() {
                 let text = format!("{}{typed}", tab.edit_text);
                 tab.set_edit_text(b, text);
             }

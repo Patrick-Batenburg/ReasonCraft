@@ -235,7 +235,7 @@ fn outline_click_while_editing_commits_edit() {
     }
     h.run();
     let before = h.state().tabs[0].history.undo.len();
-    assert_eq!(h.state().tabs[0].editing, Some(a));
+    assert_eq!(h.state().tabs[0].editing(), Some(a));
     h.get_by_role_and_label(Role::ListItem, "2 but Robots break")
         .click();
     h.run();
@@ -244,8 +244,8 @@ fn outline_click_while_editing_commits_edit() {
     assert_eq!(tab.doc.boxes[&b].text, "Robots break");
     assert_eq!(tab.history.undo.len(), before + 1);
     assert_eq!(tab.selection, Some(Item::Box(b)));
-    assert_eq!(tab.editing, None);
-    assert!(!tab.has_pending_edit());
+    assert_eq!(tab.editing(), None);
+    assert!(!tab.has_pending_session());
 }
 
 #[test]

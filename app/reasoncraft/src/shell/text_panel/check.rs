@@ -262,6 +262,17 @@ mod tests {
     }
 
     #[test]
+    fn incomplete_plural_one() {
+        let mut args = FluentArgs::new();
+        args.set("count", 1);
+        let text = t_args("check.explain.incomplete_evaluation", &args);
+        assert!(text.starts_with("1 item is not rated yet,"), "{text}");
+        args.set("count", 2);
+        let text = t_args("check.explain.incomplete_evaluation", &args);
+        assert!(text.starts_with("2 items are not rated yet,"), "{text}");
+    }
+
+    #[test]
     fn compound_explanation_asks_and_quotes_the_word() {
         let mut d = Document::new("Robots help or hurt");
         d.meta.language = "en".into();

@@ -3,37 +3,33 @@
 
 use reasoncraft_core::Document;
 
-use super::DocTab;
+use super::{DocTab, EditSession};
 
 /// Whether title or author differ between the two documents.
 fn differs(a: &Document, b: &Document) -> bool {
     a.meta.title != b.meta.title || a.meta.author != b.meta.author
 }
 
-impl DocTab {
-    /// True when committing the title/author session now would record a
-    /// step (the committed values are trimmed).
-    pub fn has_pending_meta_edit(&self) -> bool {
-        self.meta_edit.as_ref().is_some_and(|before| {
-            before.meta.title != self.doc.meta.title.trim()
-                || before.meta.author != self.doc.meta.author.trim()
-        })
-    }
+/// True when ending a title/author session that started at `before` would
+/// record a step (the committed values are trimmed).
+pub(super) fn pending(before: &Document, now: &Document) -> bool {
+    before.meta.title != now.meta.title.trim() || before.meta.author != now.meta.author.trim()
+}
 
-    /// End the title/author session: store both trimmed, and record the
-    /// document as it was before as one history step if they changed.
-    pub fn commit_meta_edit(&mut self) {
-        let Some(before) = self.meta_edit.take() else {
-            return;
-        };
+impl DocTab {
+    /// End a title/author session that started at `before`: store both
+    /// trimmed, and record `before` as one history step if they changed.
+    pub(super) fn finish_meta(&mut self, before: &Document) -> bool {
         let (title, author) = (self.doc.meta.title.trim(), self.doc.meta.author.trim());
         let (title, author) = (title.to_owned(), author.to_owned());
         if self.doc.set_meta(&title, &author).is_ok() {
             self.bump_revision();
         }
-        if differs(&before, &self.doc) {
-            self.history.record(&before);
+        let changed = differs(before, &self.doc);
+        if changed {
+            self.history.record(before);
         }
+        changed
     }
 
     /// Show a new title and author live, without a history step. Values
@@ -43,9 +39,8 @@ impl DocTab {
         if self.doc.meta.title == title && self.doc.meta.author == author {
             return;
         }
-        if self.meta_edit.is_none() {
-            self.commit_edits();
-            self.meta_edit = Some(self.doc.clone());
+        if self.session() != Some(&EditSession::Meta) {
+            self.begin_session(EditSession::Meta);
         }
         if self.doc.set_meta(title, author).is_ok() {
             self.bump_revision();

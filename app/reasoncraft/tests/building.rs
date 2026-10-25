@@ -83,7 +83,7 @@ fn panel_click_adds_note_to_selection() {
     };
     assert_eq!(tab.doc.boxes[&n].kind, BoxKind::Note);
     assert_eq!(tab.selection, Some(Item::Box(n)));
-    assert_eq!(tab.editing, Some(n));
+    assert_eq!(tab.editing(), Some(n));
     assert_eq!(tab.history.undo.len(), 1);
 }
 
@@ -118,7 +118,7 @@ fn refused_panel_drop_changes_nothing() {
     assert_eq!(tab.doc, before);
     assert_eq!(tab.history.undo.len(), 0);
     assert_eq!(tab.selection, Some(Item::Box(cat)), "selection kept");
-    assert_eq!(tab.editing, None);
+    assert_eq!(tab.editing(), None);
 }
 
 #[test]
@@ -138,7 +138,7 @@ fn panel_drop_inserts_at_the_target() {
             panic!("source under the premise")
         };
         assert!(matches!(tab.doc.boxes[&s].kind, BoxKind::Source { .. }));
-        assert_eq!(tab.editing, Some(s));
+        assert_eq!(tab.editing(), Some(s));
         assert_eq!(tab.history.undo.len(), 1);
     }
     // A comment preset onto the premise: added directly, no popover.
@@ -214,7 +214,7 @@ fn panning_keeps_comment_popover_open() {
 /// sources added under `p`.
 fn drop_web_on(h: &mut H, p: reasoncraft_core::NodeId, to: egui::Pos2) -> usize {
     let from = panel_item(h, &t("source.web"));
-    let editing = h.state().tabs[0].editing;
+    let editing = h.state().tabs[0].editing();
     h.event(egui::Event::PointerMoved(from));
     h.drag_at(from);
     h.run();
@@ -223,7 +223,7 @@ fn drop_web_on(h: &mut H, p: reasoncraft_core::NodeId, to: egui::Pos2) -> usize 
         h.run();
     }
     // Still editing while the item hovers over the box.
-    assert_eq!(h.state().tabs[0].editing, editing);
+    assert_eq!(h.state().tabs[0].editing(), editing);
     h.drop_at(to);
     h.run();
     let tab = &h.state().tabs[0];
@@ -244,7 +244,7 @@ fn panel_drop_onto_the_box_being_edited() {
     h.state_mut().tabs[0].selection = Some(Item::Box(p));
     h.state_mut().tabs[0].begin_edit(p, false);
     h.run();
-    assert_eq!(h.state().tabs[0].editing, Some(p));
+    assert_eq!(h.state().tabs[0].editing(), Some(p));
     let to = screen(&h, layout_of(&h).boxes[&p].center());
     assert_eq!(drop_web_on(&mut h, p, to), 1);
 }
