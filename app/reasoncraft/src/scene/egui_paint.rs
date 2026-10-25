@@ -2,15 +2,11 @@
 
 use eframe::egui::{Align, Align2, Color32, Painter, Pos2, Stroke, StrokeKind, epaint, vec2};
 
-use super::{PathEl, Scene, Shape, StrokeSpec};
+use super::{DASH_LEN, GAP_LEN, PathEl, Scene, Shape, StrokeSpec, bold_offset};
 use crate::canvas::Camera;
 use crate::canvas::images::{ImageCache, paint_image};
 use crate::canvas::paint::screen_font;
 use crate::theme::Tokens;
-
-/// Dash and gap of dashed paths, in screen px.
-const DASH: f32 = 6.0;
-const GAP: f32 = 4.0;
 
 /// Draw `scene` through `cam`. Shapes outside the painter's clip rect are
 /// skipped; text smaller than a few screen px is not drawn. Images come
@@ -117,7 +113,7 @@ fn paint_shape(painter: &Painter, shape: &Shape, cam: &Camera) {
                 Align::Max => Align2::RIGHT_TOP,
             };
             // Faux bold: the default fonts have no bold face.
-            let bold = bold.then(|| vec2(0.45 * z.min(1.5), 0.0));
+            let bold = bold.then(|| vec2(bold_offset(z), 0.0));
             for (i, row) in rows.iter().enumerate() {
                 if row.is_empty() {
                     continue;
@@ -209,7 +205,7 @@ fn line(
     if let Some(fill) = fill {
         painter.add(epaint::Shape::convex_polygon(pts, fill, stroke));
     } else if dashed {
-        painter.extend(epaint::Shape::dashed_line(&pts, stroke, DASH, GAP));
+        painter.extend(epaint::Shape::dashed_line(&pts, stroke, DASH_LEN, GAP_LEN));
     } else if closed {
         painter.add(epaint::Shape::closed_line(pts, stroke));
     } else if pts.len() == 2 {

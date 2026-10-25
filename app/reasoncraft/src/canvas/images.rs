@@ -16,7 +16,7 @@ use reasoncraft_core::{Assets, BoxNode, Document, ImageRef};
 
 use super::paint::screen_font;
 use crate::doc_tab::DocTab;
-use crate::i18n::t;
+use crate::scene::missing_image;
 use crate::theme::Tokens;
 
 /// Larger picked files are refused before they are decoded.
@@ -39,8 +39,6 @@ pub const MAX_SIDE: u32 = 1600;
 /// Textures are scaled down so their longest side is at most this: a box
 /// never shows an image larger, and exports read the full-size asset.
 pub const MAX_TEXTURE_SIDE: u32 = 1024;
-/// World size of the placeholder's text.
-const PLACEHOLDER_TEXT: f32 = 11.0;
 
 /// Why a picked file cannot go in a box.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -276,8 +274,8 @@ pub fn paint_image(
         ImageState::Missing => {}
     }
     let colour = tk.text_muted;
-    let stroke = Stroke::new(1.0, colour);
-    let (dash, gap) = (5.0, 4.0);
+    let stroke = Stroke::new(missing_image::STROKE, colour);
+    let (dash, gap) = (missing_image::DASH, missing_image::GAP);
     let corners = [
         r.left_top(),
         r.right_top(),
@@ -288,11 +286,11 @@ pub fn paint_image(
         let edge = [corners[i], corners[(i + 1) % 4]];
         painter.extend(Shape::dashed_line(&edge, stroke, dash, gap));
     }
-    if let Some(font) = screen_font(PLACEHOLDER_TEXT, zoom) {
+    if let Some(font) = screen_font(missing_image::TEXT_SIZE, zoom) {
         painter.text(
             r.center(),
             Align2::CENTER_CENTER,
-            t("image.missing"),
+            missing_image::label(),
             font,
             colour,
         );
@@ -302,6 +300,7 @@ pub fn paint_image(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::i18n::t;
     use reasoncraft_core::{BoxKind, CardKind, NodeId, Parent};
 
     /// A `w`×`h` PNG with a gradient.

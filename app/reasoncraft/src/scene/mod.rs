@@ -27,6 +27,37 @@ use crate::theme::Tokens;
 /// A stroke: width (world units) and colour.
 pub type StrokeSpec = (f32, Color32);
 
+/// Dash length of dashed paths, in screen px (world units in an export,
+/// which is drawn at zoom 1).
+pub const DASH_LEN: f32 = 6.0;
+/// Gap between the dashes of dashed paths, like [`DASH_LEN`].
+pub const GAP_LEN: f32 = 4.0;
+
+/// How far bold text is smeared to the right, in screen px, at `zoom`:
+/// the default fonts have no bold face, so bold is faked by drawing the
+/// text twice this far apart.
+pub fn bold_offset(zoom: f32) -> f32 {
+    0.45 * zoom.min(1.5)
+}
+
+/// The placeholder drawn for an image whose asset is missing or broken: a
+/// dashed outline with a centred label, in the muted text colour. Sizes in
+/// screen px (world units in an export).
+pub mod missing_image {
+    /// Outline width.
+    pub const STROKE: f32 = 1.0;
+    /// Outline dash and gap.
+    pub const DASH: f32 = 5.0;
+    pub const GAP: f32 = 4.0;
+    /// Size of the label's text (in world units, like box text).
+    pub const TEXT_SIZE: f32 = 11.0;
+
+    /// The label in the middle of the outline.
+    pub fn label() -> String {
+        crate::i18n::t("image.missing")
+    }
+}
+
 /// One step of a [`Shape::Path`], in world units.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PathEl {
