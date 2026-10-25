@@ -41,7 +41,7 @@
   - [x] Task 6: Core snippets
   - [x] Task 7: Snippets tab
   - [x] Task 8: Drag a snippet selection onto the map
-  - [ ] Task 9: Document language
+  - [x] Task 9: Document language
   - [ ] Task 10: End-to-end verification and docs
 - [ ] Step 4 — Output: exports, print, Essay tab
 - [ ] Step 5 — Interchange & polish: Argdown, connector styles, layout directions, minimap, numbering, find/replace, spellcheck, autosave, Search commands
