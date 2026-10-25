@@ -100,7 +100,7 @@ fn search_box(ui: &mut egui::Ui, tk: &Tokens) {
     );
 }
 
-fn window_buttons(ui: &mut egui::Ui, app: &ReasonCraftApp, maximized: bool) {
+fn window_buttons(ui: &mut egui::Ui, app: &mut ReasonCraftApp, maximized: bool) {
     let tk = app.tokens;
     let ctx = ui.ctx().clone();
     let size = Vec2::new(44.0, HEIGHT);
@@ -126,8 +126,9 @@ fn window_buttons(ui: &mut egui::Ui, app: &ReasonCraftApp, maximized: bool) {
         resp.on_hover_text(label).clicked()
     };
     // Right to left: close, maximize/restore, minimize.
+    // Closing asks about unsaved changes first.
     if button(ui, Icon::Close, t("window.close"), true) {
-        ctx.send_viewport_cmd(ViewportCommand::Close);
+        app.push(Action::CloseWindow);
     }
     let (icon, key) = if maximized {
         (Icon::Restore, "window.restore")

@@ -7,6 +7,7 @@ use reasoncraft_core::{
 use crate::app::ReasonCraftApp;
 use crate::canvas::input::navigate;
 use crate::doc_tab::DocTab;
+use crate::file_ops;
 use crate::theme::ThemeChoice;
 
 pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
@@ -26,13 +27,27 @@ pub enum Panel {
     Right,
 }
 
+/// The answer to "save changes before closing?".
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnsavedChoice {
+    Save,
+    Discard,
+    Cancel,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     New,
     Open,
     Save,
     SaveAs,
+    /// Close the tab at this index, asking first if it has unsaved changes.
     CloseTab(usize),
+    /// Close the window, asking first about each tab with unsaved changes.
+    CloseWindow,
+    ResolveUnsaved(UnsavedChoice),
+    /// Close the error message.
+    DismissModal,
     Undo,
     Redo,
     AddReason,
@@ -95,9 +110,13 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             app.tabs.push(DocTab::new());
             app.active = app.tabs.len() - 1;
         }
-        // File operations arrive in Task 11.
-        Action::Open | Action::Save | Action::SaveAs => {}
-        Action::CloseTab(i) => close_tab(app, i),
+        Action::Open => file_ops::open_with_dialog(app),
+        Action::Save => file_ops::save_active(app, false),
+        Action::SaveAs => file_ops::save_active(app, true),
+        Action::CloseTab(i) => file_ops::request_close_tab(app, i),
+        Action::CloseWindow => file_ops::request_close_window(app),
+        Action::ResolveUnsaved(choice) => file_ops::resolve_unsaved(app, choice),
+        Action::DismissModal => app.modal = None,
         Action::ActivateTab(i) => {
             if i < app.tabs.len() {
                 app.active = i;
@@ -117,19 +136,6 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
                 apply_to_tab(tab, other);
             }
         }
-    }
-}
-
-fn close_tab(app: &mut ReasonCraftApp, i: usize) {
-    if i >= app.tabs.len() {
-        return;
-    }
-    app.tabs.remove(i);
-    if app.tabs.is_empty() {
-        app.tabs.push(DocTab::new());
-    }
-    if app.active > i || app.active >= app.tabs.len() {
-        app.active = app.active.saturating_sub(1);
     }
 }
 
@@ -203,6 +209,9 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::Save
         | Action::SaveAs
         | Action::CloseTab(_)
+        | Action::CloseWindow
+        | Action::ResolveUnsaved(_)
+        | Action::DismissModal
         | Action::ActivateTab(_)
         | Action::SetTheme(_)
         | Action::TogglePanel(_) => unreachable!("app-level action"),

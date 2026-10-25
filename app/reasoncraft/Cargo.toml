@@ -13,10 +13,12 @@ eframe.workspace = true
 serde.workspace = true
 fluent-bundle = "0.16"
 unic-langid = "0.9"
+rfd = "0.17"
 
 [dev-dependencies]
 egui_kittest = "0.37"
 reasoncraft_core = { path = "../../crates/reasoncraft_core", features = ["test-fixtures"] }
+tempfile.workspace = true
 
 [lints]
 workspace = true

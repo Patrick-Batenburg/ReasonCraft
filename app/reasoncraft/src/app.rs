@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::actions::{self, Action};
 use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
+use crate::file_ops::{FakeDialogs, FileDialogs, Modal, RfdDialogs};
 use crate::shell;
 use crate::theme::{self, ThemeChoice, Tokens};
 
@@ -45,12 +46,20 @@ pub struct ReasonCraftApp {
     pub tokens: Tokens,
     /// Text heights measured by the canvas, shared by all tabs.
     pub measure_cache: MeasureCache,
+    /// File pickers: the platform's own, or fakes in tests.
+    pub dialogs: Box<dyn FileDialogs>,
+    /// The error message or unsaved-changes prompt being shown.
+    pub modal: Option<Modal>,
     applied: Option<Tokens>,
     window_title: String,
+    /// Every unsaved-changes question was answered: let the window close.
+    close_confirmed: bool,
+    /// Send the close command at the end of this frame.
+    close_now: bool,
 }
 
 impl ReasonCraftApp {
-    fn with_settings(settings: Settings) -> Self {
+    fn with_settings(settings: Settings, dialogs: Box<dyn FileDialogs>) -> Self {
         Self {
             tabs: vec![DocTab::new()],
             active: 0,
@@ -61,8 +70,12 @@ impl ReasonCraftApp {
             ribbon_tab: RibbonTab::default(),
             tokens: theme::resolve(settings.theme, true),
             measure_cache: MeasureCache::default(),
+            dialogs,
+            modal: None,
             applied: None,
             window_title: String::new(),
+            close_confirmed: false,
+            close_now: false,
         }
     }
 
@@ -72,12 +85,30 @@ impl ReasonCraftApp {
             .storage
             .and_then(|s| eframe::get_value::<Settings>(s, SETTINGS_KEY))
             .unwrap_or_default();
-        Self::with_settings(settings)
+        Self::with_settings(settings, Box::new(RfdDialogs))
     }
 
-    /// Build the app with default settings and no storage.
+    /// Build the app with default settings, no storage and file dialogs
+    /// that always cancel.
     pub fn new_for_test() -> Self {
-        Self::with_settings(Settings::default())
+        Self::new_for_test_with(Box::new(FakeDialogs::default()))
+    }
+
+    /// Like [`Self::new_for_test`], with the given file dialogs.
+    pub fn new_for_test_with(dialogs: Box<dyn FileDialogs>) -> Self {
+        Self::with_settings(Settings::default(), dialogs)
+    }
+
+    /// True once the user has answered every unsaved-changes question of a
+    /// window close; the window then closes.
+    pub fn close_confirmed(&self) -> bool {
+        self.close_confirmed
+    }
+
+    /// Let the window close (at the end of this frame).
+    pub(crate) fn confirm_close(&mut self) {
+        self.close_confirmed = true;
+        self.close_now = true;
     }
 
     pub fn active_tab(&self) -> &DocTab {
@@ -93,9 +124,16 @@ impl ReasonCraftApp {
         let ctx = ui.ctx().clone();
         self.sync_theme(&ctx);
         self.sync_window_title(&ctx);
+        // The OS (or the title bar on macOS) asks to close: ask about unsaved
+        // changes first.
+        if ctx.input(|i| i.viewport().close_requested()) && !self.close_confirmed {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.pending.push(Action::CloseWindow);
+        }
         // Shortcuts are taken out first, so no widget sees (or moves focus
         // with) them, but run after the widgets' own actions (see `handle_keys`).
-        let keys = if self.ribbon_tab == RibbonTab::File {
+        // A modal takes all keys (Esc closes it).
+        let keys = if self.ribbon_tab == RibbonTab::File || self.modal.is_some() {
             Vec::new()
         } else {
             crate::canvas::input::handle_keys(&ctx, self)
@@ -107,6 +145,7 @@ impl ReasonCraftApp {
         shell::statusbar::show(ui, self);
         shell::show_side_panels(ui, self);
         shell::show_central(ui, self);
+        shell::modal::show(&ctx, self);
         self.pending.extend(keys);
 
         let actions = std::mem::take(&mut self.pending);
@@ -115,6 +154,9 @@ impl ReasonCraftApp {
                 actions::apply(self, action);
             }
             ctx.request_repaint();
+        }
+        if std::mem::take(&mut self.close_now) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
     }
 
@@ -130,11 +172,10 @@ impl ReasonCraftApp {
     }
 
     fn sync_window_title(&mut self, ctx: &egui::Context) {
-        let title = format!(
-            "{} - {}",
-            self.active_tab().title(),
-            crate::i18n::t("app.name")
-        );
+        let mut args = crate::i18n::FluentArgs::new();
+        args.set("doc", self.active_tab().title());
+        args.set("app", crate::i18n::t("app.name"));
+        let title = crate::i18n::t_args("window.title", &args);
         if title != self.window_title {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
             self.window_title = title;

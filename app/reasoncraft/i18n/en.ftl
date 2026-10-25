@@ -3,6 +3,7 @@
 
 app-name = ReasonCraft
 untitled = Untitled
+window-title = { $doc } — { $app }
 
 ## Title bar
 titlebar-search = Search commands
@@ -58,6 +59,24 @@ action-zoom_out = Zoom out
 action-panel_left = Building panel
 action-panel_right = Text panel
 action-load_sample = Load sample map (debug)
+
+## Files
+file-filter = ReasonCraft map
+modal-ok = OK
+unsaved-title = Save changes to { $name }?
+unsaved-message = Your changes will be lost if you don't save them.
+unsaved-save = Save
+unsaved-discard = Don't save
+unsaved-cancel = Cancel
+error-open-title = Could not open { $file }
+error-save-title = Could not save { $file }
+error-open-not_a_file = This is not a ReasonCraft map.
+error-open-missing_document = This ReasonCraft file has no map inside.
+error-open-malformed = This ReasonCraft file is damaged and cannot be read. ({ $detail })
+error-open-newer_version = This map was made with a newer version of ReasonCraft (file version { $found }; this version reads up to version { $supported }). Update ReasonCraft to open it.
+error-open-io = The file could not be read: { $detail }
+error-save-io = The file could not be written: { $detail }. Your changes are still open and unsaved.
+error-save-other = The map could not be saved: { $detail }. Your changes are still open and unsaved.
 
 ## Backstage
 backstage-back = Back

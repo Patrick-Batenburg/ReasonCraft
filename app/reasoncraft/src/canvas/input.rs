@@ -10,8 +10,10 @@ use crate::app::ReasonCraftApp;
 
 /// The command bound to `key` with `mods`, if any. `Modifiers::command` is
 /// Ctrl, or Cmd on macOS. While a box is being edited only Esc (finish),
-/// Tab / Shift+Tab (finish and add a reason / objection) and Ctrl+Enter
-/// (finish and add a co-premise) are commands; every other key is text.
+/// Tab / Shift+Tab (finish and add a reason / objection), Ctrl+Enter
+/// (finish and add a co-premise) and the file keys Ctrl+S, Ctrl+Shift+S,
+/// Ctrl+O and Ctrl+N (finish, then the command) are commands; every other
+/// key is text.
 pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action> {
     use Action as A;
     if mods.alt {
@@ -23,6 +25,9 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
             (Key::Escape, false) => Some(A::StopEditing),
             (Key::Tab, false) => Some(if shift { A::AddObjection } else { A::AddReason }),
             (Key::Enter, true) => Some(A::AddCoPremise),
+            (Key::S, true) => Some(if shift { A::SaveAs } else { A::Save }),
+            (Key::O, true) if !shift => Some(A::Open),
+            (Key::N, true) if !shift => Some(A::New),
             _ => None,
         };
     }
@@ -232,8 +237,16 @@ mod tests {
     }
 
     #[test]
-    fn typing_mode_only_intercepts_esc_tab_ctrl_enter() {
+    fn typing_mode_only_intercepts_esc_tab_ctrl_enter_and_file_keys() {
         let none = Modifiers::NONE;
+        let cmd = Modifiers::COMMAND;
+        assert_eq!(key_to_action(Key::S, cmd, true), Some(Action::Save));
+        assert_eq!(
+            key_to_action(Key::S, cmd | Modifiers::SHIFT, true),
+            Some(Action::SaveAs)
+        );
+        assert_eq!(key_to_action(Key::O, cmd, true), Some(Action::Open));
+        assert_eq!(key_to_action(Key::N, cmd, true), Some(Action::New));
         assert_eq!(
             key_to_action(Key::Escape, none, true),
             Some(Action::StopEditing)
@@ -252,7 +265,7 @@ mod tests {
             (Key::ArrowLeft, none),
             (Key::Z, Modifiers::COMMAND),
             (Key::Y, Modifiers::COMMAND),
-            (Key::S, Modifiers::COMMAND),
+            (Key::S, none),
             (Key::Num0, Modifiers::COMMAND),
             (Key::A, none),
         ] {

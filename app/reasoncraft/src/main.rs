@@ -33,6 +33,12 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "ReasonCraft",
         options,
-        Box::new(|cc| Ok(Box::new(ReasonCraftApp::new(cc)))),
+        Box::new(|cc| {
+            let mut app = ReasonCraftApp::new(cc);
+            // Files given on the command line (this is also how a
+            // double-clicked `.rcraft` file arrives on Windows and Linux).
+            reasoncraft::file_ops::open_paths(&mut app, std::env::args_os().skip(1));
+            Ok(Box::new(app))
+        }),
     )
 }

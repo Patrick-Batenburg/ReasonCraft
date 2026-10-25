@@ -65,17 +65,22 @@ impl DocTab {
         }
     }
 
+    /// Unsaved changes, counting inline-edit text not yet committed.
     pub fn is_dirty(&self) -> bool {
-        self.history.is_dirty()
+        self.history.is_dirty() || self.has_pending_edit()
     }
 
-    /// The file stem, or "Untitled"; followed by " •" when there are unsaved changes.
-    pub fn title(&self) -> String {
-        let name = self
-            .path
+    /// The file stem, or "Untitled".
+    pub fn name(&self) -> String {
+        self.path
             .as_deref()
             .and_then(|p| p.file_stem())
-            .map_or_else(|| t("untitled"), |s| s.to_string_lossy().into_owned());
+            .map_or_else(|| t("untitled"), |s| s.to_string_lossy().into_owned())
+    }
+
+    /// [`Self::name`], followed by " •" when there are unsaved changes.
+    pub fn title(&self) -> String {
+        let name = self.name();
         if self.is_dirty() {
             format!("{name} •")
         } else {
