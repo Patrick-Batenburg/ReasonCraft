@@ -159,27 +159,46 @@ fn png_options(options: &ExportOptions) -> PngOptions {
     }
 }
 
-/// Makes a new, empty temporary file next to `path`, named
-/// `<name>.<pid>-<counter>.tmp`. `create_new` means a file that already
-/// has that name (the user's, or another export's) is never touched.
-fn create_temp(path: &Path) -> std::io::Result<(PathBuf, std::fs::File)> {
-    static COUNTER: AtomicUsize = AtomicUsize::new(0);
-    let pid = std::process::id();
-    loop {
-        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let mut name = path.as_os_str().to_owned();
-        name.push(format!(".{pid}-{n}.tmp"));
-        let tmp = PathBuf::from(name);
-        match std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&tmp)
-        {
-            Ok(file) => return Ok((tmp, file)),
+/// Makes a new, empty file at the first of `candidates` that does not
+/// exist yet. `create_new` means an existing file (or a link) with that
+/// name is never opened, let alone overwritten. `private`: on Unix, only
+/// the user may read the file (mode 0600).
+pub(super) fn create_first_new(
+    candidates: impl IntoIterator<Item = PathBuf>,
+    private: bool,
+) -> std::io::Result<(PathBuf, std::fs::File)> {
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    if private {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.mode(0o600);
+    }
+    #[cfg(not(unix))]
+    let _ = private;
+    for path in candidates {
+        match options.open(&path) {
+            Ok(file) => return Ok((path, file)),
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
             Err(e) => return Err(e),
         }
     }
+    Err(std::io::Error::other("no free file name"))
+}
+
+/// Makes a new, empty temporary file next to `path`, named
+/// `<name>.<pid>-<counter>.tmp`; a file that already has that name (the
+/// user's, or another export's) is never touched.
+fn create_temp(path: &Path) -> std::io::Result<(PathBuf, std::fs::File)> {
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
+    let pid = std::process::id();
+    let candidates = std::iter::repeat_with(|| {
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let mut name = path.as_os_str().to_owned();
+        name.push(format!(".{pid}-{n}.tmp"));
+        PathBuf::from(name)
+    });
+    create_first_new(candidates, false)
 }
 
 /// Writes `bytes` to `path` through a temporary file next to it, so an

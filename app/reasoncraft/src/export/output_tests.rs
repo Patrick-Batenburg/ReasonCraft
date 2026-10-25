@@ -159,6 +159,29 @@ fn print_file_is_written_without_opening() {
 }
 
 #[test]
+fn print_files_never_replace_an_existing_file() {
+    let dir = tempfile::tempdir().unwrap();
+    // A file (or a link planted by someone else) at the first name tried.
+    let first = dir
+        .path()
+        .join(format!("ReasonCraft-print-{}-0.pdf", std::process::id()));
+    std::fs::write(&first, b"not ours").unwrap();
+    let a = write_print_file(b"%PDF a", dir.path()).unwrap();
+    let b = write_print_file(b"%PDF b", dir.path()).unwrap();
+    assert_ne!(a, first);
+    assert_ne!(a, b, "two prints in a row get their own files");
+    assert_eq!(std::fs::read(&first).unwrap(), b"not ours");
+    assert_eq!(std::fs::read(&a).unwrap(), b"%PDF a");
+    assert_eq!(std::fs::read(&b).unwrap(), b"%PDF b");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&a).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600, "only the user can read a print file");
+    }
+}
+
+#[test]
 fn copy_survives_a_poisoned_clipboard_lock() {
     let fake = FakeClipboard::default();
     let shared: SharedClipboard = std::sync::Arc::new(std::sync::Mutex::new(fake.clone()));

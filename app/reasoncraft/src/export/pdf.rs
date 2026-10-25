@@ -4,15 +4,17 @@
 //! Printing goes through the OS's PDF viewer.
 
 use std::collections::HashMap;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime};
 
 use pdf_writer::{Content, Finish as _, Name, Pdf, Rect, Ref, Str, TextStr};
 use resvg::usvg::{self, fontdb};
 use serde::{Deserialize, Serialize};
 
 use super::ExportError;
+use super::job::create_first_new;
 use crate::actions::{LinkOpener, SystemOpener};
 
 /// PDF points per millimetre.
@@ -282,15 +284,19 @@ pub fn print_via_pdf_with(
     Ok(path)
 }
 
-/// Writes `pdf` to a new print file in `dir` (named so
-/// [`clean_print_files`] finds it later) and returns its path.
+/// Writes `pdf` to a new print file in `dir`, named
+/// `ReasonCraft-print-<pid>-<n>.pdf` (so [`clean_print_files`] finds it
+/// later) with the first `n` that is free, and returns its path. An
+/// existing file is never replaced; on Unix only the user may read it.
 pub fn write_print_file(pdf: &[u8], dir: &Path) -> Result<PathBuf, ExportError> {
-    let stamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis();
-    let path = dir.join(format!("{PRINT_PREFIX}{stamp}{PRINT_SUFFIX}"));
-    std::fs::write(&path, pdf)?;
+    let pid = std::process::id();
+    let candidates = (0u64..).map(|n| dir.join(format!("{PRINT_PREFIX}{pid}-{n}{PRINT_SUFFIX}")));
+    let (path, mut file) = create_first_new(candidates, true)?;
+    if let Err(e) = file.write_all(pdf) {
+        drop(file);
+        let _ = std::fs::remove_file(&path);
+        return Err(e.into());
+    }
     Ok(path)
 }
 
