@@ -5,6 +5,8 @@ mod move_remove;
 #[cfg(test)]
 mod tests;
 mod validate;
+#[cfg(test)]
+mod validate_tests;
 
 use thiserror::Error;
 

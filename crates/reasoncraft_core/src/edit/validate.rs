@@ -5,14 +5,18 @@ use crate::model::{BoxKind, BoxNode, Document};
 use crate::rules::{NewItem, allowed_child};
 
 impl Document {
-    /// Check that the document is structurally sound: every box and card is
-    /// stored under its own id; every referenced id
-    /// exists; the root exists, is a claim and is owned by nothing; every
-    /// other box and card is owned exactly once (box children, card premises,
-    /// whole-card children or parking); premise boxes appear only in card
-    /// premise lists and other boxes never do; every card has a premise; and
-    /// everything is reachable from the root or a parking entry; and every
-    /// box holds only what the structure rules allow under it.
+    /// Check that the document is structurally sound:
+    /// - every box and card is stored under its own id;
+    /// - every referenced id exists;
+    /// - the root exists, is a claim and is owned by nothing;
+    /// - every other box and card is owned exactly once (box children, card
+    ///   premises, whole-card children or parking);
+    /// - premise boxes appear only in card premise lists and other boxes
+    ///   never do;
+    /// - every card has a premise;
+    /// - every box holds only what the structure rules allow under it, and a
+    ///   claim never holds both cards and categories;
+    /// - everything is reachable from the root or a parking entry.
     ///
     /// Exactly-once ownership plus reachability also rules out cycles: a
     /// cycle has no way in from the root or parking without giving one of
@@ -77,6 +81,7 @@ impl Document {
             claim("the parking area entries", item)?;
         }
         for node in self.boxes.values() {
+            self.check_claim_mix(node)?;
             for &item in &node.children {
                 if self.is_premise(item) {
                     return Err(format!("premise {item:?} is a child of box {:?}", node.id));
@@ -136,8 +141,7 @@ impl Document {
 
 impl Document {
     /// Check that `owner` may hold `item` under the structure rules (the
-    /// table in [`crate::rules`]); a claim also never holds both cards and
-    /// categories.
+    /// table in [`crate::rules`]);
     fn check_attachment(&self, owner: &BoxNode, item: Item) -> Result<(), String> {
         let child = match item {
             Item::Card(c) => NewItem::Card(self.cards[&c].kind.clone()),
@@ -154,15 +158,21 @@ impl Document {
         if !allowed_child(&owner.kind, &child) {
             return Err(format!("{item:?} cannot be under box {:?}", owner.id));
         }
-        if owner.kind == BoxKind::Claim {
-            let cards = owner.children.iter().any(|i| matches!(i, Item::Card(_)));
-            let categories = owner
-                .children
-                .iter()
-                .any(|i| matches!(i, Item::Box(b) if self.boxes[b].kind == BoxKind::Category));
-            if cards && categories {
-                return Err(format!("claim {:?} mixes cards and categories", owner.id));
-            }
+        Ok(())
+    }
+
+    /// A claim holds cards or categories, never both. Missing children are
+    /// not this check's business; the ownership check reports them.
+    fn check_claim_mix(&self, owner: &BoxNode) -> Result<(), String> {
+        if owner.kind != BoxKind::Claim {
+            return Ok(());
+        }
+        let cards = owner.children.iter().any(|i| matches!(i, Item::Card(_)));
+        let categories = owner.children.iter().any(|i| {
+            matches!(i, Item::Box(b) if self.boxes.get(b).is_some_and(|n| n.kind == BoxKind::Category))
+        });
+        if cards && categories {
+            return Err(format!("claim {:?} mixes cards and categories", owner.id));
         }
         Ok(())
     }
