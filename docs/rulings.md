@@ -26,3 +26,10 @@ Kept so the owner can review every choice made autonomously. Newest step last.
 - Ruling I2b: M7 (store empty author, translate on display) and split_dots/● parsing deferred to step 6 (i18n) — cost: existing comments keep English "Anonymous" text.
 - Ruling J2: park — mailto '#' fragment / attach%00 bypass of the attach check; carry to step 3 first task (drop # truncation, refuse control chars/% in param names) — cost: low (needs a client honouring attach plus user sending mail).
 - Ruling K2: park — Linux/macOS launcher failures after spawn are silent with that_detached — acceptable vs UI freeze.
+
+## Step 3 — text panel: Outline, Check, Snippets
+- Ruling: branch in place, no worktree — cost: none.
+- Ruling L2: revision not unique across tabs is harmless, because the outline and issue caches live inside each DocTab and are never keyed by tab index — cost if wrong: a stale view, which would surface in the outline and check tests.
+- Ruling M2: plan rule "EmptyCategory = any category without Category children" would flag every leaf of a normal grouping tree (the leaves are the content). Revised: flag a category with no children only when it is a direct child of the root (a top-level heading with nothing under it — matches the course's "≥2 levels, no empty categories"); deeper leaves are content — cost if wrong: misses deeper empty headings.
+- Ruling N2: accept enabling eframe's "clipboard" feature (arboard, MIT/Apache) — without it system copy/paste never worked (Ctrl+V in boxes, Copy all) — cost: a small dependency.
+- Ruling O2: no OS-level synthetic keyboard or mouse input during development checks (an implementer's synthetic input once reached another app's window); verification uses kittests, scenario files and window captures only — cost: less hands-on manual checking.

@@ -32,7 +32,7 @@
   - [x] Task 10: Change card type and links
   - [x] Task 11: Images in boxes
   - [x] Task 12: End-to-end verification and docs
-- [ ] Step 3 — Text panel: Outline, Snippets, Check ([plan](plans/2026-10-26-step3-text-panel.md))
+- [x] Step 3 — Text panel: Outline, Snippets, Check ([plan](plans/2026-10-26-step3-text-panel.md))
   - [x] Task 1: Carry-over fixes, revision counter, text panel tab shell
   - [x] Task 2: Core outline builder
   - [x] Task 3: Outline tab
@@ -42,7 +42,7 @@
   - [x] Task 7: Snippets tab
   - [x] Task 8: Drag a snippet selection onto the map
   - [x] Task 9: Document language
-  - [ ] Task 10: End-to-end verification and docs
+  - [x] Task 10: End-to-end verification and docs
 - [ ] Step 4 — Output: exports, print, Essay tab
 - [ ] Step 5 — Interchange & polish: Argdown, connector styles, layout directions, minimap, numbering, find/replace, spellcheck, autosave, Search commands
 - [ ] Step 6 — Release readiness: Dutch, accessibility, help, examples, templates, installers
@@ -135,6 +135,35 @@ It saves, closes, reopens and checks that the documents are equal, the assets ar
 - The building panel's Templates section is deferred to step 6, with the bundled templates.
 - Colour and font size in the Home "Box" group are deferred to step 5.
 
+### Step 3 — Text panel: Outline, Check, Snippets (2026-10-26)
+
+**Tests:** 375 pass, 4 ignored, across the workspace:
+- core: 87 unit tests, plus `checks` 9, `checks_text` 7, `layout` 10 and `outline` 8 integration tests;
+- app: 158 unit tests, 89 UI and integration tests (egui_kittest; `arrange` 8, `box_group` 7, `building` 7, `check` 6, `document` 3, `images` 3, `outline` 6, `snippet_drag` 3, `snippets` 9, `text_panel` 1, `ui` 36) and 7 end-to-end tests (`tests/e2e/`).
+
+The ignored tests are the release-only performance tests `layout_500_boxes_fast`, `outline_500_boxes_fast`, `checks_500_boxes_fast` and the kittest `outline_scrolls_large_map`. All four pass with `--release -- --ignored` (run per test target: the core lib's unit tests do not build in release because they use a debug-only helper). `cargo clippy --workspace --all-targets -- -D warnings` and `cargo fmt --check` are clean, and `cargo build --release -p reasoncraft` succeeds.
+
+The end-to-end tests now live in `app/reasoncraft/tests/e2e/` (`main.rs` keeps the step 1–2 tests):
+- `text_panel.rs` builds a map through actions only: two snippets (one tagged with a statistic source and a link), a reorder of the snippets, a selection dropped onto a premise with `Insert { Text }` (one history step, trimmed text, the source with its link under the new premise; undo and redo take both together), the language set to Dutch (the "of" compound check fires only then) and three outline switches. It saves, closes, reopens and checks that the document (snippets included), the outline's plain text and the issue list are equal, and that the tab's caches serve the reopened document. A build that drops `snippets` from the file makes it fail.
+- `meta_sessions.rs` covers the title/author session (Task 9 gap): a typed, uncommitted title is committed as one trimmed history step by switching tabs, by closing its tab (the unsaved prompt appears; Cancel keeps it) and by closing the window (the prompt appears). A session only ever runs in the active tab, because switching commits it; a session forced into a background tab is still committed when that tab is closed from another tab. Removing the commit in `request_close_tab` makes that test fail.
+
+**Checked by hand** (Windows 11, release build, 1280×800 window). The owner uses this machine, so no keyboard or mouse input was sent to the desktop (ruling O2). The interactive parts are covered by kittests instead, and the app was looked at through window captures:
+- *Map built bottom-up from snippets:* a throwaway test built a Dutch map through actions. Four snippets (two with sources) were dropped into the parking area or onto the claim, connected with `Move`, one card turned into an objection with **Type**, a note added, and the claim and a card rated. The resulting `.rcraft` was opened from the command line. The kittests `drag_chip_appears_for_selection` and `alt_drag_on_handle_carries_whole_snippet` drag with the pointer.
+- *Outline numbering and copy:* the dark capture shows `1`, `2`, `3` with because/but labels, sources unnumbered under their premise, `P1`/`P2` for the parked reason and note, role colours, the rating marker on the claim and the selected claim highlighted. Copying is covered by `copy_all_puts_plain_text_on_clipboard`.
+- *Resolving check issues by clicking:* the light capture shows the Check tab on the same map: missing key words with the terms listed, "en" as two statements in one, a question, unsupported premises, and "18 issues" in the status bar. The new kittest `resolve_issue_by_clicking_then_fixing` clicks a "Nothing supports it" row, which selects the premise, then adds a source and sees the tab go all clear and the chip go to 0.
+- *Switching language:* the kittest `switching_language_changes_checks` clicks Dutch on File → Document and sees the compound check fire, and Undo brings English back. The captures show a Dutch document.
+- Screenshots: `task-10-dark.png` (Outline), `task-10-light.png` (Check) and `task-10-snippets.png` (Snippets, dark) in `.superpowers/sdd/2026-10-26-step3-text-panel/`. The app's settings file was backed up before the captures and restored afterwards.
+
+**Known limitations:**
+- Key terms: plural and stem changes (Dutch "baan"/"banen") are not matched, and words shorter than four characters ("job"/"jobs") are ignored.
+- "Two statements in one" also fires on ordinary phrasing ("duur in aanschaf en onderhoud") and on quoted titles.
+- The Check tab's rows are not virtualised; a large, partly rated map lists many "Not rated yet" rows.
+- The outline does not scroll to follow a selection made on the canvas.
+- A snippet card being dragged to a new place in the list does not follow the pointer (an insertion line shows where it goes).
+- The first Ctrl+V after launch is occasionally ignored (seen once, not confirmed).
+- Pasting 120,000 characters as a snippet takes one frame of about 340 ms in a debug build. The text is cut to 50,000 characters, with a notice.
+- The UI is English only, so the outline's linking words stay English in a Dutch document (Dutch UI is step 6).
+
 ## Carry-over from step 1 reviews (put into the step 2+ plans)
 - [x] Step 2, first item: drag siblings to reorder them (spec §5), with a keyboard equivalent; add a "Connect to…" command for parking items
 - [x] Step 2: rebind the whole-card objection shortcut — Ctrl+Shift+Tab is the app switcher on macOS (Cmd) and usually "previous tab"
@@ -144,8 +173,8 @@ It saves, closes, reopens and checks that the documents are equal, the assets ar
 - [ ] Step 6: make the i18n bundle swappable for Dutch; Backspace deletes on macOS; verify Cmd+Q goes through the unsaved-changes prompt; close-button glyph contrast; long tab titles truncate
 
 ## Carry-over from step 2 reviews
-- [ ] Step 3, first item: mailto attach check — drop the '#' truncation and refuse control chars / '%' in parameter names
-- [ ] Step 3: keep theme/panel/marker toggles on the Connect-mode keep-list (optional polish)
+- [x] Step 3, first item: mailto attach check — drop the '#' truncation and refuse control chars / '%' in parameter names
+- [x] Step 3: keep theme/panel/marker toggles on the Connect-mode keep-list (optional polish)
 - [ ] Step 4, first task: backend-neutral painter (shape list / surface trait, images by asset key, PaintOptions export flag without selection/badges/link glyphs/grid) before any exporter
 - [ ] Step 4: inserting large photos off the UI thread (worker + busy state)
 - [ ] Step 5: link glyph vs rightmost arrowheads on busy boxes; badge/marker overlap between adjacent co-premises

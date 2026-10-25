@@ -10,12 +10,20 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Use the building panel.** View → Building panel lists boxes, sources and preset comments. Click an entry to insert it at the selection, or drag it onto the map. Targets that cannot take it show red, and the drop does nothing.
 - **Evaluate.** On the Evaluate tab (or with Alt+1/2/3/0, and Alt+Shift+0 to clear the whole map), accept, doubt or reject claims and premises, rate cards strong, weak or nil, and rate sources solid, shaky or nil. Ratings tint boxes, colour borders, label cards and set connector weight. Markers and shading can be switched off, and you can clear one rating or all of them.
 - **Comment.** Add your own comments or one of twelve presets (positive, needs work, problem) to any box. A badge shows the count, and Ctrl+Shift+M opens them. Set the name shown on your comments in File → Settings.
+- **Write from the Text panel.** View → Text panel opens the panel on the right, with four tabs (see [The Text panel](#the-text-panel)): an **Outline** of the map, an **Essay** tab that arrives in a later version, a **Check** tab with course-rule hints, and **Snippets** of source text to build the map from.
 - **Set the document language.** File → Document holds the title, author and language (English or Dutch) of the open map. The language drives the "and"/"or" and key-term checks; File → Settings sets the language new documents start with.
 - **Change types.** Turn a reason into an objection or back again (its strength is kept), and change a source's type.
 - **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
 - **Add images.** Put a PNG, JPEG or WebP image in a box. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.
 
 Files from older versions open unchanged, and files from newer versions keep any parts this version does not understand when you save them.
+
+## The Text panel
+
+- **Outline.** The map as a numbered list in canvas order: `1`, `1.1`, … for cards, letters for co-premises (`1a`, `1b`), `.w1` for an attack on a whole card, and `P1`, `P2` for items in the parking area. Sources sit unnumbered under their box. Switches turn the numbers, the linking words (because, but, however), indenting, role colours and notes on or off; your choice is remembered. Click a line to select its box on the map. **Copy all** puts the outline on the clipboard as indented plain text.
+- **Check.** Hints based on the course rules: missing key words (a word of the statement above that none of a card's premises uses), two statements in one ("and"/"or", or "en"/"of" in Dutch), questions, premises nothing supports, empty top-level categories, a partly rated map, ratings that disagree, and items in the parking area. Click a hint to select the item and bring it into view. The status bar shows the number of hints; click it to open this tab. Each check can be turned off in File → Settings. Checks are hints only: they never block anything.
+- **Snippets.** Keep pieces of source text beside the map. **New snippet** adds an empty one; **Paste as snippet** (or Ctrl+V while the pointer is over the tab and no text field has focus) adds the clipboard text. A snippet holds up to 50,000 characters; longer text is cut, with a notice. Tag a snippet with a source type, a citation and a link, and drag the handle to reorder the list.
+- **Build the map from snippets.** Select text in a snippet and drag the **Drag to map** chip onto the map, or hold Alt and drag a snippet's handle to take its whole text. On a claim or premise the text becomes a new reason under it, on a card a reason for the whole card, on empty canvas a reason in the parking area, and on a category a new category. The snippet's source goes under the new premise, and the drop is one undo step. Change the new card's type afterwards with **Type**. Blank text, notes and sources refuse the drop and show red.
 
 ## Build and run
 

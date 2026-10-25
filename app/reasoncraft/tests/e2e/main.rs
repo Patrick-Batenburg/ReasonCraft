@@ -1,6 +1,11 @@
 //! End to end: build and evaluate a map through actions only (ratings,
 //! sources, links, comments, an image, a reorder, a "Connect to…"), save
-//! it, open it again and check that nothing was lost.
+//! it, open it again and check that nothing was lost. The step-3 text
+//! panel flow is in [`text_panel`], the title/author session on the
+//! close paths in [`meta_sessions`].
+
+mod meta_sessions;
+mod text_panel;
 
 use reasoncraft::actions::{Action, Dir, Insertable, Rate, apply};
 use reasoncraft::app::ReasonCraftApp;

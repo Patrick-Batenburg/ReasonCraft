@@ -221,3 +221,37 @@ fn every_check_has_text() {
     assert_eq!(chip(1), "1 issue");
     assert_eq!(chip(3), "3 issues");
 }
+
+/// The step-3 review flow: click an issue, fix the item it selected, and
+/// the issue goes away (the map ends up clean).
+#[test]
+fn resolve_issue_by_clicking_then_fixing() {
+    let mut d = Document::new("Robots help people");
+    let (_, premise) = d
+        .add_card(
+            Parent::Box(d.root),
+            CardKind::Reason,
+            "Robots help people lift heavy loads",
+        )
+        .unwrap();
+    let mut h = harness_with(d, TextTab::Check);
+    h.run();
+    assert!(has(&h, &heading("unsupported", 1)));
+    assert!(has(&h, &chip(1)));
+
+    h.get_by_role_and_label(Role::ListItem, "Robots help people lift heavy loads")
+        .click();
+    h.run();
+    assert_eq!(h.state().tabs[0].selection, Some(Item::Box(premise)));
+    // With the premise selected, a source goes under it.
+    for a in [
+        Action::AddSource(SourceType::Statistic),
+        Action::TypeText("Robot use survey 2024".into()),
+        Action::StopEditing,
+    ] {
+        h.state_mut().pending.push(a);
+    }
+    h.run();
+    assert!(has(&h, &t("check.all_clear")));
+    assert!(has(&h, &chip(0)));
+}
