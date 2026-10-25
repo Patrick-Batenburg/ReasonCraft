@@ -25,7 +25,7 @@
   - [x] Task 3: Package format — assets and unknown zip entries
   - [x] Task 4: Settings, evaluation actions, Evaluate ribbon tab, keyboard
   - [x] Task 5: Evaluation visuals on the map
-  - [ ] Task 6: Sources — adding, icons, changing type
+  - [x] Task 6: Sources — adding, icons, changing type
   - [ ] Task 7: Comments with presets; author name setting
   - [ ] Task 8: Building panel with drag-and-drop
   - [ ] Task 9: Sibling reorder, Connect to…, shortcut rebinding
