@@ -200,6 +200,7 @@ These are hints, never blocking. The builder may add checks.
 - JSON stays human-readable and diff-friendly.
 - Unknown fields from newer versions are preserved on save where practical.
 - Schema version is checked on open, with a clear message if the file is newer than the app.
+- **Forward compatibility.** Unknown fields survive a save, but an older build cannot know what they mean. So any new field that references image assets, and any new enum value in ratings, verdicts or kinds, must bump `SCHEMA_VERSION`. Older builds then refuse the file with the "newer version" message instead of silently dropping data (an unreferenced asset is not saved; an unknown rating or kind would not parse or would fall back).
 
 **Export**
 - **PNG:** chooseable scale/DPI, optional transparent background.

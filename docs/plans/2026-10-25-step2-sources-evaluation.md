@@ -561,3 +561,4 @@ app/reasoncraft/src/
   - Ctrl+Shift+K: Connect to….
   - Ctrl+Shift+O: whole-card objection.
 - **Images** are normalised to PNG, at most 1600 px on the longest side, and stored content-addressed in the `.rcraft` zip.
+- **No images in Notes.** Sticky notes cannot hold an image. This deviates from spec §4 ("any box can hold an image"): a note is a short aside next to the map, and an image would turn it into a second kind of content box.
