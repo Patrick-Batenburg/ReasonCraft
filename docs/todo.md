@@ -63,3 +63,11 @@ I checked all eight directions by hand and checked the cursor shapes against the
 - The "replace existing file?" prompt can only appear with non-Windows file dialogs. The Windows dialog already asks before overwriting the file it returns.
 - The Building and Text side panels are placeholders until steps 2 and 3.
 - The debug-only "Load sample map" always opens a new tab, even when the current tab is untouched.
+
+## Carry-over from step 1 reviews (put into the step 2+ plans)
+- [ ] Step 2, first item: drag siblings to reorder them (spec §5), with a keyboard equivalent; add a "Connect to…" command for parking items
+- [ ] Step 2: rebind the whole-card objection shortcut — Ctrl+Shift+Tab is the app switcher on macOS (Cmd) and usually "previous tab"
+- [ ] Step 2: store roles/strength in `Layout` so evaluation visuals add no per-frame `owner_of` scans; design an image asset store kept out of undo snapshots; save must keep unknown zip entries
+- [ ] Step 5: compact layout (contour packing) so 100+ box maps stay readable at Fit; lay out on main/cross axes for layout directions
+- [ ] Step 5: `validate()` should also check map key == stored id and kind-level attach rules (needed for Argdown import)
+- [ ] Step 6: make the i18n bundle swappable for Dutch; Backspace deletes on macOS; verify Cmd+Q goes through the unsaved-changes prompt; close-button glyph contrast; long tab titles truncate
