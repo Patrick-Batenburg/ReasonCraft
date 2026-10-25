@@ -1,24 +1,13 @@
 //! The application: open tabs, settings and the per-frame loop.
 
-use eframe::egui;
-use serde::{Deserialize, Serialize};
-
 use crate::actions::{self, Action};
 use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
 use crate::file_ops::{FakeDialogs, FileDialogs, Modal, RfdDialogs};
+pub use crate::settings::{SETTINGS_KEY, Settings};
 use crate::shell;
-use crate::theme::{self, ThemeChoice, Tokens};
-
-/// eframe storage key for [`Settings`].
-pub const SETTINGS_KEY: &str = "settings";
-
-/// Personal preferences that survive restarts.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Settings {
-    pub theme: ThemeChoice,
-}
+use crate::theme::{self, Tokens};
+use eframe::egui;
 
 /// Which ribbon tab is showing. `File` shows the backstage instead of the map.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -36,7 +25,8 @@ pub enum RibbonTab {
 pub struct ReasonCraftApp {
     pub tabs: Vec<DocTab>,
     pub active: usize,
-    pub theme: ThemeChoice,
+    /// Personal preferences (theme, author, evaluation display).
+    pub settings: Settings,
     pub left_panel: bool,
     pub right_panel: bool,
     /// Actions queued by widgets this frame, applied at the end of the frame.
@@ -63,12 +53,12 @@ impl ReasonCraftApp {
         Self {
             tabs: vec![DocTab::new()],
             active: 0,
-            theme: settings.theme,
+            tokens: theme::resolve(settings.theme, true),
+            settings,
             left_panel: true,
             right_panel: true,
             pending: Vec::new(),
             ribbon_tab: RibbonTab::default(),
-            tokens: theme::resolve(settings.theme, true),
             measure_cache: MeasureCache::default(),
             dialogs,
             modal: None,
@@ -163,7 +153,7 @@ impl ReasonCraftApp {
 
     fn sync_theme(&mut self, ctx: &egui::Context) {
         let os_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
-        self.tokens = theme::resolve(self.theme, os_dark);
+        self.tokens = theme::resolve(self.settings.theme, os_dark);
         if self.applied != Some(self.tokens) {
             // Ctrl+=/-/0 zoom the map, not the whole interface.
             ctx.options_mut(|o| o.zoom_with_keyboard = false);
@@ -190,7 +180,7 @@ impl eframe::App for ReasonCraftApp {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, SETTINGS_KEY, &Settings { theme: self.theme });
+        eframe::set_value(storage, SETTINGS_KEY, &self.settings);
     }
 
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {

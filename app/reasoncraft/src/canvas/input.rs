@@ -5,7 +5,7 @@ use eframe::egui::{self, Event, FocusDirection, Key, Modifiers, Popup};
 use reasoncraft_core::{CardKind, Document, Item, Parent};
 
 use super::editor::editor_id;
-use crate::actions::{Action, Dir, is_enabled};
+use crate::actions::{Action, Dir, Rate, is_enabled};
 use crate::app::ReasonCraftApp;
 
 /// The command bound to `key` with `mods`, if any. `Modifiers::command` is
@@ -15,10 +15,22 @@ use crate::app::ReasonCraftApp;
 /// Ctrl+Enter (finish and add a co-premise) and the file keys Ctrl+S,
 /// Ctrl+Shift+S, Ctrl+O and Ctrl+N (finish, then the command) are commands;
 /// every other key is text.
+///
+/// Alt+1/2/3/0 rate the selection (not while editing); no other Alt combination
+/// is a command.
 pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action> {
     use Action as A;
     if mods.alt {
-        return None;
+        if editing || mods.shift || mods.ctrl || mods.command || mods.mac_cmd {
+            return None;
+        }
+        return Some(A::Rate(match key {
+            Key::Num1 => Rate::High,
+            Key::Num2 => Rate::Mid,
+            Key::Num3 => Rate::Low,
+            Key::Num0 => Rate::Clear,
+            _ => return None,
+        }));
     }
     let (cmd, shift) = (mods.command, mods.shift);
     if editing {
@@ -88,6 +100,8 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     }
     let can_type = editing.is_none() && matches!(tab.selection, Some(Item::Box(_)));
     let mut out = Vec::new();
+    // The text an Alt shortcut also produces ("1", or "¡" on macOS) is not typing.
+    let mut alt_text = false;
     ctx.input_mut(|i| {
         i.events.retain(|e| {
             let action = match e {
@@ -96,7 +110,12 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                     pressed: true,
                     modifiers,
                     ..
-                } => key_to_action(*key, *modifiers, editing.is_some()),
+                } => {
+                    let action = key_to_action(*key, *modifiers, editing.is_some());
+                    alt_text = action.is_some() && modifiers.alt;
+                    action
+                }
+                Event::Text(_) if std::mem::take(&mut alt_text) => return false,
                 Event::Text(s) if can_type && !s.trim().is_empty() => {
                     Some(Action::TypeText(s.clone()))
                 }
@@ -215,193 +234,4 @@ fn neighbour<T>(list: &[T], i: usize, step: isize) -> Option<&T> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use reasoncraft_core::CardKind;
-
-    #[test]
-    fn tab_adds_reason() {
-        assert_eq!(
-            key_to_action(Key::Tab, Modifiers::NONE, false),
-            Some(Action::AddReason)
-        );
-        assert_eq!(
-            key_to_action(Key::Tab, Modifiers::SHIFT, false),
-            Some(Action::AddObjection)
-        );
-        assert_eq!(
-            key_to_action(Key::Enter, Modifiers::COMMAND, false),
-            Some(Action::AddCoPremise)
-        );
-        assert_eq!(
-            key_to_action(Key::F2, Modifiers::NONE, false),
-            Some(Action::Edit)
-        );
-        assert_eq!(
-            key_to_action(Key::Delete, Modifiers::SHIFT, false),
-            Some(Action::DeleteBranch)
-        );
-        assert_eq!(
-            key_to_action(Key::ArrowLeft, Modifiers::NONE, false),
-            Some(Action::Navigate(Dir::Left))
-        );
-        let cmd = Modifiers::COMMAND;
-        assert_eq!(key_to_action(Key::Z, cmd, false), Some(Action::Undo));
-        assert_eq!(key_to_action(Key::Y, cmd, false), Some(Action::Redo));
-        assert_eq!(
-            key_to_action(Key::Z, cmd | Modifiers::SHIFT, false),
-            Some(Action::Redo)
-        );
-        assert_eq!(key_to_action(Key::S, cmd, false), Some(Action::Save));
-        let cmd_shift = cmd | Modifiers::SHIFT;
-        assert_eq!(
-            key_to_action(Key::Tab, cmd_shift, false),
-            Some(Action::TargetWholeCard(CardKind::Objection))
-        );
-        assert_eq!(
-            key_to_action(Key::R, cmd_shift, false),
-            Some(Action::TargetWholeCard(CardKind::Reason))
-        );
-        assert_eq!(
-            key_to_action(Key::P, cmd_shift, false),
-            Some(Action::JumpParking)
-        );
-        assert_eq!(key_to_action(Key::Tab, cmd, false), None);
-        assert_eq!(key_to_action(Key::R, cmd, false), None);
-        assert_eq!(key_to_action(Key::Num0, cmd, false), Some(Action::Zoom100));
-        assert_eq!(key_to_action(Key::Num1, cmd, false), Some(Action::ZoomFit));
-        assert_eq!(key_to_action(Key::Equals, cmd, false), Some(Action::ZoomIn));
-        assert_eq!(key_to_action(Key::Minus, cmd, false), Some(Action::ZoomOut));
-        // Plain letters are text, not commands; Ctrl alone (not Cmd) is no command on macOS.
-        assert_eq!(key_to_action(Key::Z, Modifiers::NONE, false), None);
-        assert_eq!(key_to_action(Key::Z, Modifiers::MAC_CMD, false), None);
-    }
-
-    #[test]
-    fn typing_mode_only_intercepts_esc_tab_ctrl_enter_and_file_keys() {
-        let none = Modifiers::NONE;
-        let cmd = Modifiers::COMMAND;
-        assert_eq!(key_to_action(Key::S, cmd, true), Some(Action::Save));
-        assert_eq!(
-            key_to_action(Key::S, cmd | Modifiers::SHIFT, true),
-            Some(Action::SaveAs)
-        );
-        assert_eq!(key_to_action(Key::O, cmd, true), Some(Action::Open));
-        assert_eq!(key_to_action(Key::N, cmd, true), Some(Action::New));
-        assert_eq!(
-            key_to_action(Key::Escape, none, true),
-            Some(Action::StopEditing)
-        );
-        assert_eq!(key_to_action(Key::Tab, none, true), Some(Action::AddReason));
-        assert_eq!(
-            key_to_action(Key::Enter, Modifiers::COMMAND, true),
-            Some(Action::AddCoPremise)
-        );
-        let cmd_shift = cmd | Modifiers::SHIFT;
-        assert_eq!(
-            key_to_action(Key::Tab, cmd_shift, true),
-            Some(Action::TargetWholeCard(CardKind::Objection))
-        );
-        assert_eq!(
-            key_to_action(Key::R, cmd_shift, true),
-            Some(Action::TargetWholeCard(CardKind::Reason))
-        );
-        for (key, mods) in [
-            (Key::Enter, none),
-            (Key::F2, none),
-            (Key::Delete, none),
-            (Key::Delete, Modifiers::SHIFT),
-            (Key::ArrowUp, none),
-            (Key::ArrowLeft, none),
-            (Key::Z, Modifiers::COMMAND),
-            (Key::Y, Modifiers::COMMAND),
-            (Key::S, none),
-            (Key::Num0, Modifiers::COMMAND),
-            (Key::P, cmd_shift),
-            (Key::R, none),
-            (Key::A, none),
-        ] {
-            assert_eq!(key_to_action(key, mods, true), None, "{key:?} {mods:?}");
-        }
-    }
-
-    /// root ← card A [a1, a2] ← card C [c1] under a1; root ← card B [b1].
-    #[test]
-    fn navigate_up_down_siblings() {
-        let mut d = Document::new("Claim");
-        let root = d.root;
-        let (ca, a1) = d
-            .add_card(Parent::Box(root), CardKind::Reason, "a1")
-            .unwrap();
-        let a2 = d.add_premise(ca, None, "a2").unwrap();
-        let (cb, b1) = d
-            .add_card(Parent::Box(root), CardKind::Objection, "b1")
-            .unwrap();
-        let (cc, c1) = d.add_card(Parent::Box(a1), CardKind::Reason, "c1").unwrap();
-        let b = Item::Box;
-        let nav = |from: Item, dir: Dir| navigate(&d, from, dir);
-
-        // Up: premise → its card; card → the box it hangs from.
-        assert_eq!(nav(b(a1), Dir::Up), Some(Item::Card(ca)));
-        assert_eq!(nav(Item::Card(ca), Dir::Up), Some(b(root)));
-        assert_eq!(nav(b(c1), Dir::Up), Some(Item::Card(cc)));
-        assert_eq!(nav(Item::Card(cc), Dir::Up), Some(b(a1)));
-        assert_eq!(nav(b(root), Dir::Up), None);
-
-        // Down: a box's first child (a card itself); a card's first premise.
-        assert_eq!(nav(b(root), Dir::Down), Some(Item::Card(ca)));
-        assert_eq!(nav(Item::Card(ca), Dir::Down), Some(b(a1)));
-        assert_eq!(nav(b(a1), Dir::Down), Some(Item::Card(cc)));
-        assert_eq!(nav(b(a2), Dir::Down), None);
-
-        // Left/right: co-premises first, then the neighbouring cards.
-        assert_eq!(nav(b(a1), Dir::Right), Some(b(a2)));
-        assert_eq!(nav(b(a2), Dir::Left), Some(b(a1)));
-        assert_eq!(nav(b(a2), Dir::Right), Some(b(b1)));
-        assert_eq!(nav(b(b1), Dir::Left), Some(b(a2)));
-        assert_eq!(nav(b(b1), Dir::Right), None);
-        assert_eq!(nav(b(a1), Dir::Left), None);
-        assert_eq!(nav(Item::Card(ca), Dir::Right), Some(Item::Card(cb)));
-        assert_eq!(nav(Item::Card(cb), Dir::Left), Some(Item::Card(ca)));
-        assert_eq!(nav(Item::Card(ca), Dir::Left), None);
-        assert_eq!(nav(b(root), Dir::Right), None);
-    }
-
-    /// Whole-card attackers and parked items are reachable by keyboard.
-    #[test]
-    fn navigate_reaches_whole_card_attackers_and_parking() {
-        let mut d = Document::new("Claim");
-        let root = d.root;
-        let (ca, a1) = d
-            .add_card(Parent::Box(root), CardKind::Reason, "a1")
-            .unwrap();
-        let (w, w1) = d
-            .add_card(Parent::Card(ca), CardKind::Objection, "w1")
-            .unwrap();
-        assert_eq!(navigate(&d, Item::Box(w1), Dir::Up), Some(Item::Card(w)));
-        assert_eq!(navigate(&d, Item::Card(w), Dir::Up), Some(Item::Card(ca)));
-        assert_eq!(navigate(&d, Item::Card(ca), Dir::Down), Some(Item::Box(a1)));
-
-        // Parking: no way up out of it; Ctrl+Shift+P toggles.
-        assert_eq!(parking_jump(&d, Some(Item::Box(root))), None);
-        let parked = d.add_loose(reasoncraft_core::NewLoose::Card(CardKind::Reason), "p");
-        let Item::Card(pc) = parked else {
-            panic!("a loose card")
-        };
-        let pp = d.cards[&pc].premises[0];
-        let (_, deep) = d
-            .add_card(Parent::Box(pp), CardKind::Reason, "deep")
-            .unwrap();
-        d.add_loose(reasoncraft_core::NewLoose::Note, "n");
-        assert_eq!(navigate(&d, parked, Dir::Up), None);
-        assert_eq!(navigate(&d, Item::Box(pp), Dir::Up), Some(parked));
-        assert_eq!(parking_jump(&d, None), Some(parked));
-        assert_eq!(parking_jump(&d, Some(Item::Box(a1))), Some(parked));
-        assert_eq!(parking_jump(&d, Some(Item::Card(w))), Some(parked));
-        assert_eq!(parking_jump(&d, Some(parked)), Some(Item::Box(root)));
-        assert_eq!(
-            parking_jump(&d, Some(Item::Box(deep))),
-            Some(Item::Box(root))
-        );
-    }
-}
+mod tests;

@@ -39,6 +39,15 @@ pub enum Icon {
     Maximize,
     Restore,
     Back,
+    Accept,
+    Unsure,
+    Reject,
+    Strong,
+    Weak,
+    Nil,
+    Clear,
+    Markers,
+    Shading,
 }
 
 /// Maps unit coordinates (0..1) onto the icon's square.
@@ -321,6 +330,62 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
             pen.arc(0.5, 0.5, 0.4, 0.0, TAU);
             pen.line(&[(0.3, 0.5), (0.7, 0.5)]);
             pen.line(&[(0.46, 0.34), (0.3, 0.5), (0.46, 0.66)]);
+        }
+        Icon::Accept => {
+            pen.circle(0.5, 0.5, 0.4);
+            pen.line_c(&[(0.3, 0.52), (0.44, 0.66), (0.7, 0.36)], muted(t.reason));
+        }
+        Icon::Unsure => {
+            pen.circle(0.5, 0.5, 0.4);
+            pen.arc(0.5, 0.4, 0.12, PI, 2.4 * PI);
+            pen.line(&[(0.5, 0.52), (0.5, 0.58)]);
+            pen.disc(0.5, 0.7, 0.035, fg);
+        }
+        Icon::Reject => {
+            pen.circle(0.5, 0.5, 0.4);
+            let c = muted(t.objection);
+            pen.line_c(&[(0.36, 0.36), (0.64, 0.64)], c);
+            pen.line_c(&[(0.64, 0.36), (0.36, 0.64)], c);
+        }
+        // A link that carries its conclusion firmly, weakly or not at all.
+        Icon::Strong => {
+            let thick = Stroke::new(width * 2.2, fg);
+            painter.line_segment([pen.p(0.5, 0.88), pen.p(0.5, 0.2)], thick);
+            painter.line(
+                vec![pen.p(0.3, 0.38), pen.p(0.5, 0.16), pen.p(0.7, 0.38)],
+                thick,
+            );
+        }
+        Icon::Weak => {
+            for i in 0..3 {
+                let y = 0.88 - 0.2 * i as f32;
+                pen.line(&[(0.5, y), (0.5, y - 0.1)]);
+            }
+            pen.line(&[(0.34, 0.34), (0.5, 0.18), (0.66, 0.34)]);
+        }
+        Icon::Nil => {
+            pen.circle(0.5, 0.5, 0.32);
+            pen.line(&[(0.22, 0.86), (0.78, 0.14)]);
+        }
+        Icon::Clear => {
+            // An eraser on a line.
+            pen.line(&[
+                (0.18, 0.56),
+                (0.5, 0.24),
+                (0.8, 0.54),
+                (0.48, 0.86),
+                (0.18, 0.56),
+            ]);
+            pen.line(&[(0.34, 0.4), (0.64, 0.7)]);
+            pen.line_c(&[(0.48, 0.9), (0.92, 0.9)], muted(t.accent));
+        }
+        Icon::Markers => {
+            pen.rect(0.1, 0.3, 0.78, 0.82, fg);
+            pen.disc(0.78, 0.3, 0.14, muted(t.reason));
+        }
+        Icon::Shading => {
+            pen.rect(0.12, 0.2, 0.88, 0.8, fg);
+            pen.fill(0.12, 0.2, 0.5, 0.8, muted(t.accent).gamma_multiply(0.6));
         }
     }
 }

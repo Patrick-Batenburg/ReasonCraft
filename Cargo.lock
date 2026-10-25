@@ -2505,6 +2505,7 @@ dependencies = [
  "reasoncraft_core",
  "rfd",
  "serde",
+ "serde_json",
  "tempfile",
  "unic-langid",
 ]

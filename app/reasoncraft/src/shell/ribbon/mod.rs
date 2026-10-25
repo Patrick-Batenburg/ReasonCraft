@@ -12,6 +12,8 @@ use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::i18n::t;
 use crate::theme::{ThemeChoice, Tokens};
 
+mod evaluate;
+
 const STRIP_H: f32 = 30.0;
 const BUTTON_H: f32 = 66.0;
 const SMALL_H: f32 = 22.0;
@@ -43,6 +45,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
                     ui.set_height(BUTTON_H + LABEL_H + 4.0);
                     match app.ribbon_tab {
                         RibbonTab::Home => home(ui, app),
+                        RibbonTab::Evaluate => evaluate::show(ui, app),
                         RibbonTab::View => view(ui, app),
                         _ => {
                             ui.add_space(8.0);
@@ -190,7 +193,7 @@ fn view(ui: &mut Ui, app: &mut ReasonCraftApp) {
             (Icon::ThemeDark, "theme.dark", ThemeChoice::Dark),
         ];
         for (icon, key, choice) in themes {
-            if large(ui, &tk, icon, &t(key), true, app.theme == choice).clicked() {
+            if large(ui, &tk, icon, &t(key), true, app.settings.theme == choice).clicked() {
                 out.push(Action::SetTheme(choice));
             }
         }
@@ -215,6 +218,9 @@ fn view(ui: &mut Ui, app: &mut ReasonCraftApp) {
                 out.push(Action::TogglePanel(panel));
             }
         }
+    });
+    group(ui, &tk, &t("group.evaluation"), |ui| {
+        evaluate::display_toggles(ui, app, &mut out);
     });
     #[cfg(debug_assertions)]
     group(ui, &tk, &t("group.debug"), |ui| {

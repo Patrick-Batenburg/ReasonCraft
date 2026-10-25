@@ -46,7 +46,10 @@ fn theme_switch_applies_dark_visuals() {
     h.get_by_label(&t("theme.dark")).click();
     h.run();
     assert!(h.ctx.global_style().visuals.dark_mode);
-    assert_eq!(h.state().theme, reasoncraft::theme::ThemeChoice::Dark);
+    assert_eq!(
+        h.state().settings.theme,
+        reasoncraft::theme::ThemeChoice::Dark
+    );
 }
 
 #[test]
@@ -787,4 +790,135 @@ fn view_follows_keyboard_selection() {
         viewport.shrink(23.0).contains_rect(on_screen),
         "{on_screen:?} not inside {viewport:?}"
     );
+}
+
+#[test]
+fn evaluate_tab_rates_selected_card() {
+    use reasoncraft_core::{CardKind, CardStrength, Document, Item, Parent};
+    let mut d = Document::new("Claim");
+    let root = d.root;
+    let (card, _) = d
+        .add_card(Parent::Box(root), CardKind::Reason, "Premise")
+        .unwrap();
+    let mut h = harness_with(d);
+    h.state_mut().tabs[0].selection = Some(Item::Card(card));
+    h.run();
+    h.get_by_label(&t("ribbon.tab.evaluate")).click();
+    h.run();
+    let strong = t("eval.strong");
+    assert_eq!(strong, "Strong");
+    let toggled =
+        |h: &Harness<'static, ReasonCraftApp>| h.get_by_label(&strong).accesskit_node().toggled();
+    assert_eq!(toggled(&h), Some(egui::accesskit::Toggled::False));
+    // A card takes no acceptance: that group is greyed out.
+    assert!(
+        h.get_by_label(&t("eval.accept"))
+            .accesskit_node()
+            .is_disabled()
+    );
+    h.get_by_label(&strong).click();
+    h.run();
+    let tab = &h.state().tabs[0];
+    assert_eq!(tab.doc.cards[&card].strength, Some(CardStrength::Strong));
+    assert_eq!(tab.history.undo.len(), 1);
+    assert_eq!(toggled(&h), Some(egui::accesskit::Toggled::True));
+}
+
+#[test]
+fn view_tab_toggles_evaluation_display() {
+    let mut h = harness();
+    h.run();
+    h.get_by_label(&t("ribbon.tab.view")).click();
+    h.run();
+    h.get_by_label(&t("eval.show_markers")).click();
+    h.run();
+    assert!(!h.state().settings.show_markers);
+    h.get_by_label(&t("eval.shading")).click();
+    h.run();
+    assert!(!h.state().settings.eval_shading);
+}
+
+/// eframe storage held in memory.
+#[derive(Default)]
+struct MemStorage(std::collections::HashMap<String, String>);
+
+impl eframe::Storage for MemStorage {
+    fn get_string(&self, key: &str) -> Option<String> {
+        self.0.get(key).cloned()
+    }
+    fn set_string(&mut self, key: &str, value: String) {
+        self.0.insert(key.to_owned(), value);
+    }
+    fn remove_string(&mut self, key: &str) {
+        self.0.remove(key);
+    }
+    fn flush(&mut self) {}
+}
+
+#[test]
+fn settings_from_old_storage_fill_defaults() {
+    use eframe::Storage as _;
+    use reasoncraft::settings::{SETTINGS_KEY, Settings};
+    use reasoncraft::theme::ThemeChoice;
+    let s: Settings = serde_json::from_str(r#"{"theme":"Light"}"#).unwrap();
+    assert_eq!(s.theme, ThemeChoice::Light);
+    assert_eq!(s.author, "");
+    assert!(s.show_markers && s.eval_shading);
+
+    // The same through eframe's own storage format, as a step-1 build wrote it.
+    let mut storage = MemStorage::default();
+    storage.set_string(SETTINGS_KEY, "(theme:Light)".to_owned());
+    let s: Settings = eframe::get_value(&storage, SETTINGS_KEY).unwrap();
+    assert_eq!(
+        s,
+        Settings {
+            theme: ThemeChoice::Light,
+            ..Settings::default()
+        }
+    );
+    let d = Settings::default();
+    assert_eq!(d.theme, ThemeChoice::Dark);
+    assert!(d.author.is_empty() && d.show_markers && d.eval_shading);
+
+    // The whole struct round-trips.
+    let custom = Settings {
+        theme: ThemeChoice::System,
+        author: "Ann".to_owned(),
+        show_markers: false,
+        eval_shading: true,
+    };
+    eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
+    assert_eq!(
+        eframe::get_value::<Settings>(&storage, SETTINGS_KEY),
+        Some(custom)
+    );
+}
+
+/// Alt+1 rates the selected claim; the "1" the OS also sends is not typed.
+#[test]
+fn alt_digit_rates_without_typing() {
+    use reasoncraft_core::{Acceptance, Document};
+    let d = Document::new("Claim");
+    let root = d.root;
+    let mut h = harness_with(d);
+    h.state_mut().tabs[0].selection = Some(reasoncraft_core::Item::Box(root));
+    h.run();
+    let alt = |k| egui::Event::Key {
+        key: k,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::ALT,
+    };
+    one_frame(
+        &mut h,
+        vec![alt(egui::Key::Num1), egui::Event::Text("1".to_owned())],
+    );
+    let tab = &h.state().tabs[0];
+    assert_eq!(tab.doc.boxes[&root].acceptance, Some(Acceptance::Accept));
+    assert_eq!(tab.doc.boxes[&root].text, "Claim");
+    assert_eq!(tab.editing, None);
+    assert_eq!(tab.history.undo.len(), 1);
+    one_frame(&mut h, vec![alt(egui::Key::Num0)]);
+    assert_eq!(h.state().tabs[0].doc.boxes[&root].acceptance, None);
 }

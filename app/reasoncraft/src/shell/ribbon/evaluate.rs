@@ -1,0 +1,168 @@
+//! The Evaluate ribbon tab: rate the selection, clear ratings and choose how
+//! ratings show on the map.
+
+use eframe::egui::Ui;
+use reasoncraft_core::{Acceptance, CardStrength, ClearScope, SourceRating};
+
+use super::{group, large};
+use crate::actions::{Action, Rated, is_enabled, rated};
+use crate::app::ReasonCraftApp;
+use crate::doc_tab::DocTab;
+use crate::i18n::t;
+use crate::shell::icons::Icon;
+use crate::theme::Tokens;
+
+pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
+    let tk = app.tokens;
+    let tab = app.active_tab();
+    let (mut acceptance, mut strength, mut source) = (None, None, None);
+    match rated(tab) {
+        Some(Rated::Acceptance(b)) => acceptance = tab.doc.boxes[&b].acceptance,
+        Some(Rated::Strength(c)) => strength = tab.doc.cards[&c].strength,
+        Some(Rated::Source(b)) => source = tab.doc.boxes[&b].source_rating,
+        None => {}
+    }
+    let mut out = Vec::new();
+
+    use Acceptance as A;
+    use CardStrength as C;
+    use SourceRating as S;
+    let claim = [
+        (Icon::Accept, "eval.accept", A::Accept),
+        (Icon::Unsure, "eval.unsure", A::Unsure),
+        (Icon::Reject, "eval.reject", A::Reject),
+    ];
+    let card = [
+        (Icon::Strong, "eval.strong", C::Strong),
+        (Icon::Weak, "eval.weak", C::Weak),
+        (Icon::Nil, "eval.nil", C::Nil),
+    ];
+    let src = [
+        (Icon::Strong, "eval.solid", S::Solid),
+        (Icon::Weak, "eval.shaky", S::Shaky),
+        (Icon::Nil, "eval.nil", S::Nil),
+    ];
+    group(ui, &tk, &t("group.eval_claim"), |ui| {
+        let tip = t("eval.tip.claim");
+        out.extend(scale(
+            ui,
+            &tk,
+            tab,
+            &tip,
+            acceptance,
+            claim,
+            Action::SetAcceptance,
+        ));
+    });
+    group(ui, &tk, &t("group.eval_card"), |ui| {
+        let tip = t("eval.tip.card");
+        out.extend(scale(
+            ui,
+            &tk,
+            tab,
+            &tip,
+            strength,
+            card,
+            Action::SetStrength,
+        ));
+    });
+    group(ui, &tk, &t("group.eval_source"), |ui| {
+        let tip = t("eval.tip.source");
+        out.extend(scale(
+            ui,
+            &tk,
+            tab,
+            &tip,
+            source,
+            src,
+            Action::SetSourceRating,
+        ));
+    });
+    group(ui, &tk, &t("group.eval_clear"), |ui| {
+        let selection = tab
+            .selection
+            .map(|item| Action::ClearEvaluation(ClearScope::Item(item)));
+        let enabled = selection.as_ref().is_some_and(|a| is_enabled(tab, a));
+        if large(
+            ui,
+            &tk,
+            Icon::Clear,
+            &t("eval.clear_selection"),
+            enabled,
+            false,
+        )
+        .on_hover_text(t("eval.tip.clear_selection"))
+        .clicked()
+        {
+            out.extend(selection);
+        }
+        let map = Action::ClearEvaluation(ClearScope::Map);
+        if large(
+            ui,
+            &tk,
+            Icon::Clear,
+            &t("eval.clear_map"),
+            is_enabled(tab, &map),
+            false,
+        )
+        .on_hover_text(t("eval.tip.clear_map"))
+        .clicked()
+        {
+            out.push(map);
+        }
+    });
+    group(ui, &tk, &t("group.eval_view"), |ui| {
+        display_toggles(ui, app, &mut out);
+    });
+    app.pending.extend(out);
+}
+
+/// One rating scale: a button per value, "on" for the current value.
+/// Clicking the current value clears it. Returns the clicked button's action.
+fn scale<T: Copy + PartialEq>(
+    ui: &mut Ui,
+    tk: &Tokens,
+    tab: &DocTab,
+    tip: &str,
+    current: Option<T>,
+    values: [(Icon, &str, T); 3],
+    set: fn(Option<T>) -> Action,
+) -> Option<Action> {
+    let mut clicked = None;
+    for (icon, key, value) in values {
+        let on = current == Some(value);
+        let action = set(Some(value));
+        let enabled = is_enabled(tab, &action);
+        if large(ui, tk, icon, &t(key), enabled, on)
+            .on_hover_text(tip)
+            .clicked()
+        {
+            clicked = Some(if on { set(None) } else { action });
+        }
+    }
+    clicked
+}
+
+/// The "show markers" and "evaluation shading" toggles (Evaluate and View tabs).
+pub(super) fn display_toggles(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
+    let tk = app.tokens;
+    let toggles = [
+        (
+            Icon::Markers,
+            "eval.show_markers",
+            app.settings.show_markers,
+            Action::ToggleMarkers,
+        ),
+        (
+            Icon::Shading,
+            "eval.shading",
+            app.settings.eval_shading,
+            Action::ToggleShading,
+        ),
+    ];
+    for (icon, key, on, action) in toggles {
+        if large(ui, &tk, icon, &t(key), true, on).clicked() {
+            out.push(action);
+        }
+    }
+}

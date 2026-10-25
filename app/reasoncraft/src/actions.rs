@@ -1,7 +1,8 @@
 //! Every command the user can give, and the one place that carries them out.
 
 use reasoncraft_core::{
-    BoxKind, CardId, CardKind, Item, NewItem, NewLoose, NodeId, Parent, RemoveMode, can_attach,
+    Acceptance, BoxKind, CardId, CardKind, CardStrength, ClearScope, Item, NewItem, NewLoose,
+    NodeId, Parent, RemoveMode, SourceRating, can_attach,
 };
 
 use crate::app::ReasonCraftApp;
@@ -9,6 +10,9 @@ use crate::canvas::input::{navigate, parking_jump};
 use crate::doc_tab::DocTab;
 use crate::file_ops;
 use crate::theme::ThemeChoice;
+
+mod evaluate;
+pub use evaluate::{Rate, Rated, rate_action, rated};
 
 pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 const ZOOM_STEP: f32 = 1.25;
@@ -90,6 +94,20 @@ pub enum Action {
     /// Set the zoom factor directly (status-bar slider), clamped to the zoom range.
     SetZoom(f32),
     SetTheme(ThemeChoice),
+    /// Rate the selection, whatever its kind (Alt+1/2/3/0).
+    Rate(Rate),
+    /// Accept, doubt or reject the selected claim or premise (`None` clears).
+    SetAcceptance(Option<Acceptance>),
+    /// Rate the selected card's strength (`None` clears).
+    SetStrength(Option<CardStrength>),
+    /// Rate the selected source (`None` clears).
+    SetSourceRating(Option<SourceRating>),
+    /// Clear one item's rating or every rating in the map.
+    ClearEvaluation(ClearScope),
+    /// Show or hide rating markers.
+    ToggleMarkers,
+    /// Turn evaluation shading on or off.
+    ToggleShading,
     TogglePanel(Panel),
     /// Switch to the tab at this index.
     ActivateTab(usize),
@@ -127,7 +145,9 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
                 app.active = i;
             }
         }
-        Action::SetTheme(choice) => app.theme = choice,
+        Action::SetTheme(choice) => app.settings.theme = choice,
+        Action::ToggleMarkers => app.settings.show_markers = !app.settings.show_markers,
+        Action::ToggleShading => app.settings.eval_shading = !app.settings.eval_shading,
         #[cfg(debug_assertions)]
         Action::LoadSampleMap => {
             let doc = reasoncraft_core::fixtures::sample_iot_like(117);
@@ -216,6 +236,11 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         Action::ZoomFit => tab.fit_pending = true,
         Action::Zoom100 => set_zoom(tab, 1.0),
         Action::SetZoom(z) => set_zoom(tab, z),
+        Action::Rate(_)
+        | Action::SetAcceptance(_)
+        | Action::SetStrength(_)
+        | Action::SetSourceRating(_)
+        | Action::ClearEvaluation(_) => evaluate::apply(tab, action),
         Action::New
         | Action::Open
         | Action::Save
@@ -227,6 +252,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::DismissModal
         | Action::ActivateTab(_)
         | Action::SetTheme(_)
+        | Action::ToggleMarkers
+        | Action::ToggleShading
         | Action::TogglePanel(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap => unreachable!("app-level action"),
@@ -272,6 +299,9 @@ fn selected_card(tab: &DocTab) -> Option<CardId> {
 /// menu and keyboard all ask this, so refused commands are greyed out
 /// instead of silently doing nothing.
 pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
+    if let Some(enabled) = evaluate::is_enabled(tab, action) {
+        return enabled;
+    }
     let sel = tab.selection;
     let attach = |new: NewItem| match sel {
         Some(Item::Box(b)) => can_attach(&tab.doc, Parent::Box(b), new),

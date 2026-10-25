@@ -34,6 +34,12 @@ group-zoom = Zoom
 group-theme = Theme
 group-panels = Panels
 group-debug = Debug
+group-eval_claim = Claims and premises
+group-eval_card = Cards
+group-eval_source = Sources
+group-eval_clear = Clear
+group-eval_view = Display
+group-evaluation = Evaluation
 
 ## Commands
 action-new = New
@@ -59,6 +65,25 @@ action-zoom_out = Zoom out
 action-panel_left = Building panel
 action-panel_right = Text panel
 action-load_sample = Load sample map (debug)
+
+## Evaluation
+eval-accept = Accept
+eval-unsure = Unsure
+eval-reject = Reject
+eval-strong = Strong
+eval-weak = Weak
+eval-nil = Nil
+eval-solid = Solid
+eval-shaky = Shaky
+eval-clear_selection = Selection
+eval-clear_map = Map
+eval-show_markers = Show markers
+eval-shading = Evaluation shading
+eval-tip-claim = Accept, doubt or reject the selected claim or premise (Alt+1, Alt+2, Alt+3; Alt+0 clears)
+eval-tip-card = Rate how strongly the selected card's premises carry its conclusion (Alt+1, Alt+2, Alt+3; Alt+0 clears)
+eval-tip-source = Rate how reliable the selected source is (Alt+1, Alt+2, Alt+3; Alt+0 clears)
+eval-tip-clear_selection = Clear the rating of the selected item (Alt+0)
+eval-tip-clear_map = Clear every rating in the map
 
 ## Files
 file-filter = ReasonCraft map

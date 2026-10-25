@@ -40,6 +40,10 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Shift+Delete | Delete with everything under it |
 | Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise) |
 | Ctrl+Shift+P | Jump between the main map and the parking area |
+| Alt+1 | Rate the selection high: accept a claim or premise, strong card, solid source |
+| Alt+2 | Rate the selection mid: unsure, weak card, shaky source |
+| Alt+3 | Rate the selection low: reject a claim or premise, nil card or source |
+| Alt+0 | Clear the selection's rating |
 | Ctrl+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+S | Save |
