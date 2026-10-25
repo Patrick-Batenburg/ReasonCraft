@@ -48,7 +48,7 @@ The end-to-end test builds a map through actions only, then saves, closes, reope
 - Saved with Ctrl+S through the native dialog. The title lost its unsaved dot.
 - Closed the window without being asked anything, relaunched, and opened the file with Ctrl+O. The map came back identical, with 9 boxes.
 - Switched the theme light ↔ dark from the status bar, and zoom to fit with Ctrl+1.
-- Stress view (debug build): View → Load sample map (debug), then Fit. All 117 boxes are drawn at the 10% zoom floor.
+- Stress view (debug build): View → Load sample map (debug), then Fit. All 117 boxes are drawn (the zoom floor is now 3%, so Fit shows the whole map).
 - Window resizing (see below): all four edges and corners resize, the cursor changes over the zones, and a maximized window shows no zones.
 
 **Window resizing (decision Q):** the borderless window (`with_decorations(false)`) could **not** be resized on Windows. `WM_NCHITTEST` returned `HTCLIENT` at every edge, and edge drags did nothing. Added `app/reasoncraft/src/shell/resize.rs`, which is not used on macOS:
@@ -59,8 +59,6 @@ The end-to-end test builds a map through actions only, then saves, closes, reope
 I checked all eight directions by hand and checked the cursor shapes against the system cursors. Linux was not checked by hand.
 
 **Known limitations:**
-- The view does not follow the selection: arrow keys or adding a box can select something off screen.
-- The 117-box sample map is wider than the view even at the 10% zoom floor, so Fit cannot show all of it.
 - Opening `.rcraft` files from the macOS Finder needs packaging (an app bundle with a document type). Command-line paths work on every OS.
 - The "replace existing file?" prompt can only appear with non-Windows file dialogs. The Windows dialog already asks before overwriting the file it returns.
 - The Building and Text side panels are placeholders until steps 2 and 3.

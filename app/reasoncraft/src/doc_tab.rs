@@ -9,7 +9,7 @@ use crate::canvas::Camera;
 use crate::i18n::t;
 
 /// How many undo steps a tab keeps.
-pub const HISTORY_LIMIT: usize = 200;
+pub const HISTORY_LIMIT: usize = 500;
 
 pub struct DocTab {
     pub doc: Document,
@@ -33,6 +33,9 @@ pub struct DocTab {
     /// Fit the map to the view on the next canvas frame (set for new
     /// documents and by Zoom Fit, so the fit uses the fresh layout).
     pub fit_pending: bool,
+    /// Pan the selection into view on the next canvas frame (set by
+    /// keyboard navigation and adds, so it uses the fresh layout).
+    pub reveal_pending: bool,
 }
 
 impl Default for DocTab {
@@ -62,6 +65,7 @@ impl DocTab {
             camera: Camera::default(),
             viewport: None,
             fit_pending: true,
+            reveal_pending: false,
         }
     }
 

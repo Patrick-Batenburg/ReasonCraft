@@ -66,6 +66,14 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         tab.camera.fit(paint::content_bounds(&layout), rect);
         tab.fit_pending = false;
     }
+    if std::mem::take(&mut tab.reveal_pending)
+        && let Some(target) = tab.selection.and_then(|item| match item {
+            Item::Box(b) => layout.boxes.get(&b),
+            Item::Card(c) => layout.cards.get(&c),
+        })
+    {
+        tab.camera.reveal(*target, rect, camera::REVEAL_MARGIN);
+    }
     let panning = navigate(ui, &response, &mut tab.camera, rect);
 
     if response.clicked()

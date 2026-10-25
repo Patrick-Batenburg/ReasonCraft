@@ -2,11 +2,15 @@
 
 use eframe::egui::{self, Pos2, Rect, Vec2};
 
-pub const ZOOM_MIN: f32 = 0.1;
+/// Low enough to fit maps of a hundred-odd boxes on one screen. Strokes,
+/// arrowheads and grid dots keep their own screen-px minimums.
+pub const ZOOM_MIN: f32 = 0.03;
 pub const ZOOM_MAX: f32 = 4.0;
 /// Free space kept around the map on each side when fitting, as a fraction
 /// of the viewport size.
 const FIT_MARGIN: f32 = 0.1;
+/// Screen px kept between a revealed item and the edge of the view.
+pub const REVEAL_MARGIN: f32 = 24.0;
 
 /// Where the map view looks. A world point `p` is drawn at
 /// `p * zoom + offset` in screen points (1.0 zoom = 100%).
@@ -54,6 +58,26 @@ impl Camera {
         let zoom = (room.x / size.x).min(room.y / size.y);
         self.zoom = zoom.clamp(ZOOM_MIN, 1.0);
         self.offset = viewport.center().to_vec2() - bounds.center().to_vec2() * self.zoom;
+    }
+
+    /// Pan by the smallest amount that brings world rect `item`, with
+    /// `margin` screen px around it, into `viewport`. The zoom is kept. An
+    /// item too big for the view is aligned to its top-left.
+    pub fn reveal(&mut self, item: Rect, viewport: Rect, margin: f32) {
+        let s = self.world_rect_to_screen(item).expand(margin);
+        let shift = |lo: f32, hi: f32, view_lo: f32, view_hi: f32| {
+            if lo < view_lo || hi - lo > view_hi - view_lo {
+                view_lo - lo
+            } else if hi > view_hi {
+                view_hi - hi
+            } else {
+                0.0
+            }
+        };
+        self.offset += Vec2::new(
+            shift(s.left(), s.right(), viewport.left(), viewport.right()),
+            shift(s.top(), s.bottom(), viewport.top(), viewport.bottom()),
+        );
     }
 }
 
@@ -116,5 +140,57 @@ mod tests {
         );
         assert_eq!(cam.zoom, 1.0);
         assert!((cam.world_to_screen(pos2(78.0, 20.0)) - viewport.center()).length() < 1e-3);
+    }
+
+    #[test]
+    fn reveal_pans_the_least_and_keeps_zoom() {
+        let viewport = Rect::from_min_size(pos2(100.0, 50.0), vec2(800.0, 600.0));
+        let start = Camera {
+            offset: vec2(100.0, 50.0),
+            zoom: 0.5,
+        };
+        let shown = |cam: &Camera, r: Rect| cam.world_rect_to_screen(r).expand(REVEAL_MARGIN);
+        // Already in view: nothing moves.
+        let mut cam = start;
+        let inside = Rect::from_min_size(pos2(200.0, 200.0), vec2(156.0, 40.0));
+        cam.reveal(inside, viewport, REVEAL_MARGIN);
+        assert_eq!(cam.offset, start.offset);
+        // Out of view: the smallest pan puts it flush with the margin on
+        // the side it was beyond; an axis already in view does not move.
+        for (item, pan) in [
+            (pos2(3000.0, 2000.0), vec2(-802.0, -444.0)),
+            (pos2(-900.0, -400.0), vec2(474.0, 224.0)),
+            (pos2(1500.0, 300.0), vec2(-52.0, 0.0)),
+        ] {
+            let item = Rect::from_min_size(item, vec2(156.0, 40.0));
+            let mut cam = start;
+            cam.reveal(item, viewport, REVEAL_MARGIN);
+            assert_eq!(cam.zoom, start.zoom);
+            assert!(((cam.offset - start.offset) - pan).length() < 1e-3);
+            assert!(viewport.expand(1e-3).contains_rect(shown(&cam, item)));
+        }
+        // Too big for the view: its top-left corner is shown.
+        let mut cam = start;
+        let huge = Rect::from_min_size(pos2(0.0, 0.0), vec2(5000.0, 5000.0));
+        cam.reveal(huge, viewport, REVEAL_MARGIN);
+        assert!((shown(&cam, huge).min - viewport.min).length() < 1e-3);
+    }
+
+    #[test]
+    fn fit_shows_the_whole_sample_map() {
+        use reasoncraft_core::fixtures::{FixedMeasure, sample_iot_like};
+        use reasoncraft_core::{LayoutParams, layout};
+        let doc = sample_iot_like(117);
+        let l = layout(&doc, &FixedMeasure, &LayoutParams::default());
+        let viewport = Rect::from_min_size(pos2(0.0, 0.0), vec2(1000.0, 600.0));
+        let mut cam = Camera::default();
+        cam.fit(l.bounds, viewport);
+        assert!(cam.zoom > ZOOM_MIN, "fit is not clamped: {}", cam.zoom);
+        assert!(viewport.contains_rect(cam.world_rect_to_screen(l.bounds)));
+    }
+
+    #[test]
+    fn zoom_min_is_three_percent() {
+        assert_eq!(ZOOM_MIN, 0.03);
     }
 }

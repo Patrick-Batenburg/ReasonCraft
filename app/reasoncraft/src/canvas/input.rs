@@ -2,7 +2,7 @@
 //! navigation.
 
 use eframe::egui::{self, Event, FocusDirection, Key, Modifiers, Popup};
-use reasoncraft_core::{Document, Item, Parent};
+use reasoncraft_core::{CardKind, Document, Item, Parent};
 
 use super::editor::editor_id;
 use crate::actions::{Action, Dir, is_enabled};
@@ -10,10 +10,11 @@ use crate::app::ReasonCraftApp;
 
 /// The command bound to `key` with `mods`, if any. `Modifiers::command` is
 /// Ctrl, or Cmd on macOS. While a box is being edited only Esc (finish),
-/// Tab / Shift+Tab (finish and add a reason / objection), Ctrl+Enter
-/// (finish and add a co-premise) and the file keys Ctrl+S, Ctrl+Shift+S,
-/// Ctrl+O and Ctrl+N (finish, then the command) are commands; every other
-/// key is text.
+/// Tab / Shift+Tab (finish and add a reason / objection), Ctrl+Shift+R /
+/// Ctrl+Shift+Tab (finish and add a whole-card reason / objection),
+/// Ctrl+Enter (finish and add a co-premise) and the file keys Ctrl+S,
+/// Ctrl+Shift+S, Ctrl+O and Ctrl+N (finish, then the command) are commands;
+/// every other key is text.
 pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action> {
     use Action as A;
     if mods.alt {
@@ -24,6 +25,8 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
         return match (key, cmd) {
             (Key::Escape, false) => Some(A::StopEditing),
             (Key::Tab, false) => Some(if shift { A::AddObjection } else { A::AddReason }),
+            (Key::Tab, true) if shift => Some(A::TargetWholeCard(CardKind::Objection)),
+            (Key::R, true) if shift => Some(A::TargetWholeCard(CardKind::Reason)),
             (Key::Enter, true) => Some(A::AddCoPremise),
             (Key::S, true) => Some(if shift { A::SaveAs } else { A::Save }),
             (Key::O, true) if !shift => Some(A::Open),
@@ -34,6 +37,9 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
     Some(match (key, cmd, shift) {
         (Key::Tab, false, false) => A::AddReason,
         (Key::Tab, false, true) => A::AddObjection,
+        (Key::Tab, true, true) => A::TargetWholeCard(CardKind::Objection),
+        (Key::R, true, true) => A::TargetWholeCard(CardKind::Reason),
+        (Key::P, true, true) => A::JumpParking,
         (Key::Enter, true, _) => A::AddCoPremise,
         (Key::Enter | Key::F2, false, false) => A::Edit,
         (Key::Escape, false, _) => A::StopEditing,
@@ -111,30 +117,50 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
 
 /// The item one step from `from` in direction `dir`, or `None` at an edge.
 ///
-/// - Up: the owner (for a premise, the box its card hangs from).
-/// - Down: the first child; a card stands for its first premise.
+/// - Up: the owner (a premise's card; a card's box, or the card it targets
+///   as a whole; nothing for a parked item).
+/// - Down: a card's first premise; a box's first child (a card, not its
+///   premise).
 /// - Left/Right: the previous/next co-premise, then the previous/next
 ///   sibling in the owner's ordered list.
 pub fn navigate(doc: &Document, from: Item, dir: Dir) -> Option<Item> {
     match dir {
-        Dir::Up => {
-            let owner = match doc.owner_of(from)? {
-                Parent::Card(c) if matches!(from, Item::Box(_)) => doc.owner_of(Item::Card(c))?,
-                owner => owner,
-            };
-            match owner {
-                Parent::Box(b) => Some(Item::Box(b)),
-                Parent::Card(c) => Some(Item::Card(c)),
-                Parent::Parking => None,
-            }
-        }
+        Dir::Up => match doc.owner_of(from)? {
+            Parent::Box(b) => Some(Item::Box(b)),
+            Parent::Card(c) => Some(Item::Card(c)),
+            Parent::Parking => None,
+        },
         Dir::Down => match from {
             Item::Card(c) => enter(doc, Item::Card(c), true),
-            Item::Box(b) => enter(doc, *doc.boxes.get(&b)?.children.first()?, true),
+            Item::Box(b) => doc.boxes.get(&b)?.children.first().copied(),
         },
         Dir::Left => sideways(doc, from, -1),
         Dir::Right => sideways(doc, from, 1),
     }
+}
+
+/// Where Ctrl+Shift+P goes from `from`: the main root from anything in the
+/// parking area, otherwise the first parked item (`None` if there is none).
+pub fn parking_jump(doc: &Document, from: Option<Item>) -> Option<Item> {
+    if from.is_some_and(|item| is_parked(doc, item)) {
+        Some(Item::Box(doc.root))
+    } else {
+        doc.parking.first().copied()
+    }
+}
+
+/// Whether `item` hangs, at any depth, under a parking entry.
+fn is_parked(doc: &Document, mut item: Item) -> bool {
+    // Bounded by the item count, so even a damaged cycle ends.
+    for _ in 0..=doc.boxes.len() + doc.cards.len() {
+        item = match doc.owner_of(item) {
+            Some(Parent::Parking) => return true,
+            Some(Parent::Box(b)) => Item::Box(b),
+            Some(Parent::Card(c)) => Item::Card(c),
+            None => return false,
+        };
+    }
+    false
 }
 
 /// A card stands for its first (or last) premise when reached from a box.
@@ -227,6 +253,21 @@ mod tests {
             Some(Action::Redo)
         );
         assert_eq!(key_to_action(Key::S, cmd, false), Some(Action::Save));
+        let cmd_shift = cmd | Modifiers::SHIFT;
+        assert_eq!(
+            key_to_action(Key::Tab, cmd_shift, false),
+            Some(Action::TargetWholeCard(CardKind::Objection))
+        );
+        assert_eq!(
+            key_to_action(Key::R, cmd_shift, false),
+            Some(Action::TargetWholeCard(CardKind::Reason))
+        );
+        assert_eq!(
+            key_to_action(Key::P, cmd_shift, false),
+            Some(Action::JumpParking)
+        );
+        assert_eq!(key_to_action(Key::Tab, cmd, false), None);
+        assert_eq!(key_to_action(Key::R, cmd, false), None);
         assert_eq!(key_to_action(Key::Num0, cmd, false), Some(Action::Zoom100));
         assert_eq!(key_to_action(Key::Num1, cmd, false), Some(Action::ZoomFit));
         assert_eq!(key_to_action(Key::Equals, cmd, false), Some(Action::ZoomIn));
@@ -256,6 +297,15 @@ mod tests {
             key_to_action(Key::Enter, Modifiers::COMMAND, true),
             Some(Action::AddCoPremise)
         );
+        let cmd_shift = cmd | Modifiers::SHIFT;
+        assert_eq!(
+            key_to_action(Key::Tab, cmd_shift, true),
+            Some(Action::TargetWholeCard(CardKind::Objection))
+        );
+        assert_eq!(
+            key_to_action(Key::R, cmd_shift, true),
+            Some(Action::TargetWholeCard(CardKind::Reason))
+        );
         for (key, mods) in [
             (Key::Enter, none),
             (Key::F2, none),
@@ -267,6 +317,8 @@ mod tests {
             (Key::Y, Modifiers::COMMAND),
             (Key::S, none),
             (Key::Num0, Modifiers::COMMAND),
+            (Key::P, cmd_shift),
+            (Key::R, none),
             (Key::A, none),
         ] {
             assert_eq!(key_to_action(key, mods, true), None, "{key:?} {mods:?}");
@@ -285,20 +337,21 @@ mod tests {
         let (cb, b1) = d
             .add_card(Parent::Box(root), CardKind::Objection, "b1")
             .unwrap();
-        let (_, c1) = d.add_card(Parent::Box(a1), CardKind::Reason, "c1").unwrap();
+        let (cc, c1) = d.add_card(Parent::Box(a1), CardKind::Reason, "c1").unwrap();
         let b = Item::Box;
         let nav = |from: Item, dir: Dir| navigate(&d, from, dir);
 
-        // Up: premise → the box its card hangs from; card → its owner box.
-        assert_eq!(nav(b(a1), Dir::Up), Some(b(root)));
+        // Up: premise → its card; card → the box it hangs from.
+        assert_eq!(nav(b(a1), Dir::Up), Some(Item::Card(ca)));
         assert_eq!(nav(Item::Card(ca), Dir::Up), Some(b(root)));
-        assert_eq!(nav(b(c1), Dir::Up), Some(b(a1)));
+        assert_eq!(nav(b(c1), Dir::Up), Some(Item::Card(cc)));
+        assert_eq!(nav(Item::Card(cc), Dir::Up), Some(b(a1)));
         assert_eq!(nav(b(root), Dir::Up), None);
 
-        // Down: first child; a card child means its first premise.
-        assert_eq!(nav(b(root), Dir::Down), Some(b(a1)));
+        // Down: a box's first child (a card itself); a card's first premise.
+        assert_eq!(nav(b(root), Dir::Down), Some(Item::Card(ca)));
         assert_eq!(nav(Item::Card(ca), Dir::Down), Some(b(a1)));
-        assert_eq!(nav(b(a1), Dir::Down), Some(b(c1)));
+        assert_eq!(nav(b(a1), Dir::Down), Some(Item::Card(cc)));
         assert_eq!(nav(b(a2), Dir::Down), None);
 
         // Left/right: co-premises first, then the neighbouring cards.
@@ -312,5 +365,43 @@ mod tests {
         assert_eq!(nav(Item::Card(cb), Dir::Left), Some(Item::Card(ca)));
         assert_eq!(nav(Item::Card(ca), Dir::Left), None);
         assert_eq!(nav(b(root), Dir::Right), None);
+    }
+
+    /// Whole-card attackers and parked items are reachable by keyboard.
+    #[test]
+    fn navigate_reaches_whole_card_attackers_and_parking() {
+        let mut d = Document::new("Claim");
+        let root = d.root;
+        let (ca, a1) = d
+            .add_card(Parent::Box(root), CardKind::Reason, "a1")
+            .unwrap();
+        let (w, w1) = d
+            .add_card(Parent::Card(ca), CardKind::Objection, "w1")
+            .unwrap();
+        assert_eq!(navigate(&d, Item::Box(w1), Dir::Up), Some(Item::Card(w)));
+        assert_eq!(navigate(&d, Item::Card(w), Dir::Up), Some(Item::Card(ca)));
+        assert_eq!(navigate(&d, Item::Card(ca), Dir::Down), Some(Item::Box(a1)));
+
+        // Parking: no way up out of it; Ctrl+Shift+P toggles.
+        assert_eq!(parking_jump(&d, Some(Item::Box(root))), None);
+        let parked = d.add_loose(reasoncraft_core::NewLoose::Card(CardKind::Reason), "p");
+        let Item::Card(pc) = parked else {
+            panic!("a loose card")
+        };
+        let pp = d.cards[&pc].premises[0];
+        let (_, deep) = d
+            .add_card(Parent::Box(pp), CardKind::Reason, "deep")
+            .unwrap();
+        d.add_loose(reasoncraft_core::NewLoose::Note, "n");
+        assert_eq!(navigate(&d, parked, Dir::Up), None);
+        assert_eq!(navigate(&d, Item::Box(pp), Dir::Up), Some(parked));
+        assert_eq!(parking_jump(&d, None), Some(parked));
+        assert_eq!(parking_jump(&d, Some(Item::Box(a1))), Some(parked));
+        assert_eq!(parking_jump(&d, Some(Item::Card(w))), Some(parked));
+        assert_eq!(parking_jump(&d, Some(parked)), Some(Item::Box(root)));
+        assert_eq!(
+            parking_jump(&d, Some(Item::Box(deep))),
+            Some(Item::Box(root))
+        );
     }
 }

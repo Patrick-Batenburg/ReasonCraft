@@ -221,6 +221,9 @@ fn navigate_moves_selection_and_move_action_reattaches() {
     let root = tab(&a).doc.root;
     apply(&mut a, Action::AddReason);
     apply(&mut a, Action::StopEditing);
+    let c = *tab(&a).doc.cards.keys().next().unwrap();
+    apply(&mut a, Action::Navigate(Dir::Up));
+    assert_eq!(tab(&a).selection, Some(Item::Card(c)));
     apply(&mut a, Action::Navigate(Dir::Up));
     assert_eq!(tab(&a).selection, Some(Item::Box(root)));
     apply(&mut a, Action::Navigate(Dir::Up));
@@ -229,7 +232,6 @@ fn navigate_moves_selection_and_move_action_reattaches() {
         Some(Item::Box(root)),
         "edges keep selection"
     );
-    let c = *tab(&a).doc.cards.keys().next().unwrap();
     apply(
         &mut a,
         Action::Move {
@@ -282,4 +284,44 @@ fn whole_card_target_enabled_matches_attach_rules() {
         tab(&a),
         &Action::TargetWholeCard(CardKind::Reason)
     ));
+}
+
+#[test]
+fn jump_parking_toggles_and_is_disabled_without_parking() {
+    let mut a = app();
+    let root = tab(&a).doc.root;
+    assert!(!is_enabled(tab(&a), &Action::JumpParking));
+    apply(&mut a, Action::Select(None));
+    apply(&mut a, Action::AddNote);
+    let note = tab(&a).doc.parking[0];
+    apply(&mut a, Action::Select(Some(Item::Box(root))));
+    assert!(is_enabled(tab(&a), &Action::JumpParking));
+    a.tabs[0].reveal_pending = false;
+    apply(&mut a, Action::JumpParking);
+    assert_eq!(tab(&a).selection, Some(note));
+    assert!(tab(&a).reveal_pending);
+    apply(&mut a, Action::JumpParking);
+    assert_eq!(tab(&a).selection, Some(Item::Box(root)));
+}
+
+#[test]
+fn keyboard_moves_and_adds_ask_to_reveal_but_clicks_do_not() {
+    let mut a = app();
+    apply(&mut a, Action::AddReason);
+    assert!(tab(&a).reveal_pending, "add");
+    a.tabs[0].reveal_pending = false;
+    apply(&mut a, Action::Navigate(Dir::Up));
+    assert!(tab(&a).reveal_pending, "navigate");
+    a.tabs[0].reveal_pending = false;
+    apply(&mut a, Action::TargetWholeCard(CardKind::Objection));
+    assert!(tab(&a).reveal_pending, "whole-card target");
+    a.tabs[0].reveal_pending = false;
+    let root = tab(&a).doc.root;
+    apply(&mut a, Action::Select(Some(Item::Box(root))));
+    assert!(!tab(&a).reveal_pending, "a click selects in view already");
+}
+
+#[test]
+fn history_keeps_500_steps() {
+    assert_eq!(crate::doc_tab::HISTORY_LIMIT, 500);
 }

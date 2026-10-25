@@ -32,11 +32,14 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Tab | Add a reason |
 | Shift+Tab | Add an objection |
 | Ctrl+Enter | Add a co-premise |
+| Ctrl+Shift+R | Add a reason for the whole card (of the selected card or premise) |
+| Ctrl+Shift+Tab | Add an objection to the whole card (of the selected card or premise) |
 | Enter or F2 | Edit the selected box |
 | Esc | Stop editing |
 | Delete | Delete (items under it move to the parking area) |
 | Shift+Delete | Delete with everything under it |
-| Arrow keys | Move the selection |
+| Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise) |
+| Ctrl+Shift+P | Jump between the main map and the parking area |
 | Ctrl+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+S | Save |
@@ -56,6 +59,8 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Tab | Finish and add a reason |
 | Shift+Tab | Finish and add an objection |
 | Ctrl+Enter | Finish and add a co-premise |
+| Ctrl+Shift+R | Finish and add a reason for the whole card |
+| Ctrl+Shift+Tab | Finish and add an objection to the whole card |
 | Ctrl+S | Finish and save |
 | Ctrl+Shift+S | Finish and save as |
 | Ctrl+O | Finish and open |

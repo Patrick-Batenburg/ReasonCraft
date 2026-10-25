@@ -5,7 +5,7 @@ use reasoncraft_core::{
 };
 
 use crate::app::ReasonCraftApp;
-use crate::canvas::input::navigate;
+use crate::canvas::input::{navigate, parking_jump};
 use crate::doc_tab::DocTab;
 use crate::file_ops;
 use crate::theme::ThemeChoice;
@@ -81,6 +81,8 @@ pub enum Action {
     },
     Select(Option<Item>),
     Navigate(Dir),
+    /// Jump between the main tree's root and the first parked item.
+    JumpParking,
     ZoomIn,
     ZoomOut,
     ZoomFit,
@@ -200,6 +202,13 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
                 Some(from) => navigate(&tab.doc, from, dir).or(Some(from)),
                 None => Some(Item::Box(tab.doc.root)),
             };
+            tab.reveal_pending = true;
+        }
+        Action::JumpParking => {
+            if let Some(to) = parking_jump(&tab.doc, tab.selection) {
+                tab.selection = Some(to);
+                tab.reveal_pending = true;
+            }
         }
         Action::ZoomIn => set_zoom(tab, tab.camera.zoom * ZOOM_STEP),
         Action::ZoomOut => set_zoom(tab, tab.camera.zoom / ZOOM_STEP),
@@ -234,8 +243,9 @@ fn set_zoom(tab: &mut DocTab, zoom: f32) {
     tab.camera.zoom_at(centre, factor);
 }
 
-/// Select a newly added item and start editing its text (a card's: its
-/// first premise). The add itself is the history step for that text.
+/// Select a newly added item, scroll it into view and start editing its
+/// text (a card's: its first premise). The add itself is the history step
+/// for that text.
 fn select_new(tab: &mut DocTab, item: Option<Item>) {
     let b = match item {
         Some(Item::Box(b)) => b,
@@ -243,6 +253,7 @@ fn select_new(tab: &mut DocTab, item: Option<Item>) {
         None => return,
     };
     tab.begin_edit(b, true);
+    tab.reveal_pending = true;
 }
 
 /// The card a whole-card target or co-premise goes to: the selected card,
@@ -277,6 +288,7 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
             .is_some_and(|c| can_attach(&tab.doc, Parent::Card(c), NewItem::Card(kind.clone()))),
         Action::Delete | Action::DeleteBranch => sel.is_some_and(|s| s != Item::Box(tab.doc.root)),
         Action::Edit => matches!(sel, Some(Item::Box(_))),
+        Action::JumpParking => parking_jump(&tab.doc, sel).is_some(),
         Action::Undo => !tab.history.undo.is_empty() || tab.has_pending_edit(),
         Action::Redo => !tab.history.redo.is_empty(),
         Action::Move { item, to } => {
