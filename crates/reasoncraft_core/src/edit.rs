@@ -24,7 +24,7 @@ pub enum EditError {
 pub enum NewLoose {
     Card(CardKind),
     Category,
-    Source,
+    Source(SourceType),
     Note,
 }
 
@@ -177,9 +177,7 @@ impl Document {
             other => {
                 let kind = match other {
                     NewLoose::Category => BoxKind::Category,
-                    NewLoose::Source => BoxKind::Source {
-                        source_type: SourceType::Source,
-                    },
+                    NewLoose::Source(source_type) => BoxKind::Source { source_type },
                     _ => BoxKind::Note,
                 };
                 let id = NodeId::new();

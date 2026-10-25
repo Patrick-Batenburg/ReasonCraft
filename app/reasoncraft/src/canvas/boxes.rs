@@ -1,12 +1,13 @@
 //! Painting of boxes: claim, premise, category, source and note.
 
-use eframe::egui::{Align2, Color32, Rect, Shape, Stroke, StrokeKind, pos2, vec2};
-use reasoncraft_core::BoxKind;
+use eframe::egui::{Align2, Color32, Rect, Shape, Stroke, StrokeKind, Vec2, pos2, vec2};
 use reasoncraft_core::layout::BOX_TEXT_PAD;
+use reasoncraft_core::{BoxKind, SourceType};
 
 use super::measure;
 use super::paint::{Pass, screen_font};
 use crate::i18n::t;
+use crate::shell::source_icons::paint_source_icon;
 
 pub(super) const BOX_RADIUS: f32 = 7.0;
 const SOURCE_RADIUS: f32 = 5.0;
@@ -14,6 +15,8 @@ const NOTE_RADIUS: f32 = 2.0;
 /// Size of a note's folded corner.
 const NOTE_FOLD: f32 = 10.0;
 const SOURCE_TYPE_SIZE: f32 = 11.5;
+/// Size of the type glyph in a source's top row.
+const SOURCE_ICON: f32 = 14.0;
 /// Top of a source's citation text below the box top: padding plus the
 /// icon and type row. The layout reserves this plus the bottom padding.
 pub(super) const SOURCE_HEADER: f32 = 24.0;
@@ -63,7 +66,7 @@ impl Pass<'_> {
         let text_width = world.width() - 2.0 * BOX_TEXT_PAD;
         match kind {
             BoxKind::Source { source_type } => {
-                self.source_header(world, source_type.key());
+                self.source_header(world, source_type);
                 if let Some(text) = text {
                     let top = world.top() + SOURCE_HEADER;
                     self.text(world.center().x, top, text, text_width, kind, text_colour);
@@ -108,20 +111,16 @@ impl Pass<'_> {
         }
     }
 
-    /// Document glyph and bold source type, centred in the source's top row.
-    fn source_header(&self, world: Rect, source_type: &str) {
+    /// Type glyph and bold type name, centred in the source's top row.
+    fn source_header(&self, world: Rect, source_type: &SourceType) {
         let Some(font) = screen_font(SOURCE_TYPE_SIZE, self.cam.zoom) else {
             return;
         };
         let z = self.cam.zoom;
-        let key = format!("source.{source_type}");
-        let mut name = t(&key);
-        if name == key {
-            name = source_type.to_owned();
-        }
+        let name = t(&format!("source.{}", source_type.key()));
         let colour = self.t.box_text;
         let galley = self.painter.layout_no_wrap(name, font, colour);
-        let icon = vec2(10.0, 13.0) * z;
+        let icon = Vec2::splat(SOURCE_ICON) * z;
         let gap = 5.0 * z;
         let total = icon.x + gap + galley.size().x;
         let centre = self
@@ -129,7 +128,7 @@ impl Pass<'_> {
             .world_to_screen(pos2(world.center().x, world.top() + 14.0));
         let left = centre.x - total / 2.0;
         let icon_rect = Rect::from_min_size(pos2(left, centre.y - icon.y / 2.0), icon);
-        self.doc_glyph(icon_rect);
+        paint_source_icon(self.painter, icon_rect, source_type, self.t.text_muted);
         let text_pos = pos2(left + icon.x + gap, centre.y - galley.size().y / 2.0);
         // Faux bold: the default fonts have no bold face.
         self.painter.galley(
@@ -138,38 +137,6 @@ impl Pass<'_> {
             colour,
         );
         self.painter.galley(text_pos, galley, colour);
-    }
-
-    /// A generic document: a page with a folded corner and three text lines.
-    fn doc_glyph(&self, r: Rect) {
-        let stroke = Stroke::new(1.0, self.t.text_muted);
-        let fold = r.width() * 0.35;
-        let outline = vec![
-            r.left_top(),
-            r.right_top() - vec2(fold, 0.0),
-            r.right_top() + vec2(0.0, fold),
-            r.right_bottom(),
-            r.left_bottom(),
-        ];
-        self.painter.add(Shape::closed_line(outline, stroke));
-        self.painter.add(Shape::line(
-            vec![
-                r.right_top() - vec2(fold, 0.0),
-                r.right_top() + vec2(-fold, fold),
-                r.right_top() + vec2(0.0, fold),
-            ],
-            stroke,
-        ));
-        for i in 1..=3 {
-            let y = r.top() + fold + i as f32 * (r.height() - fold) / 4.0;
-            self.painter.line_segment(
-                [
-                    pos2(r.left() + r.width() * 0.2, y),
-                    pos2(r.right() - r.width() * 0.2, y),
-                ],
-                stroke,
-            );
-        }
     }
 
     /// The folded top-right corner of a sticky note.

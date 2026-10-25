@@ -36,9 +36,13 @@ pub(super) fn show(
         return;
     };
     let mut area = world.shrink(BOX_TEXT_PAD);
-    if matches!(node.kind, BoxKind::Source { .. }) {
-        area.min.y = world.top() + SOURCE_HEADER;
-    }
+    let hint = match &node.kind {
+        BoxKind::Source { source_type } => {
+            area.min.y = world.top() + SOURCE_HEADER;
+            t(&format!("source.prompt.{}", source_type.key()))
+        }
+        _ => t("editor.hint"),
+    };
     let rect = tab.camera.world_rect_to_screen(area);
     let zoom = tab.camera.zoom;
     let size = font_for(&node.kind).size;
@@ -63,7 +67,7 @@ pub(super) fn show(
         .id(id)
         .font(font)
         .text_color(colour)
-        .hint_text(t("editor.hint"))
+        .hint_text(hint)
         .frame(Frame::NONE)
         .margin(Margin::ZERO)
         .desired_width(rect.width())
@@ -80,5 +84,38 @@ pub(super) fn show(
     }
     if response.lost_focus() {
         pending.push(Action::StopEditing);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use eframe::egui;
+    use reasoncraft_core::layout::{BOX_TEXT_PAD, LayoutParams};
+    use reasoncraft_core::{BoxKind, SourceType};
+
+    use crate::canvas::measure::galley;
+    use crate::i18n::t;
+
+    /// An empty source has one row for text, so its prompt must fit on one
+    /// row of a default-width source, or it would spill out of the box.
+    #[test]
+    fn source_prompts_fit_one_row() {
+        let ctx = egui::Context::default();
+        let width = LayoutParams::default().source_width - 2.0 * BOX_TEXT_PAD;
+        let mut wrapped = Vec::new();
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            for st in SourceType::ALL {
+                let prompt = t(&format!("source.prompt.{}", st.key()));
+                let kind = BoxKind::Source {
+                    source_type: st.clone(),
+                };
+                if galley(ui.ctx(), &prompt, width, &kind).rows.len() > 1 {
+                    let w = galley(ui.ctx(), &prompt, f32::INFINITY, &kind).size().x;
+                    wrapped.push(format!("`{prompt}` ({w:.0} px)"));
+                }
+            }
+        });
+        out.textures_delta.clear();
+        assert!(wrapped.is_empty(), "wider than {width} px: {wrapped:?}");
     }
 }

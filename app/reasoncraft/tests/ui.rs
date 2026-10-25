@@ -963,3 +963,65 @@ fn rated_map_renders() {
     h.state_mut().settings.eval_shading = false;
     h.run_steps(3);
 }
+
+#[test]
+fn plus_menu_source_submenu_adds_expert_opinion() {
+    use reasoncraft_core::{BoxKind, CardKind, Document, Item, Parent, SourceType};
+    let mut doc = Document::new("Claim");
+    let (_, p) = doc
+        .add_card(Parent::Box(doc.root), CardKind::Reason, "One")
+        .unwrap();
+    let mut h = harness_with(doc);
+    h.state_mut().tabs[0].selection = Some(Item::Box(p));
+    h.run();
+    h.get_by_label(&t("plus.open")).click();
+    h.run();
+    // The ribbon's "Source" dropdown has the same name; the submenu is the lower one.
+    let source = t("plus.source");
+    let submenu = h
+        .get_all_by_label(&source)
+        .max_by(|a, b| a.rect().center().y.total_cmp(&b.rect().center().y))
+        .expect("Source submenu in the plus menu");
+    submenu.hover();
+    h.run();
+    h.get_by_label(&t("source.expert_opinion")).click();
+    h.run();
+    let tab = &h.state().tabs[0];
+    let children = &tab.doc.boxes[&p].children;
+    assert_eq!(children.len(), 1);
+    let Item::Box(s) = children[0] else {
+        panic!("not a box")
+    };
+    assert_eq!(
+        tab.doc.boxes[&s].kind,
+        BoxKind::Source {
+            source_type: SourceType::ExpertOpinion
+        }
+    );
+    assert_eq!(tab.selection, Some(Item::Box(s)));
+    assert_eq!(tab.editing, Some(s));
+    assert_eq!(tab.history.undo.len(), 1);
+}
+
+#[test]
+fn ribbon_source_dropdown_adds_law_to_claim() {
+    use reasoncraft_core::{BoxKind, Item, SourceType};
+    let mut h = harness();
+    h.run();
+    h.get_by_label(&t("action.add_source")).click();
+    h.run();
+    h.get_by_label(&t("source.law")).click();
+    h.run();
+    let tab = &h.state().tabs[0];
+    let root = tab.doc.root;
+    let Some(&Item::Box(s)) = tab.doc.boxes[&root].children.first() else {
+        panic!("no source under the claim")
+    };
+    assert_eq!(
+        tab.doc.boxes[&s].kind,
+        BoxKind::Source {
+            source_type: SourceType::Law
+        }
+    );
+    assert_eq!(tab.editing, Some(s));
+}

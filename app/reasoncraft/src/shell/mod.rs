@@ -5,6 +5,7 @@ pub mod icons;
 pub mod modal;
 pub mod resize;
 pub mod ribbon;
+pub mod source_icons;
 pub mod statusbar;
 pub mod tabs;
 pub mod titlebar;

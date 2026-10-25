@@ -238,7 +238,7 @@ mod tests {
             unreachable!()
         };
         let parked_premise = d.cards[&parked].premises[0];
-        let s = d.add_loose(NewLoose::Source, "s");
+        let s = d.add_loose(NewLoose::Source(SourceType::Source), "s");
         let Item::Box(s) = s else { unreachable!() };
         d.set_acceptance(p, Some(Acceptance::Accept)).unwrap();
         d.set_acceptance(parked_premise, Some(Acceptance::Reject))

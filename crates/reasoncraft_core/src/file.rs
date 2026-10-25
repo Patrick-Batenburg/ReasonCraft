@@ -237,7 +237,10 @@ mod tests {
         d.add_card(Parent::Card(card), CardKind::Objection, "whole-card attack")
             .unwrap();
         d.add_loose(crate::NewLoose::Note, "parked");
-        d.add_loose(crate::NewLoose::Source, "src");
+        d.add_loose(
+            crate::NewLoose::Source(crate::model::SourceType::Source),
+            "src",
+        );
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("map.rcraft");
         save(&d, &path).unwrap();

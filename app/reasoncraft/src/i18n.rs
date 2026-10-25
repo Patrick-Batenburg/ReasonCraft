@@ -68,4 +68,24 @@ mod tests {
         args.set("count", 1);
         assert_eq!(t_args("status.boxes", &args), "1 box");
     }
+
+    #[test]
+    fn every_source_type_has_a_name_and_a_prompt() {
+        use reasoncraft_core::SourceType;
+        for st in SourceType::ALL {
+            let key = st.key();
+            for id in [format!("source-{key}"), format!("source-prompt-{key}")] {
+                let line = format!(
+                    "
+{id} = "
+                );
+                assert!(EN.contains(&line), "en.ftl lacks `{id}`");
+            }
+            assert_ne!(t(&format!("source.{key}")), format!("source.{key}"));
+            assert_ne!(
+                t(&format!("source.prompt.{key}")),
+                format!("source.prompt.{key}")
+            );
+        }
+    }
 }

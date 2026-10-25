@@ -2,11 +2,12 @@
 //! of things to add there.
 
 use eframe::egui::{self, Button, Popup, Rect, Role, Sense, Stroke, Vec2, WidgetInfo, vec2};
-use reasoncraft_core::{BoxKind, CardKind, Item, Layout};
+use reasoncraft_core::{BoxKind, CardKind, Item, Layout, SourceType};
 
 use crate::actions::{Action, is_enabled};
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
+use crate::shell::source_icons::source_atom;
 use crate::theme::Tokens;
 
 /// Diameter of the "+" button, in screen px.
@@ -44,6 +45,28 @@ pub fn entries(tab: &DocTab) -> Vec<(&'static str, Action)> {
         ));
     }
     out
+}
+
+/// The types in the "Source ▸" submenu: all of them when a claim or
+/// premise is selected, otherwise none (no submenu).
+pub fn source_entries(tab: &DocTab) -> Vec<SourceType> {
+    let takes_sources = match tab.selection {
+        Some(Item::Box(b)) => tab
+            .doc
+            .boxes
+            .get(&b)
+            .is_some_and(|n| matches!(n.kind, BoxKind::Claim | BoxKind::Premise)),
+        _ => false,
+    };
+    if !takes_sources {
+        return Vec::new();
+    }
+    SourceType::ALL.to_vec()
+}
+
+/// A menu entry for adding (or switching to) source type `st`.
+pub fn source_button(st: &SourceType) -> Button<'static> {
+    Button::new((source_atom(st, 16.0), t(&format!("source.{}", st.key()))))
 }
 
 /// Show the "+" button for the selection (not while editing) and, when it
@@ -100,5 +123,50 @@ pub(super) fn show(
                 pending.push(action);
             }
         }
+        let sources = source_entries(tab);
+        if !sources.is_empty() {
+            ui.menu_button(t("plus.source"), |ui| {
+                for st in sources {
+                    let action = Action::AddSource(st.clone());
+                    let enabled = is_enabled(tab, &action);
+                    if ui.add_enabled(enabled, source_button(&st)).clicked() {
+                        pending.push(action);
+                    }
+                }
+            });
+        }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use reasoncraft_core::{BoxKind, CardKind, Document, Item, Parent, SourceType};
+
+    use super::source_entries;
+    use crate::doc_tab::DocTab;
+
+    #[test]
+    fn source_submenu_for_premise_and_claim_only() {
+        let mut d = Document::new("Claim");
+        let root = d.root;
+        let (card, premise) = d
+            .add_card(Parent::Box(root), CardKind::Reason, "p")
+            .unwrap();
+        let note = d.add_box(Parent::Box(premise), BoxKind::Note, "n").unwrap();
+        let mut tab = DocTab::from_document(d);
+        for (item, offered) in [
+            (Item::Box(root), true),
+            (Item::Box(premise), true),
+            (Item::Card(card), false),
+            (Item::Box(note), false),
+        ] {
+            tab.selection = Some(item);
+            let got = source_entries(&tab);
+            if offered {
+                assert_eq!(got, SourceType::ALL.to_vec());
+            } else {
+                assert!(got.is_empty(), "{item:?}");
+            }
+        }
+    }
 }

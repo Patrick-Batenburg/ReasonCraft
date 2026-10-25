@@ -2,7 +2,7 @@
 
 use reasoncraft_core::{
     Acceptance, BoxKind, CardId, CardKind, CardStrength, ClearScope, Item, NewItem, NewLoose,
-    NodeId, Parent, RemoveMode, SourceRating, can_attach,
+    NodeId, Parent, RemoveMode, SourceRating, SourceType, can_attach,
 };
 
 use crate::app::ReasonCraftApp;
@@ -13,6 +13,7 @@ use crate::theme::ThemeChoice;
 
 mod evaluate;
 pub use evaluate::{Rate, Rated, rate_action, rated};
+mod sources;
 
 pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 const ZOOM_STEP: f32 = 1.25;
@@ -62,6 +63,11 @@ pub enum Action {
     AddCategory,
     AddNote,
     AddLoose(NewLoose),
+    /// Add a source of this type under the selected claim or premise, or
+    /// loose when nothing is selected.
+    AddSource(SourceType),
+    /// Change the type of the selected source.
+    SetSourceType(SourceType),
     /// Add a card that targets the whole selected card (or the card of the selected premise).
     TargetWholeCard(CardKind),
     Delete,
@@ -114,6 +120,9 @@ pub enum Action {
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,
+    /// Show or hide the source icon preview (debug builds only).
+    #[cfg(debug_assertions)]
+    ToggleSourceIcons,
 }
 
 /// Carry out `action`. Document edits go through [`DocTab::edit`], which
@@ -154,6 +163,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             app.tabs.push(DocTab::from_document(doc));
             app.active = app.tabs.len() - 1;
         }
+        #[cfg(debug_assertions)]
+        Action::ToggleSourceIcons => app.show_source_icons = !app.show_source_icons,
         Action::TogglePanel(Panel::Left) => app.left_panel = !app.left_panel,
         Action::TogglePanel(Panel::Right) => app.right_panel = !app.right_panel,
         other => {
@@ -241,6 +252,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetStrength(_)
         | Action::SetSourceRating(_)
         | Action::ClearEvaluation(_) => evaluate::apply(tab, action),
+        Action::AddSource(_) | Action::SetSourceType(_) => sources::apply(tab, action),
         Action::New
         | Action::Open
         | Action::Save
@@ -256,7 +268,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::ToggleShading
         | Action::TogglePanel(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
-        Action::LoadSampleMap => unreachable!("app-level action"),
+        Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }
 }
 
@@ -299,7 +311,9 @@ fn selected_card(tab: &DocTab) -> Option<CardId> {
 /// menu and keyboard all ask this, so refused commands are greyed out
 /// instead of silently doing nothing.
 pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
-    if let Some(enabled) = evaluate::is_enabled(tab, action) {
+    if let Some(enabled) =
+        evaluate::is_enabled(tab, action).or_else(|| sources::is_enabled(tab, action))
+    {
         return enabled;
     }
     let sel = tab.selection;

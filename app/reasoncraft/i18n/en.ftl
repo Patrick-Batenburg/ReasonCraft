@@ -56,6 +56,7 @@ action-add_objection = Objection
 action-add_co_premise = Co-premise
 action-add_category = Category
 action-add_note = Note
+action-add_source = Source
 action-delete = Delete
 action-delete_branch = Delete branch
 action-zoom_fit = Fit
@@ -65,6 +66,7 @@ action-zoom_out = Zoom out
 action-panel_left = Building panel
 action-panel_right = Text panel
 action-load_sample = Load sample map (debug)
+action-source_icons = Source icons (debug)
 
 ## Evaluation
 eval-accept = Accept
@@ -128,6 +130,7 @@ editor-hint = Type here
 plus-open = Add item
 plus-whole_card_reason = Reason for the whole card
 plus-whole_card_objection = Objection to the whole card
+plus-source = Source
 parking-title = Not connected
 
 ## Card roles
@@ -164,6 +167,23 @@ source-publication = Publication
 source-quote = Quote
 source-statistic = Statistic
 source-web = Web
+source-prompt-source = Title, author, date
+source-prompt-my_basis = What you base this on
+source-prompt-assertion = Who says so, where
+source-prompt-by_definition = Term and definition
+source-prompt-case_study = The case, where, when
+source-prompt-common_belief = Believed by whom
+source-prompt-data = Dataset, owner, year
+source-prompt-event = What, where, when
+source-prompt-example = Describe the example
+source-prompt-expert_opinion = Expert, field, venue
+source-prompt-law = Law, article, country
+source-prompt-media = Title, channel, date
+source-prompt-personal_experience = What you lived, when
+source-prompt-publication = Title, author, year
+source-prompt-quote = The words, who said it
+source-prompt-statistic = Figure, source, year
+source-prompt-web = Page, site, date visited
 
 ## Status bar
 status-boxes = { $count ->

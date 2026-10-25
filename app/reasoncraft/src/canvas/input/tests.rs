@@ -223,3 +223,14 @@ fn alt_other_keys_unmapped() {
         assert_eq!(key_to_action(Key::Num1, mods, false), None, "{mods:?}");
     }
 }
+
+#[test]
+fn ctrl_shift_e_adds_source() {
+    use reasoncraft_core::SourceType;
+    let cmd_shift = Modifiers::COMMAND | Modifiers::SHIFT;
+    let add = Some(Action::AddSource(SourceType::Source));
+    assert_eq!(key_to_action(Key::E, cmd_shift, false), add);
+    assert_eq!(key_to_action(Key::E, cmd_shift, true), add);
+    assert_eq!(key_to_action(Key::E, Modifiers::COMMAND, false), None);
+    assert_eq!(key_to_action(Key::E, Modifiers::COMMAND, true), None);
+}

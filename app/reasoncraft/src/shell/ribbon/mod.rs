@@ -1,14 +1,17 @@
 //! The ribbon: a tab strip and, for the active tab, labelled groups of commands.
 
 use eframe::egui::{
-    self, Align, Align2, Color32, FontId, Frame, Layout, Margin, Rect, Response, Role, Sense,
-    Stroke, StrokeKind, Ui, Vec2, WidgetInfo, pos2,
+    self, Align, Align2, Color32, FontId, Frame, Layout, Margin, Popup, Rect, Response, Role,
+    Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, pos2,
 };
+
+use reasoncraft_core::SourceType;
 
 use super::icons::{self, Icon};
 use super::{hover_fill, selected_fill};
 use crate::actions::{Action, Panel, is_enabled};
 use crate::app::{ReasonCraftApp, RibbonTab};
+use crate::canvas::plus_menu::source_button;
 use crate::i18n::t;
 use crate::theme::{ThemeChoice, Tokens};
 
@@ -137,6 +140,20 @@ fn home(ui: &mut Ui, app: &mut ReasonCraftApp) {
                 out.push(action);
             }
         }
+        let generic = Action::AddSource(SourceType::Source);
+        let label = t("action.add_source");
+        let resp = large_menu(ui, &tk, Icon::Source, &label, enabled(&generic));
+        Popup::menu(&resp).show(|ui| {
+            for st in SourceType::ALL {
+                let action = Action::AddSource(st.clone());
+                if ui
+                    .add_enabled(enabled(&action), source_button(&st))
+                    .clicked()
+                {
+                    out.push(action);
+                }
+            }
+        });
     });
     group(ui, &tk, &t("group.editing"), |ui| {
         let deletes = [
@@ -227,6 +244,10 @@ fn view(ui: &mut Ui, app: &mut ReasonCraftApp) {
         if large(ui, &tk, Icon::Open, &t("action.load_sample"), true, false).clicked() {
             out.push(Action::LoadSampleMap);
         }
+        let label = t("action.source_icons");
+        if large(ui, &tk, Icon::Source, &label, true, app.show_source_icons).clicked() {
+            out.push(Action::ToggleSourceIcons);
+        }
     });
     app.pending.extend(out);
 }
@@ -300,11 +321,34 @@ fn large(
     enabled: bool,
     selected: bool,
 ) -> Response {
+    large_button(ui, tk, icon, label, enabled, selected, false)
+}
+
+/// A large button that opens a dropdown: a "▾" follows its label.
+fn large_menu(ui: &mut Ui, tk: &Tokens, icon: Icon, label: &str, enabled: bool) -> Response {
+    large_button(ui, tk, icon, label, enabled, false, true)
+}
+
+/// Width of a dropdown arrow and its gap to the label.
+const ARROW_W: f32 = 7.0;
+const ARROW_GAP: f32 = 4.0;
+
+fn large_button(
+    ui: &mut Ui,
+    tk: &Tokens,
+    icon: Icon,
+    label: &str,
+    enabled: bool,
+    selected: bool,
+    dropdown: bool,
+) -> Response {
     let colour = if enabled { tk.box_text } else { tk.text_muted };
     let galley = ui
         .painter()
         .layout_no_wrap(label.to_owned(), FontId::proportional(12.0), colour);
-    let size = Vec2::new((galley.size().x + 14.0).max(50.0), BUTTON_H);
+    let arrow = if dropdown { ARROW_GAP + ARROW_W } else { 0.0 };
+    let text_w = galley.size().x + arrow;
+    let size = Vec2::new((text_w + 14.0).max(50.0), BUTTON_H);
     let sense = if enabled {
         Sense::click()
     } else {
@@ -317,7 +361,21 @@ fn large(
         let icon_rect =
             Rect::from_center_size(pos2(rect.center().x, rect.top() + 22.0), Vec2::splat(28.0));
         icons::paint(ui.painter(), icon_rect, icon, colour, surface, tk);
-        let text_pos = pos2(rect.center().x - galley.size().x / 2.0, rect.top() + 44.0);
+        let text_pos = pos2(rect.center().x - text_w / 2.0, rect.top() + 44.0);
+        if dropdown {
+            let x = text_pos.x + galley.size().x + ARROW_GAP;
+            let y = text_pos.y + galley.size().y / 2.0;
+            let tip = [
+                pos2(x, y - ARROW_W / 4.0),
+                pos2(x + ARROW_W, y - ARROW_W / 4.0),
+                pos2(x + ARROW_W / 2.0, y + ARROW_W / 4.0),
+            ];
+            ui.painter().add(egui::Shape::convex_polygon(
+                tip.to_vec(),
+                colour,
+                Stroke::NONE,
+            ));
+        }
         ui.painter().galley(text_pos, galley, colour);
     }
     resp

@@ -34,6 +34,7 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Ctrl+Enter | Add a co-premise |
 | Ctrl+Shift+R | Add a reason for the whole card (of the selected card or premise) |
 | Ctrl+Shift+Tab | Add an objection to the whole card (of the selected card or premise) |
+| Ctrl+Shift+E | Add a source (under the selected claim or premise, or loose) |
 | Enter or F2 | Edit the selected box |
 | Esc | Stop editing |
 | Delete | Delete (items under it move to the parking area) |
@@ -65,6 +66,7 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Ctrl+Enter | Finish and add a co-premise |
 | Ctrl+Shift+R | Finish and add a reason for the whole card |
 | Ctrl+Shift+Tab | Finish and add an objection to the whole card |
+| Ctrl+Shift+E | Finish and add a source |
 | Ctrl+S | Finish and save |
 | Ctrl+Shift+S | Finish and save as |
 | Ctrl+O | Finish and open |

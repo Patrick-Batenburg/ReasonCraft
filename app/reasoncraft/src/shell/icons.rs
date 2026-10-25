@@ -2,7 +2,7 @@
 
 use std::f32::consts::{PI, TAU};
 
-use eframe::egui::{Color32, Painter, Pos2, Rect, Stroke, StrokeKind, Vec2};
+use eframe::egui::{Color32, Painter, Pos2, Rect, Shape, Stroke, StrokeKind, Vec2};
 
 use crate::theme::Tokens;
 
@@ -48,49 +48,71 @@ pub enum Icon {
     Clear,
     Markers,
     Shading,
+    /// The generic source glyph (the "Source" dropdown).
+    Source,
 }
 
 /// Maps unit coordinates (0..1) onto the icon's square.
-struct Pen<'a> {
+pub(super) struct Pen<'a> {
     painter: &'a Painter,
     rect: Rect,
     stroke: Stroke,
 }
 
-impl Pen<'_> {
-    fn p(&self, x: f32, y: f32) -> Pos2 {
+impl<'a> Pen<'a> {
+    /// A pen for `rect` (a square) with the usual icon stroke in `colour`.
+    pub(super) fn new(painter: &'a Painter, rect: Rect, colour: Color32) -> Self {
+        let width = (rect.width() / 14.0).max(1.25);
+        Pen {
+            painter,
+            rect,
+            stroke: Stroke::new(width, colour),
+        }
+    }
+    /// A closed outline through `pts`.
+    pub(super) fn closed(&self, pts: &[(f32, f32)]) {
+        let pts: Vec<Pos2> = pts.iter().map(|&(x, y)| self.p(x, y)).collect();
+        self.painter.add(Shape::closed_line(pts, self.stroke));
+    }
+    /// A filled convex polygon through `pts`.
+    pub(super) fn polygon(&self, pts: &[(f32, f32)]) {
+        let pts: Vec<Pos2> = pts.iter().map(|&(x, y)| self.p(x, y)).collect();
+        self.painter
+            .add(Shape::convex_polygon(pts, self.stroke.color, Stroke::NONE));
+    }
+    pub(super) fn p(&self, x: f32, y: f32) -> Pos2 {
         self.rect.min + Vec2::new(x, y) * self.rect.width()
     }
-    fn r(&self, x0: f32, y0: f32, x1: f32, y1: f32) -> Rect {
+    pub(super) fn r(&self, x0: f32, y0: f32, x1: f32, y1: f32) -> Rect {
         Rect::from_min_max(self.p(x0, y0), self.p(x1, y1))
     }
-    fn line(&self, pts: &[(f32, f32)]) {
+    pub(super) fn line(&self, pts: &[(f32, f32)]) {
         let pts: Vec<Pos2> = pts.iter().map(|&(x, y)| self.p(x, y)).collect();
         self.painter.line(pts, self.stroke);
     }
-    fn line_c(&self, pts: &[(f32, f32)], color: Color32) {
+    pub(super) fn line_c(&self, pts: &[(f32, f32)], color: Color32) {
         let pts: Vec<Pos2> = pts.iter().map(|&(x, y)| self.p(x, y)).collect();
         self.painter
             .line(pts, Stroke::new(self.stroke.width, color));
     }
-    fn rect(&self, x0: f32, y0: f32, x1: f32, y1: f32, color: Color32) {
+    pub(super) fn rect(&self, x0: f32, y0: f32, x1: f32, y1: f32, color: Color32) {
         let r = self.r(x0, y0, x1, y1);
         let s = Stroke::new(self.stroke.width, color);
         self.painter.rect_stroke(r, 2.0, s, StrokeKind::Middle);
     }
-    fn fill(&self, x0: f32, y0: f32, x1: f32, y1: f32, color: Color32) {
+    pub(super) fn fill(&self, x0: f32, y0: f32, x1: f32, y1: f32, color: Color32) {
         self.painter.rect_filled(self.r(x0, y0, x1, y1), 1.0, color);
     }
-    fn circle(&self, x: f32, y: f32, r: f32) {
+    pub(super) fn circle(&self, x: f32, y: f32, r: f32) {
         let r = r * self.rect.width();
         self.painter.circle_stroke(self.p(x, y), r, self.stroke);
     }
-    fn disc(&self, x: f32, y: f32, r: f32, color: Color32) {
+    pub(super) fn disc(&self, x: f32, y: f32, r: f32, color: Color32) {
         self.painter
             .circle_filled(self.p(x, y), r * self.rect.width(), color);
     }
     /// An arc around (x, y) from angle `a0` to `a1` (radians, y down).
-    fn arc(&self, x: f32, y: f32, r: f32, a0: f32, a1: f32) {
+    pub(super) fn arc(&self, x: f32, y: f32, r: f32, a0: f32, a1: f32) {
         let pts: Vec<(f32, f32)> = (0..=16)
             .map(|i| {
                 let a = a0 + (a1 - a0) * i as f32 / 16.0;
@@ -99,7 +121,7 @@ impl Pen<'_> {
             .collect();
         self.line(&pts);
     }
-    fn arrow_up(&self, x: f32, y: f32, color: Color32) {
+    pub(super) fn arrow_up(&self, x: f32, y: f32, color: Color32) {
         self.line_c(&[(x - 0.12, y + 0.12), (x, y), (x + 0.12, y + 0.12)], color);
     }
 }
@@ -107,12 +129,7 @@ impl Pen<'_> {
 /// Draw `icon` in `rect` (a square). `fg` is the main colour, `bg` the
 /// surface it sits on (used to cut shapes such as the moon).
 pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32, t: &Tokens) {
-    let width = (rect.width() / 14.0).max(1.25);
-    let pen = Pen {
-        painter,
-        rect,
-        stroke: Stroke::new(width, fg),
-    };
+    let pen = Pen::new(painter, rect, fg);
     let muted = |c: Color32| if fg == t.text_muted { fg } else { c };
     match icon {
         Icon::New => {
@@ -349,7 +366,7 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         }
         // A link that carries its conclusion firmly, weakly or not at all.
         Icon::Strong => {
-            let thick = Stroke::new(width * 2.2, fg);
+            let thick = Stroke::new(pen.stroke.width * 2.2, fg);
             painter.line_segment([pen.p(0.5, 0.88), pen.p(0.5, 0.2)], thick);
             painter.line(
                 vec![pen.p(0.3, 0.38), pen.p(0.5, 0.16), pen.p(0.7, 0.38)],
@@ -383,6 +400,12 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
             pen.rect(0.1, 0.3, 0.78, 0.82, fg);
             pen.disc(0.78, 0.3, 0.14, muted(t.reason));
         }
+        Icon::Source => super::source_icons::paint_source_icon(
+            painter,
+            rect,
+            &reasoncraft_core::SourceType::Source,
+            fg,
+        ),
         Icon::Shading => {
             pen.rect(0.12, 0.2, 0.88, 0.8, fg);
             pen.fill(0.12, 0.2, 0.5, 0.8, muted(t.accent).gamma_multiply(0.6));

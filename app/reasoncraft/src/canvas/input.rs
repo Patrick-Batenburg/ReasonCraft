@@ -2,7 +2,7 @@
 //! navigation.
 
 use eframe::egui::{self, Event, FocusDirection, Key, Modifiers, Popup};
-use reasoncraft_core::{CardKind, Document, Item, Parent};
+use reasoncraft_core::{CardKind, Document, Item, Parent, SourceType};
 
 use super::editor::editor_id;
 use crate::actions::{Action, Dir, Rate, is_enabled};
@@ -12,7 +12,7 @@ use crate::app::ReasonCraftApp;
 /// Ctrl, or Cmd on macOS. While a box is being edited only Esc (finish),
 /// Tab / Shift+Tab (finish and add a reason / objection), Ctrl+Shift+R /
 /// Ctrl+Shift+Tab (finish and add a whole-card reason / objection),
-/// Ctrl+Enter (finish and add a co-premise) and the file keys Ctrl+S,
+/// Ctrl+Shift+E (finish and add a source), Ctrl+Enter (finish and add a co-premise) and the file keys Ctrl+S,
 /// Ctrl+Shift+S, Ctrl+O and Ctrl+N (finish, then the command) are commands;
 /// every other key is text.
 ///
@@ -39,6 +39,7 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
             (Key::Tab, false) => Some(if shift { A::AddObjection } else { A::AddReason }),
             (Key::Tab, true) if shift => Some(A::TargetWholeCard(CardKind::Objection)),
             (Key::R, true) if shift => Some(A::TargetWholeCard(CardKind::Reason)),
+            (Key::E, true) if shift => Some(A::AddSource(SourceType::Source)),
             (Key::Enter, true) => Some(A::AddCoPremise),
             (Key::S, true) => Some(if shift { A::SaveAs } else { A::Save }),
             (Key::O, true) if !shift => Some(A::Open),
@@ -51,6 +52,7 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
         (Key::Tab, false, true) => A::AddObjection,
         (Key::Tab, true, true) => A::TargetWholeCard(CardKind::Objection),
         (Key::R, true, true) => A::TargetWholeCard(CardKind::Reason),
+        (Key::E, true, true) => A::AddSource(SourceType::Source),
         (Key::P, true, true) => A::JumpParking,
         (Key::Enter, true, _) => A::AddCoPremise,
         (Key::Enter | Key::F2, false, false) => A::Edit,

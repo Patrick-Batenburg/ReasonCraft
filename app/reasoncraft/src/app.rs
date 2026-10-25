@@ -46,6 +46,9 @@ pub struct ReasonCraftApp {
     close_confirmed: bool,
     /// Send the close command at the end of this frame.
     close_now: bool,
+    /// Show the source icon preview window.
+    #[cfg(debug_assertions)]
+    pub show_source_icons: bool,
 }
 
 impl ReasonCraftApp {
@@ -66,6 +69,8 @@ impl ReasonCraftApp {
             window_title: String::new(),
             close_confirmed: false,
             close_now: false,
+            #[cfg(debug_assertions)]
+            show_source_icons: false,
         }
     }
 
@@ -136,6 +141,8 @@ impl ReasonCraftApp {
         shell::show_side_panels(ui, self);
         shell::show_central(ui, self);
         shell::modal::show(&ctx, self);
+        #[cfg(debug_assertions)]
+        shell::source_icons::preview(&ctx, self);
         shell::resize::show(&ctx);
         self.pending.extend(keys);
 
