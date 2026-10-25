@@ -47,7 +47,7 @@
   - [x] Task 1: Unified edit session and file splits
   - [x] Task 2: Scene builder and screen painter on the scene
   - [x] Task 3: SVG writer
-  - [ ] Task 4: PNG export and copy as image
+  - [x] Task 4: PNG export and copy as image
   - [ ] Task 5: PDF export, page setup and print
   - [ ] Task 6: Core outline Markdown and linking words
   - [ ] Task 7: Export ribbon tab, dialog and background jobs
