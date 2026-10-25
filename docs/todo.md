@@ -38,7 +38,7 @@
   - [x] Task 3: Outline tab
   - [x] Task 4: Core checks
   - [x] Task 5: Check tab, settings and status bar count
-  - [ ] Task 6: Core snippets
+  - [x] Task 6: Core snippets
   - [ ] Task 7: Snippets tab
   - [ ] Task 8: Drag a snippet selection onto the map
   - [ ] Task 9: Document language
