@@ -1,5 +1,6 @@
 //! Personal preferences that survive restarts.
 
+use reasoncraft_core::outline::OutlineOptions;
 use serde::{Deserialize, Serialize};
 
 use crate::theme::ThemeChoice;
@@ -21,6 +22,47 @@ pub struct Settings {
     pub eval_shading: bool,
     /// The tab the Text panel shows.
     pub text_tab: TextTab,
+    /// What the outline shows: numbers, linking words, notes.
+    pub outline: OutlineOptions,
+    /// Indent outline rows by depth.
+    pub outline_indent: bool,
+    /// Mark outline rows with their role colour.
+    pub outline_colour: bool,
+}
+
+/// One of the Outline tab's toolbar switches.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OutlineToggle {
+    Numbering,
+    Labels,
+    Indent,
+    Colour,
+    Notes,
+}
+
+impl Settings {
+    /// Whether the outline switch `toggle` is on.
+    pub fn outline_toggle(&self, toggle: OutlineToggle) -> bool {
+        match toggle {
+            OutlineToggle::Numbering => self.outline.numbering,
+            OutlineToggle::Labels => self.outline.labels,
+            OutlineToggle::Indent => self.outline_indent,
+            OutlineToggle::Colour => self.outline_colour,
+            OutlineToggle::Notes => self.outline.notes,
+        }
+    }
+
+    /// Turn the outline switch `toggle` on or off.
+    pub fn set_outline_toggle(&mut self, toggle: OutlineToggle, on: bool) {
+        let field = match toggle {
+            OutlineToggle::Numbering => &mut self.outline.numbering,
+            OutlineToggle::Labels => &mut self.outline.labels,
+            OutlineToggle::Indent => &mut self.outline_indent,
+            OutlineToggle::Colour => &mut self.outline_colour,
+            OutlineToggle::Notes => &mut self.outline.notes,
+        };
+        *field = on;
+    }
 }
 
 /// The tabs of the Text panel.
@@ -41,6 +83,9 @@ impl Default for Settings {
             show_markers: true,
             eval_shading: true,
             text_tab: TextTab::default(),
+            outline: OutlineOptions::default(),
+            outline_indent: true,
+            outline_colour: true,
         }
     }
 }

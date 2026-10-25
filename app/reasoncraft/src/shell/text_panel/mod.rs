@@ -3,8 +3,11 @@
 
 use eframe::egui::{self, RichText, Stroke, Ui};
 
+mod outline;
+
 use super::tab_button;
 use crate::actions::Action;
+use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::settings::{Settings, TextTab};
 use crate::theme::Tokens;
@@ -22,12 +25,19 @@ const TABS: [(TextTab, &str); 4] = [
 ];
 
 /// Draw the panel's contents and queue the user's commands in `out`.
-pub fn show(ui: &mut Ui, settings: &Settings, tk: &Tokens, out: &mut Vec<Action>) {
+pub fn show(
+    ui: &mut Ui,
+    tab: &mut DocTab,
+    settings: &Settings,
+    tk: &Tokens,
+    out: &mut Vec<Action>,
+) {
     tab_strip(ui, settings.text_tab, tk, out);
     ui.add_space(8.0);
     let body = match settings.text_tab {
+        TextTab::Outline => return outline::show(ui, tab, settings, tk, out),
         TextTab::Essay => t("text.essay.coming"),
-        TextTab::Outline | TextTab::Check | TextTab::Snippets => t("panel.coming_later"),
+        TextTab::Check | TextTab::Snippets => t("panel.coming_later"),
     };
     ui.label(RichText::new(body).color(tk.text_muted));
     ui.take_available_space();

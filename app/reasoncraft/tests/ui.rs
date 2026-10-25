@@ -889,6 +889,13 @@ fn settings_from_old_storage_fill_defaults() {
         show_markers: false,
         eval_shading: true,
         text_tab: reasoncraft::settings::TextTab::Check,
+        outline: reasoncraft_core::outline::OutlineOptions {
+            numbering: false,
+            labels: true,
+            notes: true,
+        },
+        outline_indent: false,
+        outline_colour: true,
     };
     eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
     assert_eq!(

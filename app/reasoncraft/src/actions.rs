@@ -9,7 +9,7 @@ use crate::app::ReasonCraftApp;
 use crate::canvas::input::{navigate, parking_jump};
 use crate::doc_tab::DocTab;
 use crate::file_ops;
-use crate::settings::TextTab;
+use crate::settings::{OutlineToggle, TextTab};
 use crate::theme::ThemeChoice;
 
 mod box_group;
@@ -127,6 +127,9 @@ pub enum Action {
     StartConnect,
     CancelConnect,
     Select(Option<Item>),
+    /// Pan the selection into view on the next canvas frame (after a
+    /// selection made outside the canvas, e.g. in the outline).
+    RevealSelection,
     Navigate(Dir),
     /// Jump between the main tree's root and the first parked item.
     JumpParking,
@@ -179,6 +182,8 @@ pub enum Action {
     TogglePanel(Panel),
     /// Show this tab in the Text panel.
     SetTextTab(TextTab),
+    /// Turn one of the Outline tab's switches on or off.
+    SetOutlineOption(OutlineToggle, bool),
     /// Switch to the tab at this index.
     ActivateTab(usize),
     /// Open the built-in sample map in a new tab (debug builds only).
@@ -228,7 +233,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::ToggleMarkers
         | Action::ToggleShading
         | Action::TogglePanel(_)
-        | Action::SetTextTab(_) => view::apply(app, action),
+        | Action::SetTextTab(_)
+        | Action::SetOutlineOption(..) => view::apply(app, action),
         Action::AddComment { .. }
         | Action::RemoveComment { .. }
         | Action::OpenComments(_)
@@ -299,6 +305,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         Action::Move { .. } | Action::Reorder(_) => structure::apply(tab, action),
         Action::StartConnect | Action::CancelConnect => connect::apply(tab, action),
         Action::Select(item) => tab.selection = item.filter(|i| tab.contains(*i)),
+        Action::RevealSelection => tab.reveal_pending = true,
         Action::Navigate(dir) => {
             tab.selection = match tab.selection {
                 Some(from) => navigate(&tab.doc, from, dir).or(Some(from)),
@@ -351,7 +358,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::InsertImage
         | Action::RemoveImage
         | Action::TogglePanel(_)
-        | Action::SetTextTab(_) => unreachable!("app-level action"),
+        | Action::SetTextTab(_)
+        | Action::SetOutlineOption(..) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

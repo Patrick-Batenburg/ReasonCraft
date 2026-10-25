@@ -1,4 +1,5 @@
-//! View preferences: theme, rating display, panels and the Text panel tab.
+//! View preferences: theme, rating display, panels, the Text panel tab and
+//! the outline's switches.
 //! None of them change the document or end "Connect to…".
 
 use super::{Action, Panel};
@@ -13,6 +14,7 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
         Action::TogglePanel(Panel::Left) => app.left_panel = !app.left_panel,
         Action::TogglePanel(Panel::Right) => app.right_panel = !app.right_panel,
         Action::SetTextTab(tab) => s.text_tab = tab,
+        Action::SetOutlineOption(toggle, on) => s.set_outline_toggle(toggle, on),
         _ => unreachable!("not a view action"),
     }
 }

@@ -1,7 +1,7 @@
 //! Rating visuals (spec §5): card tint and border by strength, the rating
 //! label, and the ✓ / ? / × markers on rated boxes.
 
-use eframe::egui::{Align2, Color32, FontId, Pos2, Rect, Shape, Stroke, Vec2, pos2, vec2};
+use eframe::egui::{Align2, Color32, FontId, Painter, Pos2, Rect, Shape, Stroke, Vec2, pos2, vec2};
 use reasoncraft_core::connector::Strength;
 use reasoncraft_core::{Acceptance, BoxNode, CardStrength, Role, SourceRating};
 
@@ -144,47 +144,48 @@ impl Pass<'_> {
         if !self.visible(Rect::from_center_size(c, Vec2::splat(2.0 * r))) {
             return;
         }
-        let colour = match mark {
-            Mark::Yes => self.t.reason,
-            Mark::Maybe => self.t.rebuttal,
-            Mark::No => self.t.objection,
-        };
-        let width = (1.6 * z).max(1.25);
-        self.painter.circle(
-            c,
-            r,
-            self.t.box_fill,
-            Stroke::new((1.2 * z).max(1.0), colour),
-        );
-        let stroke = Stroke::new(width, colour);
-        // Glyph coordinates in units of the radius, centred on `c`.
-        let at = |x: f32, y: f32| c + vec2(x, y) * r;
-        match mark {
-            Mark::Yes => {
-                self.painter.add(Shape::line(
-                    vec![at(-0.45, 0.02), at(-0.12, 0.35), at(0.45, -0.32)],
-                    stroke,
-                ));
-            }
-            Mark::No => {
-                let d = 0.36;
-                self.painter.line_segment([at(-d, -d), at(d, d)], stroke);
-                self.painter.line_segment([at(-d, d), at(d, -d)], stroke);
-            }
-            Mark::Maybe => {
-                // The hook of a "?": an arc over the top, then the stem.
-                let (cy, rad) = (-0.2, 0.28);
-                let mut points: Vec<Pos2> = (0..=8)
-                    .map(|i| {
-                        let a = (160.0 - i as f32 * 26.0_f32).to_radians();
-                        at(a.cos() * rad, cy - a.sin() * rad)
-                    })
-                    .collect();
-                points.push(at(0.0, 0.18));
-                self.painter.add(Shape::line(points, stroke));
-                self.painter
-                    .circle_filled(at(0.0, 0.46), width * 0.65, colour);
-            }
+        paint_mark(self.painter, c, r, mark, self.t);
+    }
+}
+
+/// A ✓ / ? / × marker: a circle of radius `r` (screen px) centred on `c`,
+/// with strokes scaled to the canvas marker's at that size.
+pub fn paint_mark(painter: &Painter, c: Pos2, r: f32, mark: Mark, t: &Tokens) {
+    let z = r / (MARKER_SIZE / 2.0);
+    let colour = match mark {
+        Mark::Yes => t.reason,
+        Mark::Maybe => t.rebuttal,
+        Mark::No => t.objection,
+    };
+    let width = (1.6 * z).max(1.25);
+    painter.circle(c, r, t.box_fill, Stroke::new((1.2 * z).max(1.0), colour));
+    let stroke = Stroke::new(width, colour);
+    // Glyph coordinates in units of the radius, centred on `c`.
+    let at = |x: f32, y: f32| c + vec2(x, y) * r;
+    match mark {
+        Mark::Yes => {
+            painter.add(Shape::line(
+                vec![at(-0.45, 0.02), at(-0.12, 0.35), at(0.45, -0.32)],
+                stroke,
+            ));
+        }
+        Mark::No => {
+            let d = 0.36;
+            painter.line_segment([at(-d, -d), at(d, d)], stroke);
+            painter.line_segment([at(-d, d), at(d, -d)], stroke);
+        }
+        Mark::Maybe => {
+            // The hook of a "?": an arc over the top, then the stem.
+            let (cy, rad) = (-0.2, 0.28);
+            let mut points: Vec<Pos2> = (0..=8)
+                .map(|i| {
+                    let a = (160.0 - i as f32 * 26.0_f32).to_radians();
+                    at(a.cos() * rad, cy - a.sin() * rad)
+                })
+                .collect();
+            points.push(at(0.0, 0.18));
+            painter.add(Shape::line(points, stroke));
+            painter.circle_filled(at(0.0, 0.46), width * 0.65, colour);
         }
     }
 }

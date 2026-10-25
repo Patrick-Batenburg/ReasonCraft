@@ -237,6 +237,8 @@ fn connect_mode_survives_theme_and_panel_toggles() {
         Action::ToggleMarkers,
         Action::ToggleShading,
         Action::SetTextTab(crate::settings::TextTab::Check),
+        Action::SetOutlineOption(crate::settings::OutlineToggle::Notes, true),
+        Action::RevealSelection,
     ] {
         apply(&mut a, keep.clone());
         assert_eq!(tab(&a).connect_mode, Some(note), "{keep:?}");

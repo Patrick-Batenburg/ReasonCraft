@@ -104,7 +104,7 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     let tk = app.tokens;
     let frame = Frame::new().fill(tk.panel).inner_margin(Margin::same(12));
-    let tab = &app.tabs[app.active];
+    let tab = &mut app.tabs[app.active];
     let mut out = Vec::new();
     egui::Panel::left("building_panel")
         .frame(frame)
@@ -117,7 +117,7 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         .default_size(300.0)
         .min_size(290.0)
         .show_collapsible(ui, &mut app.right_panel, |ui| {
-            text_panel::show(ui, &app.settings, &tk, &mut out);
+            text_panel::show(ui, tab, &app.settings, &tk, &mut out);
         });
     app.pending.extend(out);
 }

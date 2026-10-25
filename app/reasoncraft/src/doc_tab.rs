@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use eframe::egui::Rect;
+use reasoncraft_core::outline::{OutlineLine, OutlineOptions, build_outline};
 use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Package};
 
 use crate::canvas::Camera;
@@ -51,6 +52,9 @@ pub struct DocTab {
     /// Counts changes to [`Self::doc`], so text derived from it (outline,
     /// checks) can be cached until the next change. Starts at 0.
     revision: u64,
+    /// The outline last built, with the revision and options it was built
+    /// for (see [`Self::outline`]).
+    pub outline_cache: Option<(u64, OutlineOptions, Vec<OutlineLine>)>,
 }
 
 impl Default for DocTab {
@@ -97,6 +101,7 @@ impl DocTab {
             comments_open: None,
             connect_mode: None,
             revision: 0,
+            outline_cache: None,
         }
     }
 
@@ -110,6 +115,20 @@ impl DocTab {
     /// a file loaded into the tab). Selection and view changes do not count.
     pub fn bump_revision(&mut self) {
         self.revision += 1;
+    }
+
+    /// The document's outline for `opts`, rebuilt only when the document or
+    /// the options changed since the last call.
+    pub fn outline(&mut self, opts: OutlineOptions) -> &[OutlineLine] {
+        let fresh = self
+            .outline_cache
+            .as_ref()
+            .is_some_and(|(rev, o, _)| *rev == self.revision && *o == opts);
+        if !fresh {
+            let lines = build_outline(&self.doc, &opts);
+            self.outline_cache = Some((self.revision, opts, lines));
+        }
+        self.outline_cache.as_ref().map_or(&[], |(_, _, l)| l)
     }
 
     /// Note that a file was loaded into this tab, in place of a tab at
@@ -275,6 +294,30 @@ mod tests {
         tab.path = Some(PathBuf::from("maps/robots.rcraft"));
         tab.history.mark_saved();
         assert_eq!(tab.title(), "robots");
+    }
+
+    #[test]
+    fn outline_is_rebuilt_only_for_new_revision_or_options() {
+        let mut tab = DocTab::new();
+        let opts = OutlineOptions::default();
+        assert_eq!(tab.outline(opts).len(), 1);
+        // A change made behind the cache's back is not seen…
+        let root = tab.doc.root;
+        tab.doc
+            .add_card(Parent::Box(root), CardKind::Reason, "")
+            .unwrap();
+        assert_eq!(tab.outline(opts).len(), 1);
+        // …until the revision moves on, or the options change.
+        tab.bump_revision();
+        assert_eq!(tab.outline(opts).len(), 2);
+        tab.doc
+            .add_card(Parent::Box(root), CardKind::Reason, "")
+            .unwrap();
+        let bare = OutlineOptions {
+            numbering: false,
+            ..opts
+        };
+        assert_eq!(tab.outline(bare).len(), 3);
     }
 
     #[test]

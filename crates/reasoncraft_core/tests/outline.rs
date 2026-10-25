@@ -179,6 +179,26 @@ fn plain_text_matches_expected() {
 }
 
 #[test]
+fn plain_text_indents_continuation_lines_and_skips_empty_parts() {
+    let mut d = Document::new("Claim");
+    let root = Parent::Box(d.root);
+    let (_, p) = d
+        .add_card(root, CardKind::Reason, "first line\r\nsecond line")
+        .unwrap();
+    let web = BoxKind::Source {
+        source_type: SourceType::Web,
+    };
+    d.add_box(Parent::Box(p), web.clone(), "").unwrap();
+    d.add_box(Parent::Box(p), web, "page\n\nvisited").unwrap();
+    d.add_card(root, CardKind::Reason, "").unwrap();
+    let opts = OutlineOptions::default();
+    let text = outline_plain_text(&build_outline(&d, &opts), &opts, &label_word, &source_word);
+    let expected = "Claim\n  1 because first line\n  second line\n    [web]\n    [web] page\n\n    visited\n  2 because";
+    assert_eq!(text, expected);
+    assert!(text.lines().all(|l| !l.ends_with(' ')), "trailing space");
+}
+
+#[test]
 fn deep_chain_200_no_overflow() {
     let mut d = Document::new("Top");
     let mut parent = Parent::Box(d.root);

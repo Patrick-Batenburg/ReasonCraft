@@ -273,7 +273,9 @@ pub fn build_outline(doc: &Document, opts: &OutlineOptions) -> Vec<OutlineLine> 
     lines
 }
 
-/// The outline as indented plain text, two spaces per depth. The words are
+/// The outline as indented plain text, two spaces per depth. Further lines
+/// of a multi-line box text are indented like its first line; empty parts
+/// (no number, no label, no text) leave no stray spaces. The words are
 /// passed in so the core stays free of translations.
 pub fn outline_plain_text(
     lines: &[OutlineLine],
@@ -286,21 +288,30 @@ pub fn outline_plain_text(
         if i > 0 {
             out.push('\n');
         }
-        out.push_str(&"  ".repeat(line.depth));
-        if let LineKind::Source(source_type) = &line.kind {
-            out.push_str(&format!("[{}] {}", source_word(source_type), line.text));
-            continue;
-        }
+        let indent = "  ".repeat(line.depth);
         let mut parts: Vec<String> = Vec::with_capacity(3);
-        if opts.numbering && !line.number.is_empty() {
-            parts.push(line.number.clone());
+        if let LineKind::Source(source_type) = &line.kind {
+            parts.push(format!("[{}]", source_word(source_type)));
+        } else {
+            if opts.numbering {
+                parts.push(line.number.clone());
+            }
+            if opts.labels && line.label != LinkLabel::None {
+                parts.push(label_word(line.label));
+            }
         }
-        if opts.labels && line.label != LinkLabel::None {
-            parts.push(label_word(line.label));
-        }
-        parts.push(line.text.clone());
+        let mut text = line.text.lines();
+        parts.push(text.next().unwrap_or_default().to_owned());
         parts.retain(|p| !p.is_empty());
+        out.push_str(&indent);
         out.push_str(&parts.join(" "));
+        for more in text {
+            out.push('\n');
+            if !more.is_empty() {
+                out.push_str(&indent);
+                out.push_str(more);
+            }
+        }
     }
     out
 }
