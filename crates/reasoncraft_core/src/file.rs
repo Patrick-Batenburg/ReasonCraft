@@ -10,7 +10,7 @@ use zip::result::ZipError;
 use zip::write::SimpleFileOptions;
 
 use crate::model::{Document, SCHEMA_VERSION};
-use crate::package::{Assets, Package};
+use crate::package::{Assets, Package, asset_key};
 
 const DOCUMENT_ENTRY: &str = "document.json";
 const IMAGES_DIR: &str = "images/";
@@ -62,8 +62,11 @@ fn write_archive(pkg: &Package, tmp: &Path) -> Result<(), FileError> {
     zip.start_file(DOCUMENT_ENTRY, options).map_err(zip_to_io)?;
     zip.write_all(&json)?;
     zip.add_directory(IMAGES_DIR, options).map_err(zip_to_io)?;
+    // Images are already compressed (PNG): stored as they are, so a save
+    // never deflates them again.
+    let stored = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
     for (key, bytes) in pkg.assets.referenced(&pkg.doc) {
-        zip.start_file(format!("{IMAGES_DIR}{key}"), options)
+        zip.start_file(format!("{IMAGES_DIR}{key}"), stored)
             .map_err(zip_to_io)?;
         zip.write_all(bytes)?;
     }
@@ -140,6 +143,12 @@ fn read_capped(
     Ok(buf)
 }
 
+/// Whether `key` is `"<sha256 of bytes>.<ext>"`.
+fn key_matches(key: &str, bytes: &[u8]) -> bool {
+    key.split_once('.')
+        .is_some_and(|(_, ext)| asset_key(ext, bytes) == key)
+}
+
 /// [`open_package`] with explicit caps on the uncompressed document, each
 /// image asset and the total.
 fn open_package_with_limits(
@@ -188,7 +197,12 @@ fn open_package_with_limits(
                 continue;
             }
             let bytes = read_capped(entry, &name, asset_limit, &mut total, total_limit)?;
-            assets.insert_raw(key.to_string(), bytes);
+            // Keys are content hashes and the image cache is shared by all
+            // tabs: an entry whose bytes do not match its key is dropped
+            // (shown as missing) so it cannot stand in for another image.
+            if key_matches(key, &bytes) {
+                assets.insert_raw(key.to_string(), bytes);
+            }
         } else if entry.is_dir() {
             other_entries.push((name, Vec::new()));
         } else {
@@ -496,6 +510,64 @@ mod tests {
         });
         save_package(&pkg, &p).unwrap();
         assert!(entry_names(&p).contains(&format!("images/{key}")));
+    }
+
+    #[test]
+    fn image_entries_are_stored_uncompressed() {
+        let mut pkg = Package::new(Document::new("C"));
+        let key = pkg.assets.insert("png", vec![0; 4096]);
+        let root = pkg.doc.root;
+        pkg.doc.boxes[&root].image = Some(crate::ImageRef {
+            asset: key.clone(),
+            aspect: 1.0,
+        });
+        pkg.other_entries.push(("extra.bin".into(), vec![0; 4096]));
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("x.rcraft");
+        save_package(&pkg, &p).unwrap();
+        let mut z = zip::ZipArchive::new(std::fs::File::open(&p).unwrap()).unwrap();
+        let method =
+            |z: &mut zip::ZipArchive<std::fs::File>, n: &str| z.by_name(n).unwrap().compression();
+        assert_eq!(
+            method(&mut z, &format!("images/{key}")),
+            zip::CompressionMethod::Stored
+        );
+        assert_eq!(
+            method(&mut z, "document.json"),
+            zip::CompressionMethod::Deflated
+        );
+        assert_eq!(
+            method(&mut z, "extra.bin"),
+            zip::CompressionMethod::Deflated
+        );
+        assert_eq!(open_package(&p).unwrap(), pkg);
+    }
+
+    #[test]
+    fn image_entries_whose_bytes_do_not_match_their_key_are_dropped() {
+        let real = asset_key("png", b"real");
+        let d = doc_with_image(&real);
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("x.rcraft");
+        let other = asset_key("png", b"other");
+        zip_with(
+            &p,
+            &d,
+            &[
+                (&format!("images/{real}"), b"spoofed"),
+                (&format!("images/{other}"), b"other"),
+                ("images/nodot", b"x"),
+            ],
+        );
+        let pkg = open_package(&p).unwrap();
+        assert!(pkg.assets.get(&real).is_none(), "treated as missing");
+        assert_eq!(&*pkg.assets.get(&other).unwrap(), b"other");
+        assert_eq!(pkg.assets.len(), 1);
+        let root = pkg.doc.root;
+        assert!(
+            pkg.doc.boxes[&root].image.is_some(),
+            "the box keeps its image ref"
+        );
     }
 
     #[test]
