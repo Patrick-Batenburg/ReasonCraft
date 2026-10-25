@@ -1,11 +1,11 @@
 //! Painting of boxes: claim, premise, category, source and note.
 
 use eframe::egui::{Align2, Color32, Rect, Shape, Stroke, StrokeKind, pos2, vec2};
+use reasoncraft_core::BoxKind;
 use reasoncraft_core::layout::BOX_TEXT_PAD;
-use reasoncraft_core::{BoxKind, Role};
 
 use super::measure;
-use super::paint::{Pass, role_colour, screen_font};
+use super::paint::{Pass, screen_font};
 use crate::i18n::t;
 
 pub(super) const BOX_RADIUS: f32 = 7.0;
@@ -27,14 +27,14 @@ pub(super) fn box_radius(kind: &BoxKind) -> f32 {
 }
 
 impl Pass<'_> {
-    /// A box of any kind. `role` is the role of the card a premise sits in.
+    /// A box of any kind. `border` is the colour of the card a premise sits in.
     /// `text` is `None` while the inline editor shows the text instead.
     pub(super) fn box_(
         &self,
         world: Rect,
         kind: &BoxKind,
         text: Option<&str>,
-        role: Option<Role>,
+        border_colour: Option<Color32>,
         is_root: bool,
     ) {
         let r = self.screen(world);
@@ -47,7 +47,7 @@ impl Pass<'_> {
         let (fill, stroke, text_colour) = match kind {
             BoxKind::Claim => (tk.box_fill, border(tk.claim_border), tk.box_text),
             BoxKind::Premise => {
-                let c = role.map_or(tk.text_muted, |r| role_colour(tk, r));
+                let c = border_colour.unwrap_or(tk.text_muted);
                 (tk.box_fill, border(c), tk.box_text)
             }
             BoxKind::Category => (tk.box_fill, border(tk.text_muted), tk.box_text),

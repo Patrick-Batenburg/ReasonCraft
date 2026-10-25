@@ -10,6 +10,7 @@ pub mod input;
 pub mod measure;
 pub mod paint;
 pub mod plus_menu;
+pub mod rating;
 
 use eframe::egui::{self, Key, PointerButton, Rect, Response, Role, Sense, WidgetInfo};
 use reasoncraft_core::{Item, LayoutParams, layout};
@@ -51,6 +52,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         active,
         measure_cache,
         pending,
+        settings,
         ..
     } = app;
     let tab = &mut tabs[*active];
@@ -93,6 +95,10 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         &tokens,
         tab.selection,
         tab.editing,
+        paint::PaintOptions {
+            show_markers: settings.show_markers,
+            eval_shading: settings.eval_shading,
+        },
     );
     drag::update(ui, &response, &layout, tab, &tokens, pending, panning);
     editor::show(ui, tab, &layout, &tokens, pending);

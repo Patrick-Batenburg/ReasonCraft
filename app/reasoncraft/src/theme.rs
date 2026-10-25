@@ -33,6 +33,8 @@ pub struct Tokens {
     pub reason: Color32,
     pub objection: Color32,
     pub rebuttal: Color32,
+    /// Cards rated nil: frame, label, premise borders and connector.
+    pub nil: Color32,
     pub attachment_line: Color32,
     /// Sticky-note fill and its text.
     pub note: Color32,
@@ -58,8 +60,9 @@ impl Tokens {
             text_muted: hex(0xA0A0AA),
             accent: hex(0x8AB4FF),
             reason: hex(0x4CC073),
-            objection: hex(0xE05A5A),
+            objection: hex(0xF07474),
             rebuttal: hex(0xE0A05A),
+            nil: hex(0x8C8C96),
             attachment_line: hex(0x5C5C66),
             note: hex(0xD6C267),
             note_text: hex(0x26220F),
@@ -79,9 +82,10 @@ impl Tokens {
             claim_border: hex(0x3A3A42),
             text_muted: hex(0x56565F),
             accent: hex(0x1A5CC8),
-            reason: hex(0x1B7A43),
-            objection: hex(0xB8322A),
-            rebuttal: hex(0x9A5200),
+            reason: hex(0x166A39),
+            objection: hex(0xA82B24),
+            rebuttal: hex(0x8E4B00),
+            nil: hex(0x66666F),
             attachment_line: hex(0x9A9AA4),
             note: hex(0xFFF1A6),
             note_text: hex(0x3A3412),
@@ -169,6 +173,45 @@ mod tests {
         let t = Tokens::light();
         for fg in [t.reason, t.objection, t.rebuttal] {
             assert!(contrast(fg, t.box_fill) >= 4.5, "{fg:?}");
+        }
+    }
+
+    /// `fg` at `alpha` over `bg`, blended in gamma space as egui does.
+    fn over(bg: Color32, fg: Color32, alpha: f32) -> Color32 {
+        let mix =
+            |b: u8, f: u8| (f32::from(b) * (1.0 - alpha) + f32::from(f) * alpha).round() as u8;
+        Color32::from_rgb(
+            mix(bg.r(), fg.r()),
+            mix(bg.g(), fg.g()),
+            mix(bg.b(), fg.b()),
+        )
+    }
+
+    /// The rating label is text in the card colour on the card's own tint:
+    /// the strongest tint (strong cards) still leaves 4.5:1.
+    #[test]
+    fn label_contrast_on_tinted_frames() {
+        use crate::canvas::rating::{FRAME_ALPHA, STRONG_ALPHA};
+        for t in [Tokens::dark(), Tokens::light()] {
+            let labels = [
+                (t.reason, STRONG_ALPHA),
+                (t.objection, STRONG_ALPHA),
+                (t.rebuttal, STRONG_ALPHA),
+                // Nil cards are tinted less; FRAME_ALPHA covers shading off.
+                (t.nil, FRAME_ALPHA),
+            ];
+            for (fg, alpha) in labels {
+                let bg = over(t.canvas, fg, alpha);
+                let c = contrast(fg, bg);
+                assert!(c >= 4.5, "{fg:?} on its tint: {c:.2} (dark = {})", t.dark);
+            }
+            for bg in [t.bg, t.panel, t.ribbon, t.box_fill, t.canvas] {
+                assert!(
+                    contrast(t.nil, bg) >= 3.0,
+                    "nil on {bg:?} (dark = {})",
+                    t.dark
+                );
+            }
         }
     }
 

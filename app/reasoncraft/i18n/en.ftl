@@ -135,6 +135,17 @@ role-supports = supports
 role-opposes = opposes
 role-rebuts = rebuts
 
+## Card rating labels
+rating-strong-supports = ●● strongly supports
+rating-strong-opposes = ●● strongly opposes
+rating-strong-rebuts = ●● strongly rebuts
+rating-weak-supports = ● weakly supports
+rating-weak-opposes = ● weakly opposes
+rating-weak-rebuts = ● weakly rebuts
+rating-nil-supports = does not support
+rating-nil-opposes = does not oppose
+rating-nil-rebuts = does not rebut
+
 ## Source types
 source-source = Source
 source-my_basis = My own basis

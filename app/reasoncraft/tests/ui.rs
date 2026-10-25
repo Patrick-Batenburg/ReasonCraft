@@ -922,3 +922,44 @@ fn alt_digit_rates_without_typing() {
     one_frame(&mut h, vec![alt(egui::Key::Num0)]);
     assert_eq!(h.state().tabs[0].doc.boxes[&root].acceptance, None);
 }
+
+/// A map with every kind of rating paints, with markers and shading on and off.
+#[test]
+fn rated_map_renders() {
+    use reasoncraft_core::{Acceptance, BoxKind, CardStrength, SourceRating};
+    let mut doc = reasoncraft_core::fixtures::sample_iot_like(40);
+    let strengths = [
+        Some(CardStrength::Strong),
+        Some(CardStrength::Weak),
+        Some(CardStrength::Nil),
+        None,
+    ];
+    for (card, s) in doc.cards.values_mut().zip(strengths.into_iter().cycle()) {
+        card.strength = s;
+    }
+    let acceptances = [Acceptance::Accept, Acceptance::Unsure, Acceptance::Reject];
+    let ratings = [SourceRating::Solid, SourceRating::Shaky, SourceRating::Nil];
+    let (mut a, mut r) = (0, 0);
+    for b in doc.boxes.values_mut() {
+        match b.kind {
+            BoxKind::Claim | BoxKind::Premise => {
+                b.acceptance = Some(acceptances[a % 3]);
+                a += 1;
+            }
+            BoxKind::Source { .. } => {
+                b.source_rating = Some(ratings[r % 3]);
+                r += 1;
+            }
+            _ => {}
+        }
+    }
+    assert!(a >= 3 && r >= 3, "the sample has premises and sources");
+    let mut h = harness_with(doc);
+    h.run_steps(3);
+    // At 100% every label and marker is drawn (fitting may hide small text).
+    h.state_mut().tabs[0].camera.zoom = 1.0;
+    h.run_steps(3);
+    h.state_mut().settings.show_markers = false;
+    h.state_mut().settings.eval_shading = false;
+    h.run_steps(3);
+}

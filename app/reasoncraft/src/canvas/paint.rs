@@ -3,7 +3,7 @@
 //! Everything is laid out in world units and drawn through the [`Camera`].
 //! Stroke widths, arrowheads and bars are in screen px so they stay visible
 //! at every zoom. Draw order: background, parking area, connectors, card
-//! frames, boxes, labels, selection.
+//! frames, boxes (each with its rating marker), labels, selection.
 
 use std::collections::HashMap;
 
@@ -12,17 +12,21 @@ use eframe::egui::{
     vec2,
 };
 use reasoncraft_core::connector::{
-    ARROW_PX, EndMarker, STUB_PX, Segment, Strength, curved_path, end_marker, stroke_px,
+    ARROW_PX, EndMarker, STUB_PX, Segment, curved_path, end_marker, stroke_px,
 };
-use reasoncraft_core::{CardId, Connector, ConnectorKind, Document, Item, Layout, NodeId, Role};
+use reasoncraft_core::{
+    CardStrength, Connector, ConnectorKind, Document, Item, Layout, NodeId, Role,
+};
 
 use super::Camera;
 use super::boxes::{BOX_RADIUS, box_radius};
+use super::rating::{
+    card_colour, connector_strength, frame_alpha, frame_border, mark_for, rating_label,
+};
 use crate::i18n::t;
 use crate::theme::Tokens;
 
 pub(super) const FRAME_RADIUS: f32 = 10.0;
-const FRAME_FILL_ALPHA: f32 = 0.12;
 const FRAME_STROKE_ALPHA: f32 = 0.55;
 const LABEL_SIZE: f32 = 10.5;
 /// Opposes/rebuts end bar: length and thickness in screen px.
@@ -44,14 +48,6 @@ pub fn role_colour(t: &Tokens, role: Role) -> Color32 {
         Role::Opposes => t.objection,
         Role::Rebuts => t.rebuttal,
     }
-}
-
-fn role_label(role: Role) -> String {
-    t(match role {
-        Role::Supports => "role.supports",
-        Role::Opposes => "role.opposes",
-        Role::Rebuts => "role.rebuts",
-    })
 }
 
 fn connector_colour(t: &Tokens, kind: ConnectorKind) -> Color32 {
@@ -87,6 +83,16 @@ pub(super) fn screen_font(size: f32, zoom: f32) -> Option<FontId> {
     (px >= MIN_TEXT_PX).then(|| FontId::proportional(px))
 }
 
+/// Display settings that affect painting.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PaintOptions {
+    /// Draw ✓ / ? / × markers on rated boxes.
+    pub show_markers: bool,
+    /// Tint and weight cards and connectors by their rating.
+    pub eval_shading: bool,
+}
+
+#[allow(clippy::too_many_arguments)]
 pub fn paint(
     painter: &Painter,
     layout: &Layout,
@@ -95,12 +101,14 @@ pub fn paint(
     tokens: &Tokens,
     selection: Option<Item>,
     editing: Option<NodeId>,
+    opts: PaintOptions,
 ) {
     let p = Pass {
         painter,
         cam,
         t: tokens,
         clip: painter.clip_rect(),
+        shading: opts.eval_shading,
     };
     p.dots();
     if let Some(frame) = parking_frame(layout) {
@@ -109,23 +117,43 @@ pub fn paint(
     for c in &layout.connectors {
         p.connector(c);
     }
+    let rating = |id| {
+        let role = layout
+            .card_roles
+            .get(&id)
+            .copied()
+            .unwrap_or(Role::Supports);
+        (role, layout.card_strength.get(&id).copied().flatten())
+    };
     for (&id, &rect) in &layout.cards {
-        p.card_frame(rect, doc.card_role(id));
+        let (role, strength) = rating(id);
+        p.card_frame(rect, role, strength);
     }
-    let owner: HashMap<NodeId, CardId> = doc
+    // Premise borders take their card's colour (grey when it is rated nil).
+    let premise_colour: HashMap<NodeId, Color32> = doc
         .cards
         .values()
-        .flat_map(|c| c.premises.iter().map(|&b| (b, c.id)))
+        .flat_map(|c| {
+            let (role, strength) = rating(c.id);
+            let colour = card_colour(tokens, role, strength);
+            c.premises.iter().map(move |&b| (b, colour))
+        })
         .collect();
     for (id, &rect) in &layout.boxes {
         if let Some(node) = doc.boxes.get(id) {
-            let role = owner.get(id).map(|&c| doc.card_role(c));
             let text = (editing != Some(*id)).then_some(node.text.as_str());
-            p.box_(rect, &node.kind, text, role, *id == doc.root);
+            let border = premise_colour.get(id).copied();
+            p.box_(rect, &node.kind, text, border, *id == doc.root);
+            if opts.show_markers
+                && let Some(mark) = mark_for(node)
+            {
+                p.marker(rect, mark);
+            }
         }
     }
     for (&id, &anchor) in &layout.card_labels {
-        p.card_label(anchor, doc.card_role(id));
+        let (role, strength) = rating(id);
+        p.card_label(anchor, role, strength);
     }
     let selected = match selection {
         Some(Item::Box(b)) => layout.boxes.get(&b).map(|&r| {
@@ -150,6 +178,8 @@ pub(super) struct Pass<'a> {
     pub cam: &'a Camera,
     pub t: &'a Tokens,
     pub clip: Rect,
+    /// Evaluation shading is on.
+    pub shading: bool,
 }
 
 impl Pass<'_> {
@@ -209,8 +239,13 @@ impl Pass<'_> {
         if !self.visible(Rect::from_two_pos(from, to)) {
             return;
         }
-        let colour = connector_colour(self.t, c.kind);
-        let stroke = Stroke::new(stroke_px(c.kind, Strength::Normal, self.cam.zoom), colour);
+        let colour = if c.nil {
+            self.t.nil
+        } else {
+            connector_colour(self.t, c.kind)
+        };
+        let strength = connector_strength(c.strength, self.shading);
+        let stroke = Stroke::new(stroke_px(c.kind, strength, self.cam.zoom), colour);
         // A full stub when there is room, otherwise half the drop.
         let drop = from.y - to.y;
         let stub = if drop >= 2.0 * STUB_PX {
@@ -275,36 +310,35 @@ impl Pass<'_> {
         }
     }
 
-    fn card_frame(&self, world: Rect, role: Role) {
+    fn card_frame(&self, world: Rect, role: Role, strength: Option<CardStrength>) {
         let r = self.screen(world);
         if !self.visible(r) {
             return;
         }
-        let colour = role_colour(self.t, role);
+        let colour = card_colour(self.t, role, strength);
         let radius = FRAME_RADIUS * self.cam.zoom;
+        let fill = frame_alpha(strength, self.shading);
         self.painter
-            .rect_filled(r, radius, colour.gamma_multiply(FRAME_FILL_ALPHA));
+            .rect_filled(r, radius, colour.gamma_multiply(fill));
         self.painter.rect_stroke(
             r,
             radius,
-            Stroke::new(1.0, colour.gamma_multiply(FRAME_STROKE_ALPHA)),
+            Stroke::new(
+                frame_border(strength, self.shading),
+                colour.gamma_multiply(FRAME_STROKE_ALPHA),
+            ),
             StrokeKind::Inside,
         );
     }
 
-    fn card_label(&self, anchor: Pos2, role: Role) {
+    fn card_label(&self, anchor: Pos2, role: Role, strength: Option<CardStrength>) {
         let at = self.cam.world_to_screen(anchor);
         if !self.clip.expand(100.0).contains(at) {
             return;
         }
         if let Some(font) = screen_font(LABEL_SIZE, self.cam.zoom) {
-            self.painter.text(
-                at,
-                Align2::RIGHT_CENTER,
-                role_label(role),
-                font,
-                role_colour(self.t, role),
-            );
+            let label = rating_label(role, strength);
+            self.label_with_dots(at, &label, font, card_colour(self.t, role, strength));
         }
     }
 
