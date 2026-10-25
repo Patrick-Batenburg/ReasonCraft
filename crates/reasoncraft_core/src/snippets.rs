@@ -10,7 +10,7 @@ use crate::model::{Document, SourceType};
 pub const MAX_SNIPPET_CHARS: usize = 50_000;
 
 /// Where a snippet came from.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SnippetSource {
     pub source_type: SourceType,
     pub citation: String,

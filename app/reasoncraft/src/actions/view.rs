@@ -1,10 +1,16 @@
 //! View preferences: theme, rating display, panels, the Text panel tab,
-//! the outline's switches and which checks run; and zooming.
-//! None of them change the document or end "Connect to…".
+//! the outline's switches and which checks run; and moving around the
+//! map: zooming, keyboard navigation, revealing the selection. None of
+//! them change the document.
+
+use reasoncraft_core::Item;
 
 use super::{Action, Panel, ZOOM_MAX, ZOOM_MIN};
 use crate::app::ReasonCraftApp;
+use crate::canvas::input::{navigate, parking_jump};
 use crate::doc_tab::DocTab;
+
+const ZOOM_STEP: f32 = 1.25;
 
 pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
     let s = &mut app.settings;
@@ -23,9 +29,36 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
     }
 }
 
+/// Zoom, navigate and reveal in `tab`.
+pub(super) fn apply_to_tab(tab: &mut DocTab, action: Action) {
+    match action {
+        Action::RevealSelection => tab.reveal_pending = true,
+        Action::Navigate(dir) => {
+            tab.selection = match tab.selection {
+                Some(from) => navigate(&tab.doc, from, dir).or(Some(from)),
+                None => Some(Item::Box(tab.doc.root)),
+            };
+            tab.reveal_pending = true;
+        }
+        Action::JumpParking => {
+            if let Some(to) = parking_jump(&tab.doc, tab.selection) {
+                tab.selection = Some(to);
+                tab.reveal_pending = true;
+            }
+        }
+        Action::ZoomIn => set_zoom(tab, tab.camera.zoom * ZOOM_STEP),
+        Action::ZoomOut => set_zoom(tab, tab.camera.zoom / ZOOM_STEP),
+        // The canvas fits on its next frame, with the layout of that frame.
+        Action::ZoomFit => tab.fit_pending = true,
+        Action::Zoom100 => set_zoom(tab, 1.0),
+        Action::SetZoom(z) => set_zoom(tab, z),
+        _ => unreachable!("not a zoom or navigation action"),
+    }
+}
+
 /// Zoom around the centre of the view (or the world origin before the
 /// canvas has been shown), clamped to the zoom range.
-pub(super) fn set_zoom(tab: &mut DocTab, zoom: f32) {
+fn set_zoom(tab: &mut DocTab, zoom: f32) {
     let centre = tab
         .viewport
         .map_or(eframe::egui::Pos2::ZERO, |v| v.center());

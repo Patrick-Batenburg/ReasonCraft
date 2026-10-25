@@ -1,5 +1,6 @@
-//! One snippet in the Snippets tab: drag handle, delete button, text and
-//! source line (type, citation, link).
+//! One snippet in the Snippets tab: drag handle, delete button, text,
+//! "Drag to map" chip (while text is selected) and source line (type,
+//! citation, link).
 
 use eframe::egui::{
     self, Button, CursorIcon, Frame, Id, Margin, Popup, Rect, Response, RichText, Role, ScrollArea,
@@ -9,6 +10,7 @@ use eframe::egui::{
 };
 use reasoncraft_core::{MAX_SNIPPET_CHARS, Snippet, SnippetSource, SourceType};
 
+use super::drag_chip;
 use crate::actions::Action;
 use crate::canvas::plus_menu::source_button;
 use crate::i18n::{FluentArgs, t, t_args};
@@ -31,6 +33,9 @@ pub fn text_id(snippet: &Snippet) -> Id {
 pub(super) struct Card {
     pub rect: Rect,
     pub handle: Response,
+    /// The handle is carrying the whole snippet to the map (Alt+drag),
+    /// not reordering it.
+    pub to_map: bool,
 }
 
 /// Draw one snippet card. `focus`: give its text field keyboard focus,
@@ -61,15 +66,18 @@ pub(super) fn show(
                 }
             });
         });
-        text_field(ui, snippet, focus, out);
+        let (focused, selection) = text_field(ui, snippet, focus, out);
+        drag_chip::chip(ui, snippet, focused, selection, tk);
         if capped {
             ui.label(RichText::new(capped_notice()).color(tk.objection));
         }
         source_line(ui, snippet, tk, out);
     });
+    let handle = handle.expect("drawn");
     Card {
         rect: resp.response.rect,
-        handle: handle.expect("drawn"),
+        to_map: drag_chip::whole_snippet_drag(ui, &handle, snippet),
+        handle,
     }
 }
 
@@ -105,8 +113,14 @@ fn drag_handle(ui: &mut Ui, tk: &Tokens) -> Response {
 }
 
 /// The snippet's text, scrolling inside the card when long. Changes go out
-/// live; losing focus ends the editing session.
-fn text_field(ui: &mut Ui, snippet: &Snippet, focus: bool, out: &mut Vec<Action>) {
+/// live; losing focus ends the editing session. Returns whether the field
+/// has focus, and then the selected text (see [`drag_chip::selected_text`]).
+fn text_field(
+    ui: &mut Ui,
+    snippet: &Snippet,
+    focus: bool,
+    out: &mut Vec<Action>,
+) -> (bool, Option<String>) {
     let id = text_id(snippet);
     if focus {
         let mut state = TextEditState::load(ui.ctx(), id).unwrap_or_default();
@@ -116,7 +130,7 @@ fn text_field(ui: &mut Ui, snippet: &Snippet, focus: bool, out: &mut Vec<Action>
         ui.memory_mut(|m| m.request_focus(id));
     }
     let mut text = snippet.text.clone();
-    let resp = ScrollArea::vertical()
+    let output = ScrollArea::vertical()
         .id_salt(("snippet_scroll", snippet.id))
         .max_height(TEXT_MAX_H)
         .auto_shrink([false, true])
@@ -126,9 +140,10 @@ fn text_field(ui: &mut Ui, snippet: &Snippet, focus: bool, out: &mut Vec<Action>
                 .hint_text(t("snippet.hint"))
                 .desired_width(f32::INFINITY)
                 .desired_rows(2);
-            ui.add(edit)
+            edit.show(ui)
         })
         .inner;
+    let resp = output.response.response;
     if focus {
         // A new snippet at the end of a long list comes into view.
         resp.scroll_to_me(None);
@@ -144,6 +159,12 @@ fn text_field(ui: &mut Ui, snippet: &Snippet, focus: bool, out: &mut Vec<Action>
     if resp.lost_focus() {
         out.push(Action::StopEditing);
     }
+    let focused = resp.has_focus();
+    let selection = output
+        .cursor_range
+        .filter(|_| focused)
+        .and_then(|r| drag_chip::selected_text(&snippet.text, r));
+    (focused, selection)
 }
 
 /// Type picker and citation on one row, the link below it. Citation and

@@ -46,11 +46,13 @@ pub fn label(what: &Insertable) -> String {
         Insertable::Note => t("action.add_note"),
         Insertable::Source(st) => t(&format!("source.{}", st.key())),
         Insertable::Comment(i) => PRESETS.get(*i).map_or_else(String::new, |p| t(p.0)),
+        Insertable::Text { text, .. } => super::text_panel::excerpt(text),
     }
 }
 
 /// Draw the glyph of `what` in `rect`: the ribbon icon, the source glyph,
-/// or a speech bubble in the colour of the preset's verdict.
+/// a speech bubble in the colour of the preset's verdict, or for text the
+/// glyph of its source (a reason without one).
 fn paint_glyph(painter: &Painter, rect: Rect, what: &Insertable, enabled: bool, tk: &Tokens) {
     let fg = if enabled { tk.box_text } else { tk.text_muted };
     let icon = match what {
@@ -69,6 +71,10 @@ fn paint_glyph(painter: &Painter, rect: Rect, what: &Insertable, enabled: bool, 
             };
             return icons::paint(painter, rect, Icon::Comment, colour, tk.panel, tk);
         }
+        Insertable::Text {
+            source: Some(src), ..
+        } => return paint_source_icon(painter, rect, &src.source_type, fg),
+        Insertable::Text { source: None, .. } => Icon::Reason,
     };
     icons::paint(painter, rect, icon, fg, tk.panel, tk);
 }

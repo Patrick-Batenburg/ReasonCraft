@@ -4,11 +4,13 @@
 use eframe::egui::{self, RichText, Stroke, Ui};
 
 mod check;
+mod drag_chip;
 mod outline;
 mod snippet_card;
 mod snippets;
 
 pub use check::check_key;
+pub use drag_chip::{chip_label, excerpt};
 pub use snippet_card::capped_notice;
 
 use super::tab_button;

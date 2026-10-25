@@ -108,7 +108,7 @@ fn paste_as_snippet(ui: &mut Ui, area: Rect, out: &mut Vec<Action>) {
 fn reorder(ui: &Ui, cards: &[(Uuid, Card)], tk: &Tokens, out: &mut Vec<Action>) {
     let Some((dragged, card)) = cards
         .iter()
-        .find(|(_, c)| c.handle.dragged() || c.handle.drag_stopped())
+        .find(|(_, c)| !c.to_map && (c.handle.dragged() || c.handle.drag_stopped()))
     else {
         return;
     };

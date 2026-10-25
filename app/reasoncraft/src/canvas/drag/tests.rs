@@ -122,6 +122,65 @@ fn panel_drop_target_rules() {
     assert!(!at(Insertable::CoPremise, empty).1);
 }
 
+/// Snippet text: a reason under a claim or premise, a whole-card reason
+/// on a card, a category under a category, loose on empty canvas; blank
+/// text, notes and sources refused (red).
+#[test]
+fn panel_drop_target_text_rules() {
+    let mut d = Document::new("Claim");
+    let root = d.root;
+    let cat = d
+        .add_box(Parent::Box(root), BoxKind::Category, "cat")
+        .unwrap();
+    let Item::Card(c) = d.add_loose(NewLoose::Card(CardKind::Reason), "p") else {
+        unreachable!()
+    };
+    let p = d.cards[&c].premises[0];
+    let note = d.add_box(Parent::Box(p), BoxKind::Note, "n").unwrap();
+    let l = layout(&d, &FixedMeasure, &LayoutParams::default());
+    let text = |s: &str| Insertable::Text {
+        text: s.into(),
+        source: None,
+    };
+    let at = |what: &Insertable, world| {
+        let (t, ok) = panel_drop_target(&d, &l, what, world, 1.0).unwrap();
+        (t.to, ok)
+    };
+    let empty = l.bounds.right_bottom() + vec2(500.0, 500.0);
+    let words = text("Robots save time");
+    assert_eq!(at(&words, l.boxes[&p].center()), (Parent::Box(p), true));
+    assert_eq!(at(&words, l.boxes[&cat].center()), (Parent::Box(cat), true));
+    assert_eq!(
+        at(&words, l.cards[&c].center_bottom()),
+        (Parent::Card(c), true)
+    );
+    assert_eq!(at(&words, empty), (Parent::Parking, true));
+    assert_eq!(
+        at(&words, l.boxes[&note].center()),
+        (Parent::Box(note), false)
+    );
+    // The root holds a category, so no card goes under it.
+    assert_eq!(
+        at(&words, l.boxes[&root].center()),
+        (Parent::Box(root), false)
+    );
+    let blank = text(
+        " 
+	 ",
+    );
+    assert_eq!(at(&blank, l.boxes[&p].center()), (Parent::Box(p), false));
+    assert_eq!(at(&blank, empty), (Parent::Parking, false));
+    let (t, _) = panel_drop_target(&d, &l, &words, empty, 1.0).unwrap();
+    assert_eq!(
+        panel_drop_action(&words, &t),
+        Some(Action::Insert {
+            what: words.clone(),
+            to: Some(Parent::Parking),
+            on: None
+        })
+    );
+}
+
 /// Three sibling cards under the root, and a parked card.
 fn three_cards() -> (Document, [reasoncraft_core::CardId; 4]) {
     let mut d = Document::new("Claim");

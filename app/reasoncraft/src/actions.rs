@@ -7,7 +7,6 @@ use reasoncraft_core::{
 };
 
 use crate::app::ReasonCraftApp;
-use crate::canvas::input::{navigate, parking_jump};
 use crate::doc_tab::DocTab;
 use crate::file_ops;
 use crate::settings::{OutlineToggle, TextTab};
@@ -18,6 +17,7 @@ mod enabled;
 pub use box_group::{FakeOpener, LinkOpener, SystemOpener};
 pub use enabled::is_enabled;
 mod comments;
+mod editing;
 mod evaluate;
 mod images;
 pub use evaluate::{Rate, Rated, rate_action, rated};
@@ -31,10 +31,8 @@ mod structure;
 mod view;
 use structure::{add_box, add_card, add_co_premise, delete, select_new};
 pub use structure::{is_attachment, moves_nowhere, selected_card, sibling_list};
-use view::set_zoom;
 
 pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
-const ZOOM_STEP: f32 = 1.25;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Dir {
@@ -325,48 +323,20 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         }
         Action::Delete => delete(tab, RemoveMode::KeepChildren),
         Action::DeleteBranch => delete(tab, RemoveMode::Branch),
-        Action::Edit => {
-            if let Some(Item::Box(b)) = tab.selection {
-                tab.begin_edit(b, false);
-            }
-        }
-        // `apply` has already committed the edit.
-        Action::StopEditing => {}
-        Action::EditText { node, text } => tab.set_edit_text(node, text),
-        Action::TypeText(typed) => {
-            if tab.editing.is_none()
-                && let Some(Item::Box(b)) = tab.selection
-            {
-                tab.begin_edit(b, false);
-            }
-            if let Some(b) = tab.editing {
-                let text = format!("{}{typed}", tab.edit_text);
-                tab.set_edit_text(b, text);
-            }
+        Action::Edit | Action::StopEditing | Action::EditText { .. } | Action::TypeText(_) => {
+            editing::apply(tab, action)
         }
         Action::Move { .. } | Action::Reorder(_) => structure::apply(tab, action),
         Action::StartConnect | Action::CancelConnect => connect::apply(tab, action),
         Action::Select(item) => tab.selection = item.filter(|i| tab.contains(*i)),
-        Action::RevealSelection => tab.reveal_pending = true,
-        Action::Navigate(dir) => {
-            tab.selection = match tab.selection {
-                Some(from) => navigate(&tab.doc, from, dir).or(Some(from)),
-                None => Some(Item::Box(tab.doc.root)),
-            };
-            tab.reveal_pending = true;
-        }
-        Action::JumpParking => {
-            if let Some(to) = parking_jump(&tab.doc, tab.selection) {
-                tab.selection = Some(to);
-                tab.reveal_pending = true;
-            }
-        }
-        Action::ZoomIn => set_zoom(tab, tab.camera.zoom * ZOOM_STEP),
-        Action::ZoomOut => set_zoom(tab, tab.camera.zoom / ZOOM_STEP),
-        // The canvas fits on its next frame, with the layout of that frame.
-        Action::ZoomFit => tab.fit_pending = true,
-        Action::Zoom100 => set_zoom(tab, 1.0),
-        Action::SetZoom(z) => set_zoom(tab, z),
+        Action::RevealSelection
+        | Action::Navigate(_)
+        | Action::JumpParking
+        | Action::ZoomIn
+        | Action::ZoomOut
+        | Action::ZoomFit
+        | Action::Zoom100
+        | Action::SetZoom(_) => view::apply_to_tab(tab, action),
         Action::Rate(_)
         | Action::SetAcceptance(_)
         | Action::SetStrength(_)
