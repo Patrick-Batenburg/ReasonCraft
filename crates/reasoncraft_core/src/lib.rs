@@ -1,5 +1,6 @@
 //! ReasonCraft core: document model, editing, layout and file format.
 
+pub mod connector;
 pub mod edit;
 pub mod file;
 #[cfg(feature = "test-fixtures")]
