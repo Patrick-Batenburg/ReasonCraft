@@ -6,7 +6,8 @@ use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
 
 use eframe::egui::{
-    self, Align2, ColorImage, Rect, Shape, Stroke, TextureHandle, TextureOptions, pos2,
+    self, Align2, ColorImage, Rect, Shape, Stroke, TextureFilter, TextureHandle, TextureOptions,
+    pos2,
 };
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader, Limits};
@@ -34,6 +35,9 @@ const MAX_STORED_ALLOC: u64 = MAX_STORED_SIDE as u64 * MAX_STORED_SIDE as u64 * 
 const LOADS_PER_FRAME: usize = 2;
 /// Stored images are scaled down so their longest side is at most this.
 pub const MAX_SIDE: u32 = 1600;
+/// Textures are scaled down so their longest side is at most this: a box
+/// never shows an image larger, and exports read the full-size asset.
+pub const MAX_TEXTURE_SIDE: u32 = 1024;
 /// World size of the placeholder's text.
 const PLACEHOLDER_TEXT: f32 = 11.0;
 
@@ -124,14 +128,33 @@ pub fn prepare_image(bytes: &[u8]) -> Result<(Vec<u8>, f32), ImageError> {
     Ok((png, aspect))
 }
 
-/// A stored asset as egui pixels; `None` when it does not decode or is
-/// larger than this build ever stores (never resized here).
+/// A stored asset as egui pixels, scaled down (Triangle) to at most
+/// [`MAX_TEXTURE_SIDE`] px on the longest side; `None` when it does not
+/// decode or is larger than this build ever stores.
 fn color_image(bytes: &[u8]) -> Option<ColorImage> {
-    let rgba = decode(bytes, MAX_STORED_SIDE, MAX_STORED_ALLOC)
-        .ok()?
-        .to_rgba8();
+    let mut img = decode(bytes, MAX_STORED_SIDE, MAX_STORED_ALLOC).ok()?;
+    if img.width().max(img.height()) > MAX_TEXTURE_SIDE {
+        img = img.resize(MAX_TEXTURE_SIDE, MAX_TEXTURE_SIDE, FilterType::Triangle);
+    }
+    let rgba = img.to_rgba8();
     let size = [rgba.width() as usize, rgba.height() as usize];
     Some(ColorImage::from_rgba_unmultiplied(size, rgba.as_raw()))
+}
+
+/// Texture options: linear, with mipmaps so zoomed-out images stay smooth.
+const TEXTURE_OPTIONS: TextureOptions =
+    TextureOptions::LINEAR.with_mipmap_mode(Some(TextureFilter::Linear));
+
+/// What the canvas draws for a box's image.
+#[derive(Clone, Copy)]
+pub enum ImageState<'a> {
+    /// The decoded image.
+    Ready(&'a TextureHandle),
+    /// The asset is there but waits for a later frame's decode: a plain
+    /// block, so the "missing" placeholder never flashes.
+    Pending,
+    /// The asset is absent, or refused (does not decode, too large).
+    Missing,
 }
 
 /// Textures of the images on screen, keyed by asset key and shared by all
@@ -140,6 +163,9 @@ fn color_image(bytes: &[u8]) -> Option<ColorImage> {
 #[derive(Default)]
 pub struct ImageCache {
     textures: HashMap<String, Option<TextureHandle>>,
+    /// Assets present but not decoded yet (deferred by the per-frame cap),
+    /// as of the last [`ImageCache::load`].
+    pending: HashSet<String>,
 }
 
 impl ImageCache {
@@ -150,6 +176,7 @@ impl ImageCache {
     /// is cached as `None`.
     pub fn load(&mut self, ctx: &egui::Context, doc: &Document, assets: &Assets) -> bool {
         let mut loaded = 0;
+        self.pending.clear();
         for img in doc.boxes.values().filter_map(|b| b.image.as_ref()) {
             if self.textures.contains_key(&img.asset) {
                 continue;
@@ -158,16 +185,27 @@ impl ImageCache {
                 continue;
             };
             if loaded == LOADS_PER_FRAME {
-                return true;
+                self.pending.insert(img.asset.clone());
+                continue;
             }
             loaded += 1;
             let texture = color_image(&bytes).map(|pixels| {
                 let name = format!("asset:{}", img.asset);
-                ctx.load_texture(name, pixels, TextureOptions::LINEAR)
+                ctx.load_texture(name, pixels, TEXTURE_OPTIONS)
             });
             self.textures.insert(img.asset.clone(), texture);
         }
-        false
+        !self.pending.is_empty()
+    }
+
+    /// What to draw for asset `key`.
+    pub fn state(&self, key: &str) -> ImageState<'_> {
+        match self.textures.get(key) {
+            Some(Some(texture)) => ImageState::Ready(texture),
+            Some(None) => ImageState::Missing,
+            None if self.pending.contains(key) => ImageState::Pending,
+            None => ImageState::Missing,
+        }
     }
 
     /// Drop the textures no open document shows (its tab closed, its box
@@ -215,19 +253,27 @@ pub fn content_rect(world: Rect, node: &BoxNode) -> Rect {
 }
 
 impl Pass<'_> {
-    /// Box `node`'s image in its block at the top of `world`, or a dashed
-    /// placeholder when its asset is missing or broken.
+    /// Box `node`'s image in its block at the top of `world`: a plain block
+    /// while it waits to be decoded, a dashed placeholder when its asset is
+    /// missing or broken.
     pub(super) fn box_image(&self, world: Rect, node: &BoxNode) {
         let Some(img) = &node.image else { return };
         let r = self.screen(image_rect(world, img));
         if !self.visible(r) {
             return;
         }
-        if let Some(texture) = self.images.texture(&img.asset) {
-            let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-            self.painter
-                .image(texture.id(), r, uv, egui::Color32::WHITE);
-            return;
+        match self.images.state(&img.asset) {
+            ImageState::Ready(texture) => {
+                let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+                self.painter
+                    .image(texture.id(), r, uv, egui::Color32::WHITE);
+                return;
+            }
+            ImageState::Pending => {
+                self.painter.rect_filled(r, 0.0, self.t.panel);
+                return;
+            }
+            ImageState::Missing => {}
         }
         let colour = self.t.text_muted;
         let stroke = Stroke::new(1.0, colour);
@@ -463,7 +509,84 @@ mod tests {
         assert!(started.elapsed() < std::time::Duration::from_secs(2));
         assert!(cache.texture(&tall).is_none(), "placeholder");
         assert!(cache.texture(&huge).is_none(), "placeholder");
-        assert_eq!(cache.texture(&ok).unwrap().size(), [1600, 1]);
+        assert_eq!(cache.texture(&ok).unwrap().size(), [1024, 1]);
         assert_eq!(cache.len(), 3);
+    }
+
+    #[test]
+    fn textures_are_scaled_down_to_the_texture_limit() {
+        let ctx = egui::Context::default();
+        let mut tab = DocTab::new();
+        let root = tab.doc.root;
+        let big = tab.assets.insert("png", png(1600, 1200));
+        let image = ImageRef {
+            asset: big.clone(),
+            aspect: 0.75,
+        };
+        tab.doc.set_image(root, Some(image)).unwrap();
+        let mut cache = ImageCache::default();
+        assert!(!cache.load(&ctx, &tab.doc, &tab.assets));
+        let [w, h] = cache.texture(&big).unwrap().size();
+        assert!(w.max(h) <= MAX_TEXTURE_SIDE as usize, "{w}x{h}");
+        assert_eq!([w, h], [1024, 768]);
+        assert_eq!(
+            &*tab.assets.get(&big).unwrap(),
+            &png(1600, 1200)[..],
+            "asset kept full size"
+        );
+    }
+
+    #[test]
+    fn image_state_is_pending_only_while_a_present_asset_waits() {
+        let ctx = egui::Context::default();
+        let mut tab = DocTab::new();
+        let root = tab.doc.root;
+        let keys: Vec<String> = (1..=3)
+            .map(|n| tab.assets.insert("png", png(n, 1)))
+            .collect();
+        let bad = tab.assets.insert("png", b"garbage".to_vec());
+        let doc = &mut tab.doc;
+        let mut boxes = vec![root];
+        for _ in 0..4 {
+            boxes.push(
+                doc.add_card(Parent::Box(root), CardKind::Reason, "")
+                    .unwrap()
+                    .1,
+            );
+        }
+        let assets = keys
+            .iter()
+            .cloned()
+            .chain([bad.clone(), "absent.png".into()]);
+        for (b, asset) in boxes.into_iter().zip(assets) {
+            doc.set_image(b, Some(ImageRef { asset, aspect: 1.0 }))
+                .unwrap();
+        }
+
+        let mut cache = ImageCache::default();
+        let state = |c: &ImageCache, k: &str| match c.state(k) {
+            ImageState::Ready(_) => "ready",
+            ImageState::Pending => "pending",
+            ImageState::Missing => "missing",
+        };
+        assert_eq!(state(&cache, &keys[0]), "missing", "never loaded");
+        assert!(cache.load(&ctx, &tab.doc, &tab.assets), "more left");
+        let all: Vec<&str> = keys
+            .iter()
+            .chain([&bad])
+            .map(|k| state(&cache, k))
+            .collect();
+        assert_eq!(
+            all.iter().filter(|s| **s == "pending").count(),
+            2,
+            "{all:?}"
+        );
+        assert_eq!(state(&cache, "absent.png"), "missing");
+        while cache.load(&ctx, &tab.doc, &tab.assets) {}
+        for k in &keys {
+            assert_eq!(state(&cache, k), "ready");
+        }
+        assert_eq!(state(&cache, &bad), "missing", "refused");
+        assert_eq!(state(&cache, "absent.png"), "missing");
     }
 }
