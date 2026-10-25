@@ -6,7 +6,7 @@
 ## Step 1 — Core editor
 - [x] Task 1: Workspace, licences and core ID/model types
 - [x] Task 2: Structure rules and add operations
-- [ ] Task 3: Move, connect, parking area and removal
+- [x] Task 3: Move, connect, parking area and removal
 - [ ] Task 4: Undo/redo history
 - [ ] Task 5: `.rcraft` file format
 - [ ] Task 6: Automatic layout
