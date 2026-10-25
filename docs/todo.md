@@ -23,7 +23,7 @@
   - [x] Task 1: Core model — source types, ratings, comments, links, images
   - [x] Task 2: Layout carries roles and strength; image space
   - [x] Task 3: Package format — assets and unknown zip entries
-  - [ ] Task 4: Settings, evaluation actions, Evaluate ribbon tab, keyboard
+  - [x] Task 4: Settings, evaluation actions, Evaluate ribbon tab, keyboard
   - [ ] Task 5: Evaluation visuals on the map
   - [ ] Task 6: Sources — adding, icons, changing type
   - [ ] Task 7: Comments with presets; author name setting
