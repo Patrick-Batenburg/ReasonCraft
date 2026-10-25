@@ -16,7 +16,7 @@ const NOTE_FOLD: f32 = 10.0;
 const SOURCE_TYPE_SIZE: f32 = 11.5;
 /// Top of a source's citation text below the box top: padding plus the
 /// icon and type row. The layout reserves this plus the bottom padding.
-const SOURCE_HEADER: f32 = 24.0;
+pub(super) const SOURCE_HEADER: f32 = 24.0;
 
 pub(super) fn box_radius(kind: &BoxKind) -> f32 {
     match kind {
@@ -28,11 +28,12 @@ pub(super) fn box_radius(kind: &BoxKind) -> f32 {
 
 impl Pass<'_> {
     /// A box of any kind. `role` is the role of the card a premise sits in.
+    /// `text` is `None` while the inline editor shows the text instead.
     pub(super) fn box_(
         &self,
         world: Rect,
         kind: &BoxKind,
-        text: &str,
+        text: Option<&str>,
         role: Option<Role>,
         is_root: bool,
     ) {
@@ -63,13 +64,16 @@ impl Pass<'_> {
         match kind {
             BoxKind::Source { source_type } => {
                 self.source_header(world, source_type);
-                let top = world.top() + SOURCE_HEADER;
-                self.text(world.center().x, top, text, text_width, kind, text_colour);
+                if let Some(text) = text {
+                    let top = world.top() + SOURCE_HEADER;
+                    self.text(world.center().x, top, text, text_width, kind, text_colour);
+                }
             }
             _ => {
                 if kind == &BoxKind::Note {
                     self.note_fold(r);
                 }
+                let Some(text) = text else { return };
                 let (shown, colour) = if is_root && text.is_empty() {
                     (t("canvas.empty_claim"), tk.text_muted)
                 } else {

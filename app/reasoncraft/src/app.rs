@@ -93,6 +93,10 @@ impl ReasonCraftApp {
         let ctx = ui.ctx().clone();
         self.sync_theme(&ctx);
         self.sync_window_title(&ctx);
+        // Shortcuts first, so no widget sees (or moves focus with) them.
+        if self.ribbon_tab != RibbonTab::File {
+            crate::canvas::input::handle_keys(&ctx, self);
+        }
 
         shell::titlebar::show(ui, self);
         shell::tabs::show(ui, self);
@@ -114,6 +118,8 @@ impl ReasonCraftApp {
         let os_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
         self.tokens = theme::resolve(self.theme, os_dark);
         if self.applied != Some(self.tokens) {
+            // Ctrl+=/-/0 zoom the map, not the whole interface.
+            ctx.options_mut(|o| o.zoom_with_keyboard = false);
             theme::apply(ctx, &self.tokens);
             self.applied = Some(self.tokens);
         }

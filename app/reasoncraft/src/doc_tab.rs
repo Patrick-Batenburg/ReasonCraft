@@ -19,6 +19,14 @@ pub struct DocTab {
     pub selection: Option<Item>,
     /// The box whose text is being edited inline.
     pub editing: Option<NodeId>,
+    /// The inline editor's text (mirrors the edited box's text).
+    pub edit_text: String,
+    /// The document as it was when the inline edit began, recorded as one
+    /// history step on commit if the text changed. `None` for a box that was
+    /// just added: the add is already the history step.
+    pub edit_snapshot: Option<Document>,
+    /// The inline editor should take keyboard focus on its next frame.
+    pub edit_focus: bool,
     pub camera: Camera,
     /// The screen rect the canvas showed this tab in last frame.
     pub viewport: Option<Rect>,
@@ -48,6 +56,9 @@ impl DocTab {
             path: None,
             selection,
             editing: None,
+            edit_text: String::new(),
+            edit_snapshot: None,
+            edit_focus: false,
             camera: Camera::default(),
             viewport: None,
             fit_pending: true,
@@ -85,6 +96,52 @@ impl DocTab {
         Some(out)
     }
 
+    /// Start an inline edit of box `b` and select it. `fresh`: `b` was just
+    /// added, so its first text belongs to the add's history step.
+    pub fn begin_edit(&mut self, b: NodeId, fresh: bool) {
+        self.commit_edit();
+        let Some(node) = self.doc.boxes.get(&b) else {
+            return;
+        };
+        self.edit_text = node.text.clone();
+        self.edit_snapshot = (!fresh).then(|| self.doc.clone());
+        self.editing = Some(b);
+        self.selection = Some(Item::Box(b));
+        self.edit_focus = true;
+    }
+
+    /// Show the editor's text live in the document, without a history step.
+    pub fn set_edit_text(&mut self, text: String) {
+        if let Some(b) = self.editing
+            && self.doc.set_text(b, &text).is_ok()
+        {
+            self.edit_text = text;
+        }
+    }
+
+    /// True when committing now would record a history step.
+    pub fn has_pending_edit(&self) -> bool {
+        match (self.editing, &self.edit_snapshot) {
+            (Some(b), Some(before)) => {
+                before.boxes.get(&b).map(|n| &n.text) != self.doc.boxes.get(&b).map(|n| &n.text)
+            }
+            _ => false,
+        }
+    }
+
+    /// End the inline edit, recording the pre-edit document as one history
+    /// step if the text changed.
+    pub fn commit_edit(&mut self) {
+        if self.has_pending_edit()
+            && let Some(before) = self.edit_snapshot.as_ref()
+        {
+            self.history.record(before);
+        }
+        self.editing = None;
+        self.edit_snapshot = None;
+        self.edit_focus = false;
+    }
+
     pub fn contains(&self, item: Item) -> bool {
         match item {
             Item::Box(b) => self.doc.boxes.contains_key(&b),
@@ -103,6 +160,7 @@ impl DocTab {
             .is_some_and(|b| !self.doc.boxes.contains_key(&b))
         {
             self.editing = None;
+            self.edit_snapshot = None;
         }
     }
 }

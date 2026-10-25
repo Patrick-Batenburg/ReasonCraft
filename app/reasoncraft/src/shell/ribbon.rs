@@ -4,11 +4,10 @@ use eframe::egui::{
     self, Align, Align2, Color32, FontId, Frame, Layout, Margin, Rect, Response, Role, Sense,
     Stroke, StrokeKind, Ui, Vec2, WidgetInfo, pos2,
 };
-use reasoncraft_core::Item;
 
 use super::icons::{self, Icon};
 use super::{hover_fill, selected_fill};
-use crate::actions::{Action, Panel};
+use crate::actions::{Action, Panel, is_enabled};
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::i18n::t;
 use crate::theme::{ThemeChoice, Tokens};
@@ -104,9 +103,7 @@ fn tab_strip(ui: &mut Ui, app: &mut ReasonCraftApp) {
 fn home(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let tab = app.active_tab();
-    let can_undo = !tab.history.undo.is_empty();
-    let can_redo = !tab.history.redo.is_empty();
-    let can_delete = tab.selection.is_some_and(|s| s != Item::Box(tab.doc.root));
+    let enabled = |a: &Action| is_enabled(tab, a);
     let mut out = Vec::new();
 
     group(ui, &tk, &t("group.clipboard"), |ui| {
@@ -133,42 +130,34 @@ fn home(ui: &mut Ui, app: &mut ReasonCraftApp) {
             (Icon::Note, "action.add_note", Action::AddNote),
         ];
         for (icon, key, action) in adds {
-            if large(ui, &tk, icon, &t(key), true, false).clicked() {
+            if large(ui, &tk, icon, &t(key), enabled(&action), false).clicked() {
                 out.push(action);
             }
         }
     });
     group(ui, &tk, &t("group.editing"), |ui| {
-        if large(
-            ui,
-            &tk,
-            Icon::Delete,
-            &t("action.delete"),
-            can_delete,
-            false,
-        )
-        .clicked()
-        {
-            out.push(Action::Delete);
-        }
-        if large(
-            ui,
-            &tk,
-            Icon::DeleteBranch,
-            &t("action.delete_branch"),
-            can_delete,
-            false,
-        )
-        .clicked()
-        {
-            out.push(Action::DeleteBranch);
+        let deletes = [
+            (Icon::Delete, "action.delete", Action::Delete),
+            (
+                Icon::DeleteBranch,
+                "action.delete_branch",
+                Action::DeleteBranch,
+            ),
+        ];
+        for (icon, key, action) in deletes {
+            if large(ui, &tk, icon, &t(key), enabled(&action), false).clicked() {
+                out.push(action);
+            }
         }
         ui.vertical(|ui| {
-            if small(ui, &tk, Icon::Undo, &t("action.undo"), can_undo).clicked() {
-                out.push(Action::Undo);
-            }
-            if small(ui, &tk, Icon::Redo, &t("action.redo"), can_redo).clicked() {
-                out.push(Action::Redo);
+            let history = [
+                (Icon::Undo, "action.undo", Action::Undo),
+                (Icon::Redo, "action.redo", Action::Redo),
+            ];
+            for (icon, key, action) in history {
+                if small(ui, &tk, icon, &t(key), enabled(&action)).clicked() {
+                    out.push(action);
+                }
             }
         });
     });

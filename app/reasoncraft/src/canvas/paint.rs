@@ -94,6 +94,7 @@ pub fn paint(
     cam: &Camera,
     tokens: &Tokens,
     selection: Option<Item>,
+    editing: Option<NodeId>,
 ) {
     let p = Pass {
         painter,
@@ -119,7 +120,8 @@ pub fn paint(
     for (id, &rect) in &layout.boxes {
         if let Some(node) = doc.boxes.get(id) {
             let role = owner.get(id).map(|&c| doc.card_role(c));
-            p.box_(rect, &node.kind, &node.text, role, *id == doc.root);
+            let text = (editing != Some(*id)).then_some(node.text.as_str());
+            p.box_(rect, &node.kind, text, role, *id == doc.root);
         }
     }
     for (&id, &anchor) in &layout.card_labels {

@@ -75,6 +75,10 @@ panel-coming_later = Coming in a later version.
 ## Canvas
 canvas-empty_claim = Type your main claim
 canvas-label = Argument map
+editor-hint = Type here
+plus-open = Add item
+plus-whole_card_reason = Reason for the whole card
+plus-whole_card_objection = Objection to the whole card
 parking-title = Not connected
 
 ## Card roles

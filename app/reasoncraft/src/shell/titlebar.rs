@@ -7,7 +7,7 @@ use eframe::egui::{
 
 use super::icons::Icon;
 use super::{hover_fill, icon_button};
-use crate::actions::Action;
+use crate::actions::{Action, is_enabled};
 use crate::app::ReasonCraftApp;
 use crate::i18n::t;
 use crate::theme::Tokens;
@@ -56,8 +56,10 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     ui.add_space(MAC_LEFT_INSET);
                 }
                 let tab = app.active_tab();
-                let (can_undo, can_redo) =
-                    (!tab.history.undo.is_empty(), !tab.history.redo.is_empty());
+                let (can_undo, can_redo) = (
+                    is_enabled(tab, &Action::Undo),
+                    is_enabled(tab, &Action::Redo),
+                );
                 let quick = [
                     (Icon::Save, "action.save", true, Action::Save),
                     (Icon::Undo, "action.undo", can_undo, Action::Undo),

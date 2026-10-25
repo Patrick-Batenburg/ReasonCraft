@@ -1,10 +1,15 @@
-//! The map canvas: camera, text measurement, painting and hit testing.
+//! The map canvas: camera, text measurement, painting, hit testing and
+//! editing interactions (selection, inline text, keyboard, "+" menu, drag).
 
 mod boxes;
 pub mod camera;
+pub mod drag;
+pub mod editor;
 pub mod hit;
+pub mod input;
 pub mod measure;
 pub mod paint;
+pub mod plus_menu;
 
 use eframe::egui::{self, Key, PointerButton, Rect, Response, Role, Sense, WidgetInfo};
 use reasoncraft_core::{Item, LayoutParams, layout};
@@ -27,7 +32,8 @@ impl From<Hit> for Item {
 }
 
 /// Lay out, navigate and paint the active document in the space `ui` has
-/// left. A click selects what is under the pointer (or nothing).
+/// left. A click selects what is under the pointer (or nothing); a drag
+/// moves it; the selected box gets a "+" menu and the edited box a text field.
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let rect = ui.max_rect();
     let response = ui.interact(
@@ -66,7 +72,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         && !panning
         && let Some(pos) = response.interact_pointer_pos()
     {
-        let hit = hit_test(&layout, tab.camera.screen_to_world(pos));
+        let hit = hit_test(&layout, tab.camera.screen_to_world(pos), tab.camera.zoom);
         pending.push(Action::Select(hit.map(Item::from)));
     }
 
@@ -78,7 +84,13 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         &tab.camera,
         &tokens,
         tab.selection,
+        tab.editing,
     );
+    drag::update(ui, &response, &layout, tab, &tokens, pending, panning);
+    editor::show(ui, tab, &layout, &tokens, pending);
+    if !response.dragged() {
+        plus_menu::show(ui, tab, &layout, &tokens, pending);
+    }
 }
 
 /// Pan with middle or right drag, or space + left drag; Ctrl+wheel and pinch
