@@ -13,7 +13,7 @@
 - [x] Task 7: Connector geometry
 - [x] Task 8: App shell (theme, i18n, title bar, tabs, ribbon, status bar)
 - [x] Task 9: Canvas (camera, measurement, style-D painting, hit testing)
-- [ ] Task 10: Editing interactions
+- [x] Task 10: Editing interactions
 - [ ] Task 11: File operations in the app
 - [ ] Task 12: End-to-end verification and docs
 
