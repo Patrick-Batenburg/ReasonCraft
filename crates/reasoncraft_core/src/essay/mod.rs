@@ -108,28 +108,34 @@ impl EssayPlan {
     }
 }
 
+/// Shown for an unplaced note whose item had no text.
+const EMPTY_LABEL: &str = "\u{2026}";
+
 /// `text` on one line (runs of whitespace become one space), cut to
-/// [`LABEL_CHARS`] characters.
+/// [`LABEL_CHARS`] characters; [`EMPTY_LABEL`] when nothing is left.
 fn label_of(text: &str) -> String {
     let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
     let mut label = flat[..capped_len(&flat, LABEL_CHARS)].to_owned();
     label.truncate(label.trim_end().len());
-    label
+    if label.is_empty() {
+        EMPTY_LABEL.to_owned()
+    } else {
+        label
+    }
 }
 
 impl Document {
     /// Set the paragraph for `slot`, capped at [`MAX_ESSAY_CHARS`]; an empty
     /// text removes it. Unchanged text is a no-op (the modified time stays).
-    /// A slot for an item that does not exist is refused.
+    /// A slot for a box that does not exist is refused; card slots are not
+    /// writable (they only survive from files and are salvaged on removal).
     pub fn set_essay_text(&mut self, slot: EssaySlot, text: &str) -> Result<(), EditError> {
-        if let EssaySlot::Item(item) = slot {
-            let exists = match item {
-                Item::Box(b) => self.boxes.contains_key(&b),
-                Item::Card(c) => self.cards.contains_key(&c),
-            };
-            if !exists {
+        match slot {
+            EssaySlot::Item(Item::Card(_)) => return Err(EditError::NotAllowed),
+            EssaySlot::Item(Item::Box(b)) if !self.boxes.contains_key(&b) => {
                 return Err(EditError::NotFound);
             }
+            _ => {}
         }
         let text = &text[..capped_len(text, MAX_ESSAY_CHARS)];
         let key = slot.key();
@@ -181,21 +187,27 @@ impl Document {
                 Item::Box(b) => Some(b),
                 Item::Card(c) => self.cards.get(&c).and_then(|c| c.premises.first().copied()),
             };
-            let label = label_box
-                .and_then(|b| self.boxes.get(&b))
-                .map_or_else(String::new, |n| label_of(&n.text));
+            let node = label_box.and_then(|b| self.boxes.get(&b));
+            let label = label_of(node.map_or("", |n| n.text.as_str()));
             self.essay.unplaced.push((label, text));
         }
     }
 
-    /// Cut every paragraph to [`MAX_ESSAY_CHARS`], as editing does, so an
+    /// Cut every paragraph and unplaced note to [`MAX_ESSAY_CHARS`] and
+    /// every unplaced label to [`LABEL_CHARS`], as editing does, so an
     /// oversized text from a file never reaches the UI. Not an edit.
     pub(crate) fn cap_essay_texts(&mut self) {
-        let plan = &mut self.essay;
-        let texts = plan.paragraphs.values_mut();
-        for text in texts.chain(plan.unplaced.iter_mut().map(|(_, t)| t)) {
-            let end = capped_len(text, MAX_ESSAY_CHARS);
+        fn cap(text: &mut String, max: usize) {
+            let end = capped_len(text, max);
             text.truncate(end);
+        }
+        let plan = &mut self.essay;
+        for text in plan.paragraphs.values_mut() {
+            cap(text, MAX_ESSAY_CHARS);
+        }
+        for (label, text) in &mut plan.unplaced {
+            cap(label, LABEL_CHARS);
+            cap(text, MAX_ESSAY_CHARS);
         }
     }
 }

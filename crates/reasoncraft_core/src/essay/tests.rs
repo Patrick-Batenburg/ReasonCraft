@@ -64,6 +64,15 @@ fn essay_order_strongest_first() {
     assert_eq!(order[0].item, Item::Card(ids[4]));
     let ranks: Vec<u8> = order.iter().map(|s| s.strength_rank).collect();
     assert_eq!(ranks, [0, 0, 1, 1, 2, 3]);
+    let roles: Vec<ElementRole> = order.iter().map(|s| s.elements[0].role).collect();
+    use ElementRole::{Counter, Reason};
+    assert_eq!(roles, [Reason, Counter, Reason, Counter, Reason, Reason]);
+}
+
+/// A card paragraph as an old or hand-edited file may hold it.
+fn put_card_text(d: &mut Document, c: CardId, text: &str) {
+    let key = EssaySlot::Item(Item::Card(c)).key();
+    d.essay.paragraphs.insert(key, text.to_owned());
 }
 
 #[test]
@@ -98,8 +107,8 @@ fn essay_section_elements_follow_display_order() {
     assert_eq!(
         got,
         [
-            (slot(p), ElementRole::Claim, "P", 0),
-            (slot(p2), ElementRole::Claim, "P2", 0),
+            (slot(p), ElementRole::Reason, "P", 0),
+            (slot(p2), ElementRole::Reason, "P2", 0),
             (slot(s), ElementRole::Evidence, "S", 1),
             (slot(o), ElementRole::Counter, "O", 1),
             (slot(r), ElementRole::Rebuttal, "R", 2),
@@ -158,6 +167,32 @@ fn set_essay_text_caps_removes_and_skips_no_ops() {
 }
 
 #[test]
+fn card_slots_are_not_writable() {
+    let mut d = Document::new("C");
+    let (card, _) = d
+        .add_card(Parent::Box(d.root), CardKind::Reason, "P")
+        .unwrap();
+    let slot = EssaySlot::Item(Item::Card(card));
+    assert_eq!(d.set_essay_text(slot, "x"), Err(EditError::NotAllowed));
+    assert_eq!(d.set_essay_text(slot, ""), Err(EditError::NotAllowed));
+    assert!(d.essay.paragraphs.is_empty());
+}
+
+#[test]
+fn empty_item_text_gives_ellipsis_label() {
+    let mut d = Document::new("C");
+    let (card, p) = d
+        .add_card(Parent::Box(d.root), CardKind::Reason, " \n ")
+        .unwrap();
+    put_card_text(&mut d, card, "para card");
+    d.set_essay_text(EssaySlot::Item(Item::Box(p)), "para P")
+        .unwrap();
+    d.remove_item(Item::Card(card), RemoveMode::Branch).unwrap();
+    assert!(d.essay.unplaced.iter().all(|(l, _)| l == "\u{2026}"));
+    assert_eq!(d.essay.unplaced.len(), 2);
+}
+
+#[test]
 fn deleting_branch_moves_its_paragraph_to_unplaced() {
     let mut d = Document::new("C");
     let (card, p) = d
@@ -174,8 +209,7 @@ fn deleting_branch_moves_its_paragraph_to_unplaced() {
         .unwrap();
     d.set_essay_text(EssaySlot::Item(Item::Box(o)), "para O")
         .unwrap();
-    d.set_essay_text(EssaySlot::Item(Item::Card(card)), "para card")
-        .unwrap();
+    put_card_text(&mut d, card, "para card");
     d.set_essay_text(EssaySlot::Intro, "intro").unwrap();
     d.remove_item(Item::Card(card), RemoveMode::Branch).unwrap();
     assert_eq!(d.essay.paragraphs.len(), 1, "only the intro stays");
@@ -228,8 +262,7 @@ fn keep_children_and_moves_salvage_only_removed_items() {
     let (b, _) = d
         .add_card(Parent::Box(d.root), CardKind::Reason, "B")
         .unwrap();
-    d.set_essay_text(EssaySlot::Item(Item::Card(a)), "para A")
-        .unwrap();
+    put_card_text(&mut d, a, "para A");
     d.set_essay_text(EssaySlot::Item(Item::Box(pa)), "para pa")
         .unwrap();
     d.move_item(Item::Box(pa), Parent::Card(b), None).unwrap();
@@ -350,8 +383,9 @@ fn oversized_texts_from_files_are_capped() {
     let mut d = Document::new("C");
     let long: String = "é日a".chars().cycle().take(60_000).collect();
     d.essay.paragraphs.insert("intro".into(), long.clone());
-    d.essay.unplaced.push(("l".into(), long));
+    d.essay.unplaced.push(("é".repeat(80), long));
     d.cap_essay_texts();
+    assert_eq!(d.essay.unplaced[0].0, "é".repeat(LABEL_CHARS));
     assert_eq!(d.essay.paragraphs["intro"].chars().count(), MAX_ESSAY_CHARS);
     assert_eq!(d.essay.unplaced[0].1.chars().count(), MAX_ESSAY_CHARS);
 }

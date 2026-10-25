@@ -15,9 +15,10 @@ use super::EssaySlot;
 /// What an element contributes to its section.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ElementRole {
-    /// A premise of the section's own card: what the section argues.
+    /// The claim itself. [`essay_order`] does not produce it: the essay's
+    /// claim lives in the introduction and conclusion.
     Claim,
-    /// A premise of a card that supports something in the section.
+    /// A premise of a card that supports what it is attached to.
     Reason,
     /// A source under a premise.
     Evidence,
@@ -95,14 +96,10 @@ fn elements(doc: &Document, roles: &IndexMap<CardId, Role>, top: CardId) -> Vec<
         let Some(card) = doc.cards.get(&id).filter(|_| seen.insert(id)) else {
             continue;
         };
-        let role = if id == top {
-            ElementRole::Claim
-        } else {
-            match roles.get(&id) {
-                Some(Role::Supports) => ElementRole::Reason,
-                Some(Role::Rebuts) => ElementRole::Rebuttal,
-                Some(Role::Opposes) | None => ElementRole::Counter,
-            }
+        let role = match roles.get(&id) {
+            Some(Role::Supports) => ElementRole::Reason,
+            Some(Role::Rebuts) => ElementRole::Rebuttal,
+            Some(Role::Opposes) | None => ElementRole::Counter,
         };
         let premises: Vec<_> = card
             .premises

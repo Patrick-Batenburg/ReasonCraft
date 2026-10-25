@@ -10,7 +10,7 @@ use crate::model::Document;
 use crate::outline_md::{content_lines, escape};
 use crate::words::{EssayHeading, essay_heading};
 
-use super::{ElementRole, EssaySlot, essay_order};
+use super::{EssaySlot, essay_order};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Flavor {
@@ -86,7 +86,7 @@ fn essay_text(doc: &Document, lang: &str, flavor: Flavor) -> String {
         let own: Vec<String> = s
             .elements
             .iter()
-            .filter(|e| e.role == ElementRole::Claim && e.depth == 0)
+            .filter(|e| e.depth == 0)
             .map(|e| one_line(&e.text))
             .filter(|t| !t.is_empty())
             .collect();
