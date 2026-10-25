@@ -2,6 +2,7 @@
 //! with the fonts the screen uses, so a file looks like the canvas on any
 //! machine.
 
+mod docx;
 mod job;
 mod pdf;
 mod raster;
@@ -14,6 +15,7 @@ use eframe::egui::FontDefinitions;
 use eframe::egui::emath::GuiRounding as _;
 use resvg::usvg::fontdb;
 
+pub use docx::{essay_docx, outline_docx};
 pub use job::{
     ExportJobs, ExportWork, Job, JobState, Notice, Outcome, SharedClipboard, Snapshot, Target,
 };
@@ -188,6 +190,10 @@ impl TextFace {
     }
 }
 
+#[cfg(test)]
+mod docx_tests;
+#[cfg(test)]
+mod job_tests;
 #[cfg(test)]
 mod output_tests;
 #[cfg(test)]

@@ -51,8 +51,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     app.pending.extend(out);
 }
 
-/// A dropdown of text formats; the ones this build cannot write yet are
-/// shown disabled.
+/// A dropdown of text formats.
 fn menu(
     ui: &mut Ui,
     tk: &Tokens,
@@ -64,8 +63,7 @@ fn menu(
     let resp = large_menu(ui, tk, icon, &t(key), true);
     Popup::menu(&resp).show(|ui| {
         for &format in formats {
-            let button = Button::new(t(format.name_key()));
-            if ui.add_enabled(format.is_available(), button).clicked() {
+            if ui.add(Button::new(t(format.name_key()))).clicked() {
                 out.push(Action::OpenExport(format));
             }
         }

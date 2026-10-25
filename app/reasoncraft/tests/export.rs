@@ -271,7 +271,90 @@ fn failed_export_shows_error_and_essay_waits() {
     open_export_tab(&mut h);
     click_button(&mut h, "export.essay");
     for key in ["export.format.essay_md", "export.format.essay_docx"] {
-        assert!(h.get_by_label(&t(key)).accesskit_node().is_disabled());
+        assert!(!h.get_by_label(&t(key)).accesskit_node().is_disabled());
+    }
+}
+
+#[test]
+fn word_and_essay_exports_run_from_the_ribbon() {
+    use reasoncraft_core::EssaySlot;
+
+    let dir = tempfile::tempdir().unwrap();
+    let (mut h, fakes, _) = harness(dir.path());
+    h.state_mut().tabs[0]
+        .doc
+        .set_essay_text(EssaySlot::Intro, "Written introduction")
+        .unwrap();
+    for (menu, format, name) in [
+        (
+            "export.outline",
+            "export.format.outline_docx",
+            "outline.docx",
+        ),
+        ("export.essay", "export.format.essay_md", "essay.md"),
+        ("export.essay", "export.format.essay_docx", "essay.docx"),
+    ] {
+        let file = dir.path().join(name);
+        fakes.dialogs.set_export(file.clone());
+        open_export_tab(&mut h);
+        click_button(&mut h, menu);
+        h.get_by_label(&t(format)).click();
+        h.run_steps(2);
+        wait(&mut h);
+        assert!(h.state().modal.is_none(), "{name}");
+        let bytes = std::fs::read(&file).unwrap();
+        if name.ends_with(".md") {
+            assert!(
+                String::from_utf8(bytes)
+                    .unwrap()
+                    .contains("Written introduction")
+            );
+        } else {
+            assert!(bytes.starts_with(b"PK"), "{name} is a zip");
+        }
+    }
+}
+
+/// With `RC_EXPORT_OUT=<dir>` set, writes `task-10-outline.docx` and
+/// `task-10-essay.docx` (a Dutch sample with written paragraphs), for
+/// looking at by eye.
+#[test]
+fn export_sample_docx() {
+    use reasoncraft_core::{EssaySlot, essay_order, fixtures::sample_iot_like};
+
+    let Some(out) = std::env::var_os("RC_EXPORT_OUT") else {
+        return;
+    };
+    let out = PathBuf::from(out);
+    let (mut h, fakes, _) = harness(&out);
+    let mut doc = sample_iot_like(30);
+    doc.meta.language = "nl".into();
+    doc.meta.title = "Slimme sensoren in huis".into();
+    doc.meta.author = "Patrick van Batenburg".into();
+    doc.set_essay_text(
+        EssaySlot::Intro,
+        "Slimme sensoren maken het huis veiliger.
+
+Dat licht ik hieronder toe.",
+    )
+    .unwrap();
+    let first = essay_order(&doc).remove(0).elements.remove(0).slot;
+    doc.set_essay_text(
+        first,
+        "Lekkages worden vroeg gemeld, zodat de schade beperkt blijft.",
+    )
+    .unwrap();
+    h.state_mut().tabs[0] = reasoncraft::doc_tab::DocTab::from_document(doc);
+    for (format, name) in [
+        (ExportFormat::OutlineDocx, "task-10-outline.docx"),
+        (ExportFormat::EssayDocx, "task-10-essay.docx"),
+    ] {
+        fakes.dialogs.set_export(out.join(name));
+        h.state_mut()
+            .push(request(format, ExportOptions::default()));
+        h.run_steps(2);
+        wait(&mut h);
+        assert!(h.state().modal.is_none(), "{name}");
     }
 }
 

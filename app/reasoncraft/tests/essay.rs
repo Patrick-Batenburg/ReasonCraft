@@ -74,7 +74,9 @@ fn headings(h: &H) -> Vec<String> {
 }
 
 fn paragraph_label(statement: &str) -> String {
-    format!("{} {statement}", t("essay.paragraph_for"))
+    let mut args = FluentArgs::new();
+    args.set("statement", statement);
+    t_args("essay.paragraph_for", &args)
 }
 
 #[test]
@@ -89,6 +91,7 @@ fn essay_tab_lists_sections_strongest_first() {
         "essay.intro",
         "essay.conclusion",
         "essay.paragraph_for",
+        "essay.section_with",
         "essay.unplaced",
         "essay.inactive",
         "essay.copy",
@@ -96,19 +99,20 @@ fn essay_tab_lists_sections_strongest_first() {
     ] {
         assert_ne!(t(key), key, "missing ftl entry");
     }
-    let s = |n: usize| {
+    let s = |n: usize, premises: &str| {
         let mut args = FluentArgs::new();
         args.set("n", n);
-        t_args("essay.section", &args)
+        args.set("premises", premises);
+        t_args("essay.section_with", &args)
     };
     assert_eq!(
         headings(&h),
         [
             t("essay.intro"),
-            format!("{}: Strong objection", s(1)),
-            format!("{}: Plain reason", s(2)),
-            format!("{}: Weak reason", s(3)),
-            format!("{}: Nil reason", s(4)),
+            s(1, "Strong objection"),
+            s(2, "Plain reason"),
+            s(3, "Weak reason"),
+            s(4, "Nil reason"),
             t("essay.conclusion"),
         ]
     );
@@ -328,4 +332,43 @@ fn parked_paragraph_is_listed_as_not_in_the_essay() {
     h.run();
     assert!(h.query_by_label(&t("essay.inactive")).is_none());
     h.get_by_label(&paragraph_label("Plain reason"));
+}
+
+#[test]
+fn deleting_branch_during_typing_keeps_the_typed_text() {
+    let (doc, cards) = rated_doc();
+    let reason = box_with_text(&doc, "Weak reason");
+    let slot = EssaySlot::Item(Item::Box(reason));
+    let mut h = harness_with(doc);
+    h.run();
+    let label = paragraph_label("Weak reason");
+    h.get_by_label(&label).click();
+    h.run();
+    h.get_by_label(&label).type_text("Typed just now");
+    h.run();
+    assert!(h.state().tabs[0].has_pending_session(), "session is open");
+
+    h.state_mut().pending.extend([
+        Action::Select(Some(Item::Card(cards[0]))),
+        Action::DeleteBranch,
+    ]);
+    h.run();
+    let doc = &h.state().tabs[0].doc;
+    assert_eq!(
+        doc.essay.unplaced,
+        [("Weak reason".to_owned(), "Typed just now".to_owned())]
+    );
+    h.get_by_label("Typed just now");
+
+    // The first undo restores the branch with its paragraph in the slot.
+    h.state_mut().pending.push(Action::Undo);
+    h.run();
+    let doc = &h.state().tabs[0].doc;
+    assert!(doc.essay.unplaced.is_empty());
+    assert_eq!(doc.essay.text(slot), Some("Typed just now"));
+    // The second undo takes back the typing itself.
+    h.state_mut().pending.push(Action::Undo);
+    h.run();
+    assert_eq!(h.state().tabs[0].doc.essay.text(slot), None);
+    assert!(h.state().tabs[0].doc.essay.unplaced.is_empty());
 }

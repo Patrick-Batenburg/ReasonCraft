@@ -36,15 +36,6 @@ impl ExportFormat {
         matches!(self, Self::Png | Self::Svg | Self::Pdf)
     }
 
-    /// Whether this build can write the format yet (Word and the essay
-    /// come in a later step).
-    pub fn is_available(self) -> bool {
-        !matches!(
-            self,
-            Self::OutlineDocx | Self::EssayMarkdown | Self::EssayDocx
-        )
-    }
-
     /// The i18n key of the format's name (also the file dialog's filter).
     pub fn name_key(self) -> &'static str {
         match self {

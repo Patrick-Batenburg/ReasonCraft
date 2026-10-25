@@ -166,10 +166,12 @@ fn section_heading(ui: &mut Ui, cx: &Ctx, n: usize, section: &EssaySection) {
         .collect();
     let mut args = FluentArgs::new();
     args.set("n", n);
-    let mut text = t_args("essay.section", &args);
-    if !own.is_empty() {
-        text = format!("{text}: {}", own.join("; "));
-    }
+    let text = if own.is_empty() {
+        t_args("essay.section", &args)
+    } else {
+        args.set("premises", own.join("; "));
+        t_args("essay.section_with", &args)
+    };
     let colour = card_colour(cx.tk, role, strength);
     heading(ui, &text, dots, colour, cx.tk).on_hover_text(rating);
     ui.add_space(2.0);
@@ -216,7 +218,9 @@ fn element(ui: &mut Ui, cx: &Ctx, e: &EssayElement, out: &mut Vec<Action>) {
     ui.add_space(4.0);
     essay_slot::statement(ui, &s, cx.tk, out);
     let text = cx.doc.essay.text(e.slot).unwrap_or("");
-    let label = format!("{} {}", t("essay.paragraph_for"), one_line(&e.text));
+    let mut args = FluentArgs::new();
+    args.set("statement", one_line(&e.text));
+    let label = t_args("essay.paragraph_for", &args);
     essay_slot::paragraph(ui, e.slot, text, e.depth, &label, &t("essay.hint"), out);
 }
 

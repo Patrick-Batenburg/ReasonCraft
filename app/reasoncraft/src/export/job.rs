@@ -8,15 +8,19 @@
 //! while [`ExportJobs::busy`].
 
 use std::collections::VecDeque;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use reasoncraft_core::essay_markdown;
 use reasoncraft_core::outline::{OutlineOptions, build_outline};
 use reasoncraft_core::outline_md::{outline_markdown, outline_plain_text_lang};
 use reasoncraft_core::{Assets, Document};
 
+use super::docx::{essay_docx, outline_docx};
 use super::{
     ClipboardSink, ExportError, ExportFormat, ExportOptions, PageSetup, PngOptions, SvgOptions,
     bundled_font_family, copy_scene_to_clipboard, scene_to_png, scene_to_svg, shared_fontdb,
@@ -152,11 +156,17 @@ impl ExportWork {
                 let lines = build_outline(doc, outline);
                 let lang = doc.meta.language.as_str();
                 match format {
-                    ExportFormat::OutlineMarkdown => outline_markdown(&lines, outline, lang),
-                    ExportFormat::OutlineText => outline_plain_text_lang(&lines, outline, lang),
+                    ExportFormat::OutlineMarkdown => {
+                        outline_markdown(&lines, outline, lang).into_bytes()
+                    }
+                    ExportFormat::OutlineText => {
+                        outline_plain_text_lang(&lines, outline, lang).into_bytes()
+                    }
+                    ExportFormat::OutlineDocx => outline_docx(&lines, outline, lang)?,
+                    ExportFormat::EssayMarkdown => essay_markdown(doc, lang).into_bytes(),
+                    ExportFormat::EssayDocx => essay_docx(doc, lang)?,
                     other => return Err(ExportError::Unsupported(other)),
                 }
-                .into_bytes()
             }
         };
         match self.target {
@@ -177,14 +187,41 @@ fn png_options(options: &ExportOptions) -> PngOptions {
     }
 }
 
+/// Makes a new, empty temporary file next to `path`, named
+/// `<name>.<pid>-<counter>.tmp`. `create_new` means a file that already
+/// has that name (the user's, or another export's) is never touched.
+fn create_temp(path: &Path) -> std::io::Result<(PathBuf, std::fs::File)> {
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
+    let pid = std::process::id();
+    loop {
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let mut name = path.as_os_str().to_owned();
+        name.push(format!(".{pid}-{n}.tmp"));
+        let tmp = PathBuf::from(name);
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&tmp)
+        {
+            Ok(file) => return Ok((tmp, file)),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(e) => return Err(e),
+        }
+    }
+}
+
 /// Writes `bytes` to `path` through a temporary file next to it, so an
 /// existing file is replaced whole or not at all.
-fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), ExportError> {
-    let mut tmp = path.as_os_str().to_owned();
-    tmp.push(".tmp");
-    let tmp = PathBuf::from(tmp);
-    let result = std::fs::write(&tmp, bytes).and_then(|()| std::fs::rename(&tmp, path));
-    if result.is_err() && tmp.is_file() {
+pub(super) fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), ExportError> {
+    let (tmp, mut file) = create_temp(path)?;
+    let result = file
+        .write_all(bytes)
+        .and_then(|()| file.sync_all())
+        .and_then(|()| {
+            drop(file);
+            std::fs::rename(&tmp, path)
+        });
+    if result.is_err() {
         let _ = std::fs::remove_file(&tmp);
     }
     Ok(result?)
