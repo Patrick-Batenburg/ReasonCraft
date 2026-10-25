@@ -52,7 +52,7 @@
   - [x] Task 6: Core outline Markdown and linking words
   - [x] Task 7: Export ribbon tab, dialog and background jobs
   - [x] Task 8: Core essay plan
-  - [ ] Task 9: Essay tab
+  - [x] Task 9: Essay tab
   - [ ] Task 10: Word export
   - [ ] Task 11: Image insert off the UI thread
   - [ ] Task 12: End-to-end verification and docs
