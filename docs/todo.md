@@ -179,3 +179,9 @@ The end-to-end tests now live in `app/reasoncraft/tests/e2e/` (`main.rs` keeps t
 - [ ] Step 4: inserting large photos off the UI thread (worker + busy state)
 - [ ] Step 5: link glyph vs rightmost arrowheads on busy boxes; badge/marker overlap between adjacent co-premises
 - [ ] Step 6: store empty comment author and translate on display; stop parsing '●' out of ftl strings (dot count in code); Unicode Cf characters in links; duplicate accessible names (Nil, panel vs ribbon)
+
+## Carry-over from step 3 reviews
+- [ ] Step 4, task 1: one `EditSession` enum (box/snippet/meta/essay) with a single snapshot; split actions.rs, doc_tab.rs, model.rs (roles.rs + card_roles == card_role test); plural selector for "not rated yet"; release-mode test build (cfg the debug-only helper test)
+- [ ] Step 4: exports and Essay use the document language for linking words ("because"/"omdat")
+- [ ] Step 5: per-issue "ignore this hint" stored in the document; CheckSet tolerant of unknown kinds; skip quoted text in Compound
+- [ ] Step 6: Compound help by document language; panel min width; drag polish (snippet card follow, autoscroll)
