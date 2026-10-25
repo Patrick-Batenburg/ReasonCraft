@@ -23,7 +23,9 @@ pub struct SystemOpener;
 
 impl LinkOpener for SystemOpener {
     fn open(&self, url: &str) -> Result<(), String> {
-        open::that(url).map_err(|e| e.to_string())
+        // Detached: `open::that` waits for the launcher (on Linux `xdg-open`
+        // may wait for the browser), which would freeze the UI.
+        open::that_detached(url).map_err(|e| e.to_string())
     }
 }
 

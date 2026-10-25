@@ -54,10 +54,49 @@ fn is_hidden_char(c: char) -> bool {
         )
 }
 
+/// `s` with `%XX` escapes decoded, ASCII-lowercased.
+fn decoded_lower(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = bytes
+            .get(i + 1..i + 3)
+            .and_then(|h| std::str::from_utf8(h).ok())
+            .and_then(|h| u8::from_str_radix(h, 16).ok());
+        match (bytes[i], hex) {
+            (b'%', Some(b)) => {
+                out.push(b);
+                i += 3;
+            }
+            (b, _) => {
+                out.push(b);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).to_ascii_lowercase()
+}
+
+/// Whether a `mailto:` link asks the mail program to attach a file (an
+/// `attach` or `attachment` parameter, in any case, even percent-encoded):
+/// a file could otherwise send local files along with a mail.
+fn mailto_attaches(s: &str) -> bool {
+    let Some((_, query)) = s.split_once('?') else {
+        return false;
+    };
+    let query = query.split('#').next().unwrap_or_default();
+    query.split(['&', ';']).any(|param| {
+        let name = param.split('=').next().unwrap_or_default();
+        matches!(decoded_lower(name).trim(), "attach" | "attachment")
+    })
+}
+
 /// Check a typed link. `http://`, `https://` and `mailto:` links are kept;
 /// a bare domain such as `example.org/x` gets `https://`; empty means no
 /// link. Anything else (other schemes, UNC paths and backslashes, spaces,
-/// control or invisible format characters) is refused.
+/// control or invisible format characters, `mailto:` links that attach a
+/// file) is refused.
 pub fn normalize_link(s: &str) -> Result<Option<String>, LinkError> {
     let s = s.trim();
     if s.is_empty() {
@@ -76,6 +115,9 @@ pub fn normalize_link(s: &str) -> Result<Option<String>, LinkError> {
                 .chars()
                 .next()
                 .is_some_and(|c| c.is_alphanumeric() || c == '[');
+            if scheme == "mailto:" && mailto_attaches(rest) {
+                return Err(LinkError::Invalid);
+            }
             return if host_first {
                 Ok(Some(s.to_owned()))
             } else {
@@ -235,11 +277,27 @@ mod tests {
             "a.b/\u{200B}x",
             "\u{FEFF}https://a.b",
             "https://a.b/\u{2066}x",
+            "mailto:x@y.z?attach=/etc/passwd",
+            "mailto:x@y.z?subject=hi&Attachment=C:/secret.txt",
+            "MAILTO:x@y.z?ATTACH=a",
+            "mailto:x@y.z?%61ttach=a",
+            "mailto:x@y.z?body=b;attach=a",
+            "mailto:x@y.z?attach",
         ] {
             assert_eq!(normalize_link(bad), Err(LinkError::Invalid), "{bad:?}");
             assert_eq!(safe_link(bad), None, "{bad:?}");
         }
         assert_eq!(normalize_link("Https://a.b"), ok("Https://a.b"));
+        // Only a parameter named attach/attachment is refused.
+        for fine in [
+            "mailto:x@y.z?subject=attach&body=attachment",
+            "mailto:x@y.z?attached=1",
+            "mailto:attach@y.z",
+            "https://a.b/?attach=x",
+        ] {
+            assert_eq!(normalize_link(fine), ok(fine), "{fine:?}");
+            assert_eq!(safe_link(fine), Some(fine.into()), "{fine:?}");
+        }
         assert_eq!(safe_link("example.org"), Some("https://example.org".into()));
         assert_eq!(
             safe_link("https://ok.example"),
