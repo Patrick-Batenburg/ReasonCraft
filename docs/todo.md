@@ -58,7 +58,7 @@
   - [x] Task 11: Image insert off the UI thread
   - [x] Task 12: End-to-end verification and docs
 - [ ] Step 5 — Interchange & polish ([plan](plans/2026-10-25-step5-interchange-polish.md))
-  - [ ] Task 1: Split core files; stronger validate()
+  - [x] Task 1: Split core files; stronger validate()
   - [ ] Task 2: Spec-alignment items from the step 4 review
   - [ ] Task 3: Command registry and Search commands
   - [ ] Task 4: Axis-neutral compact tree layout
