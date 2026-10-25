@@ -44,25 +44,42 @@ impl LinkError {
     }
 }
 
+/// Control characters, and the invisible format characters that can make
+/// a link read as another (bidi controls, zero-width marks, the BOM).
+fn is_hidden_char(c: char) -> bool {
+    c.is_control()
+        || matches!(
+            c,
+            '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2060}'..='\u{2069}' | '\u{FEFF}'
+        )
+}
+
 /// Check a typed link. `http://`, `https://` and `mailto:` links are kept;
 /// a bare domain such as `example.org/x` gets `https://`; empty means no
-/// link. Anything else (other schemes, spaces) is refused.
+/// link. Anything else (other schemes, UNC paths and backslashes, spaces,
+/// control or invisible format characters) is refused.
 pub fn normalize_link(s: &str) -> Result<Option<String>, LinkError> {
     let s = s.trim();
     if s.is_empty() {
         return Ok(None);
     }
-    if s.chars().any(char::is_whitespace) {
+    let bad = |c: char| c.is_whitespace() || is_hidden_char(c) || c == '\\';
+    if s.chars().any(bad) {
         return Err(LinkError::Invalid);
     }
     let lower = s.to_ascii_lowercase();
     for scheme in ["http://", "https://", "mailto:"] {
         if lower.starts_with(scheme) {
+            // A host (or an address) must follow, not a path.
             let rest = &s[scheme.len()..];
-            return if rest.is_empty() {
-                Err(LinkError::Invalid)
-            } else {
+            let host_first = rest
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_alphanumeric() || c == '[');
+            return if host_first {
                 Ok(Some(s.to_owned()))
+            } else {
+                Err(LinkError::Invalid)
             };
         }
     }
@@ -80,6 +97,21 @@ pub fn normalize_link(s: &str) -> Result<Option<String>, LinkError> {
     } else {
         Err(LinkError::Invalid)
     }
+}
+
+/// The URL to hand to the browser for a stored link, or `None` when it is
+/// not a safe `http`, `https` or `mailto` link. A file may have been written
+/// by anyone, so every open goes through this check.
+pub fn safe_link(s: &str) -> Option<String> {
+    normalize_link(s).ok().flatten()
+}
+
+/// `s` with control and invisible format characters shown as U+FFFD, for
+/// displaying a stored link that may contain them.
+pub fn visible_link(s: &str) -> String {
+    s.chars()
+        .map(|c| if is_hidden_char(c) { '\u{FFFD}' } else { c })
+        .collect()
 }
 
 /// Draw the link editor, if open, and queue the user's answer.
@@ -189,9 +221,31 @@ mod tests {
             "localhost",
             "a.b/c d",
             ".b",
+            "JAVASCRIPT:x",
+            "file:///C:/Windows/System32/calc.exe",
+            "file:x",
+            "https:///x",
+            r"http://\\server\share",
+            r"\\server\share\x.exe",
+            "//host",
+            "//host.example/x",
+            "user@host",
+            "https://a.b/x\ny",
+            "https://a.b/\u{202E}exe.txt",
+            "a.b/\u{200B}x",
+            "\u{FEFF}https://a.b",
+            "https://a.b/\u{2066}x",
         ] {
-            assert_eq!(normalize_link(bad), Err(LinkError::Invalid), "{bad}");
+            assert_eq!(normalize_link(bad), Err(LinkError::Invalid), "{bad:?}");
+            assert_eq!(safe_link(bad), None, "{bad:?}");
         }
+        assert_eq!(normalize_link("Https://a.b"), ok("Https://a.b"));
+        assert_eq!(safe_link("example.org"), Some("https://example.org".into()));
+        assert_eq!(
+            safe_link("https://ok.example"),
+            Some("https://ok.example".into())
+        );
+        assert_eq!(visible_link("a\u{202E}b\n"), "a\u{FFFD}b\u{FFFD}");
         assert_eq!(LinkError::Invalid.message(), t("link.invalid"));
         assert_ne!(t("link.invalid"), "link.invalid");
     }

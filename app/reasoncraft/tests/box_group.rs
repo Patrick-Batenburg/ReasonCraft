@@ -183,3 +183,33 @@ fn failed_open_shows_error() {
     h.run();
     assert_eq!(h.state().modal, None);
 }
+
+/// A file may hold any link: clicking the glyph of one that is not a web or
+/// e-mail link shows an error and never reaches the opener.
+#[test]
+fn glyph_click_never_opens_unsafe_stored_links() {
+    let stored = [
+        "file:///C:/Windows/System32/calc.exe",
+        "javascript:alert(1)",
+        r"\server\share\x",
+        "JAVASCRIPT:x",
+        "https://ok.example",
+    ];
+    for url in stored {
+        let (mut d, _, src) = doc();
+        d.boxes.get_mut(&src).unwrap().link = Some(url.to_owned());
+        let opener = FakeOpener::default();
+        let mut h = harness_with(d, &opener);
+        h.get_by_label(&link_label(url)).click();
+        h.run();
+        let safe = url == "https://ok.example";
+        if safe {
+            assert_eq!(*opener.opened.borrow(), vec![url.to_owned()]);
+            assert_eq!(h.state().modal, None);
+        } else {
+            assert!(opener.opened.borrow().is_empty(), "{url:?} was opened");
+            assert!(h.state().modal.is_some(), "{url:?}: no error shown");
+            assert_ne!(link_label(url), link_label("https://ok.example"));
+        }
+    }
+}

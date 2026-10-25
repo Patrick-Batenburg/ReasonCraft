@@ -252,3 +252,5 @@ link-invalid = Enter a web address (https://…, or a domain such as example.org
 link-open = Open link: { $url }
 link-open_failed = Could not open the link
 link-open_failed_detail = { $url } could not be opened: { $detail }
+link-unsafe = { $url } was not opened: only web links (http, https) and e-mail links (mailto) can be opened. Edit the link to fix it.
+link-unsafe_label = Link that cannot be opened: { $url }

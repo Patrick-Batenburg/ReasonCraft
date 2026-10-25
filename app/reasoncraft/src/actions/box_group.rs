@@ -11,7 +11,7 @@ use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
 use crate::file_ops::Modal;
 use crate::i18n::{FluentArgs, t, t_args};
-use crate::shell::link_modal::LinkEdit;
+use crate::shell::link_modal::{LinkEdit, LinkError, normalize_link, safe_link, visible_link};
 
 /// Opens a link in the user's browser or mail program.
 pub trait LinkOpener {
@@ -50,12 +50,23 @@ fn selected_box(tab: &DocTab) -> Option<NodeId> {
     }
 }
 
+/// A link to store: normalized, `None` for no link, `Err` when refused.
+fn checked(link: Option<&str>) -> Result<Option<String>, LinkError> {
+    link.map_or(Ok(None), normalize_link)
+}
+
+/// Box `b`'s stored link, if it is safe to open.
+fn stored_safe_link(tab: &DocTab, b: NodeId) -> Option<String> {
+    safe_link(tab.doc.boxes.get(&b)?.link.as_deref()?)
+}
+
 /// Whether a Box-group action applies now; `None` for other actions.
 pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
     Some(match action {
         Action::SetCardKind(_) => selected_card(tab).is_some(),
-        Action::EditLink | Action::SetLink(_) => selected_box(tab).is_some(),
-        Action::OpenLink(b) => tab.doc.boxes.get(b).is_some_and(|n| n.link.is_some()),
+        Action::EditLink => selected_box(tab).is_some(),
+        Action::SetLink(link) => selected_box(tab).is_some() && checked(link.as_deref()).is_ok(),
+        Action::OpenLink(b) => stored_safe_link(tab, *b).is_some(),
         _ => return None,
     })
 }
@@ -80,9 +91,13 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
             }
         }
         Action::SetLink(link) => {
+            // Checked here too, not only in the editor: a refused link
+            // changes nothing and records no history.
+            let Ok(link) = checked(link.as_deref()) else {
+                return;
+            };
             // The box the editor was opened for, else the selected box.
             let target = app.link_edit.take().map(|e| e.node);
-            let link = link.map(|l| l.trim().to_owned()).filter(|l| !l.is_empty());
             if let Some(b) = target.or_else(|| selected_box(tab))
                 && tab.doc.boxes.get(&b).is_some_and(|n| n.link != link)
             {
@@ -90,7 +105,18 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
             }
         }
         Action::OpenLink(b) => {
-            let Some(url) = tab.doc.boxes.get(&b).and_then(|n| n.link.clone()) else {
+            let Some(stored) = tab.doc.boxes.get(&b).and_then(|n| n.link.as_deref()) else {
+                return;
+            };
+            // Only safe http, https and mailto links reach the OS: a file
+            // may carry `file:` paths, UNC shares or script links.
+            let Some(url) = safe_link(stored) else {
+                let mut args = FluentArgs::new();
+                args.set("url", visible_link(stored));
+                app.modal = Some(Modal::Error {
+                    title: t("link.open_failed"),
+                    message: t_args("link.unsafe", &args),
+                });
                 return;
             };
             if let Err(detail) = app.link_opener.open(&url) {

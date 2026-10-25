@@ -25,6 +25,7 @@ use super::rating::{
     card_colour, connector_strength, frame_alpha, frame_border, mark_for, rating_label,
 };
 use crate::i18n::t;
+use crate::shell::link_modal::safe_link;
 use crate::theme::Tokens;
 
 pub(super) const FRAME_RADIUS: f32 = 10.0;
@@ -173,8 +174,8 @@ pub fn paint(
     for (id, &rect) in &layout.boxes {
         if let Some(node) = doc.boxes.get(id) {
             p.comment_badge(rect, &node.comments);
-            if node.link.is_some() {
-                p.link_glyph(rect);
+            if let Some(link) = &node.link {
+                p.link_glyph(rect, safe_link(link).is_some());
             }
         }
     }

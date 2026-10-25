@@ -1,7 +1,9 @@
 //! The link glyph of a box with a link: a small chain on the box's bottom
 //! edge, near its right end. A click opens the link; the tooltip shows it.
+//! A stored link that is not a safe web or e-mail link (a hand-edited file
+//! may hold `file:` paths or UNC shares) is struck through and never opened.
 
-use eframe::egui::{self, Rect, Role, Sense, Ui, WidgetInfo, pos2};
+use eframe::egui::{self, Rect, Role, Sense, Stroke, Ui, WidgetInfo, pos2};
 use reasoncraft_core::Layout;
 
 use super::paint::Pass;
@@ -11,6 +13,7 @@ use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t_args};
 use crate::shell::icons::{self, Icon};
+use crate::shell::link_modal::{safe_link, visible_link};
 
 /// The glyph's size, in world px.
 pub const LINK_GLYPH: f32 = 12.0;
@@ -31,16 +34,24 @@ pub fn link_rect(world: Rect, zoom: f32) -> Rect {
     )
 }
 
-/// The glyph's accessible name, e.g. "Open link: https://example.org".
+/// The glyph's accessible name for stored link `url`, e.g. "Open link:
+/// https://example.org", or one saying it cannot be opened (not a safe
+/// link: see [`safe_link`]).
 pub fn link_label(url: &str) -> String {
     let mut args = FluentArgs::new();
-    args.set("url", url.to_owned());
-    t_args("link.open", &args)
+    args.set("url", visible_link(url));
+    let key = if safe_link(url).is_some() {
+        "link.open"
+    } else {
+        "link.unsafe_label"
+    };
+    t_args(key, &args)
 }
 
 impl Pass<'_> {
-    /// The chain glyph of a box at `world` that has a link.
-    pub(super) fn link_glyph(&self, world: Rect) {
+    /// The chain glyph of a box at `world` that has a link. A link that
+    /// will not be opened (`safe`: false) is greyed out and struck through.
+    pub(super) fn link_glyph(&self, world: Rect, safe: bool) {
         if self.cam.zoom < MARKER_MIN_ZOOM {
             return;
         }
@@ -51,7 +62,13 @@ impl Pass<'_> {
         let tk = self.t;
         self.painter
             .circle_filled(r.center(), r.width() * 0.62, tk.box_fill);
-        icons::paint(self.painter, r, Icon::Link, tk.accent, tk.box_fill, tk);
+        let colour = if safe { tk.accent } else { tk.text_muted };
+        icons::paint(self.painter, r, Icon::Link, colour, tk.box_fill, tk);
+        if !safe {
+            let stroke = Stroke::new((1.5 * self.cam.zoom).max(1.25), tk.objection);
+            self.painter
+                .line_segment([r.left_top(), r.right_bottom()], stroke);
+        }
     }
 }
 
@@ -83,7 +100,8 @@ pub(super) fn glyphs(ui: &Ui, tab: &DocTab, layout: &Layout, pending: &mut Vec<A
         );
         response.widget_info(|| WidgetInfo::labeled(Role::Link, true, &label));
         let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
-        if response.on_hover_text(url).clicked() {
+        // An unsafe link is never opened: the click explains why instead.
+        if response.on_hover_text(visible_link(url)).clicked() {
             pending.push(Action::OpenLink(id));
         }
     }

@@ -106,3 +106,64 @@ fn open_link_uses_stored_url() {
         other => panic!("expected an error, got {other:?}"),
     }
 }
+
+/// Stored links that are not web or e-mail links (as a hand-edited file
+/// may hold) never reach the opener; only the https one does.
+const STORED: [&str; 6] = [
+    "file:///C:/Windows/System32/calc.exe",
+    "javascript:alert(1)",
+    r"\server\share\x",
+    "JAVASCRIPT:x",
+    "https://a.b/\u{202E}exe.txt",
+    "https://ok.example",
+];
+
+#[test]
+fn open_link_refuses_unsafe_stored_links() {
+    for url in STORED {
+        let (mut a, _) = app_with_card();
+        let opener = FakeOpener::default();
+        a.link_opener = Box::new(opener.clone());
+        let root = a.tabs[0].doc.root;
+        // Written straight into the document, as opening a file would.
+        a.tabs[0].doc.boxes.get_mut(&root).unwrap().link = Some(url.to_owned());
+        let open = Action::OpenLink(root);
+        let safe = url == "https://ok.example";
+        assert_eq!(is_enabled(&a.tabs[0], &open), safe, "{url:?}");
+        apply(&mut a, open);
+        if safe {
+            assert_eq!(*opener.opened.borrow(), vec![url.to_owned()]);
+            assert_eq!(a.modal, None);
+        } else {
+            assert!(opener.opened.borrow().is_empty(), "{url:?} was opened");
+            match &a.modal {
+                Some(Modal::Error { title, .. }) => assert_eq!(title, &t("link.open_failed")),
+                other => panic!("{url:?}: expected an error, got {other:?}"),
+            }
+        }
+        assert!(a.tabs[0].history.undo.is_empty());
+    }
+}
+
+#[test]
+fn set_link_refuses_invalid_links() {
+    let (mut a, _) = app_with_card();
+    let root = a.tabs[0].doc.root;
+    a.tabs[0].selection = Some(Item::Box(root));
+    for bad in [
+        "file:///C:/x.exe",
+        r"\server\share",
+        "javascript:x",
+        "a.b/\u{202E}x",
+    ] {
+        let set = Action::SetLink(Some(bad.to_owned()));
+        assert!(!is_enabled(&a.tabs[0], &set), "{bad:?}");
+        apply(&mut a, set);
+        assert_eq!(a.tabs[0].doc.boxes[&root].link, None, "{bad:?}");
+        assert!(a.tabs[0].history.undo.is_empty(), "{bad:?}");
+    }
+    // A bare domain is normalized on the way in.
+    apply(&mut a, Action::SetLink(Some("a.b/c".into())));
+    let link = a.tabs[0].doc.boxes[&root].link.clone();
+    assert_eq!(link.as_deref(), Some("https://a.b/c"));
+}
