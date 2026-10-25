@@ -14,7 +14,7 @@
 - [x] Task 8: App shell (theme, i18n, title bar, tabs, ribbon, status bar)
 - [x] Task 9: Canvas (camera, measurement, style-D painting, hit testing)
 - [x] Task 10: Editing interactions
-- [ ] Task 11: File operations in the app
+- [x] Task 11: File operations in the app
 - [ ] Task 12: End-to-end verification and docs
 
 ## Later steps (plans to be written)
