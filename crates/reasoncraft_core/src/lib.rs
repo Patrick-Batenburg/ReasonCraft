@@ -1,6 +1,7 @@
 //! ReasonCraft core: document model, editing, layout and file format.
 
 pub mod edit;
+pub mod file;
 pub mod history;
 pub mod ids;
 pub mod model;
