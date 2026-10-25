@@ -21,6 +21,8 @@ fn harness() -> Harness<'static, ReasonCraftApp> {
 #[test]
 fn ribbon_add_reason_adds_card() {
     let mut h = harness();
+    // The building panel has items with the same names; hide it.
+    h.state_mut().left_panel = false;
     h.run();
     assert_eq!(h.state().tabs[0].doc.cards.len(), 0);
     let label = t("action.add_reason");
@@ -972,6 +974,8 @@ fn plus_menu_source_submenu_adds_expert_opinion() {
         .add_card(Parent::Box(doc.root), CardKind::Reason, "One")
         .unwrap();
     let mut h = harness_with(doc);
+    // The building panel has items with the same names; hide it.
+    h.state_mut().left_panel = false;
     h.state_mut().tabs[0].selection = Some(Item::Box(p));
     h.run();
     h.get_by_label(&t("plus.open")).click();
@@ -1007,6 +1011,8 @@ fn plus_menu_source_submenu_adds_expert_opinion() {
 fn ribbon_source_dropdown_adds_law_to_claim() {
     use reasoncraft_core::{BoxKind, Item, SourceType};
     let mut h = harness();
+    // The building panel has items with the same names; hide it.
+    h.state_mut().left_panel = false;
     h.run();
     h.get_by_label(&t("action.add_source")).click();
     h.run();
@@ -1032,6 +1038,8 @@ fn ribbon_source_dropdown_adds_law_to_claim() {
 fn comments_harness(doc: reasoncraft_core::Document) -> Harness<'static, ReasonCraftApp> {
     let root = doc.root;
     let mut h = harness_with(doc);
+    // The building panel has items with the same names; hide it.
+    h.state_mut().left_panel = false;
     h.state_mut().tabs[0].selection = Some(reasoncraft_core::Item::Box(root));
     h.run();
     h.get_by_label(&t("action.comment")).click();

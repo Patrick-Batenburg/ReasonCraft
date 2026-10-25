@@ -1,6 +1,6 @@
 //! The map canvas: camera, text measurement, painting, hit testing and
 //! editing interactions (selection, inline text, keyboard, "+" menu, drag,
-//! comments).
+//! drops from the building panel, comments).
 
 mod boxes;
 pub mod camera;
@@ -104,6 +104,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     );
     comments::badges(ui, tab, &layout, pending);
     drag::update(ui, &response, &layout, tab, &tokens, pending, panning);
+    drag::panel_drop(ui, &response, &layout, tab, &tokens, pending);
     editor::show(ui, tab, &layout, &tokens, pending);
     if !response.dragged() {
         plus_menu::show(ui, tab, &layout, &tokens, pending);

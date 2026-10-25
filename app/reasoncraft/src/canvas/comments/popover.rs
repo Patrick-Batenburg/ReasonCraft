@@ -47,7 +47,8 @@ struct Draft {
 }
 
 /// The comment popover of `tab.comments_open`, right of its box (left when
-/// there is no room). Esc or a press outside it closes it.
+/// there is no room). Esc or a primary press outside it closes it (panning
+/// with the right or middle button does not).
 pub(in crate::canvas) fn show(
     ui: &Ui,
     tab: &DocTab,
@@ -63,11 +64,11 @@ pub(in crate::canvas) fn show(
     };
     let ctx = ui.ctx();
     let id = popover_id();
-    // A press outside last frame's popover closes it; one in a menu
-    // (the presets) does not.
+    // A primary press outside last frame's popover closes it; one in a
+    // menu (the presets) does not.
     let outside = ctx.input(|i| {
         let pos = i.pointer.press_origin()?;
-        i.pointer.any_pressed().then_some(pos)
+        i.pointer.primary_pressed().then_some(pos)
     });
     let shown = egui::AreaState::load(ctx, id).map(|s| s.rect());
     let escape = ctx.input(|i| i.key_pressed(Key::Escape));

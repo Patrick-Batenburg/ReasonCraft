@@ -14,6 +14,8 @@ use crate::theme::ThemeChoice;
 mod comments;
 mod evaluate;
 pub use evaluate::{Rate, Rated, rate_action, rated};
+mod insert;
+pub use insert::{Insertable, target_allowed};
 mod sources;
 mod structure;
 use structure::{add_box, add_card, add_co_premise, delete};
@@ -134,6 +136,14 @@ pub enum Action {
     CloseComments,
     /// Set the name put on new comments (trimmed).
     SetAuthor(String),
+    /// Insert from the building panel: under `to` (cards, categories, notes,
+    /// sources), on box `on` (a co-premise joins its card; a comment goes
+    /// on it), or at the selection like the ribbon when both are `None`.
+    Insert {
+        what: Insertable,
+        to: Option<Parent>,
+        on: Option<NodeId>,
+    },
     TogglePanel(Panel),
     /// Switch to the tab at this index.
     ActivateTab(usize),
@@ -183,6 +193,7 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::CommentSelected
         | Action::CloseComments
         | Action::SetAuthor(_) => comments::apply(app, action),
+        Action::Insert { .. } => insert::apply(app, action),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap => {
             let doc = reasoncraft_core::fixtures::sample_iot_like(117);
@@ -298,6 +309,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::CommentSelected
         | Action::CloseComments
         | Action::SetAuthor(_)
+        | Action::Insert { .. }
         | Action::TogglePanel(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
@@ -346,6 +358,7 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
     if let Some(enabled) = evaluate::is_enabled(tab, action)
         .or_else(|| sources::is_enabled(tab, action))
         .or_else(|| comments::is_enabled(tab, action))
+        .or_else(|| insert::is_enabled(tab, action))
     {
         return enabled;
     }

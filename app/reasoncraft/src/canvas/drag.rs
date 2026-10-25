@@ -4,11 +4,11 @@
 use eframe::egui::{
     self, Color32, Painter, PointerButton, Pos2, Rect, Response, Stroke, StrokeKind,
 };
-use reasoncraft_core::{BoxKind, Document, Item, Layout, Parent};
+use reasoncraft_core::{BoxKind, Document, Item, Layout, NodeId, Parent};
 
 use super::hit::{BOTTOM_EDGE_BAND, Hit, hit_test};
 use super::paint::{FRAME_RADIUS, parking_frame};
-use crate::actions::{Action, is_enabled};
+use crate::actions::{Action, Insertable, is_enabled, target_allowed};
 use crate::doc_tab::DocTab;
 use crate::theme::Tokens;
 
@@ -80,10 +80,7 @@ pub fn drop_target(
         }
         Some(Hit::CardBottomEdge(c)) => DropTarget {
             to: Parent::Card(c),
-            highlight: layout.cards.get(&c).map(|r| {
-                let half = BOTTOM_EDGE_BAND / zoom / 2.0;
-                Rect::from_x_y_ranges(r.x_range(), (r.bottom() - half)..=(r.bottom() + half))
-            }),
+            highlight: layout.cards.get(&c).map(|&r| bottom_band(r, zoom)),
         },
         Some(Hit::CardFrame(c)) => DropTarget {
             to: Parent::Card(c),
@@ -98,6 +95,83 @@ pub fn drop_target(
     let onto_itself = matches!((item, target.to), (Item::Card(a), Parent::Card(b)) if a == b);
     let unchanged = onto_itself || doc.owner_of(item) == Some(target.to);
     (!unchanged).then_some(target)
+}
+
+/// Where dropping `what` from the building panel at `world` would insert
+/// it, and whether that is allowed. A box takes it as a child (a co-premise
+/// joins the box's card; a comment goes on the box), a card frame or its
+/// bottom edge as a whole-card child (cards only; a co-premise joins the
+/// card), empty canvas parks it (never a comment or co-premise).
+pub fn panel_drop_target(
+    doc: &Document,
+    layout: &Layout,
+    what: &Insertable,
+    world: Pos2,
+    zoom: f32,
+) -> Option<(DropTarget, bool)> {
+    let card = |c| layout.cards.get(&c).copied();
+    let target = match hit_test(layout, world, zoom) {
+        Some(Hit::Box(b)) => match doc.owner_of(Item::Box(b)) {
+            Some(Parent::Card(c)) if *what == Insertable::CoPremise => DropTarget {
+                to: Parent::Box(b),
+                highlight: card(c),
+            },
+            _ => DropTarget {
+                to: Parent::Box(b),
+                highlight: layout.boxes.get(&b).copied(),
+            },
+        },
+        Some(Hit::CardFrame(c) | Hit::CardBottomEdge(c)) if *what == Insertable::CoPremise => {
+            DropTarget {
+                to: Parent::Box(*doc.cards.get(&c)?.premises.first()?),
+                highlight: card(c),
+            }
+        }
+        Some(Hit::CardBottomEdge(c)) => DropTarget {
+            to: Parent::Card(c),
+            highlight: card(c).map(|r| bottom_band(r, zoom)),
+        },
+        Some(Hit::CardFrame(c)) => DropTarget {
+            to: Parent::Card(c),
+            highlight: card(c),
+        },
+        None => DropTarget {
+            to: Parent::Parking,
+            highlight: parking_frame(layout),
+        },
+    };
+    let allowed =
+        insert_target(what, &target).is_some_and(|(to, on)| target_allowed(doc, what, to, on));
+    Some((target, allowed))
+}
+
+/// `to` and `on` of the insert a building-panel drop of `what` on `target`
+/// asks for; `None` when `what` needs a box and the target is none.
+fn insert_target(
+    what: &Insertable,
+    target: &DropTarget,
+) -> Option<(Option<Parent>, Option<NodeId>)> {
+    match (what.goes_on_node(), target.to) {
+        (true, Parent::Box(b)) => Some((None, Some(b))),
+        (true, _) => None,
+        (false, to) => Some((Some(to), None)),
+    }
+}
+
+/// The [`Action::Insert`] for a building-panel drop of `what` on `target`.
+pub fn panel_drop_action(what: &Insertable, target: &DropTarget) -> Option<Action> {
+    let (to, on) = insert_target(what, target)?;
+    Some(Action::Insert {
+        what: what.clone(),
+        to,
+        on,
+    })
+}
+
+/// The band around the bottom edge of card frame `r` (world units).
+fn bottom_band(r: Rect, zoom: f32) -> Rect {
+    let half = BOTTOM_EDGE_BAND / zoom / 2.0;
+    Rect::from_x_y_ranges(r.x_range(), (r.bottom() - half)..=(r.bottom() + half))
 }
 
 /// Track a primary-button drag that started on an item, paint its ghost and
@@ -158,8 +232,7 @@ pub(super) fn update(
                 };
                 paint_ghost(painter, layout, tab, colour, s, pos);
                 if let Some(rect) = target.and_then(|d| d.highlight) {
-                    let r = cam.world_rect_to_screen(rect).expand(3.0);
-                    painter.rect_stroke(r, 6.0, Stroke::new(2.5, colour), StrokeKind::Middle);
+                    paint_target(painter, tab, rect, colour);
                 }
             }
         }
@@ -173,6 +246,51 @@ pub(super) fn update(
         }
         None => d.remove::<DragState>(id),
     });
+}
+
+/// A drop target's outline: green where a drop is allowed, red where refused.
+fn paint_target(painter: &Painter, tab: &DocTab, world: Rect, colour: Color32) {
+    let r = tab.camera.world_rect_to_screen(world).expand(3.0);
+    painter.rect_stroke(r, 6.0, Stroke::new(2.5, colour), StrokeKind::Middle);
+}
+
+/// A drag from the building panel over the canvas: highlight where it
+/// would land (green allowed, red refused), tint the ghost chip, and push
+/// [`Action::Insert`] when it is released on an allowed target.
+pub(super) fn panel_drop(
+    ui: &egui::Ui,
+    response: &Response,
+    layout: &Layout,
+    tab: &DocTab,
+    tk: &Tokens,
+    pending: &mut Vec<Action>,
+) {
+    let Some(what) = response.dnd_hover_payload::<Insertable>() else {
+        return;
+    };
+    let Some(pos) = ui.input(|i| i.pointer.latest_pos()) else {
+        return;
+    };
+    let cam = tab.camera;
+    let world = cam.screen_to_world(pos);
+    let Some((target, allowed)) = panel_drop_target(&tab.doc, layout, &what, world, cam.zoom)
+    else {
+        return;
+    };
+    if response.dnd_release_payload::<Insertable>().is_some() {
+        if allowed && let Some(action) = panel_drop_action(&what, &target) {
+            pending.push(action);
+        }
+        return;
+    }
+    let colour = if allowed { tk.reason } else { tk.objection };
+    if let Some(rect) = target.highlight {
+        paint_target(&ui.painter_at(response.rect), tab, rect, colour);
+    }
+    crate::shell::building::tint_ghost(ui.ctx(), colour);
+    if !allowed {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::NotAllowed);
+    }
 }
 
 /// The dragged item's outline, following the pointer.
@@ -200,55 +318,4 @@ fn paint_ghost(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use eframe::egui::vec2;
-    use reasoncraft_core::fixtures::FixedMeasure;
-    use reasoncraft_core::{CardKind, LayoutParams, NewLoose, layout};
-
-    #[test]
-    fn drop_targets_connect_reattach_and_park() {
-        let mut d = Document::new("Claim");
-        let root = d.root;
-        let (a, p) = d
-            .add_card(Parent::Box(root), CardKind::Reason, "p")
-            .unwrap();
-        let p2 = d.add_premise(a, None, "p2").unwrap();
-        let Item::Card(loose) = d.add_loose(NewLoose::Card(CardKind::Objection), "q") else {
-            unreachable!()
-        };
-        let q = d.cards[&loose].premises[0];
-        let l = layout(&d, &FixedMeasure, &LayoutParams::default());
-        let target = |item, world| drop_target(&d, &l, item, world, 1.0).map(|t| t.to);
-
-        // The root is fixed; a sole premise drags its card; a co-premise drags itself.
-        assert_eq!(drag_item(&d, Hit::Box(root)), None);
-        assert_eq!(drag_item(&d, Hit::Box(q)), Some(Item::Card(loose)));
-        assert_eq!(drag_item(&d, Hit::Box(p)), Some(Item::Box(p)));
-
-        let lc = Item::Card(loose);
-        assert_eq!(target(lc, l.boxes[&root].center()), Some(Parent::Box(root)));
-        assert_eq!(target(lc, l.boxes[&p].center()), Some(Parent::Box(p)));
-        assert_eq!(
-            target(lc, l.cards[&a].center_bottom()),
-            Some(Parent::Card(a))
-        );
-        let empty = l.bounds.right_bottom() + vec2(500.0, 500.0);
-        assert_eq!(target(lc, empty), None, "already parked");
-        assert_eq!(target(lc, l.boxes[&q].center()), None, "onto itself");
-
-        let ac = Item::Card(a);
-        assert_eq!(target(ac, empty), Some(Parent::Parking));
-        assert_eq!(
-            target(ac, l.boxes[&p2].center()),
-            None,
-            "onto its own premise"
-        );
-        // A co-premise dropped on another card's premise joins that card.
-        assert_eq!(
-            target(Item::Box(p2), l.boxes[&q].center()),
-            Some(Parent::Card(loose))
-        );
-        assert_eq!(target(Item::Box(p2), l.boxes[&p].center()), None);
-    }
-}
+mod tests;

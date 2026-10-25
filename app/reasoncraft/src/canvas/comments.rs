@@ -135,7 +135,8 @@ impl Pass<'_> {
 }
 
 /// Make each visible badge a button that opens its box's comments. They
-/// sit above the canvas, so a click on a badge never selects or drags.
+/// sit above the canvas and take drags too, so a press on a badge never
+/// selects, drags the box or pans.
 pub(super) fn badges(ui: &Ui, tab: &DocTab, layout: &Layout, pending: &mut Vec<Action>) {
     if tab.camera.zoom < MARKER_MIN_ZOOM {
         return;
@@ -159,7 +160,7 @@ pub(super) fn badges(ui: &Ui, tab: &DocTab, layout: &Layout, pending: &mut Vec<A
         let response = ui.interact(
             rect,
             ui.scope_id().with(("comment_badge", id)),
-            Sense::click(),
+            Sense::click_and_drag(),
         );
         response.widget_info(|| WidgetInfo::labeled(Role::Button, true, &label));
         let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);

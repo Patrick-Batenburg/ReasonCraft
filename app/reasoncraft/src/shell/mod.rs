@@ -1,6 +1,7 @@
 //! The window chrome around the map: title bar, tabs, ribbon, panels, status bar.
 
 pub mod backstage;
+pub mod building;
 pub mod icons;
 pub mod modal;
 pub mod resize;
@@ -58,7 +59,7 @@ pub fn icon_button(
     resp.on_hover_text(label)
 }
 
-/// Building panel (left) and Text panel (right): placeholders in step 1.
+/// Building panel (left) and Text panel (right, a placeholder for now).
 /// Hidden while the backstage is open.
 pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     if app.ribbon_tab == RibbonTab::File {
@@ -66,25 +67,29 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     let tk = app.tokens;
     let frame = Frame::new().fill(tk.panel).inner_margin(Margin::same(12));
-    let body = |ui: &mut egui::Ui, heading: &str| {
-        ui.label(
-            egui::RichText::new(heading)
-                .strong()
-                .size(15.0)
-                .color(tk.box_text),
-        );
-        ui.add_space(6.0);
-        ui.label(egui::RichText::new(t("panel.coming_later")).color(tk.text_muted));
-        ui.take_available_space();
-    };
+    let tab = &app.tabs[app.active];
+    let mut out = Vec::new();
     egui::Panel::left("building_panel")
         .frame(frame)
         .default_size(220.0)
-        .show_collapsible(ui, &mut app.left_panel, |ui| body(ui, &t("panel.building")));
+        .show_collapsible(ui, &mut app.left_panel, |ui| {
+            building::show(ui, tab, &tk, &mut out);
+        });
+    app.pending.extend(out);
     egui::Panel::right("text_panel")
         .frame(frame)
         .default_size(260.0)
-        .show_collapsible(ui, &mut app.right_panel, |ui| body(ui, &t("panel.text")));
+        .show_collapsible(ui, &mut app.right_panel, |ui| {
+            ui.label(
+                egui::RichText::new(t("panel.text"))
+                    .strong()
+                    .size(15.0)
+                    .color(tk.box_text),
+            );
+            ui.add_space(6.0);
+            ui.label(egui::RichText::new(t("panel.coming_later")).color(tk.text_muted));
+            ui.take_available_space();
+        });
 }
 
 /// The backstage when the File tab is open, otherwise the map area.
@@ -97,4 +102,5 @@ pub fn show_central(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     egui::CentralPanel::default()
         .frame(Frame::new().fill(tk.canvas))
         .show(ui, |ui| crate::canvas::show(ui, app));
+    building::paint_ghost(ui.ctx(), &tk);
 }

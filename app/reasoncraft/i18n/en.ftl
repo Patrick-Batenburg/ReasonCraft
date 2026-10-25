@@ -128,6 +128,9 @@ theme-dark = Dark
 panel-building = Building
 panel-text = Text
 panel-coming_later = Coming in a later version.
+building-boxes = Boxes
+building-sources = Sources
+building-comments = Comments
 
 ## Canvas
 canvas-empty_claim = Type your main claim
