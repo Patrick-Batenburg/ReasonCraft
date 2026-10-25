@@ -58,8 +58,12 @@ pub struct ReasonCraftApp {
     /// Inserted images being prepared in the background.
     pub image_jobs: ImageJobs,
     /// A short message in the status bar (an inserted image that was
-    /// discarded, say), until the next image insert.
+    /// discarded, say). It and the export notice go after
+    /// [`shell::statusbar::NOTE_SECS`] or with the next action.
     pub status_note: Option<String>,
+    /// The status note and export notice on show, and since when (egui
+    /// time), so they can expire.
+    pub(crate) notes_shown: Option<(f64, Option<String>, Option<crate::export::Notice>)>,
     /// The export or page setup dialog, when open.
     pub export_dialog: Option<ExportDialog>,
     /// The egui context of the running frame: exports measure text with it.
@@ -100,6 +104,7 @@ impl ReasonCraftApp {
             export: ExportJobs::new(clipboard, std::env::temp_dir()),
             image_jobs: ImageJobs::default(),
             status_note: None,
+            notes_shown: None,
             export_dialog: None,
             egui_ctx: None,
             applied: None,
@@ -170,6 +175,7 @@ impl ReasonCraftApp {
         self.egui_ctx = Some(ctx.clone());
         actions::poll_exports(self);
         actions::poll_images(self);
+        shell::statusbar::expire_notes(&ctx, self);
         self.sync_theme(&ctx);
         self.sync_window_title(&ctx);
         // The OS (or the title bar on macOS) asks to close: ask about unsaved

@@ -165,7 +165,8 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
 }
 
 /// The file keys while a text field other than the box editor has focus
-/// (a snippet's text, citation or link, the document title or author):
+/// (a snippet's text, citation or link, the document title or author, an
+/// essay paragraph):
 /// Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N, the same subset that works
 /// while editing a box. They are taken out of the input; every other key
 /// stays with the field. Applying the action first ends the field's

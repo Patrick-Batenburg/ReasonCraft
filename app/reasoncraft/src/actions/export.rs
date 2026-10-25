@@ -197,9 +197,11 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
         None => {
             let ctx = egui::Context::default();
             let mut scene = None;
-            let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
                 scene = Some(build(ui.ctx(), &mut MeasureCache::default()));
             });
+            // Nothing is drawn: the font atlas this frame made is not needed.
+            output.textures_delta.clear();
             scene.unwrap_or(Scene {
                 shapes: Vec::new(),
                 bounds: egui::Rect::ZERO,

@@ -61,7 +61,6 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
                 return;
             };
             let job = app.image_jobs.start(b, path);
-            app.status_note = None;
             // A newer insert for the same box replaces the older one.
             app.tabs[app.active].pending_images.insert(b, job);
         }
@@ -141,6 +140,36 @@ pub fn poll_images(app: &mut ReasonCraftApp) {
                 result: p.result,
             });
         }
+    }
+}
+
+/// Applies the image results for tab `i` that are ready now, also those
+/// held for its edit session: a close commits the session first, so a
+/// finished image is never lost with the tab. Other results stay queued.
+pub(super) fn flush_tab(app: &mut ReasonCraftApp, i: usize) {
+    let mut done = std::mem::take(&mut app.image_jobs.waiting);
+    done.extend(app.image_jobs.finished());
+    for p in done {
+        if waiting_tab(app, p.job, p.node) == Some(i) {
+            prepared(app, p.job, p.node, p.result);
+        } else {
+            app.image_jobs.waiting.push(p);
+        }
+    }
+}
+
+/// Waits for the images tab `i` still waits for and applies them, so a
+/// save before a close includes them.
+pub(super) fn finish_tab(app: &mut ReasonCraftApp, i: usize) {
+    let start = Instant::now();
+    loop {
+        flush_tab(app, i);
+        let done = app.tabs.get(i).is_none_or(|t| t.pending_images.is_empty());
+        // A worker that hangs must not keep the save from happening.
+        if done || start.elapsed() > Duration::from_secs(60) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(2));
     }
 }
 

@@ -91,13 +91,45 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         });
 }
 
+/// How long a status note or export notice stays, in seconds.
+pub const NOTE_SECS: f64 = 6.0;
+
+/// Clears the status note and the export notice once they have shown for
+/// [`NOTE_SECS`]; a new note starts the time again.
+pub(crate) fn expire_notes(ctx: &egui::Context, app: &mut ReasonCraftApp) {
+    if app.status_note.is_none() && app.export.notice.is_none() {
+        app.notes_shown = None;
+        return;
+    }
+    let now = ctx.input(|i| i.time);
+    let current = (app.status_note.clone(), app.export.notice.clone());
+    let since = match &app.notes_shown {
+        Some((since, note, notice)) if (note, notice) == (&current.0, &current.1) => *since,
+        _ => {
+            app.notes_shown = Some((now, current.0, current.1));
+            now
+        }
+    };
+    let left = NOTE_SECS - (now - since);
+    if left <= 0.0 {
+        app.status_note = None;
+        app.export.notice = None;
+        app.notes_shown = None;
+    } else {
+        ctx.request_repaint_after(std::time::Duration::from_secs_f64(left));
+    }
+}
+
 /// A spinner while background jobs run ("Exporting…", or "Preparing
 /// image…" when only images are; the tooltip lists them all); otherwise
 /// what the last export did ("Export done" with "Open folder", or
 /// "Copied"). Then the status note, if any.
 fn job_status(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
     let text = |s: String| RichText::new(s).size(12.0).color(tk.text_muted);
-    let (exports, images) = (app.export.running(), app.image_jobs.running());
+    // Images count while a tab waits for them, also a finished one held
+    // for an edit session: the same ones that show "Preparing image…".
+    let images: usize = app.tabs.iter().map(|t| t.pending_images.len()).sum();
+    let exports = app.export.running();
     if exports + images > 0 {
         ui.add_space(16.0);
         ui.add(egui::Spinner::new().size(12.0).color(tk.accent));
@@ -117,10 +149,7 @@ fn job_status(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
                 lines.push(t_args(key, &args));
             }
         }
-        ui.label(text(t(key))).on_hover_text(lines.join(
-            "
-",
-        ));
+        ui.label(text(t(key))).on_hover_text(lines.join("\n"));
     } else {
         match &app.export.notice {
             Some(Notice::Saved(_)) => {

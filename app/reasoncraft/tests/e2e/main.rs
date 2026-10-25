@@ -2,9 +2,11 @@
 //! sources, links, comments, an image, a reorder, a "Connect to…"), save
 //! it, open it again and check that nothing was lost. The step-3 text
 //! panel flow is in [`text_panel`], the title/author session on the
-//! close paths in [`meta_sessions`].
+//! close paths in [`meta_sessions`], the step-4 essay and exports in
+//! [`output`].
 
 mod meta_sessions;
+mod output;
 mod text_panel;
 
 use reasoncraft::actions::{Action, Dir, Insertable, Rate, apply, wait_for_images};

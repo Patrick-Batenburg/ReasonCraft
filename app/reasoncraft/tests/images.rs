@@ -247,7 +247,13 @@ fn prepared_image_waits_for_the_running_edit() {
     let tab = h.state().active_tab();
     assert_eq!(tab.editing(), Some(premise), "the edit keeps running");
     assert!(tab.doc.boxes[&premise].image.is_none(), "the image waits");
-    h.get_by_label(&t("image.preparing"));
+    // While it is held, the box's placeholder and the busy chip both show.
+    assert_eq!(t("image.preparing"), t("status.preparing_image"));
+    assert_eq!(
+        h.query_all_by_label(&t("image.preparing")).count(),
+        2,
+        "placeholder and busy chip"
+    );
 
     h.state_mut().push(Action::StopEditing);
     h.run();

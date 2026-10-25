@@ -50,6 +50,13 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         images::prepared(app, job, node, result);
         return;
     }
+    // The user moved on: the last status note and export notice go
+    // ("Open folder" acts on the notice, and a dismissed message may have
+    // left a note behind).
+    if !matches!(action, Action::OpenExportFolder | Action::DismissModal) {
+        app.status_note = None;
+        app.export.notice = None;
+    }
     if let Some(tab) = app.tabs.get_mut(app.active) {
         if !continues_session(&action, tab.session()) {
             tab.commit_session();
@@ -65,9 +72,26 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         Action::Open => file_ops::open_with_dialog(app),
         Action::Save => file_ops::save_active(app, false),
         Action::SaveAs => file_ops::save_active(app, true),
-        Action::CloseTab(i) => file_ops::request_close_tab(app, i),
-        Action::CloseWindow => file_ops::request_close_window(app),
-        Action::ResolveUnsaved(choice) => file_ops::resolve_unsaved(app, choice),
+        Action::CloseTab(i) => {
+            // A finished image lands first, so the prompt counts it.
+            images::flush_tab(app, i);
+            file_ops::request_close_tab(app, i);
+        }
+        Action::CloseWindow => {
+            for i in 0..app.tabs.len() {
+                images::flush_tab(app, i);
+            }
+            file_ops::request_close_window(app);
+        }
+        Action::ResolveUnsaved(choice) => {
+            // "Save" includes the images still being prepared.
+            if let (UnsavedChoice::Save, Some(&file_ops::Modal::Unsaved { tab, .. })) =
+                (choice, app.modal.as_ref())
+            {
+                images::finish_tab(app, tab);
+            }
+            file_ops::resolve_unsaved(app, choice);
+        }
         Action::ResolveReplace(replace) => file_ops::resolve_replace(app, replace),
         Action::DismissModal => {
             app.modal = None;

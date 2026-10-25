@@ -200,6 +200,12 @@ impl DocTab {
         self.history.is_dirty() || self.has_pending_session()
     }
 
+    /// Work a close would lose: unsaved changes, or an image still being
+    /// prepared for one of its boxes.
+    pub fn has_unsaved_work(&self) -> bool {
+        self.is_dirty() || !self.pending_images.is_empty()
+    }
+
     /// The file stem, or "Untitled".
     pub fn name(&self) -> String {
         self.path

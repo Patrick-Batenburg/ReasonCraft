@@ -312,13 +312,14 @@ fn carry_on(app: &mut ReasonCraftApp, tab: usize, then: AfterSave) {
     }
 }
 
-/// Close tab `i`, asking first if it has unsaved changes.
+/// Close tab `i`, asking first if it has unsaved changes (or an image
+/// still being prepared).
 pub fn request_close_tab(app: &mut ReasonCraftApp, i: usize) {
     let Some(tab) = app.tabs.get_mut(i) else {
         return;
     };
     tab.commit_session();
-    if tab.is_dirty() {
+    if tab.has_unsaved_work() {
         app.modal = Some(Modal::Unsaved {
             tab: i,
             window: false,
@@ -352,7 +353,7 @@ pub fn request_close_window(app: &mut ReasonCraftApp) {
 
 /// Ask about the first dirty tab at or after `from`; with none left, close.
 fn ask_from(app: &mut ReasonCraftApp, from: usize) {
-    match (from..app.tabs.len()).find(|&i| app.tabs[i].is_dirty()) {
+    match (from..app.tabs.len()).find(|&i| app.tabs[i].has_unsaved_work()) {
         Some(i) => {
             app.active = i;
             app.modal = Some(Modal::Unsaved {
