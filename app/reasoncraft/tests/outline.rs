@@ -21,6 +21,8 @@ fn harness_with(doc: Document) -> Harness<'static, ReasonCraftApp> {
     Harness::builder()
         .with_size(egui::vec2(1400.0, 900.0))
         .with_max_steps(32)
+        // Real frame times, so the 2 s "Copied" notice can be timed.
+        .with_step_dt(1.0 / 60.0)
         .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
 }
 
@@ -194,6 +196,56 @@ fn copy_all_puts_plain_text_on_clipboard() {
     assert_eq!(copied, [&want]);
     h.run();
     h.get_by_label(&t("outline.copied"));
+    // The notice survives later frames (its id is stable across frames)…
+    let toolbar = h.get_by_label(&t("outline.copy_all")).rect().center();
+    for dx in [40.0, 80.0] {
+        h.event(egui::Event::PointerMoved(toolbar + egui::vec2(0.0, dx)));
+        h.step();
+        h.step();
+        h.get_by_label(&t("outline.copied"));
+    }
+    // …and is gone once 2 s have passed.
+    let now = h.ctx.input(|i| i.time);
+    h.input_mut().time = Some(now + 1.5);
+    h.run();
+    h.get_by_label(&t("outline.copied"));
+    h.input_mut().time = Some(now + 2.1);
+    h.run();
+    assert!(h.query_by_label(&t("outline.copied")).is_none());
+}
+
+/// Clicking another box's row while editing a box commits the edit as one
+/// history step and moves the selection; no text goes to the clicked box.
+#[test]
+fn outline_click_while_editing_commits_edit() {
+    let doc = small_doc();
+    let a = box_with_text(&doc, "Robots help");
+    let b = box_with_text(&doc, "Robots break");
+    let mut h = harness_with(doc);
+    h.run();
+    for action in [
+        Action::Select(Some(Item::Box(a))),
+        Action::Edit,
+        Action::EditText {
+            node: a,
+            text: "Robots help a lot".into(),
+        },
+    ] {
+        h.state_mut().pending.push(action);
+    }
+    h.run();
+    let before = h.state().tabs[0].history.undo.len();
+    assert_eq!(h.state().tabs[0].editing, Some(a));
+    h.get_by_role_and_label(Role::ListItem, "2 but Robots break")
+        .click();
+    h.run();
+    let tab = &h.state().tabs[0];
+    assert_eq!(tab.doc.boxes[&a].text, "Robots help a lot");
+    assert_eq!(tab.doc.boxes[&b].text, "Robots break");
+    assert_eq!(tab.history.undo.len(), before + 1);
+    assert_eq!(tab.selection, Some(Item::Box(b)));
+    assert_eq!(tab.editing, None);
+    assert!(!tab.has_pending_edit());
 }
 
 #[test]

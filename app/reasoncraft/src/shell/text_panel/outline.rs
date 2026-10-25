@@ -3,7 +3,7 @@
 //! cached per document revision (see [`DocTab::outline`]).
 
 use eframe::egui::{
-    self, Align2, Color32, FontId, Id, Rect, Response, Role, ScrollArea, Sense, Ui, WidgetInfo,
+    self, Color32, FontId, Id, Painter, Rect, Response, Role, ScrollArea, Sense, Ui, WidgetInfo,
     pos2, text::LayoutJob, vec2,
 };
 use reasoncraft_core::outline::{LineKind, LinkLabel, OutlineLine, outline_plain_text};
@@ -111,6 +111,7 @@ fn toolbar(
                 out.push(Action::SetOutlineOption(toggle, !on));
             }
         }
+        // `Id::unique` hashes with fixed seeds: the same id every frame.
         let copied_id = Id::unique("outline_copied_at");
         if ui
             .button(t("outline.copy_all"))
@@ -221,29 +222,33 @@ fn row(
     let right = rect.right() - 4.0 - if mark.is_some() { MARK + GAP } else { 0.0 };
     let font = FontId::proportional(FONT);
     let (number, word) = lead(line, settings);
+    let mut elided = false;
+    // Everything before the marker is cut at `right`, the lead words too.
+    let mut put = |x: &mut f32, text: String, colour: Color32| {
+        let (end, cut) = fitted(painter, *x, cy, right, text, &font, colour);
+        *x = end + GAP;
+        elided |= cut;
+    };
     if !number.is_empty() {
-        x = word_at(ui, x, cy, &number, &font, tk.text_muted) + GAP;
+        put(&mut x, number, tk.text_muted);
     }
-    if let LineKind::Source(source_type) = &line.kind {
+    if let LineKind::Source(source_type) = &line.kind
+        && x + ICON <= right
+    {
         let icon = Rect::from_center_size(pos2(x + ICON / 2.0, cy), vec2(ICON, ICON));
         paint_source_icon(painter, icon, source_type, tk.text_muted);
         x += ICON + 4.0;
     }
     if !word.is_empty() {
-        x = word_at(ui, x, cy, &word, &font, tk.text_muted) + GAP;
+        put(&mut x, word, tk.text_muted);
     }
-
     let text = one_line(&line.text);
     let (text, colour) = match line.kind {
         _ if text.is_empty() => (t("outline.empty"), tk.text_muted),
         LineKind::Note => (text, tk.text_muted),
         _ => (text, tk.box_text),
     };
-    let mut job = LayoutJob::simple_singleline(text, font, colour);
-    job.wrap = egui::text::TextWrapping::truncate_at_width((right - x).max(0.0));
-    let galley = painter.layout_job(job);
-    let elided = galley.elided;
-    painter.galley(pos2(x, cy - galley.size().y / 2.0), galley, colour);
+    put(&mut x, text, colour);
 
     if let Some(mark) = mark {
         let c = pos2(rect.right() - 4.0 - MARK / 2.0, cy);
@@ -256,10 +261,50 @@ fn row(
     }
 }
 
-/// Paint `text` left-aligned at `x`, centred on `cy`; returns its right edge.
-fn word_at(ui: &Ui, x: f32, cy: f32, text: &str, font: &FontId, colour: Color32) -> f32 {
-    let r = ui
-        .painter()
-        .text(pos2(x, cy), Align2::LEFT_CENTER, text, font.clone(), colour);
-    r.right()
+/// Paint `text` on one line from `x`, centred on `cy` and cut with "…" at
+/// `right`. Returns its right edge and whether it was cut. Nothing is
+/// painted (but the text counts as cut) when there is no room left.
+fn fitted(
+    painter: &Painter,
+    x: f32,
+    cy: f32,
+    right: f32,
+    text: String,
+    font: &FontId,
+    colour: Color32,
+) -> (f32, bool) {
+    if right - x < 1.0 {
+        return (x, true);
+    }
+    let mut job = LayoutJob::simple_singleline(text, font.clone(), colour);
+    job.wrap = egui::text::TextWrapping::truncate_at_width(right - x);
+    let galley = painter.layout_job(job);
+    let (end, cut) = (x + galley.size().x, galley.elided);
+    painter.galley(pos2(x, cy - galley.size().y / 2.0), galley, colour);
+    (end, cut)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fitted_text_never_passes_its_right_edge() {
+        let ctx = egui::Context::default();
+        let mut out = ctx.run_ui(Default::default(), |ui| {
+            let p = ui.painter();
+            let font = FontId::proportional(FONT);
+            let long = "1a.1.1.1.1.1.1.1.1.1.1.1".to_owned();
+            let (end, cut) = fitted(p, 10.0, 20.0, 60.0, long, &font, Color32::WHITE);
+            assert!(end <= 60.0 && cut, "{end}");
+            let (end, cut) = fitted(p, 10.0, 20.0, 200.0, "1".into(), &font, Color32::WHITE);
+            assert!(end < 30.0 && !cut);
+            // No room at all: nothing painted, counted as cut.
+            assert_eq!(
+                fitted(p, 60.0, 20.0, 60.0, "x".into(), &font, Color32::WHITE),
+                (60.0, true)
+            );
+        });
+        out.textures_delta.clear();
+    }
 }
