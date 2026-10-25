@@ -356,3 +356,7 @@ image-error-too_large = The image is too large. Use an image under 40 MB and at 
 image-error-unsupported = This file is not a PNG, JPEG or WebP image.
 image-error-corrupt = The image is damaged and cannot be read.
 image-error-read = The file could not be read: { $detail }
+export-error-too_large = This map is too large to export as an image ({ $detail } pixels). Use a lower scale, or export as SVG or PDF.
+export-error-io = The file could not be written: { $detail }
+export-error-render = The image could not be drawn: { $detail }
+export-error-clipboard = The image could not be copied: { $detail }

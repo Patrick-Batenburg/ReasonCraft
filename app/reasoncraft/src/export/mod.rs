@@ -2,6 +2,7 @@
 //! with the fonts the screen uses, so a file looks like the canvas on any
 //! machine.
 
+mod raster;
 mod svg;
 
 use std::sync::{Arc, LazyLock};
@@ -10,7 +11,60 @@ use eframe::egui::FontDefinitions;
 use eframe::egui::emath::GuiRounding as _;
 use resvg::usvg::fontdb;
 
+pub use raster::{
+    ClipboardSink, MAX_PIXELS, MAX_SIDE_PX, PngOptions, SystemClipboard, copy_image,
+    copy_png_to_clipboard, png_to_rgba, svg_to_png, svg_to_rgba,
+};
 pub use svg::{DEFAULT_MARGIN, SvgOptions, scene_to_svg};
+
+/// Why an export failed. The app layer shows [`key`](Self::key) through
+/// `t`; the details are for logs.
+#[derive(Debug)]
+pub enum ExportError {
+    /// The image would pass the pixel caps.
+    TooLarge {
+        w: u32,
+        h: u32,
+    },
+    Io(std::io::Error),
+    Render(String),
+    Clipboard(String),
+}
+
+impl ExportError {
+    /// The message key for this kind of error.
+    pub fn key(&self) -> &'static str {
+        match self {
+            Self::TooLarge { .. } => "export-error-too_large",
+            Self::Io(_) => "export-error-io",
+            Self::Render(_) => "export-error-render",
+            Self::Clipboard(_) => "export-error-clipboard",
+        }
+    }
+
+    /// The part of the error to show next to the message (`{ $detail }`).
+    pub fn detail(&self) -> String {
+        match self {
+            Self::TooLarge { w, h } => format!("{w} × {h}"),
+            Self::Io(e) => e.to_string(),
+            Self::Render(s) | Self::Clipboard(s) => s.clone(),
+        }
+    }
+}
+
+impl std::fmt::Display for ExportError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.key(), self.detail())
+    }
+}
+
+impl std::error::Error for ExportError {}
+
+impl From<std::io::Error> for ExportError {
+    fn from(e: std::io::Error) -> Self {
+        Self::Io(e)
+    }
+}
 
 /// The name egui gives its proportional text font.
 const TEXT_FONT: &str = "Ubuntu-Light";
@@ -102,5 +156,7 @@ impl TextFace {
     }
 }
 
+#[cfg(test)]
+mod raster_tests;
 #[cfg(test)]
 mod tests;

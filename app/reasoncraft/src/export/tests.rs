@@ -17,7 +17,7 @@ use crate::theme::Tokens;
 
 /// The export scene of `doc`, laid out with egui's fonts, and the rows
 /// each box's text wraps into.
-fn scene_of(doc: &Document) -> (Scene, Vec<Vec<String>>) {
+pub(super) fn scene_of(doc: &Document) -> (Scene, Vec<Vec<String>>) {
     let ctx = egui::Context::default();
     let mut result = None;
     let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
@@ -285,7 +285,7 @@ fn text_metrics_match_egui() {
 }
 
 /// A small map with every kind of box, an image and Dutch text.
-fn preview_doc(assets: &mut Assets) -> Document {
+pub(super) fn preview_doc(assets: &mut Assets) -> Document {
     let mut doc = Document::new("Het centrum wordt autovrij gemaakt");
     let root = Parent::Box(doc.root);
     let (_, p) = doc

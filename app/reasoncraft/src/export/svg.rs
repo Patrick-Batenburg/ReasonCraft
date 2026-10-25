@@ -322,6 +322,8 @@ fn path_data(els: &[PathEl]) -> String {
 
 /// `v` with at most three decimals and no trailing zeros.
 pub(super) fn num(v: f32) -> String {
+    // NaN and infinity are not SVG numbers.
+    let v = if v.is_finite() { v } else { 0.0 };
     let s = format!("{v:.3}");
     let s = s.trim_end_matches('0').trim_end_matches('.');
     if s == "-0" {
@@ -343,6 +345,8 @@ fn escape(s: &str) -> String {
             '\'' => out.push_str("&apos;"),
             // Not allowed in XML 1.0 at all.
             c if (c as u32) < 0x20 && !matches!(c, '\t' | '\n' | '\r') => {}
+            // Noncharacters XML 1.0 forbids.
+            '\u{FFFE}' | '\u{FFFF}' => {}
             c => out.push(c),
         }
     }
