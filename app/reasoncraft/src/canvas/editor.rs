@@ -23,7 +23,7 @@ pub fn editor_id(b: NodeId) -> Id {
 }
 
 /// Show the editor over the box being edited, if any. Text changes go out
-/// as [`Action::EditText`]; losing focus (a click elsewhere) commits.
+/// as [`Action::EditText`] for this box; losing focus (a click elsewhere) commits.
 pub(super) fn show(
     ui: &mut egui::Ui,
     tab: &mut DocTab,
@@ -73,7 +73,10 @@ pub(super) fn show(
         .lock_focus(true);
     let response = ui.put(rect, editor);
     if response.changed() {
-        pending.push(Action::EditText(tab.edit_text.clone()));
+        pending.push(Action::EditText {
+            node: b,
+            text: tab.edit_text.clone(),
+        });
     }
     if response.lost_focus() {
         pending.push(Action::StopEditing);

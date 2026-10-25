@@ -52,18 +52,28 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
     })
 }
 
-/// Turn this frame's key presses into actions before any widget sees them.
-/// Typed text on a selected box starts editing it (whitespace alone does
-/// not: Space is held to pan). Keys are left alone while another text
-/// field has focus or a menu is open (Esc closes the menu).
-pub fn handle_keys(ctx: &egui::Context, app: &mut ReasonCraftApp) {
+/// Take this frame's command keys out of the input before any widget sees
+/// them and return their actions. Typed text on a selected box starts
+/// editing it (whitespace alone does not: Space is held to pan). Keys are
+/// left alone while another text field has focus or a menu is open (Esc
+/// closes the menu).
+///
+/// The caller queues the returned actions after the frame's widgets have
+/// run, so text typed into the inline editor in the same frame as a command
+/// (say "x" then Tab) reaches the edited box before the command ends the edit.
+pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     let Some(tab) = app.tabs.get(app.active) else {
-        return;
+        return Vec::new();
     };
     let editing = tab.editing;
     let focused = ctx.memory(|m| m.focused());
     if (ctx.text_edit_focused() && focused != editing.map(editor_id)) || Popup::is_any_open(ctx) {
-        return;
+        return Vec::new();
+    }
+    // Esc drops widget focus as the frame begins; keep it on the editor for
+    // this frame so text typed alongside the Esc still lands in the box.
+    if let (Some(b), None) = (editing, focused) {
+        ctx.memory_mut(|m| m.request_focus(editor_id(b)));
     }
     let can_type = editing.is_none() && matches!(tab.selection, Some(Item::Box(_)));
     let mut out = Vec::new();
@@ -85,13 +95,13 @@ pub fn handle_keys(ctx: &egui::Context, app: &mut ReasonCraftApp) {
         });
     });
     if out.is_empty() {
-        return;
+        return out;
     }
     // Tab and the arrows are ours: keep egui from moving widget focus too.
     ctx.memory_mut(|m| m.move_focus(FocusDirection::None));
-    app.pending
-        .extend(out.into_iter().filter(|a| is_enabled(tab, a)));
     ctx.request_repaint();
+    out.retain(|a| is_enabled(tab, a));
+    out
 }
 
 /// The item one step from `from` in direction `dir`, or `None` at an edge.

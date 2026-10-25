@@ -1,7 +1,7 @@
 //! Every command the user can give, and the one place that carries them out.
 
 use reasoncraft_core::{
-    BoxKind, CardId, CardKind, Item, NewItem, NewLoose, Parent, RemoveMode, can_attach,
+    BoxKind, CardId, CardKind, Item, NewItem, NewLoose, NodeId, Parent, RemoveMode, can_attach,
 };
 
 use crate::app::ReasonCraftApp;
@@ -49,8 +49,12 @@ pub enum Action {
     Edit,
     /// Commit the inline edit (if any).
     StopEditing,
-    /// The inline editor's text changed: show it live, without a history step.
-    EditText(String),
+    /// The inline editor of box `node` changed its text: show it live,
+    /// without a history step. Ignored unless `node` is still being edited.
+    EditText {
+        node: NodeId,
+        text: String,
+    },
     /// Text typed while a box is selected: start editing it (if needed) and append.
     TypeText(String),
     /// Connect, reattach or detach `item` (drag and drop).
@@ -81,7 +85,7 @@ pub enum Action {
 /// Every action except the inline editor's own text updates first commits a
 /// running inline edit, so it lands in history before anything else happens.
 pub fn apply(app: &mut ReasonCraftApp, action: Action) {
-    if !matches!(action, Action::EditText(_) | Action::TypeText(_))
+    if !matches!(action, Action::EditText { .. } | Action::TypeText(_))
         && let Some(tab) = app.tabs.get_mut(app.active)
     {
         tab.commit_edit();
@@ -163,16 +167,16 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         }
         // `apply` has already committed the edit.
         Action::StopEditing => {}
-        Action::EditText(text) => tab.set_edit_text(text),
+        Action::EditText { node, text } => tab.set_edit_text(node, text),
         Action::TypeText(typed) => {
             if tab.editing.is_none()
                 && let Some(Item::Box(b)) = tab.selection
             {
                 tab.begin_edit(b, false);
             }
-            if tab.editing.is_some() {
+            if let Some(b) = tab.editing {
                 let text = format!("{}{typed}", tab.edit_text);
-                tab.set_edit_text(text);
+                tab.set_edit_text(b, text);
             }
         }
         Action::Move { item, to } => {
@@ -255,7 +259,9 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
         Action::AddObjection => attach(NewItem::Card(CardKind::Objection)),
         Action::AddCategory => attach(NewItem::Category),
         Action::AddNote => attach(NewItem::Note),
-        Action::AddCoPremise | Action::TargetWholeCard(_) => selected_card(tab).is_some(),
+        Action::AddCoPremise => selected_card(tab).is_some(),
+        Action::TargetWholeCard(kind) => selected_card(tab)
+            .is_some_and(|c| can_attach(&tab.doc, Parent::Card(c), NewItem::Card(kind.clone()))),
         Action::Delete | Action::DeleteBranch => sel.is_some_and(|s| s != Item::Box(tab.doc.root)),
         Action::Edit => matches!(sel, Some(Item::Box(_))),
         Action::Undo => !tab.history.undo.is_empty() || tab.has_pending_edit(),

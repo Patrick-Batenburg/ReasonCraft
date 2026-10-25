@@ -93,10 +93,13 @@ impl ReasonCraftApp {
         let ctx = ui.ctx().clone();
         self.sync_theme(&ctx);
         self.sync_window_title(&ctx);
-        // Shortcuts first, so no widget sees (or moves focus with) them.
-        if self.ribbon_tab != RibbonTab::File {
-            crate::canvas::input::handle_keys(&ctx, self);
-        }
+        // Shortcuts are taken out first, so no widget sees (or moves focus
+        // with) them, but run after the widgets' own actions (see `handle_keys`).
+        let keys = if self.ribbon_tab == RibbonTab::File {
+            Vec::new()
+        } else {
+            crate::canvas::input::handle_keys(&ctx, self)
+        };
 
         shell::titlebar::show(ui, self);
         shell::tabs::show(ui, self);
@@ -104,6 +107,7 @@ impl ReasonCraftApp {
         shell::statusbar::show(ui, self);
         shell::show_side_panels(ui, self);
         shell::show_central(ui, self);
+        self.pending.extend(keys);
 
         let actions = std::mem::take(&mut self.pending);
         if !actions.is_empty() {

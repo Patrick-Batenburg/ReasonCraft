@@ -176,7 +176,13 @@ fn add_starts_editing_and_text_joins_the_add_step() {
     let mut a = app();
     apply(&mut a, Action::AddReason);
     let p = tab(&a).editing.expect("new premise is edited");
-    apply(&mut a, Action::EditText("Because".into()));
+    apply(
+        &mut a,
+        Action::EditText {
+            node: p,
+            text: "Because".into(),
+        },
+    );
     apply(&mut a, Action::StopEditing);
     let t = tab(&a);
     assert_eq!(t.doc.boxes[&p].text, "Because");
@@ -190,15 +196,15 @@ fn edit_session_records_one_step_only_when_text_changed() {
     let mut a = app();
     let root = tab(&a).doc.root;
     apply(&mut a, Action::Edit);
-    apply(&mut a, Action::EditText("A".into()));
-    apply(&mut a, Action::EditText("AB".into()));
+    apply(&mut a, edit_text(root, "A"));
+    apply(&mut a, edit_text(root, "AB"));
     apply(&mut a, Action::StopEditing);
     assert_eq!(tab(&a).history.undo.len(), 1);
     assert_eq!(tab(&a).doc.boxes[&root].text, "AB");
     // Unchanged text: no step.
     apply(&mut a, Action::Edit);
-    apply(&mut a, Action::EditText("ABC".into()));
-    apply(&mut a, Action::EditText("AB".into()));
+    apply(&mut a, edit_text(root, "ABC"));
+    apply(&mut a, edit_text(root, "AB"));
     apply(&mut a, Action::StopEditing);
     assert_eq!(tab(&a).history.undo.len(), 1);
     // Any other action commits first, so undo restores the pre-edit text.
@@ -242,4 +248,38 @@ fn navigate_moves_selection_and_move_action_reattaches() {
     );
     assert!(tab(&a).doc.parking.is_empty());
     assert_eq!(tab(&a).history.undo.len(), 3);
+}
+
+fn edit_text(node: reasoncraft_core::NodeId, text: &str) -> Action {
+    Action::EditText {
+        node,
+        text: text.into(),
+    }
+}
+
+#[test]
+fn edit_text_for_another_box_is_dropped() {
+    let mut a = app();
+    let root = tab(&a).doc.root;
+    apply(&mut a, Action::AddReason);
+    let p = tab(&a).editing.unwrap();
+    // A late update for the root must not land on the new premise.
+    apply(&mut a, edit_text(root, "stale"));
+    assert_eq!(tab(&a).doc.boxes[&p].text, "");
+    assert_eq!(tab(&a).doc.boxes[&root].text, "");
+    assert_eq!(tab(&a).edit_text, "");
+}
+
+#[test]
+fn whole_card_target_enabled_matches_attach_rules() {
+    let mut a = app();
+    apply(&mut a, Action::AddReason);
+    for kind in [CardKind::Reason, CardKind::Objection] {
+        assert!(is_enabled(tab(&a), &Action::TargetWholeCard(kind)));
+    }
+    apply(&mut a, Action::Select(None));
+    assert!(!is_enabled(
+        tab(&a),
+        &Action::TargetWholeCard(CardKind::Reason)
+    ));
 }

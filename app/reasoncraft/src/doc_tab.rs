@@ -110,11 +110,11 @@ impl DocTab {
         self.edit_focus = true;
     }
 
-    /// Show the editor's text live in the document, without a history step.
-    pub fn set_edit_text(&mut self, text: String) {
-        if let Some(b) = self.editing
-            && self.doc.set_text(b, &text).is_ok()
-        {
+    /// Show the editor's text for box `b` live in the document, without a
+    /// history step. Text for a box that is no longer being edited (a late
+    /// update after the edit ended) is dropped.
+    pub fn set_edit_text(&mut self, b: NodeId, text: String) {
+        if self.editing == Some(b) && self.doc.set_text(b, &text).is_ok() {
             self.edit_text = text;
         }
     }
