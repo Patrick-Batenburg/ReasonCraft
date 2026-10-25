@@ -1,6 +1,6 @@
 //! The document model: boxes, cards and the document that owns them.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use chrono::{SecondsFormat, Utc};
 use indexmap::IndexMap;
@@ -423,6 +423,38 @@ pub fn owner_index(doc: &Document) -> HashMap<Item, Parent> {
         }
     }
     index
+}
+
+/// The role of every card, from one owner index. The rule is that of
+/// [`Document::card_role`]: reasons support; an objection owned by an
+/// objection card, or by a premise of one, rebuts; any other objection
+/// opposes.
+pub fn card_roles(doc: &Document) -> IndexMap<CardId, Role> {
+    let owners = owner_index(doc);
+    let objection_premises: HashSet<NodeId> = doc
+        .cards
+        .values()
+        .filter(|c| c.kind == CardKind::Objection)
+        .flat_map(|c| c.premises.iter().copied())
+        .collect();
+    let mut roles = IndexMap::with_capacity(doc.cards.len());
+    for (&id, card) in &doc.cards {
+        let role = if card.kind == CardKind::Reason {
+            Role::Supports
+        } else {
+            let rebuts = match owners.get(&Item::Card(id)) {
+                Some(Parent::Card(c)) => doc
+                    .cards
+                    .get(c)
+                    .is_some_and(|c| c.kind == CardKind::Objection),
+                Some(Parent::Box(b)) => objection_premises.contains(b),
+                Some(Parent::Parking) | None => false,
+            };
+            if rebuts { Role::Rebuts } else { Role::Opposes }
+        };
+        roles.insert(id, role);
+    }
+    roles
 }
 
 #[cfg(test)]

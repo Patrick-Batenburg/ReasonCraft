@@ -13,8 +13,8 @@ use emath::{Pos2, Rect, Vec2};
 use super::ports::{Pending, PortKey};
 use super::{BOX_TEXT_PAD, ConnectorKind, Layout, LayoutParams, Measure, image_height};
 use crate::connector::Strength;
-use crate::ids::{Item, NodeId, Parent};
-use crate::model::{BoxKind, BoxNode, Card, CardKind, CardStrength, Document, Role, owner_index};
+use crate::ids::{Item, NodeId};
+use crate::model::{BoxKind, BoxNode, Card, CardStrength, Document, Role};
 
 /// A card, a box outside cards, or the root.
 struct Unit {
@@ -220,22 +220,27 @@ fn whole_children(card: &Card, out: &mut Vec<(Item, PortKey)>) {
     );
 }
 
-/// A box's children with sources and notes first, otherwise in order.
-fn box_children(doc: &Document, id: NodeId, out: &mut Vec<(Item, PortKey)>) {
+/// A box's children with sources and notes first, otherwise in order. The
+/// canvas and the outline share this order.
+pub(crate) fn display_children(doc: &Document, id: NodeId) -> Vec<Item> {
     let Some(node) = doc.boxes.get(&id) else {
-        return;
+        return Vec::new();
     };
-    let is_attachment = |item: &Item| match item {
+    let is_attachment = |item: &&Item| match item {
         Item::Box(b) => doc
             .boxes
             .get(b)
             .is_some_and(|n| matches!(n.kind, BoxKind::Source { .. } | BoxKind::Note)),
         Item::Card(_) => false,
     };
-    let port = PortKey::Box(id);
-    let first = node.children.iter().filter(|i| is_attachment(i));
+    let first = node.children.iter().filter(is_attachment);
     let rest = node.children.iter().filter(|i| !is_attachment(i));
-    out.extend(first.chain(rest).map(|&i| (i, port)));
+    first.chain(rest).copied().collect()
+}
+
+fn box_children(doc: &Document, id: NodeId, out: &mut Vec<(Item, PortKey)>) {
+    let port = PortKey::Box(id);
+    out.extend(display_children(doc, id).into_iter().map(|i| (i, port)));
 }
 
 /// Size of a box from its measured text.
@@ -303,33 +308,10 @@ fn connector_strength(out: &Layout, child: Item) -> (Strength, bool) {
     }
 }
 
-/// Fill `out.card_roles` and `out.card_strength` for every card, using one
-/// owner index. The rule is that of `Document::card_role`: reasons support;
-/// an objection owned by an objection card, or by a premise of one, rebuts;
-/// any other objection opposes.
+/// Fill `out.card_roles` and `out.card_strength` for every card.
 pub(super) fn card_roles(doc: &Document, out: &mut Layout) {
-    let owners = owner_index(doc);
-    let objection_premises: HashSet<NodeId> = doc
-        .cards
-        .values()
-        .filter(|c| c.kind == CardKind::Objection)
-        .flat_map(|c| c.premises.iter().copied())
-        .collect();
+    out.card_roles = crate::model::card_roles(doc);
     for (&id, card) in &doc.cards {
-        let role = if card.kind == CardKind::Reason {
-            Role::Supports
-        } else {
-            let rebuts = match owners.get(&Item::Card(id)) {
-                Some(Parent::Card(c)) => doc
-                    .cards
-                    .get(c)
-                    .is_some_and(|c| c.kind == CardKind::Objection),
-                Some(Parent::Box(b)) => objection_premises.contains(b),
-                Some(Parent::Parking) | None => false,
-            };
-            if rebuts { Role::Rebuts } else { Role::Opposes }
-        };
-        out.card_roles.insert(id, role);
         out.card_strength.insert(id, card.strength);
     }
 }
@@ -339,6 +321,7 @@ mod tests {
     use super::*;
     use crate::fixtures::{FixedMeasure, sample_iot_like};
     use crate::layout::layout;
+    use crate::model::owner_index;
 
     #[test]
     fn owner_index_matches_owner_of() {

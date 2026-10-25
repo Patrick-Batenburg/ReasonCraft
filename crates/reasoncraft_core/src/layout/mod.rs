@@ -7,6 +7,8 @@
 mod ports;
 mod tree;
 
+pub(crate) use tree::display_children;
+
 use emath::{Pos2, Rect, Vec2};
 use indexmap::IndexMap;
 
