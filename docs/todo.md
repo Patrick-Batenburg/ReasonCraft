@@ -34,7 +34,7 @@
   - [x] Task 12: End-to-end verification and docs
 - [ ] Step 3 — Text panel: Outline, Snippets, Check ([plan](plans/2026-10-26-step3-text-panel.md))
   - [x] Task 1: Carry-over fixes, revision counter, text panel tab shell
-  - [ ] Task 2: Core outline builder
+  - [x] Task 2: Core outline builder
   - [ ] Task 3: Outline tab
   - [ ] Task 4: Core checks
   - [ ] Task 5: Check tab, settings and status bar count
