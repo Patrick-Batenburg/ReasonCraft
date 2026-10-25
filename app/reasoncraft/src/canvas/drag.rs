@@ -2,7 +2,7 @@
 //! edge (target the whole card) or on empty canvas (detach to parking).
 
 use eframe::egui::{
-    self, Color32, Painter, PointerButton, Pos2, Rect, Response, Stroke, StrokeKind,
+    self, Color32, DragAndDrop, Painter, PointerButton, Pos2, Rect, Response, Stroke, StrokeKind,
 };
 use reasoncraft_core::{BoxKind, Document, Item, Layout, NodeId, Parent};
 
@@ -265,7 +265,15 @@ pub(super) fn panel_drop(
     tk: &Tokens,
     pending: &mut Vec<Action>,
 ) {
-    let Some(what) = response.dnd_hover_payload::<Insertable>() else {
+    // By the canvas rect and layer, not `response.contains_pointer()`, so
+    // the widgets on top of the canvas in its own layer (the inline editor,
+    // comment badges) never hide a drop; popovers and menus in layers above
+    // do.
+    let ctx = ui.ctx();
+    if !ui.rect_contains_pointer(response.rect) {
+        return;
+    }
+    let Some(what) = DragAndDrop::payload::<Insertable>(ctx) else {
         return;
     };
     let Some(pos) = ui.input(|i| i.pointer.latest_pos()) else {
@@ -277,7 +285,9 @@ pub(super) fn panel_drop(
     else {
         return;
     };
-    if response.dnd_release_payload::<Insertable>().is_some() {
+    if ui.input(|i| i.pointer.any_released())
+        && DragAndDrop::take_payload::<Insertable>(ctx).is_some()
+    {
         if allowed && let Some(action) = panel_drop_action(&what, &target) {
             pending.push(action);
         }
@@ -287,9 +297,9 @@ pub(super) fn panel_drop(
     if let Some(rect) = target.highlight {
         paint_target(&ui.painter_at(response.rect), tab, rect, colour);
     }
-    crate::shell::building::tint_ghost(ui.ctx(), colour);
+    crate::shell::building::tint_ghost(ctx, colour);
     if !allowed {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::NotAllowed);
+        ctx.set_cursor_icon(egui::CursorIcon::NotAllowed);
     }
 }
 

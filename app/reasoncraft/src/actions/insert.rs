@@ -120,6 +120,13 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
             (Some(Parent::Card(c)), None) => Some(Item::Card(c)),
             (Some(Parent::Parking), None) | (None, None) => None,
         };
+        // The comment popover belongs to the old selection.
+        if tab
+            .comments_open
+            .is_some_and(|n| tab.selection != Some(Item::Box(n)))
+        {
+            tab.comments_open = None;
+        }
     }
     let action = match what {
         Insertable::Comment(i) => {

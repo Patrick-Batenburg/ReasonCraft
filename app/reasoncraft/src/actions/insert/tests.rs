@@ -201,3 +201,21 @@ fn insert_at_target_and_refusals() {
     assert_eq!(t.editing, Some(s), "a new box is edited");
     assert_eq!(t.history.undo.len(), 3);
 }
+
+#[test]
+fn targeted_insert_elsewhere_closes_the_comment_popover() {
+    let (d, p) = claim_with_reason();
+    let root = d.root;
+    let mut a = app_with(d);
+    apply(&mut a, Action::OpenComments(root));
+    let on = |node| Action::Insert {
+        what: Insertable::Comment(0),
+        to: None,
+        on: Some(node),
+    };
+    apply(&mut a, on(root));
+    assert_eq!(tab(&a).comments_open, Some(root), "same box: stays open");
+    apply(&mut a, on(p));
+    assert_eq!(tab(&a).comments_open, None);
+    assert_eq!(tab(&a).doc.boxes[&p].comments.len(), 1);
+}

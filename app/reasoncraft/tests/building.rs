@@ -94,6 +94,8 @@ fn refused_panel_drop_changes_nothing() {
         .add_box(Parent::Box(doc.root), BoxKind::Category, "Category")
         .unwrap();
     let mut h = harness_with(doc);
+    h.state_mut().tabs[0].selection = Some(Item::Box(cat));
+    h.run();
     let before = h.state().tabs[0].doc.clone();
     let to = screen(&h, layout_of(&h).boxes[&cat].center());
     let from = panel_item(&h, &t("source.web"));
@@ -115,6 +117,8 @@ fn refused_panel_drop_changes_nothing() {
     let tab = &h.state().tabs[0];
     assert_eq!(tab.doc, before);
     assert_eq!(tab.history.undo.len(), 0);
+    assert_eq!(tab.selection, Some(Item::Box(cat)), "selection kept");
+    assert_eq!(tab.editing, None);
 }
 
 #[test]
@@ -204,4 +208,60 @@ fn panning_keeps_comment_popover_open() {
         assert_eq!(h.state().tabs[0].comments_open, Some(root), "{button:?}");
     }
     assert_ne!(h.state().tabs[0].camera.offset, offset, "the map panned");
+}
+
+/// Drag the Web source tile onto box `p` at screen point `to`; return the
+/// sources added under `p`.
+fn drop_web_on(h: &mut H, p: reasoncraft_core::NodeId, to: egui::Pos2) -> usize {
+    let from = panel_item(h, &t("source.web"));
+    let editing = h.state().tabs[0].editing;
+    h.event(egui::Event::PointerMoved(from));
+    h.drag_at(from);
+    h.run();
+    for i in 1..=8 {
+        h.event(egui::Event::PointerMoved(from.lerp(to, i as f32 / 8.0)));
+        h.run();
+    }
+    // Still editing while the item hovers over the box.
+    assert_eq!(h.state().tabs[0].editing, editing);
+    h.drop_at(to);
+    h.run();
+    let tab = &h.state().tabs[0];
+    tab.doc.boxes[&p]
+        .children
+        .iter()
+        .filter(|i| matches!(i, Item::Box(b) if matches!(tab.doc.boxes[b].kind, BoxKind::Source { .. })))
+        .count()
+}
+
+#[test]
+fn panel_drop_onto_the_box_being_edited() {
+    let mut doc = Document::new("Claim");
+    let (_, p) = doc
+        .add_card(Parent::Box(doc.root), CardKind::Reason, "Premise")
+        .unwrap();
+    let mut h = harness_with(doc);
+    h.state_mut().tabs[0].selection = Some(Item::Box(p));
+    h.state_mut().tabs[0].begin_edit(p, false);
+    h.run();
+    assert_eq!(h.state().tabs[0].editing, Some(p));
+    let to = screen(&h, layout_of(&h).boxes[&p].center());
+    assert_eq!(drop_web_on(&mut h, p, to), 1);
+}
+
+#[test]
+fn panel_drop_onto_a_comment_badge() {
+    use reasoncraft::canvas::comments::badge_rect;
+    let mut doc = Document::new("Claim");
+    let (_, p) = doc
+        .add_card(Parent::Box(doc.root), CardKind::Reason, "Premise")
+        .unwrap();
+    doc.add_comment(p, "Ann", "Hm.", None).unwrap();
+    let mut h = harness_with(doc);
+    let l = layout_of(&h);
+    // Inside both the badge and the box.
+    let world = l.boxes[&p].right_top() + egui::vec2(-3.0, 3.0);
+    assert!(badge_rect(l.boxes[&p], 1).contains(world));
+    let to = screen(&h, world);
+    assert_eq!(drop_web_on(&mut h, p, to), 1);
 }
