@@ -38,6 +38,8 @@ pub struct DocTab {
     pub reveal_pending: bool,
     /// The box whose comment popover is showing.
     pub comments_open: Option<NodeId>,
+    /// The parked item waiting for a target ("Connect to…").
+    pub connect_mode: Option<Item>,
 }
 
 impl Default for DocTab {
@@ -69,6 +71,7 @@ impl DocTab {
             fit_pending: true,
             reveal_pending: false,
             comments_open: None,
+            connect_mode: None,
         }
     }
 
@@ -161,7 +164,7 @@ impl DocTab {
         }
     }
 
-    /// Drop a selection, edit target or comment popover whose item no
+    /// Drop a selection, edit target, comment popover or connect mode whose item no
     /// longer exists (after undo, redo or delete); the selection falls back
     /// to the root.
     pub fn fix_selection(&mut self) {
@@ -180,6 +183,9 @@ impl DocTab {
             .is_some_and(|b| !self.doc.boxes.contains_key(&b))
         {
             self.comments_open = None;
+        }
+        if self.connect_mode.is_some_and(|i| !self.contains(i)) {
+            self.connect_mode = None;
         }
     }
 }

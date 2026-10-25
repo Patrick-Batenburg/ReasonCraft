@@ -1,4 +1,5 @@
 use super::*;
+use crate::actions::Insertable;
 use eframe::egui::vec2;
 use reasoncraft_core::fixtures::FixedMeasure;
 use reasoncraft_core::{CardKind, LayoutParams, NewLoose, SourceType, layout};
@@ -46,7 +47,10 @@ fn drop_targets_connect_reattach_and_park() {
         target(Item::Box(p2), l.boxes[&q].center()),
         Some(Parent::Card(loose))
     );
-    assert_eq!(target(Item::Box(p2), l.boxes[&p].center()), None);
+    // Onto itself, or right of its only co-premise (where it is): no change.
+    assert_eq!(target(Item::Box(p2), l.boxes[&p2].center()), None);
+    let right_of_p = l.boxes[&p].center() + vec2(1.0, 0.0);
+    assert_eq!(target(Item::Box(p2), right_of_p), None);
 }
 
 #[test]
@@ -75,7 +79,9 @@ fn panel_drop_target_rules() {
         (
             DropTarget {
                 to: Parent::Box(p),
-                highlight: Some(l.boxes[&p])
+                index: None,
+                highlight: Some(l.boxes[&p]),
+                bar: None,
             },
             true
         )
@@ -114,4 +120,85 @@ fn panel_drop_target_rules() {
     assert_eq!((t.to, ok), (Parent::Box(p), true));
     assert!(!at(Insertable::CoPremise, l.boxes[&cat].center()).1);
     assert!(!at(Insertable::CoPremise, empty).1);
+}
+
+/// Three sibling cards under the root, and a parked card.
+fn three_cards() -> (Document, [reasoncraft_core::CardId; 4]) {
+    let mut d = Document::new("Claim");
+    let root = d.root;
+    let mut card = |t| {
+        d.add_card(Parent::Box(root), CardKind::Reason, t)
+            .unwrap()
+            .0
+    };
+    let (a, b, c) = (card("a"), card("b"), card("c"));
+    let Item::Card(parked) = d.add_loose(NewLoose::Card(CardKind::Reason), "p") else {
+        unreachable!()
+    };
+    (d, [a, b, c, parked])
+}
+
+#[test]
+fn drop_index_from_pointer_x() {
+    let (d, [a, b, c, parked]) = three_cards();
+    let root = d.root;
+    let l = layout(&d, &FixedMeasure, &LayoutParams::default());
+    let (ra, rb, rc) = (l.cards[&a], l.cards[&b], l.cards[&c]);
+    let between_ab = egui::pos2((ra.right() + rb.left()) / 2.0, ra.center().y);
+
+    // Pointer between the 1st and 2nd card: index 1, bar in the gap.
+    let t = drop_target(&d, &l, Item::Card(c), between_ab, 1.0).unwrap();
+    assert_eq!((t.to, t.index), (Parent::Box(root), Some(1)));
+    let bar = t.bar.expect("insertion bar");
+    assert_eq!(bar.left(), between_ab.x);
+    assert_eq!(bar.width(), 0.0);
+    assert!(bar.top() <= ra.top() && bar.bottom() >= ra.bottom());
+    assert_eq!(t.highlight, Some(l.boxes[&root]), "the parent lights up");
+    // A parked card dropped there is inserted, not appended.
+    let t = drop_target(&d, &l, Item::Card(parked), between_ab, 1.0).unwrap();
+    assert_eq!((t.to, t.index), (Parent::Box(root), Some(1)));
+    // Dragging the 1st card to the same gap leaves it where it is.
+    assert_eq!(drop_target(&d, &l, Item::Card(a), between_ab, 1.0), None);
+    // Just past either end of the row.
+    let left_end = egui::pos2(ra.left() - 4.0, ra.center().y);
+    let right_end = egui::pos2(rc.right() + 4.0, rc.center().y);
+    let t = drop_target(&d, &l, Item::Card(c), left_end, 1.0).unwrap();
+    assert_eq!(t.index, Some(0));
+    let t = drop_target(&d, &l, Item::Card(a), right_end, 1.0).unwrap();
+    assert_eq!(t.index, Some(2));
+    // Far below the row is empty canvas: parking.
+    let below = egui::pos2(between_ab.x, ra.bottom() + 40.0);
+    assert_eq!(
+        drop_target(&d, &l, Item::Card(c), below, 1.0).map(|t| t.to),
+        Some(Parent::Parking)
+    );
+    // Over the parent box itself the pointer's x picks the place too.
+    let over_root = l.boxes[&root].center();
+    let t = drop_target(&d, &l, Item::Card(parked), over_root, 1.0).unwrap();
+    assert_eq!((t.to, t.index), (Parent::Box(root), Some(1)));
+}
+
+#[test]
+fn co_premise_reorder_within_card() {
+    let mut d = Document::new("Claim");
+    let root = d.root;
+    let (card, p1) = d
+        .add_card(Parent::Box(root), CardKind::Reason, "1")
+        .unwrap();
+    let p2 = d.add_premise(card, None, "2").unwrap();
+    let p3 = d.add_premise(card, None, "3").unwrap();
+    let l = layout(&d, &FixedMeasure, &LayoutParams::default());
+    // p3 over the left part of p1: before p1.
+    let left_of_p1 = l.boxes[&p1].center() - vec2(10.0, 0.0);
+    let t = drop_target(&d, &l, Item::Box(p3), left_of_p1, 1.0).unwrap();
+    assert_eq!((t.to, t.index), (Parent::Card(card), Some(0)));
+    assert!(t.bar.is_some());
+    // p1 in the gap between p2 and p3 (inside the frame).
+    let (r2, r3) = (l.boxes[&p2], l.boxes[&p3]);
+    let gap = egui::pos2((r2.right() + r3.left()) / 2.0, r2.center().y);
+    let t = drop_target(&d, &l, Item::Box(p1), gap, 1.0).unwrap();
+    assert_eq!((t.to, t.index), (Parent::Card(card), Some(1)));
+    let mut moved = d.clone();
+    moved.move_item(Item::Box(p1), t.to, t.index).unwrap();
+    assert_eq!(moved.cards[&card].premises, vec![p2, p1, p3]);
 }

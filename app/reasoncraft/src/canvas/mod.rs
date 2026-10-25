@@ -5,6 +5,7 @@
 mod boxes;
 pub mod camera;
 pub mod comments;
+pub mod connect;
 pub mod drag;
 pub mod editor;
 pub mod hit;
@@ -80,7 +81,8 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     let panning = navigate(ui, &response, &mut tab.camera, rect);
 
-    if response.clicked()
+    if tab.connect_mode.is_none()
+        && response.clicked()
         && !panning
         && let Some(pos) = response.interact_pointer_pos()
     {
@@ -103,6 +105,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         },
     );
     comments::badges(ui, tab, &layout, pending);
+    connect::update(ui, &response, &layout, tab, &tokens, pending, panning);
     drag::update(ui, &response, &layout, tab, &tokens, pending, panning);
     drag::panel_drop(ui, &response, &layout, tab, &tokens, pending);
     editor::show(ui, tab, &layout, &tokens, pending);

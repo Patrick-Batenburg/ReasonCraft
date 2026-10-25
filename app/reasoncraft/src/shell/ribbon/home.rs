@@ -78,6 +78,12 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
                 out.push(action);
             }
         }
+        let connect = Action::StartConnect;
+        let label = t("action.connect");
+        let on = tab.connect_mode.is_some();
+        if large(ui, &tk, Icon::Connect, &label, enabled(&connect) || on, on).clicked() {
+            out.push(if on { Action::CancelConnect } else { connect });
+        }
         ui.vertical(|ui| {
             let history = [
                 (Icon::Undo, "action.undo", Action::Undo),

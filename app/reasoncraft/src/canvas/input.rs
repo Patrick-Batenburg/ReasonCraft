@@ -11,35 +11,40 @@ use crate::app::ReasonCraftApp;
 /// The command bound to `key` with `mods`, if any. `Modifiers::command` is
 /// Ctrl, or Cmd on macOS. While a box is being edited only Esc (finish),
 /// Tab / Shift+Tab (finish and add a reason / objection), Ctrl+Shift+R /
-/// Ctrl+Shift+Tab (finish and add a whole-card reason / objection),
-/// Ctrl+Shift+E (finish and add a source), Ctrl+Enter (finish and add a co-premise) and the file keys Ctrl+S,
-/// Ctrl+Shift+S, Ctrl+O and Ctrl+N (finish, then the command) are commands;
-/// every other key is text.
+/// Ctrl+Shift+O (finish and add a whole-card reason / objection),
+/// Ctrl+Shift+E (finish and add a source), Ctrl+Enter (finish and add a
+/// co-premise) and the file keys Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N
+/// (finish, then the command) are commands; every other key is text.
+/// Ctrl+Shift+Tab is not a command.
 ///
-/// Ctrl+Shift+M opens the selected box's comments (not while editing).
+/// Ctrl+Shift+M opens the selected box's comments and Ctrl+Shift+K starts
+/// "Connect to…" (not while editing).
 ///
-/// Alt+1/2/3/0 rate the selection (not while editing); no other Alt combination
-/// is a command.
+/// Alt+1/2/3/0 rate the selection and Alt+Left/Right move it one place
+/// among its siblings (not while editing); no other Alt combination is a
+/// command.
 pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action> {
     use Action as A;
     if mods.alt {
         if editing || mods.shift || mods.ctrl || mods.command || mods.mac_cmd {
             return None;
         }
-        return Some(A::Rate(match key {
-            Key::Num1 => Rate::High,
-            Key::Num2 => Rate::Mid,
-            Key::Num3 => Rate::Low,
-            Key::Num0 => Rate::Clear,
+        return Some(match key {
+            Key::ArrowLeft => A::Reorder(Dir::Left),
+            Key::ArrowRight => A::Reorder(Dir::Right),
+            Key::Num1 => A::Rate(Rate::High),
+            Key::Num2 => A::Rate(Rate::Mid),
+            Key::Num3 => A::Rate(Rate::Low),
+            Key::Num0 => A::Rate(Rate::Clear),
             _ => return None,
-        }));
+        });
     }
     let (cmd, shift) = (mods.command, mods.shift);
     if editing {
         return match (key, cmd) {
             (Key::Escape, false) => Some(A::StopEditing),
             (Key::Tab, false) => Some(if shift { A::AddObjection } else { A::AddReason }),
-            (Key::Tab, true) if shift => Some(A::TargetWholeCard(CardKind::Objection)),
+            (Key::O, true) if shift => Some(A::TargetWholeCard(CardKind::Objection)),
             (Key::R, true) if shift => Some(A::TargetWholeCard(CardKind::Reason)),
             (Key::E, true) if shift => Some(A::AddSource(SourceType::Source)),
             (Key::Enter, true) => Some(A::AddCoPremise),
@@ -52,11 +57,12 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
     Some(match (key, cmd, shift) {
         (Key::Tab, false, false) => A::AddReason,
         (Key::Tab, false, true) => A::AddObjection,
-        (Key::Tab, true, true) => A::TargetWholeCard(CardKind::Objection),
+        (Key::O, true, true) => A::TargetWholeCard(CardKind::Objection),
         (Key::R, true, true) => A::TargetWholeCard(CardKind::Reason),
         (Key::E, true, true) => A::AddSource(SourceType::Source),
         (Key::P, true, true) => A::JumpParking,
         (Key::M, true, true) => A::CommentSelected,
+        (Key::K, true, true) => A::StartConnect,
         (Key::Enter, true, _) => A::AddCoPremise,
         (Key::Enter | Key::F2, false, false) => A::Edit,
         (Key::Escape, false, _) => A::StopEditing,
@@ -112,12 +118,17 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
             let action = match e {
                 Event::Key {
                     key,
+                    physical_key,
                     pressed: true,
                     modifiers,
                     ..
                 } => {
-                    let action = key_to_action(*key, *modifiers, editing.is_some());
-                    alt_text = action.is_some() && modifiers.alt;
+                    let action = if modifiers.alt && is_alt_code_key(*key, *physical_key) {
+                        None
+                    } else {
+                        key_to_action(*key, *modifiers, editing.is_some())
+                    };
+                    alt_text = matches!(action, Some(Action::Rate(_)));
                     action
                 }
                 Event::Text(_) if std::mem::take(&mut alt_text) => return false,
@@ -132,8 +143,10 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     if out.is_empty() {
         return out;
     }
-    // Esc closes the comment popover before it stops anything else.
-    if tab.comments_open.is_some() && editing.is_none() {
+    if let Some(item) = tab.connect_mode {
+        super::connect::map_keys(item, tab.selection, &mut out);
+    } else if tab.comments_open.is_some() && editing.is_none() {
+        // Esc closes the comment popover before it stops anything else.
         for a in &mut out {
             if *a == Action::StopEditing {
                 *a = Action::CloseComments;
@@ -145,6 +158,22 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     ctx.request_repaint();
     out.retain(|a| is_enabled(tab, a));
     out
+}
+
+/// A numpad key typed as part of a Windows Alt-code (Alt+0128) with NumLock
+/// off: the physical key is a digit, but it arrives as a navigation key
+/// (Numpad4 as ArrowLeft, Numpad1 as End). With NumLock on, egui 0.37 reports
+/// numpad digits exactly like the top-row digits, so those cannot be told
+/// apart here.
+pub fn is_alt_code_key(key: Key, physical: Option<Key>) -> bool {
+    use Key::*;
+    let digit = |k| {
+        matches!(
+            k,
+            Num0 | Num1 | Num2 | Num3 | Num4 | Num5 | Num6 | Num7 | Num8 | Num9
+        )
+    };
+    physical.is_some_and(|p| digit(p) && p != key)
 }
 
 /// The item one step from `from` in direction `dir`, or `None` at an edge.

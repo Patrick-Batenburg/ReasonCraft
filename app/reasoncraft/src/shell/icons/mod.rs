@@ -58,6 +58,8 @@ pub enum Icon {
     Source,
     /// A speech bubble (comments).
     Comment,
+    /// A box with a line up to another box ("Connect to…").
+    Connect,
 }
 
 /// Draw `icon` in `rect` (a square). `fg` is the main colour, `bg` the
@@ -310,6 +312,7 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         | Icon::Markers
         | Icon::Source
         | Icon::Shading
-        | Icon::Comment => evaluate::paint(&pen, icon, fg, t),
+        | Icon::Comment
+        | Icon::Connect => evaluate::paint(&pen, icon, fg, t),
     }
 }

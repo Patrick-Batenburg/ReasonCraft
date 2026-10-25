@@ -723,7 +723,7 @@ fn replace_prompt_during_window_close() {
     assert!(h.state().close_confirmed());
 }
 
-/// Up from a premise reaches its card; Ctrl+Shift+Tab and Ctrl+Shift+R add
+/// Up from a premise reaches its card; Ctrl+Shift+O and Ctrl+Shift+R add
 /// whole-card attacks from a premise or from the card itself.
 #[test]
 fn keyboard_reaches_cards_and_whole_card_targets() {
@@ -743,7 +743,7 @@ fn keyboard_reaches_cards_and_whole_card_targets() {
         h.state().tabs[0].selection,
         Some(reasoncraft_core::Item::Card(card))
     );
-    h.key_press_modifiers(cmd_shift, Key::Tab);
+    h.key_press_modifiers(cmd_shift, Key::O);
     h.run();
     assert_eq!(h.state().tabs[0].doc.cards[&card].children.len(), 1);
     // While editing the new attacker's premise: finish and attack its card.

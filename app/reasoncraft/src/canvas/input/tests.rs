@@ -37,7 +37,7 @@ fn tab_adds_reason() {
     assert_eq!(key_to_action(Key::S, cmd, false), Some(Action::Save));
     let cmd_shift = cmd | Modifiers::SHIFT;
     assert_eq!(
-        key_to_action(Key::Tab, cmd_shift, false),
+        key_to_action(Key::O, cmd_shift, false),
         Some(Action::TargetWholeCard(CardKind::Objection))
     );
     assert_eq!(
@@ -81,7 +81,7 @@ fn typing_mode_only_intercepts_esc_tab_ctrl_enter_and_file_keys() {
     );
     let cmd_shift = cmd | Modifiers::SHIFT;
     assert_eq!(
-        key_to_action(Key::Tab, cmd_shift, true),
+        key_to_action(Key::O, cmd_shift, true),
         Some(Action::TargetWholeCard(CardKind::Objection))
     );
     assert_eq!(
@@ -245,4 +245,82 @@ fn ctrl_shift_m_opens_comments() {
     // While editing, M is text (no command).
     assert_eq!(key_to_action(Key::M, cmd_shift, true), None);
     assert_eq!(key_to_action(Key::M, Modifiers::COMMAND, false), None);
+}
+
+#[test]
+fn ctrl_shift_o_targets_whole_card_objection_and_ctrl_shift_tab_unmapped() {
+    let cmd_shift = Modifiers::COMMAND | Modifiers::SHIFT;
+    let objection = Some(Action::TargetWholeCard(CardKind::Objection));
+    for editing in [false, true] {
+        assert_eq!(key_to_action(Key::O, cmd_shift, editing), objection);
+        assert_eq!(key_to_action(Key::Tab, cmd_shift, editing), None);
+        // Ctrl+Shift+R stays the whole-card reason.
+        assert_eq!(
+            key_to_action(Key::R, cmd_shift, editing),
+            Some(Action::TargetWholeCard(CardKind::Reason))
+        );
+    }
+    // Ctrl+O is still Open, in both modes.
+    assert_eq!(
+        key_to_action(Key::O, Modifiers::COMMAND, false),
+        Some(Action::Open)
+    );
+    assert_eq!(
+        key_to_action(Key::O, Modifiers::COMMAND, true),
+        Some(Action::Open)
+    );
+}
+
+#[test]
+fn alt_arrows_reorder_and_ctrl_shift_k_connects() {
+    let alt = Modifiers::ALT;
+    assert_eq!(
+        key_to_action(Key::ArrowLeft, alt, false),
+        Some(Action::Reorder(Dir::Left))
+    );
+    assert_eq!(
+        key_to_action(Key::ArrowRight, alt, false),
+        Some(Action::Reorder(Dir::Right))
+    );
+    for key in [
+        Key::ArrowLeft,
+        Key::ArrowRight,
+        Key::ArrowUp,
+        Key::ArrowDown,
+    ] {
+        assert_eq!(key_to_action(key, alt, true), None, "not while editing");
+    }
+    assert_eq!(key_to_action(Key::ArrowUp, alt, false), None);
+    assert_eq!(
+        key_to_action(Key::ArrowLeft, alt | Modifiers::SHIFT, false),
+        None
+    );
+    let cmd_shift = Modifiers::COMMAND | Modifiers::SHIFT;
+    assert_eq!(
+        key_to_action(Key::K, cmd_shift, false),
+        Some(Action::StartConnect)
+    );
+    assert_eq!(key_to_action(Key::K, cmd_shift, true), None);
+}
+
+/// AltGr reports Ctrl+Alt: never a rating, so the character it types is text.
+#[test]
+fn altgr_digits_are_not_ratings() {
+    let altgr = Modifiers::CTRL | Modifiers::ALT;
+    for key in [Key::Num0, Key::Num1, Key::Num2, Key::Num3, Key::ArrowLeft] {
+        assert_eq!(key_to_action(key, altgr, false), None, "{key:?}");
+    }
+}
+
+/// Windows Alt-codes with NumLock off: the numpad digit arrives as a
+/// navigation key, which must not reorder or do anything else.
+#[test]
+fn numpad_alt_codes_are_not_commands() {
+    assert!(is_alt_code_key(Key::ArrowLeft, Some(Key::Num4)));
+    assert!(is_alt_code_key(Key::End, Some(Key::Num1)));
+    assert!(is_alt_code_key(Key::Insert, Some(Key::Num0)));
+    // The arrow keys themselves, and top-row digits, are not.
+    assert!(!is_alt_code_key(Key::ArrowLeft, Some(Key::ArrowLeft)));
+    assert!(!is_alt_code_key(Key::Num1, Some(Key::Num1)));
+    assert!(!is_alt_code_key(Key::ArrowLeft, None));
 }

@@ -33,7 +33,7 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Shift+Tab | Add an objection |
 | Ctrl+Enter | Add a co-premise |
 | Ctrl+Shift+R | Add a reason for the whole card (of the selected card or premise) |
-| Ctrl+Shift+Tab | Add an objection to the whole card (of the selected card or premise) |
+| Ctrl+Shift+O | Add an objection to the whole card (of the selected card or premise) |
 | Ctrl+Shift+E | Add a source (under the selected claim or premise, or loose) |
 | Enter or F2 | Edit the selected box |
 | Esc | Stop editing |
@@ -42,6 +42,8 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise) |
 | Ctrl+Shift+P | Jump between the main map and the parking area |
 | Ctrl+Shift+M | Open the comments of the selected box (Esc closes them) |
+| Ctrl+Shift+K | Connect to…: pick where the selected parked item goes (see below) |
+| Alt+Left / Alt+Right | Move the selection one place left / right among its siblings (a premise within its card) |
 | Alt+1 | Rate the selection high: accept a claim or premise, strong card, solid source |
 | Alt+2 | Rate the selection mid: unsure, weak card, shaky source |
 | Alt+3 | Rate the selection low: reject a claim or premise, nil card or source |
@@ -66,7 +68,7 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Shift+Tab | Finish and add an objection |
 | Ctrl+Enter | Finish and add a co-premise |
 | Ctrl+Shift+R | Finish and add a reason for the whole card |
-| Ctrl+Shift+Tab | Finish and add an objection to the whole card |
+| Ctrl+Shift+O | Finish and add an objection to the whole card |
 | Ctrl+Shift+E | Finish and add a source |
 | Ctrl+S | Finish and save |
 | Ctrl+Shift+S | Finish and save as |
@@ -74,6 +76,19 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Ctrl+N | Finish and start a new map |
 
 All other keys are typed into the box.
+
+### While connecting a parked item (Connect to…)
+
+Connect to… works on an item at the top of the parking area (or a premise of a parked card, which connects its card).
+
+| Keys | Action |
+| --- | --- |
+| Click a box or card | Connect the parked item there (targets that refuse it show red and do nothing) |
+| Arrow keys | Move the selection in the map |
+| Enter | Connect the parked item to the selected box or card |
+| Esc | Cancel |
+
+Dragging also reorders: drop an item between its siblings (an insertion bar shows where), or a premise between the premises of its card.
 
 ## Licence
 

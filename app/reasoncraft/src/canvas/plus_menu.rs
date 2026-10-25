@@ -4,7 +4,7 @@
 use eframe::egui::{self, Button, Popup, Rect, Role, Sense, Stroke, Vec2, WidgetInfo, vec2};
 use reasoncraft_core::{BoxKind, CardKind, Item, Layout, SourceType};
 
-use crate::actions::{Action, is_enabled};
+use crate::actions::{Action, connect_item, is_enabled};
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::shell::source_icons::source_atom;
@@ -43,6 +43,9 @@ pub fn entries(tab: &DocTab) -> Vec<(&'static str, Action)> {
             "plus.whole_card_objection",
             Action::TargetWholeCard(CardKind::Objection),
         ));
+    }
+    if connect_item(tab).is_some() {
+        out.push(("action.connect", Action::StartConnect));
     }
     out
 }

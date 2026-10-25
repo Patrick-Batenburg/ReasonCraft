@@ -1,14 +1,15 @@
 //! Drag and drop: drop a box or card on a box (connect), on a card's bottom
-//! edge (target the whole card) or on empty canvas (detach to parking).
+//! edge (target the whole card), between siblings (reorder, shown by an
+//! insertion bar) or on empty canvas (detach to parking).
 
 use eframe::egui::{
-    self, Color32, DragAndDrop, Painter, PointerButton, Pos2, Rect, Response, Stroke, StrokeKind,
+    self, Color32, Painter, PointerButton, Pos2, Rect, Response, Stroke, StrokeKind,
 };
-use reasoncraft_core::{BoxKind, Document, Item, Layout, NodeId, Parent};
+use reasoncraft_core::{BoxKind, Document, Item, Layout, LayoutParams, Parent};
 
 use super::hit::{BOTTOM_EDGE_BAND, Hit, hit_test};
 use super::paint::{FRAME_RADIUS, parking_frame};
-use crate::actions::{Action, Insertable, is_enabled, target_allowed};
+use crate::actions::{Action, is_attachment, is_enabled, sibling_list};
 use crate::doc_tab::DocTab;
 use crate::theme::Tokens;
 
@@ -25,11 +26,29 @@ struct DragState {
     active: bool,
 }
 
+/// Width of the insertion bar between siblings, in screen px.
+const BAR_PX: f32 = 3.0;
+
 /// Where a drop would put the dragged item, and what to highlight (world units).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DropTarget {
     pub to: Parent,
+    /// The index in `to`'s children ([`Action::Move`]); `None` appends.
+    pub index: Option<usize>,
     pub highlight: Option<Rect>,
+    /// The insertion bar between siblings: a zero-width rect (world units).
+    pub bar: Option<Rect>,
+}
+
+impl DropTarget {
+    fn new(to: Parent, highlight: Option<Rect>) -> Self {
+        Self {
+            to,
+            index: None,
+            highlight,
+            bar: None,
+        }
+    }
 }
 
 /// The item a press on `hit` drags. The root never moves; a card's only
@@ -49,8 +68,11 @@ pub fn drag_item(doc: &Document, hit: Hit) -> Option<Item> {
 
 /// Where dropping `item` at `world` would put it: a box takes it as a
 /// child (a premise joins the card of the premise it is dropped on), a card
-/// frame or its bottom edge takes it as a whole-card child, empty canvas
-/// parks it. `None` when nothing would change.
+/// frame or its bottom edge takes it as a whole-card child, the gap between
+/// a parent's children (or just past either end) takes it there, and empty
+/// canvas parks it. The index among the new siblings comes from the
+/// pointer's x, so dropping on the item's own parent at a new place
+/// reorders it. `None` when nothing would change.
 pub fn drop_target(
     doc: &Document,
     layout: &Layout,
@@ -64,7 +86,7 @@ pub fn drop_target(
         Item::Box(i) => i == b,
         Item::Card(c) => doc.cards.get(&c).is_some_and(|k| k.premises.contains(&b)),
     };
-    let target = match hit_test(layout, world, zoom) {
+    let mut target = match hit_test(layout, world, zoom) {
         Some(Hit::Box(b)) => {
             if inside_item(b) {
                 return None;
@@ -73,103 +95,127 @@ pub fn drop_target(
                 Some(Parent::Card(c)) if is_premise => Parent::Card(c),
                 _ => Parent::Box(b),
             };
-            DropTarget {
-                to,
-                highlight: layout.boxes.get(&b).copied(),
-            }
+            DropTarget::new(to, layout.boxes.get(&b).copied())
         }
-        Some(Hit::CardBottomEdge(c)) => DropTarget {
-            to: Parent::Card(c),
-            highlight: layout.cards.get(&c).map(|&r| bottom_band(r, zoom)),
-        },
-        Some(Hit::CardFrame(c)) => DropTarget {
-            to: Parent::Card(c),
-            highlight: layout.cards.get(&c).copied(),
-        },
-        None => DropTarget {
-            to: Parent::Parking,
-            highlight: parking_frame(layout),
+        Some(Hit::CardBottomEdge(c)) => DropTarget::new(
+            Parent::Card(c),
+            layout.cards.get(&c).map(|&r| bottom_band(r, zoom)),
+        ),
+        Some(Hit::CardFrame(c)) => DropTarget::new(Parent::Card(c), layout.cards.get(&c).copied()),
+        // Premises go into cards only, never into a row of box children.
+        None => match gap_row(doc, layout, world).filter(|_| !is_premise) {
+            Some(to) => DropTarget::new(to, parent_item(to).and_then(|p| item_rect(layout, p))),
+            None => DropTarget::new(Parent::Parking, parking_frame(layout)),
         },
     };
+    if target.to != Parent::Parking {
+        (target.index, target.bar) = insertion(doc, layout, item, target.to, world.x, is_premise);
+    }
     // Back where it is, or a card onto itself: nothing would change.
     let onto_itself = matches!((item, target.to), (Item::Card(a), Parent::Card(b)) if a == b);
-    let unchanged = onto_itself || doc.owner_of(item) == Some(target.to);
-    (!unchanged).then_some(target)
+    let same_place = doc.owner_of(item) == Some(target.to)
+        && target
+            .index
+            .is_none_or(|i| sibling_list(doc, target.to, is_premise).get(i) == Some(&item));
+    (!(onto_itself || same_place)).then_some(target)
 }
 
-/// Where dropping `what` from the building panel at `world` would insert
-/// it, and whether that is allowed. A box takes it as a child (a co-premise
-/// joins the box's card; a comment goes on the box), a card frame or its
-/// bottom edge as a whole-card child (cards only; a co-premise joins the
-/// card), empty canvas parks it (never a comment or co-premise).
-pub fn panel_drop_target(
-    doc: &Document,
-    layout: &Layout,
-    what: &Insertable,
-    world: Pos2,
-    zoom: f32,
-) -> Option<(DropTarget, bool)> {
-    let card = |c| layout.cards.get(&c).copied();
-    let target = match hit_test(layout, world, zoom) {
-        Some(Hit::Box(b)) => match doc.owner_of(Item::Box(b)) {
-            Some(Parent::Card(c)) if *what == Insertable::CoPremise => DropTarget {
-                to: Parent::Box(b),
-                highlight: card(c),
-            },
-            _ => DropTarget {
-                to: Parent::Box(b),
-                highlight: layout.boxes.get(&b).copied(),
-            },
-        },
-        Some(Hit::CardFrame(c) | Hit::CardBottomEdge(c)) if *what == Insertable::CoPremise => {
-            DropTarget {
-                to: Parent::Box(*doc.cards.get(&c)?.premises.first()?),
-                highlight: card(c),
-            }
-        }
-        Some(Hit::CardBottomEdge(c)) => DropTarget {
-            to: Parent::Card(c),
-            highlight: card(c).map(|r| bottom_band(r, zoom)),
-        },
-        Some(Hit::CardFrame(c)) => DropTarget {
-            to: Parent::Card(c),
-            highlight: card(c),
-        },
-        None => DropTarget {
-            to: Parent::Parking,
-            highlight: parking_frame(layout),
-        },
-    };
-    let allowed =
-        insert_target(what, &target).is_some_and(|(to, on)| target_allowed(doc, what, to, on));
-    Some((target, allowed))
-}
-
-/// `to` and `on` of the insert a building-panel drop of `what` on `target`
-/// asks for; `None` when `what` needs a box and the target is none.
-fn insert_target(
-    what: &Insertable,
-    target: &DropTarget,
-) -> Option<(Option<Parent>, Option<NodeId>)> {
-    match (what.goes_on_node(), target.to) {
-        (true, Parent::Box(b)) => Some((None, Some(b))),
-        (true, _) => None,
-        (false, to) => Some((Some(to), None)),
+/// The box or card standing for parent `to` (none for parking).
+fn parent_item(to: Parent) -> Option<Item> {
+    match to {
+        Parent::Box(b) => Some(Item::Box(b)),
+        Parent::Card(c) => Some(Item::Card(c)),
+        Parent::Parking => None,
     }
 }
 
-/// The [`Action::Insert`] for a building-panel drop of `what` on `target`.
-pub fn panel_drop_action(what: &Insertable, target: &DropTarget) -> Option<Action> {
-    let (to, on) = insert_target(what, target)?;
-    Some(Action::Insert {
-        what: what.clone(),
-        to,
-        on,
-    })
+/// A box's rect, or a card's frame (world units).
+fn item_rect(layout: &Layout, item: Item) -> Option<Rect> {
+    match item {
+        Item::Box(b) => layout.boxes.get(&b).copied(),
+        Item::Card(c) => layout.cards.get(&c).copied(),
+    }
+}
+
+/// The parent whose row of children holds `world`, a point on no item:
+/// between two of the children or within half a gap past either end. Of
+/// overlapping rows the lowest (the most nested) wins.
+fn gap_row(doc: &Document, layout: &Layout, world: Pos2) -> Option<Parent> {
+    let half_gap = LayoutParams::default().h_gap / 2.0;
+    let row = |to: Parent, children: &mut dyn Iterator<Item = Item>| {
+        let r = children
+            .filter_map(|c| item_rect(layout, c))
+            .reduce(Rect::union)?;
+        r.expand2(egui::vec2(half_gap, 0.0))
+            .contains(world)
+            .then_some((r.top(), to))
+    };
+    let boxes = doc
+        .boxes
+        .values()
+        .filter_map(|n| row(Parent::Box(n.id), &mut n.children.iter().copied()));
+    let cards = doc.cards.values().filter_map(|k| {
+        row(
+            Parent::Card(k.id),
+            &mut k.children.iter().map(|&c| Item::Card(c)),
+        )
+    });
+    boxes
+        .chain(cards)
+        .max_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, to)| to)
+}
+
+/// The index `item` would get among `to`'s children for a pointer at `x`,
+/// and the insertion bar (world units) showing where. The siblings counted
+/// are those shown in the same group as `item` (under a box, sources and
+/// notes come before everything else), so display order and document order
+/// agree among them; the index is in document order with `item` taken
+/// out. `(None, None)` when `item` would be alone in its group.
+fn insertion(
+    doc: &Document,
+    layout: &Layout,
+    item: Item,
+    to: Parent,
+    x: f32,
+    premise: bool,
+) -> (Option<usize>, Option<Rect>) {
+    let list: Vec<Item> = sibling_list(doc, to, premise)
+        .into_iter()
+        .filter(|&i| i != item)
+        .collect();
+    let group = |i: Item| {
+        !matches!(to, Parent::Box(_)) || is_attachment(doc, i) == is_attachment(doc, item)
+    };
+    let shown: Vec<(usize, Rect)> = list
+        .iter()
+        .enumerate()
+        .filter(|&(_, &i)| group(i))
+        .filter_map(|(at, &i)| Some((at, item_rect(layout, i)?)))
+        .collect();
+    let (Some(&(_, first)), Some(&(last_at, last))) = (shown.first(), shown.last()) else {
+        return (None, None);
+    };
+    // Siblings whose centre is left of the pointer stay before the item.
+    let k = shown.iter().filter(|(_, r)| r.center().x < x).count();
+    let index = shown.get(k).map_or(last_at + 1, |&(at, _)| at);
+    // Half the gap the layout leaves between these siblings.
+    let p = LayoutParams::default();
+    let half_gap = if premise { p.premise_gap } else { p.h_gap } / 2.0;
+    let before = k.checked_sub(1).and_then(|i| shown.get(i));
+    let (bar_x, ys) = match (before, shown.get(k)) {
+        (Some((_, a)), Some((_, b))) => {
+            ((a.right() + b.left()) / 2.0, a.y_range().union(b.y_range()))
+        }
+        (None, _) => (first.left() - half_gap, first.y_range()),
+        (Some(_), None) => (last.right() + half_gap, last.y_range()),
+    };
+    let bar = Rect::from_x_y_ranges(bar_x..=bar_x, ys);
+    (Some(index), Some(bar))
 }
 
 /// The band around the bottom edge of card frame `r` (world units).
-fn bottom_band(r: Rect, zoom: f32) -> Rect {
+pub(super) fn bottom_band(r: Rect, zoom: f32) -> Rect {
     let half = BOTTOM_EDGE_BAND / zoom / 2.0;
     Rect::from_x_y_ranges(r.x_range(), (r.bottom() - half)..=(r.bottom() + half))
 }
@@ -207,21 +253,15 @@ pub(super) fn update(
         s.active |= (pos - s.origin).length() >= DRAG_START_PX;
         if s.active {
             let target = drop_target(&tab.doc, layout, s.item, cam.screen_to_world(pos), cam.zoom);
-            let allowed = target.is_some_and(|d| {
-                is_enabled(
-                    tab,
-                    &Action::Move {
-                        item: s.item,
-                        to: d.to,
-                    },
-                )
+            let action = target.map(|d| Action::Move {
+                item: s.item,
+                to: d.to,
+                index: d.index,
             });
+            let allowed = action.as_ref().is_some_and(|a| is_enabled(tab, a));
             if released {
-                if let (true, Some(d)) = (allowed, target) {
-                    pending.push(Action::Move {
-                        item: s.item,
-                        to: d.to,
-                    });
+                if let (true, Some(a)) = (allowed, action) {
+                    pending.push(a);
                 }
             } else {
                 // Green or red where it would land; neutral over itself.
@@ -233,6 +273,10 @@ pub(super) fn update(
                 paint_ghost(painter, layout, tab, colour, s, pos);
                 if let Some(rect) = target.and_then(|d| d.highlight) {
                     paint_target(painter, tab, rect, colour);
+                }
+                if let Some(bar) = target.and_then(|d| d.bar).filter(|_| allowed) {
+                    let r = tab.camera.world_rect_to_screen(bar);
+                    painter.rect_filled(r.expand2(egui::vec2(BAR_PX / 2.0, 0.0)), 1.0, tk.accent);
                 }
             }
         }
@@ -249,58 +293,9 @@ pub(super) fn update(
 }
 
 /// A drop target's outline: green where a drop is allowed, red where refused.
-fn paint_target(painter: &Painter, tab: &DocTab, world: Rect, colour: Color32) {
+pub(super) fn paint_target(painter: &Painter, tab: &DocTab, world: Rect, colour: Color32) {
     let r = tab.camera.world_rect_to_screen(world).expand(3.0);
     painter.rect_stroke(r, 6.0, Stroke::new(2.5, colour), StrokeKind::Middle);
-}
-
-/// A drag from the building panel over the canvas: highlight where it
-/// would land (green allowed, red refused), tint the ghost chip, and push
-/// [`Action::Insert`] when it is released on an allowed target.
-pub(super) fn panel_drop(
-    ui: &egui::Ui,
-    response: &Response,
-    layout: &Layout,
-    tab: &DocTab,
-    tk: &Tokens,
-    pending: &mut Vec<Action>,
-) {
-    // By the canvas rect and layer, not `response.contains_pointer()`, so
-    // the widgets on top of the canvas in its own layer (the inline editor,
-    // comment badges) never hide a drop; popovers and menus in layers above
-    // do.
-    let ctx = ui.ctx();
-    if !ui.rect_contains_pointer(response.rect) {
-        return;
-    }
-    let Some(what) = DragAndDrop::payload::<Insertable>(ctx) else {
-        return;
-    };
-    let Some(pos) = ui.input(|i| i.pointer.latest_pos()) else {
-        return;
-    };
-    let cam = tab.camera;
-    let world = cam.screen_to_world(pos);
-    let Some((target, allowed)) = panel_drop_target(&tab.doc, layout, &what, world, cam.zoom)
-    else {
-        return;
-    };
-    if ui.input(|i| i.pointer.any_released())
-        && DragAndDrop::take_payload::<Insertable>(ctx).is_some()
-    {
-        if allowed && let Some(action) = panel_drop_action(&what, &target) {
-            pending.push(action);
-        }
-        return;
-    }
-    let colour = if allowed { tk.reason } else { tk.objection };
-    if let Some(rect) = target.highlight {
-        paint_target(&ui.painter_at(response.rect), tab, rect, colour);
-    }
-    crate::shell::building::tint_ghost(ctx, colour);
-    if !allowed {
-        ctx.set_cursor_icon(egui::CursorIcon::NotAllowed);
-    }
 }
 
 /// The dragged item's outline, following the pointer.
@@ -326,6 +321,10 @@ fn paint_ghost(
         painter.rect_stroke(r, radius, Stroke::new(1.5, colour), StrokeKind::Middle);
     }
 }
+
+mod panel;
+pub(super) use panel::panel_drop;
+pub use panel::{panel_drop_action, panel_drop_target};
 
 #[cfg(test)]
 mod tests;

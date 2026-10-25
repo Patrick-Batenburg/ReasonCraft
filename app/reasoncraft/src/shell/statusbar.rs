@@ -1,4 +1,5 @@
-//! Status bar: box count, theme toggle and zoom slider.
+//! Status bar: box count (or the "Connect to…" hint), theme toggle and
+//! zoom slider.
 
 use eframe::egui::{self, Align, Frame, Layout, Margin, RichText, Slider};
 
@@ -28,6 +29,15 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                         .size(12.0)
                         .color(tk.text_muted),
                 );
+                if tab.connect_mode.is_some() {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new(t("connect.hint"))
+                            .size(12.0)
+                            .strong()
+                            .color(tk.accent),
+                    );
+                }
 
                 let zoom = tab.camera.zoom;
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

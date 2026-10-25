@@ -58,6 +58,7 @@ action-add_category = Category
 action-add_note = Note
 action-add_source = Source
 action-comment = Comment
+action-connect = Connect to…
 action-delete = Delete
 action-delete_branch = Delete branch
 action-zoom_fit = Fit
@@ -202,6 +203,7 @@ status-boxes = { $count ->
 status-toggle_theme = Toggle theme
 status-zoom = Zoom
 status-zoom_value = { $percent }%
+connect-hint = Click a box or card to connect the parked item to it, or select one and press Enter — Esc to cancel
 
 ## Comments
 comment-anonymous = Anonymous

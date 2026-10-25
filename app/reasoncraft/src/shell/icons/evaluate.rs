@@ -89,6 +89,17 @@ pub(super) fn paint(pen: &Pen, icon: Icon, fg: Color32, t: &Tokens) {
             pen.line_c(&[(0.26, 0.36), (0.74, 0.36)], muted(t.accent));
             pen.line_c(&[(0.26, 0.5), (0.6, 0.5)], muted(t.accent));
         }
+        Icon::Connect => {
+            pen.rect(0.28, 0.06, 0.72, 0.32, fg);
+            pen.rect(0.5, 0.66, 0.94, 0.92, fg);
+            let accent = muted(t.accent);
+            pen.line_c(
+                &[(0.72, 0.66), (0.72, 0.5), (0.5, 0.5), (0.5, 0.33)],
+                accent,
+            );
+            pen.arrow_up(0.5, 0.33, accent);
+            pen.line(&[(0.06, 0.92), (0.06, 0.66), (0.32, 0.66)]);
+        }
         // Command icons are drawn by the caller.
         _ => {}
     }

@@ -162,11 +162,13 @@ fn is_enabled_follows_attach_rules() {
     let to_parking = Action::Move {
         item: Item::Card(c),
         to: Parent::Parking,
+        index: None,
     };
     assert!(is_enabled(tab(&a), &to_parking));
     let root_move = Action::Move {
         item: Item::Box(root),
         to: Parent::Parking,
+        index: None,
     };
     assert!(!is_enabled(tab(&a), &root_move));
 }
@@ -237,6 +239,7 @@ fn navigate_moves_selection_and_move_action_reattaches() {
         Action::Move {
             item: Item::Card(c),
             to: Parent::Parking,
+            index: None,
         },
     );
     assert_eq!(tab(&a).doc.parking, vec![Item::Card(c)]);
@@ -246,6 +249,7 @@ fn navigate_moves_selection_and_move_action_reattaches() {
         Action::Move {
             item: Item::Card(c),
             to: Parent::Box(root),
+            index: None,
         },
     );
     assert!(tab(&a).doc.parking.is_empty());

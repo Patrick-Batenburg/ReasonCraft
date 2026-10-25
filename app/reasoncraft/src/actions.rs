@@ -16,9 +16,12 @@ mod evaluate;
 pub use evaluate::{Rate, Rated, rate_action, rated};
 mod insert;
 pub use insert::{Insertable, target_allowed};
+mod connect;
+pub use connect::connect_item;
 mod sources;
 mod structure;
 use structure::{add_box, add_card, add_co_premise, delete};
+pub use structure::{is_attachment, sibling_list};
 
 pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 const ZOOM_STEP: f32 = 1.25;
@@ -89,11 +92,20 @@ pub enum Action {
     },
     /// Text typed while a box is selected: start editing it (if needed) and append.
     TypeText(String),
-    /// Connect, reattach or detach `item` (drag and drop).
+    /// Connect, reattach, detach or reorder `item` (drag and drop, "Connect
+    /// to…"). `index` counts `to`'s children with `item` taken out; `None`
+    /// appends.
     Move {
         item: Item,
         to: Parent,
+        index: Option<usize>,
     },
+    /// Move the selection (a premise within its card) one place left or
+    /// right among its siblings (Alt+Left/Right).
+    Reorder(Dir),
+    /// Pick a target for the selected parking item ("Connect to…").
+    StartConnect,
+    CancelConnect,
     Select(Option<Item>),
     Navigate(Dir),
     /// Jump between the main tree's root and the first parked item.
@@ -213,6 +225,7 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
 }
 
 fn apply_to_tab(tab: &mut DocTab, action: Action) {
+    connect::end_unless_kept(tab, &action);
     match action {
         Action::Undo => {
             tab.history.undo(&mut tab.doc);
@@ -258,12 +271,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
                 tab.set_edit_text(b, text);
             }
         }
-        Action::Move { item, to } => {
-            if tab.edit(|d| d.move_item(item, to, None)).is_some() {
-                tab.selection = Some(item);
-                tab.fix_selection();
-            }
-        }
+        Action::Move { .. } | Action::Reorder(_) => structure::apply(tab, action),
+        Action::StartConnect | Action::CancelConnect => connect::apply(tab, action),
         Action::Select(item) => tab.selection = item.filter(|i| tab.contains(*i)),
         Action::Navigate(dir) => {
             tab.selection = match tab.selection {
@@ -359,6 +368,8 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
         .or_else(|| sources::is_enabled(tab, action))
         .or_else(|| comments::is_enabled(tab, action))
         .or_else(|| insert::is_enabled(tab, action))
+        .or_else(|| structure::is_enabled(tab, action))
+        .or_else(|| connect::is_enabled(tab, action))
     {
         return enabled;
     }
@@ -381,10 +392,6 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
         Action::JumpParking => parking_jump(&tab.doc, sel).is_some(),
         Action::Undo => !tab.history.undo.is_empty() || tab.has_pending_edit(),
         Action::Redo => !tab.history.redo.is_empty(),
-        Action::Move { item, to } => {
-            tab.doc.owner_of(*item) != Some(*to)
-                && tab.doc.clone().move_item(*item, *to, None).is_ok()
-        }
         _ => true,
     }
 }
