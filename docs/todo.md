@@ -43,7 +43,7 @@
   - [x] Task 8: Drag a snippet selection onto the map
   - [x] Task 9: Document language
   - [x] Task 10: End-to-end verification and docs
-- [ ] Step 4 — Output: exports, print, Essay tab ([plan](plans/2026-10-26-step4-output-essay.md))
+- [x] Step 4 — Output: exports, print, Essay tab ([plan](plans/2026-10-26-step4-output-essay.md))
   - [x] Task 1: Unified edit session and file splits
   - [x] Task 2: Scene builder and screen painter on the scene
   - [x] Task 3: SVG writer
@@ -55,7 +55,7 @@
   - [x] Task 9: Essay tab
   - [x] Task 10: Word export
   - [x] Task 11: Image insert off the UI thread
-  - [ ] Task 12: End-to-end verification and docs
+  - [x] Task 12: End-to-end verification and docs
 - [ ] Step 5 — Interchange & polish: Argdown, connector styles, layout directions, minimap, numbering, find/replace, spellcheck, autosave, Search commands
 - [ ] Step 6 — Release readiness: Dutch, accessibility, help, examples, templates, installers
 
@@ -176,6 +176,67 @@ The end-to-end tests now live in `app/reasoncraft/tests/e2e/` (`main.rs` keeps t
 - Pasting 120,000 characters as a snippet takes one frame of about 340 ms in a debug build. The text is cut to 50,000 characters, with a notice.
 - The UI is English only, so the outline's linking words stay English in a Dutch document (Dutch UI is step 6).
 
+### Step 4 — Output: exports, print, Essay tab (2026-10-26)
+
+**Tests:** 494 pass, 5 ignored, across the workspace (debug):
+- core: 104 unit tests, plus `checks` 11, `checks_text` 7, `layout` 10, `outline` 8, `outline_md` 4 and `snippet_file` 2 integration tests;
+- app: 215 unit tests, 125 UI and integration tests (egui_kittest; `arrange` 8, `background_work` 5, `box_group` 7, `building` 7, `canvas_scene` 1, `check` 7, `document` 3, `essay` 7, `export` 11, `export_replace` 4, `field_shortcuts` 3, `images` 7, `outline` 6, `snippet_drag` 3, `snippets` 9, `text_panel` 1, `ui` 36) and 8 end-to-end tests (`tests/e2e/`).
+
+`cargo test --workspace --release` gives 493 passed (one debug-only test is left out of release builds). The 5 ignored release-only performance tests (`layout_500_boxes_fast`, `outline_500_boxes_fast`, `checks_500_boxes_fast`, `scene_500_boxes_fast` and the kittest `outline_scrolls_large_map`) pass with `cargo test --workspace --release -- --ignored`. `cargo clippy --workspace --all-targets -- -D warnings` and `cargo fmt --check` are clean, and `cargo build --release -p reasoncraft` succeeds.
+
+The new end-to-end test `tests/e2e/output.rs` builds a map through actions only: a claim, a strong reason, a weak reason and an objection. It writes the essay's introduction and two sections (three history steps). It deletes the weak branch and checks that its paragraph becomes an unplaced note labelled with the branch's text, then undoes and checks that the paragraph is back in its slot. It then exports in all eight formats through `RunExport` and `FakeDialogs`, waiting for the export jobs, and checks the files:
+- PNG: the signature, and an IHDR size of twice the SVG's size;
+- SVG: it parses with usvg;
+- PDF: `%PDF-` and exactly one `/Type /Page`;
+- outline Markdown and plain text: the claim and the objection;
+- outline and essay Word files: `[Content_Types].xml` and `word/document.xml` are present and well-formed, and the text is there;
+- essay Markdown: every paragraph, with the strong section before the weak one.
+
+Finally it saves, closes, reopens and compares the essay.
+
+Writing this test showed a real bug. An image export applied without a running frame (scripted runs and tests) panicked in debug builds, because the context that measures text dropped its font-atlas delta unhandled. The delta is now cleared.
+
+**Carried fixes (from the Task 11 review)**, each with a test in `tests/background_work.rs`:
+- An image still being prepared counts as unsaved work. Closing its tab or the window shows the unsaved prompt, even when the document has no other change. **Save** waits for the image, so it lands in the file. A finished image held back for an edit session is applied before the prompt, so the prompt counts it.
+- The busy chip counts the images the tabs wait for, including one held for an edit session, so it shows exactly while a box shows "Preparing image…". The tooltip's line break is now an escaped newline instead of a literal one.
+- The status note and the export notice clear after 6 s (egui time) or with the next action. "Open folder" and closing a message keep them.
+
+**Checked by hand** (Windows 11, release build). No keyboard or mouse input was sent to the desktop (ruling O2).
+- A throwaway example built a Dutch, rated sample through actions:
+  - a claim;
+  - a strong two-premise reason with a rated statistic source ("NO₂");
+  - a weak reason with an image, prepared on the worker;
+  - a nil objection with a rebuttal ("méér");
+  - essay text for the introduction, three elements and the conclusion, plus a title and an author.
+
+  It saved `task-12-sample.rcraft` and exported every format into `.superpowers/sdd/2026-10-26-step4-output-essay/`. The example was deleted afterwards.
+- `task-12-map.png` (1528×842, 2×) and `task-12-svg-render.png` (the outlined SVG rendered with resvg) look the same as the map: wrapped lines, rating dots and labels, the image, the source icon and the subscript ₂. There is no selection ring, "+" button or grid.
+- `task-12-map.pdf` is one A4 portrait page with the map centred and scaled to the width. Ubuntu-Light is embedded (Type0, Identity-H) and the text can be extracted. It was rendered with PyMuPDF to `task-12-pdf-render.png`.
+- The outline Markdown and text use "omdat", "maar", "echter" and "Statistiek". The essay Markdown has "Inleiding", "Deel 1" to "Deel 3" strongest first, and "Conclusie".
+- Both Word files pass a zip test and parse. They use the Title, Heading1 and Normal styles, and name the author in `docProps/core.xml`.
+- Window capture `task-12-window.png` (PrintWindow, file passed on the command line, no input). It shows the Export ribbon tab (PNG, SVG, PDF, Copy as image, Outline ▾, Essay ▾, Page setup…, Print) and the Essay tab with the help note, the Introduction and Section 1.
+  - A temporary local build put the ribbon on Export; it was reverted before the commit.
+  - The settings file was backed up and was unchanged afterwards.
+
+**Known limitations:**
+- No word processor is installed here. The Word files were checked as OOXML (zip, well-formed XML, styles) but never opened in Word or LibreOffice.
+- The Linux clipboard (Copy as image) was not tested on a real Linux desktop.
+- In the PDF, bold labels are drawn twice (faux bold), so copying their text gives it twice ("Statistic Statistic").
+- The card labels and source names drawn on the map ("strongly supports", "Statistic") follow the UI language, which is English only. A Dutch map therefore exports them in English; the outline and essay exports use Dutch.
+- In outlined SVG, emoji are left out (the export dialog says so).
+- The Essay tab is not virtualised: every statement and field is laid out each frame, which may be slow on maps with hundreds of boxes.
+- resvg/usvg stay at 0.45 until svg2pdf moves on (ruling S2).
+- In exports, an image that is not stored as PNG shows as missing, and faux bold darkens translucent text.
+- The "Preparing image…" band covers the first line of the box's text while the image is prepared.
+- **Save** in the close prompt waits for a still-preparing image (at most 60 s), and the window does not respond meanwhile. If that image fails while the prompt shows, its error goes to the status bar.
+- The 6 s for an export notice also run while the busy chip hides it.
+- A Word file with no author set keeps docx-rs's "unknown" creator.
+
+## Carry-over from step 4 reviews
+- [ ] Step 5: draw PDF bold once (no duplicate text on copy); non-PNG assets in exports; split `crates/reasoncraft_core/src/edit.rs` (916 lines) and `file.rs` (603 lines)
+- [ ] Step 5: virtualise the Essay tab (cached heights) and the Check tab
+- [ ] Step 6: map labels and source names in exports by document language (with the Dutch UI); open the Word files in Word and LibreOffice; test the clipboard on Linux; upgrade resvg/usvg together with svg2pdf
+
 ## Carry-over from step 1 reviews (put into the step 2+ plans)
 - [x] Step 2, first item: drag siblings to reorder them (spec §5), with a keyboard equivalent; add a "Connect to…" command for parking items
 - [x] Step 2: rebind the whole-card objection shortcut — Ctrl+Shift+Tab is the app switcher on macOS (Cmd) and usually "previous tab"
@@ -187,13 +248,13 @@ The end-to-end tests now live in `app/reasoncraft/tests/e2e/` (`main.rs` keeps t
 ## Carry-over from step 2 reviews
 - [x] Step 3, first item: mailto attach check — drop the '#' truncation and refuse control chars / '%' in parameter names
 - [x] Step 3: keep theme/panel/marker toggles on the Connect-mode keep-list (optional polish)
-- [ ] Step 4, first task: backend-neutral painter (shape list / surface trait, images by asset key, PaintOptions export flag without selection/badges/link glyphs/grid) before any exporter
-- [ ] Step 4: inserting large photos off the UI thread (worker + busy state)
+- [x] Step 4, first task: backend-neutral painter (shape list / surface trait, images by asset key, PaintOptions export flag without selection/badges/link glyphs/grid) before any exporter
+- [x] Step 4: inserting large photos off the UI thread (worker + busy state)
 - [ ] Step 5: link glyph vs rightmost arrowheads on busy boxes; badge/marker overlap between adjacent co-premises
 - [ ] Step 6: store empty comment author and translate on display; stop parsing '●' out of ftl strings (dot count in code); Unicode Cf characters in links; duplicate accessible names (Nil, panel vs ribbon)
 
 ## Carry-over from step 3 reviews
-- [ ] Step 4, task 1: one `EditSession` enum (box/snippet/meta/essay) with a single snapshot; split actions.rs, doc_tab.rs, model.rs (roles.rs + card_roles == card_role test); plural selector for "not rated yet"; release-mode test build (cfg the debug-only helper test)
-- [ ] Step 4: exports and Essay use the document language for linking words ("because"/"omdat")
+- [x] Step 4, task 1: one `EditSession` enum (box/snippet/meta/essay) with a single snapshot; split actions.rs, doc_tab.rs, model.rs (roles.rs + card_roles == card_role test); plural selector for "not rated yet"; release-mode test build (cfg the debug-only helper test)
+- [x] Step 4: exports and Essay use the document language for linking words ("because"/"omdat")
 - [ ] Step 5: per-issue "ignore this hint" stored in the document; CheckSet tolerant of unknown kinds; skip quoted text in Compound
 - [ ] Step 6: Compound help by document language; panel min width; drag polish (snippet card follow, autoscroll)

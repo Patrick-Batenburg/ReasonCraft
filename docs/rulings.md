@@ -36,3 +36,9 @@ Kept so the owner can review every choice made autonomously. Newest step last.
 - Ruling P2: check noise fix — one aggregated "not rated yet" hint; parked items excluded from rating/support checks; parked notes not flagged; Compound worded as a question; key-term rows "Missing: …"; key-term kept at every level (it is the course's co-premise signal) — cost if wrong: fewer per-item rating reminders.
 - Ruling Q2: step 4 starts with (1) one EditSession enum + splitting actions.rs/doc_tab.rs/model.rs, (2) backend-neutral painter, before the Essay tab and exports; exported linking words follow the document's language — cost: none.
 - Ruling R2: parked — "1 items" plural wording, weak Dutch sample test, status chip counts the aggregate as one — fixed in step 4 task 1 — cost: cosmetic.
+
+## Step 4 — output: exports, print, essay
+- Ruling: branch in place, no worktree — cost: none.
+- Ruling S2: resvg/usvg pinned to 0.45 (not plan's 0.49) to share one usvg with svg2pdf 0.13 — cost: older renderer, upgrade when svg2pdf does.
+- Ruling T2: OnePage fit never enlarges beyond 1 world px = 0.25 mm (same as Tile scale 1.0) so tiny maps print at normal text size; carry into T7 with a test; also clamp/skip the r/c label when margin < label height — cost: small maps print small and centred.
+- Ruling U2: essay card slots are not user-writable (set_essay_text refuses Item::Card); salvage still handles card keys for old/hand-edited files — avoids text no export shows — cost: no per-section paragraph distinct from its premise slot.

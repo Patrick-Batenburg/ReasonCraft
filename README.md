@@ -10,11 +10,12 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Use the building panel.** View → Building panel lists boxes, sources and preset comments. Click an entry to insert it at the selection, or drag it onto the map. Targets that cannot take it show red, and the drop does nothing.
 - **Evaluate.** On the Evaluate tab (or with Alt+1/2/3/0, and Alt+Shift+0 to clear the whole map), accept, doubt or reject claims and premises, rate cards strong, weak or nil, and rate sources solid, shaky or nil. Ratings tint boxes, colour borders, label cards and set connector weight. Markers and shading can be switched off, and you can clear one rating or all of them.
 - **Comment.** Add your own comments or one of twelve presets (positive, needs work, problem) to any box. A badge shows the count, and Ctrl+Shift+M opens them. Set the name shown on your comments in File → Settings.
-- **Write from the Text panel.** View → Text panel opens the panel on the right, with four tabs (see [The Text panel](#the-text-panel)): an **Outline** of the map, an **Essay** tab that arrives in a later version, a **Check** tab with course-rule hints, and **Snippets** of source text to build the map from.
+- **Write from the Text panel.** View → Text panel opens the panel on the right, with four tabs (see [The Text panel](#the-text-panel)): an **Outline** of the map, an **Essay** written along the map (see [The Essay tab](#the-essay-tab)), a **Check** tab with course-rule hints, and **Snippets** of source text to build the map from.
 - **Set the document language.** File → Document holds the title, author and language (English or Dutch) of the open map. The language drives the "and"/"or" and key-term checks; File → Settings sets the language new documents start with.
 - **Change types.** Turn a reason into an objection or back again (its strength is kept), and change a source's type.
 - **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
-- **Add images.** Put a PNG, JPEG or WebP image in a box. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.
+- **Add images.** Put a PNG, JPEG or WebP image in a box. The image is prepared in the background, so a large photo never freezes the window: the box shows "Preparing image…" until it is ready. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.
+- **Export and print.** The Export tab saves the map as PNG, SVG or PDF, copies it to the clipboard as an image, prints it, and saves the outline or the essay as Markdown, plain text or Word (see [Export and print](#export-and-print)).
 
 Files from older versions open unchanged, and files from newer versions keep any parts this version does not understand when you save them.
 
@@ -24,6 +25,35 @@ Files from older versions open unchanged, and files from newer versions keep any
 - **Check.** Hints based on the course rules: missing key words (a word of the statement above that none of a card's premises uses), two statements in one ("and"/"or", or "en"/"of" in Dutch), questions, premises nothing supports, empty top-level categories, a partly rated map (one hint with the number of unrated items; click it to go to the first), ratings that disagree, and items in the parking area (notes there are left alone, and parked items are drafts: they are not asked for support or a rating). Click a hint to select the item and bring it into view. The status bar shows the number of hints; click it to open this tab. Each check can be turned off in File → Settings. Checks are hints only: they never block anything.
 - **Snippets.** Keep pieces of source text beside the map. **New snippet** adds an empty one; **Paste as snippet** (or Ctrl+V while the pointer is over the tab and no text field has focus) adds the clipboard text. A snippet holds up to 50,000 characters; longer text is cut, with a notice. Tag a snippet with a source type, a citation and a link, and drag the handle to reorder the list.
 - **Build the map from snippets.** Select text in a snippet and drag the **Drag to map** chip onto the map, or hold Alt and drag a snippet's handle to take its whole text. On a claim or premise the text becomes a new reason under it, on a card a reason for the whole card, on empty canvas a reason in the parking area, and on a category a new category. The snippet's source goes under the new premise, and the drop is one undo step. Change the new card's type afterwards with **Type**. Blank text, notes and sources refuse the drop and show red.
+
+## The Essay tab
+
+The Essay tab in the Text panel turns the map into the outline of an essay and gives you a text field for each part:
+
+- **Introduction** shows the claim; write the paragraph that introduces it.
+- **One section per branch** under the claim, strongest first: strong cards, then unrated ones, then weak, then nil, and within the same strength reasons before objections. A section lists its premises with their evidence, then the objections and the rebuttals that answer them, each with a field for its paragraph. The dots in a section's heading show the card's strength.
+- **Conclusion** shows the claim again; sum up the main reasons.
+- Click a statement to select it on the map and bring it into view.
+- Typing in a field is one undo step, from the first key to leaving the field.
+- **Not in the essay right now** lists text written for items that are parked or no longer part of an argument. It is kept, and comes back into its section when the item returns.
+- **Unplaced notes:** when you delete an item that has essay text, the text moves here with the item's text as its label, so nothing you wrote is lost. **Copy text** puts it on the clipboard and **Remove note** deletes it (undo brings it back, and undoing the delete puts the text back in its place).
+
+The essay is saved inside the `.rcraft` file. Earlier versions of ReasonCraft open such files without showing the essay, and keep it when they save.
+
+## Export and print
+
+Everything is on the **Export** tab of the ribbon. Exports run in the background: the status bar shows "Exporting…", then "Export done." with an **Open folder** link. Status messages go away after a few seconds or with your next action.
+
+- **PNG, SVG, PDF.** A dialog first asks what to export (the whole map or the selection and what is under it) and in which colours (the light theme, the default, or the theme you are using).
+  - *PNG:* scale 1× to 4×, and an optional transparent background. Images are limited to 16,384 px on a side and 256 megapixels; for larger maps, use SVG or PDF.
+  - *SVG:* text is turned into outlines by default, so the drawing looks the same on a computer without the font. Emoji are left out of outlined text. Untick the option to keep live, selectable text.
+  - *PDF:* text stays selectable, and the font is embedded. **Page setup…** sets the paper (A4 or Letter), orientation, margin and fit: the whole map on one page (small maps are not enlarged beyond normal size), or across pages at a chosen scale, with each page labelled "row/column".
+- **Copy as image** puts a 2× PNG of the map, in the colours you see, on the clipboard (up to 64 megapixels).
+- **Print** makes a PDF with the page setup and opens it in your PDF viewer, where you print it.
+- **Outline** (menu): the outline as Markdown, plain text or a Word document, with the numbering and switches of the Outline tab.
+- **Essay** (menu): the essay as Markdown or a Word document, with the document's title and author and a heading for each part.
+
+Exports show exactly what the map shows (layout, wrapped lines, colours, ratings, source icons and images) without the screen-only parts: the selection, the "+" button, comment badges, link glyphs and the dot grid. In the outline and essay, the linking words ("because"/"omdat", "but"/"maar") and source names follow the document language (English or Dutch). Word files use the built-in Title and Heading styles, so they open in Word and LibreOffice and pick up their styles.
 
 ## Build and run
 
@@ -101,7 +131,7 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 
 All other keys are typed into the box.
 
-### While typing in a snippet, citation, link, title or author field
+### While typing in a snippet, citation, link, title, author or essay field
 
 | Keys | Action |
 | --- | --- |
