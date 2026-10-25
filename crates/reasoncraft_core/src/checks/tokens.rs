@@ -27,8 +27,8 @@ impl Word {
 
 /// The comparable terms of `text`: lowercased, folded, apostrophe suffixes
 /// dropped, split on non-alphanumerics (hyphenated words into parts), with
-/// stopwords of `lang` (`"nl"`; anything else is English) and terms shorter
-/// than four characters removed.
+/// stopwords of `lang` (Dutch for `"nl"`, `"nl-NL"`, ...; anything else is
+/// English) and terms shorter than four characters removed.
 pub fn tokenise(text: &str, lang: &str) -> Vec<String> {
     words(text)
         .into_iter()
@@ -185,6 +185,10 @@ mod tests {
         // "voor" is no English stopword; "more" is.
         assert_eq!(tokenise("voor more jobs", "en"), ["voor", "jobs"]);
         assert_eq!(tokenise("these robots", "xx"), ["robots"]);
+        assert_eq!(
+            tokenise("Robots shouldn't, mustn’t or cannot", "en"),
+            ["robots"]
+        );
         assert!(tokenise("", "en").is_empty());
         assert!(tokenise("  ?! - ' ", "en").is_empty());
     }

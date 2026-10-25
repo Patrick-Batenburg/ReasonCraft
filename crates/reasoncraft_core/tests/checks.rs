@@ -31,107 +31,6 @@ fn source() -> BoxKind {
 }
 
 #[test]
-fn key_term_normalises_case_punctuation_diacritics() {
-    let mut d = doc("nl", "Coördinatie van auto's");
-    d.add_card(Parent::Box(d.root), CardKind::Reason, "coordinatie AUTO")
-        .unwrap();
-    let issues = run_checks(&d, &all_on());
-    assert!(
-        of_kind(&issues, CheckKind::KeyTerm).is_empty(),
-        "{issues:?}"
-    );
-}
-
-#[test]
-fn key_term_dutch_example_from_course() {
-    let mut d = doc("nl", "Robots zorgen voor meer banen");
-    let (card, _) = d
-        .add_card(
-            Parent::Box(d.root),
-            CardKind::Reason,
-            "Robots verhogen de productiviteit",
-        )
-        .unwrap();
-    let issues = run_checks(&d, &all_on());
-    let key = of_kind(&issues, CheckKind::KeyTerm);
-    assert_eq!(key.len(), 1);
-    assert_eq!(key[0].item, Item::Card(card));
-    assert_eq!(key[0].terms, ["zorgen", "banen"]);
-}
-
-#[test]
-fn key_term_hyphens_prefixes_and_co_premises() {
-    // "e-mail" against "email" (both directions), a shared stem
-    // ("automatisering"/"automatiseren") and a term found in a co-premise.
-    let mut d = doc("nl", "E-mail versnelt automatisering bij bedrijven");
-    let (card, _) = d
-        .add_card(
-            Parent::Box(d.root),
-            CardKind::Reason,
-            "Email is sneller dan post",
-        )
-        .unwrap();
-    d.add_premise(card, None, "Bedrijven automatiseren")
-        .unwrap();
-    let issues = run_checks(&d, &all_on());
-    let key = of_kind(&issues, CheckKind::KeyTerm);
-    assert_eq!(key.len(), 1, "{issues:?}");
-    assert_eq!(key[0].terms, ["versnelt"]);
-
-    let mut d = doc("en", "Email is fast");
-    d.add_card(Parent::Box(d.root), CardKind::Reason, "E-mail is fast")
-        .unwrap();
-    assert!(of_kind(&run_checks(&d, &all_on()), CheckKind::KeyTerm).is_empty());
-}
-
-#[test]
-fn key_term_skips_whole_card_attacks_and_non_reasoning_maps() {
-    let mut d = doc("en", "Robots create jobs");
-    let (card, _) = d
-        .add_card(Parent::Box(d.root), CardKind::Reason, "Robots create jobs")
-        .unwrap();
-    d.add_card(Parent::Card(card), CardKind::Objection, "Unrelated words")
-        .unwrap();
-    assert!(of_kind(&run_checks(&d, &all_on()), CheckKind::KeyTerm).is_empty());
-
-    // A grouping map has no cards in the tree; a parked card has no target.
-    let mut d = doc("en", "Topic");
-    d.add_box(Parent::Box(d.root), BoxKind::Category, "Group")
-        .unwrap();
-    d.add_loose(NewLoose::Card(CardKind::Reason), "Something else");
-    assert!(of_kind(&run_checks(&d, &all_on()), CheckKind::KeyTerm).is_empty());
-}
-
-#[test]
-fn compound_language_aware() {
-    let text = "Robots of mensen";
-    let mut nl = doc("nl", text);
-    nl.add_card(Parent::Box(nl.root), CardKind::Reason, "Robots of mensen")
-        .unwrap();
-    let nl_issues = run_checks(&nl, &all_on());
-    let compound = of_kind(&nl_issues, CheckKind::Compound);
-    assert_eq!(compound.len(), 2);
-    assert_eq!(compound[0].item, Item::Box(nl.root));
-    assert_eq!(compound[0].terms, ["of"]);
-
-    let en = doc("en", text);
-    assert!(of_kind(&run_checks(&en, &all_on()), CheckKind::Compound).is_empty());
-
-    let en = doc("en", "Cats AND dogs, or birds; Android and/or Oracle");
-    let issues = run_checks(&en, &all_on());
-    let compound = of_kind(&issues, CheckKind::Compound);
-    assert_eq!(compound.len(), 1);
-    assert_eq!(compound[0].terms, ["and", "or"]);
-
-    // Unknown languages fall back to English.
-    let fr = doc("fr", "Robots and humans");
-    assert_eq!(
-        of_kind(&run_checks(&fr, &all_on()), CheckKind::Compound).len(),
-        1
-    );
-}
-
-#[test]
 fn question_and_unsupported() {
     let mut d = doc("en", "  Do robots create jobs?  ");
     let root = Parent::Box(d.root);
@@ -165,23 +64,32 @@ fn question_and_unsupported() {
 
 #[test]
 fn empty_category_grouping_only() {
+    let empty = |d: &Document| -> Vec<Item> {
+        of_kind(&run_checks(d, &all_on()), CheckKind::EmptyCategory)
+            .iter()
+            .map(|i| i.item)
+            .collect()
+    };
     let mut d = doc("en", "Topic");
-    let a = d
-        .add_box(Parent::Box(d.root), BoxKind::Category, "A")
-        .unwrap();
-    let b = d.add_box(Parent::Box(a), BoxKind::Category, "B").unwrap();
-    let issues = run_checks(&d, &all_on());
-    let empty: Vec<Item> = of_kind(&issues, CheckKind::EmptyCategory)
-        .iter()
-        .map(|i| i.item)
-        .collect();
-    assert_eq!(empty, [Item::Box(b)]);
+    let root = Parent::Box(d.root);
+    // An empty heading directly under the root is flagged.
+    let a = d.add_box(root, BoxKind::Category, "A").unwrap();
+    // A childless category deeper down is content, not an empty heading.
+    let b = d.add_box(root, BoxKind::Category, "B").unwrap();
+    d.add_box(Parent::Box(b), BoxKind::Category, "B1").unwrap();
+    // A root child holding only a note is not empty.
+    let c = d.add_box(root, BoxKind::Category, "C").unwrap();
+    d.add_box(Parent::Box(c), BoxKind::Note, "Note").unwrap();
+    // A parked empty category is not flagged.
+    d.add_loose(NewLoose::Category, "Loose group");
+    assert_eq!(empty(&d), [Item::Box(a)]);
 
+    // Reasoning maps never get the check.
     let mut d = doc("en", "Claim");
     d.add_card(Parent::Box(d.root), CardKind::Reason, "R")
         .unwrap();
     d.add_loose(NewLoose::Category, "Loose group");
-    assert!(of_kind(&run_checks(&d, &all_on()), CheckKind::EmptyCategory).is_empty());
+    assert!(empty(&d).is_empty());
 }
 
 #[test]

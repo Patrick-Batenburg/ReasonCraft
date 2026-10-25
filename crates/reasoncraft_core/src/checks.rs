@@ -30,7 +30,7 @@ pub enum CheckKind {
     Question,
     /// A premise has neither a source nor a reason under it.
     Unsupported,
-    /// A category has no subcategories.
+    /// A category directly under the root has nothing under it.
     EmptyCategory,
     /// The map is partly rated.
     IncompleteEvaluation,
@@ -178,10 +178,8 @@ impl<'a> Run<'a> {
         }
         if node.kind == BoxKind::Category
             && self.map == MapKind::Grouping
-            && !node
-                .children
-                .iter()
-                .any(|&c| self.is_kind(c, |k| *k == BoxKind::Category))
+            && parent == Some(Parent::Box(self.doc.root))
+            && node.children.is_empty()
         {
             self.emit(issues, CheckKind::EmptyCategory, item, Vec::new());
         }
@@ -302,9 +300,9 @@ impl<'a> Run<'a> {
 }
 
 /// The distinct standalone conjunctions in `text`, in order of appearance:
-/// "and"/"or" in English, "en"/"of" in Dutch.
+/// "and"/"or" in English, "en"/"of" in Dutch (see [`stopwords::is_dutch`]).
 fn conjunctions(text: &str, lang: &str) -> Vec<String> {
-    let list: [&str; 2] = if lang == "nl" {
+    let list: [&str; 2] = if stopwords::is_dutch(lang) {
         ["en", "of"]
     } else {
         ["and", "or"]
