@@ -432,6 +432,10 @@ impl Document {
                 return Err(format!("box {id:?} has duplicate comment id {}", c.id));
             }
         }
+        let mut snippet_ids = HashSet::new();
+        if let Some(s) = self.snippets.iter().find(|s| !snippet_ids.insert(s.id)) {
+            return Err(format!("duplicate snippet id {}", s.id));
+        }
         let mut owners: HashMap<Item, usize> = HashMap::new();
         let mut claim = |what: &str, item: Item| -> Result<(), String> {
             if !self.exists(item) {

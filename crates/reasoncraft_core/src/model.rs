@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
+use crate::snippets::Snippet;
+
 use crate::ids::{CardId, Item, NodeId, Parent};
 
 /// The current time as an RFC 3339 string with second precision.
@@ -305,6 +307,9 @@ pub struct Document {
     /// Loose items that are not attached to the tree.
     #[serde(default)]
     pub parking: Vec<Item>,
+    /// Source text kept beside the map.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub snippets: Vec<Snippet>,
     /// Unknown fields, kept so files roundtrip.
     #[serde(flatten)]
     pub extra: Map<String, Value>,
@@ -330,6 +335,7 @@ impl Document {
             boxes,
             cards: IndexMap::new(),
             parking: Vec::new(),
+            snippets: Vec::new(),
             extra: Map::new(),
         }
     }

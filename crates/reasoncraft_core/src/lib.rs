@@ -14,6 +14,7 @@ pub mod model;
 pub mod outline;
 pub mod package;
 pub mod rules;
+pub mod snippets;
 
 pub use edit::{EditError, NewLoose, RemoveMode};
 pub use evaluate::ClearScope;
@@ -27,5 +28,6 @@ pub use model::{
 };
 pub use package::{Assets, Package};
 pub use rules::{NewItem, can_attach};
+pub use snippets::{MAX_SNIPPET_CHARS, Snippet, SnippetSource};
 /// Comment ids.
 pub use uuid::Uuid;
