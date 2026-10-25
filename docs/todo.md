@@ -29,7 +29,7 @@
   - [x] Task 7: Comments with presets; author name setting
   - [x] Task 8: Building panel with drag-and-drop
   - [x] Task 9: Sibling reorder, Connect to…, shortcut rebinding
-  - [ ] Task 10: Change card type and links
+  - [x] Task 10: Change card type and links
   - [ ] Task 11: Images in boxes
   - [ ] Task 12: End-to-end verification and docs
 - [ ] Step 3 — Text panel: Outline, Snippets, Check
