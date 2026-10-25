@@ -13,6 +13,7 @@ indexmap.workspace = true
 chrono.workspace = true
 thiserror.workspace = true
 zip.workspace = true
+sha2.workspace = true
 emath.workspace = true
 
 [dev-dependencies]

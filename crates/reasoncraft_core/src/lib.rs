@@ -10,6 +10,7 @@ pub mod history;
 pub mod ids;
 pub mod layout;
 pub mod model;
+pub mod package;
 pub mod rules;
 
 pub use edit::{EditError, NewLoose, RemoveMode};
@@ -21,4 +22,5 @@ pub use model::{
     Acceptance, BoxKind, BoxNode, Card, CardKind, CardStrength, Comment, DocMeta, Document,
     ImageRef, MapKind, Role, SCHEMA_VERSION, SourceRating, SourceType, Verdict, owner_index,
 };
+pub use package::{Assets, Package};
 pub use rules::{NewItem, can_attach};
