@@ -39,7 +39,7 @@ pub fn show(ui: &mut Ui, tab: &mut DocTab, tk: &Tokens, out: &mut Vec<Action>) {
             for snippet in &tab.doc.snippets {
                 let focus = focus == Some(snippet.id);
                 let capped = tab.snippet_capped == Some(snippet.id);
-                let card = snippet_card::show(ui, snippet, focus, capped, tk, out);
+                let card = snippet_card::show(ui, tab, snippet, focus, capped, tk, out);
                 cards.push((snippet.id, card));
                 ui.add_space(6.0);
             }

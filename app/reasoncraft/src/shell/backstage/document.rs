@@ -1,7 +1,7 @@
 //! The backstage Document page: title, author and language of the open
 //! document.
 
-use eframe::egui::{self, Id, RichText, TextEdit};
+use eframe::egui::{self, RichText, TextEdit};
 
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
@@ -39,21 +39,25 @@ pub(super) fn page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             .color(tk.box_text),
     );
     ui.add_space(8.0);
-    let meta = &app.active_tab().doc.meta;
+    let tab = app.active_tab();
+    let ids = [
+        tab.widget_id("document_title"),
+        tab.widget_id("document_author"),
+    ];
+    let meta = &tab.doc.meta;
     let (mut title, mut author) = (meta.title.clone(), meta.author.clone());
     let current_language = meta.language.clone();
     let mut changed = false;
-    for (key, id, text) in [
-        ("document.title_field", "document_title", &mut title),
-        ("document.author_field", "document_author", &mut author),
-    ] {
+    for ((key, text), id) in [
+        ("document.title_field", &mut title),
+        ("document.author_field", &mut author),
+    ]
+    .into_iter()
+    .zip(ids)
+    {
         let label = ui.label(RichText::new(t(key)).color(tk.box_text));
         let response = ui
-            .add(
-                TextEdit::singleline(text)
-                    .id(Id::unique(id))
-                    .desired_width(280.0),
-            )
+            .add(TextEdit::singleline(text).id(id).desired_width(280.0))
             .labelled_by(label.id);
         changed |= response.changed();
     }

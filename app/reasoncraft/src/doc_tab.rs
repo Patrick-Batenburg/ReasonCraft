@@ -1,9 +1,12 @@
 //! One open document: its content, history, file path and view state.
 
 use std::collections::HashMap;
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use eframe::egui::Rect;
+use eframe::egui::{Id, Rect};
 use reasoncraft_core::checks::{CheckSet, Issue, run_checks};
 use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::meta::LANGUAGES;
@@ -21,6 +24,9 @@ mod snippet_edit;
 pub use essay_edit::EssayView;
 pub use session::EditSession;
 pub use snippet_edit::{cap_snippet, tidy_source};
+
+/// The next [`DocTab::ui_key`].
+static NEXT_UI_KEY: AtomicU64 = AtomicU64::new(0);
 
 /// How many undo steps a tab keeps.
 pub const HISTORY_LIMIT: usize = 500;
@@ -81,6 +87,9 @@ pub struct DocTab {
     /// preparing it; a newer insert for the same box replaces the entry,
     /// so the older result is dropped when it arrives.
     pub pending_images: HashMap<NodeId, JobId>,
+    /// Unique to this tab, so its text fields' widget state (cursor, undo
+    /// history) is never shared with another tab (see [`Self::widget_id`]).
+    ui_key: u64,
 }
 
 impl Default for DocTab {
@@ -145,7 +154,15 @@ impl DocTab {
             issue_cache: None,
             essay_cache: None,
             pending_images: HashMap::new(),
+            ui_key: NEXT_UI_KEY.fetch_add(1, Ordering::Relaxed),
         }
+    }
+
+    /// The widget id for `key` in this tab. Text fields use it: egui keeps
+    /// a field's cursor and undo history per id, and the same field in
+    /// another tab (or another document in this tab) must not inherit them.
+    pub fn widget_id(&self, key: impl Hash + Debug) -> Id {
+        Id::unique(("doc_tab", self.ui_key, key))
     }
 
     /// The document's change count: it differs from an earlier value

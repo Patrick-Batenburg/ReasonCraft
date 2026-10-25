@@ -108,13 +108,13 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     if Popup::is_any_open(ctx) {
         return Vec::new();
     }
-    if ctx.text_edit_focused() && focused != editing.map(editor_id) {
+    if ctx.text_edit_focused() && focused != editing.map(|b| editor_id(tab, b)) {
         return file_keys(ctx, app);
     }
     // Esc drops widget focus as the frame begins; keep it on the editor for
     // this frame so text typed alongside the Esc still lands in the box.
     if let (Some(b), None) = (editing, focused) {
-        ctx.memory_mut(|m| m.request_focus(editor_id(b)));
+        ctx.memory_mut(|m| m.request_focus(editor_id(tab, b)));
     }
     let can_type = editing.is_none() && matches!(tab.selection, Some(Item::Box(_)));
     let mut out = Vec::new();

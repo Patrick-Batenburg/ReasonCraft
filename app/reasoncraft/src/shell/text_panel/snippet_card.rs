@@ -13,6 +13,7 @@ use reasoncraft_core::{MAX_SNIPPET_CHARS, Snippet, SnippetSource, SourceType};
 use super::drag_chip;
 use crate::actions::Action;
 use crate::canvas::plus_menu::source_button;
+use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t, t_args};
 use crate::shell::icon_button;
 use crate::shell::icons::Icon;
@@ -24,9 +25,9 @@ use crate::theme::Tokens;
 const TEXT_MAX_H: f32 = 220.0;
 const HANDLE: egui::Vec2 = egui::vec2(14.0, 20.0);
 
-/// The widget id of snippet `id`'s text field.
-pub fn text_id(snippet: &Snippet) -> Id {
-    Id::unique(("snippet_text", snippet.id))
+/// The widget id of `tab`'s text field for `snippet`.
+pub fn text_id(tab: &DocTab, snippet: &Snippet) -> Id {
+    tab.widget_id(("snippet_text", snippet.id))
 }
 
 /// What a drawn card reports back to the list.
@@ -42,6 +43,7 @@ pub(super) struct Card {
 /// with the cursor at the end. `capped`: show the length-limit notice.
 pub(super) fn show(
     ui: &mut Ui,
+    tab: &DocTab,
     snippet: &Snippet,
     focus: bool,
     capped: bool,
@@ -66,12 +68,12 @@ pub(super) fn show(
                 }
             });
         });
-        let (focused, selection) = text_field(ui, snippet, focus, out);
+        let (focused, selection) = text_field(ui, tab, snippet, focus, out);
         drag_chip::chip(ui, snippet, focused, selection, tk);
         if capped {
             ui.label(RichText::new(capped_notice()).color(tk.objection));
         }
-        source_line(ui, snippet, tk, out);
+        source_line(ui, tab, snippet, tk, out);
     });
     let handle = handle.expect("drawn");
     Card {
@@ -117,11 +119,12 @@ fn drag_handle(ui: &mut Ui, tk: &Tokens) -> Response {
 /// has focus, and then the selected text (see [`drag_chip::selected_text`]).
 fn text_field(
     ui: &mut Ui,
+    tab: &DocTab,
     snippet: &Snippet,
     focus: bool,
     out: &mut Vec<Action>,
 ) -> (bool, Option<String>) {
-    let id = text_id(snippet);
+    let id = text_id(tab, snippet);
     if focus {
         let mut state = TextEditState::load(ui.ctx(), id).unwrap_or_default();
         let end = CCursor::new(snippet.text.chars().count());
@@ -170,7 +173,7 @@ fn text_field(
 /// Type picker and citation on one row, the link below it. Citation and
 /// link typing shows live, in the snippet's editing session; a typed link
 /// that is not valid is not stored and shows a hint while its field has focus.
-fn source_line(ui: &mut Ui, snippet: &Snippet, tk: &Tokens, out: &mut Vec<Action>) {
+fn source_line(ui: &mut Ui, tab: &DocTab, snippet: &Snippet, tk: &Tokens, out: &mut Vec<Action>) {
     let id = snippet.id;
     let current = snippet
         .source
@@ -199,7 +202,7 @@ fn source_line(ui: &mut Ui, snippet: &Snippet, tk: &Tokens, out: &mut Vec<Action
             }
         });
         let mut citation = current.citation.clone();
-        let field = Id::unique(("snippet_citation", id));
+        let field = tab.widget_id(("snippet_citation", id));
         let resp = line_field(ui, field, &mut citation, &t("snippet.citation"));
         if resp.changed() {
             out.push(Action::EditSnippetCitation { id, citation });
@@ -210,7 +213,7 @@ fn source_line(ui: &mut Ui, snippet: &Snippet, tk: &Tokens, out: &mut Vec<Action
     });
     // While the field has focus it shows the typed text (kept in temp
     // memory, since an invalid link is not stored); otherwise the stored link.
-    let field = Id::unique(("snippet_link", id));
+    let field = tab.widget_id(("snippet_link", id));
     let stored = current
         .link
         .as_deref()

@@ -18,9 +18,9 @@ use crate::i18n::t;
 use crate::scene::SOURCE_HEADER;
 use crate::theme::Tokens;
 
-/// The widget id of the inline editor for box `b`.
-pub fn editor_id(b: NodeId) -> Id {
-    Id::unique(("inline_editor", b))
+/// The widget id of `tab`'s inline editor for box `b`.
+pub fn editor_id(tab: &DocTab, b: NodeId) -> Id {
+    tab.widget_id(("inline_editor", b))
 }
 
 /// Show the editor over the box being edited, if any. Text changes go out
@@ -56,7 +56,7 @@ pub(super) fn show(
         tk.box_text
     };
 
-    let id = editor_id(b);
+    let id = editor_id(tab, b);
     if tab.edit_focus {
         // Start with the cursor after the text (and any character just typed).
         let mut state = TextEditState::load(ui.ctx(), id).unwrap_or_default();

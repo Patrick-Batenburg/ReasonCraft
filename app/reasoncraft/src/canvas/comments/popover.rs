@@ -87,7 +87,8 @@ pub(in crate::canvas) fn show(
     {
         pos.x = boxed.left() - POPOVER_GAP - POPOVER_WIDTH;
     }
-    let draft_id = id.with(node);
+    let draft_id = tab.widget_id(("comment_draft", node));
+    let field_id = tab.widget_id(("comment_field", node));
     let mut draft: Draft = ctx.data(|d| d.get_temp(draft_id)).unwrap_or_default();
 
     Area::new(id)
@@ -105,7 +106,7 @@ pub(in crate::canvas) fn show(
                 .shadow(ui.style().visuals.popup_shadow)
                 .show(ui, |ui| {
                     ui.set_width(inner);
-                    contents(ui, node, &data.comments, &mut draft, tk, pending);
+                    contents(ui, node, field_id, &data.comments, &mut draft, tk, pending);
                 });
         });
     ctx.data_mut(|d| d.insert_temp(draft_id, draft));
@@ -114,6 +115,7 @@ pub(in crate::canvas) fn show(
 fn contents(
     ui: &mut Ui,
     node: NodeId,
+    field_id: Id,
     comments: &[Comment],
     draft: &mut Draft,
     tk: &Tokens,
@@ -156,6 +158,7 @@ fn contents(
     ui.separator();
     ui.add(
         TextEdit::multiline(&mut draft.text)
+            .id(field_id)
             .hint_text(t("comment.hint"))
             .desired_rows(3)
             .desired_width(f32::INFINITY),

@@ -26,6 +26,7 @@ const DOT_STEP: f32 = 8.0;
 
 /// What one frame of the tab needs to draw statements.
 struct Ctx<'a> {
+    tab: &'a DocTab,
     doc: &'a Document,
     view: &'a EssayView,
     selection: Option<Item>,
@@ -47,6 +48,7 @@ pub fn show(
         return;
     };
     let cx = Ctx {
+        tab,
         doc: &tab.doc,
         view,
         selection: tab.selection,
@@ -132,10 +134,9 @@ fn end_slot(ui: &mut Ui, cx: &Ctx, slot: EssaySlot, out: &mut Vec<Action>) {
         };
         essay_slot::statement(ui, &s, cx.tk, out);
     }
-    let text = cx.doc.essay.text(slot).unwrap_or("");
     let label = t(&format!("{key}.field"));
     let hint = t(&format!("{key}.hint"));
-    essay_slot::paragraph(ui, slot, text, 0, &label, &hint, out);
+    essay_slot::paragraph(ui, cx.tab, slot, 0, &label, &hint, out);
 }
 
 /// The marker for `item`, if markers are shown and it is rated.
@@ -217,11 +218,10 @@ fn element(ui: &mut Ui, cx: &Ctx, e: &EssayElement, out: &mut Vec<Action>) {
     };
     ui.add_space(4.0);
     essay_slot::statement(ui, &s, cx.tk, out);
-    let text = cx.doc.essay.text(e.slot).unwrap_or("");
     let mut args = FluentArgs::new();
     args.set("statement", one_line(&e.text));
     let label = t_args("essay.paragraph_for", &args);
-    essay_slot::paragraph(ui, e.slot, text, e.depth, &label, &t("essay.hint"), out);
+    essay_slot::paragraph(ui, cx.tab, e.slot, e.depth, &label, &t("essay.hint"), out);
 }
 
 fn one_line(text: &str) -> String {
