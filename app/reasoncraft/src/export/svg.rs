@@ -10,6 +10,7 @@ use reasoncraft_core::Assets;
 use resvg::usvg;
 
 use super::{TEXT_FACE, shared_fontdb};
+use crate::canvas::images::MAX_STORED_SIDE;
 use crate::scene::{
     DASH_LEN, GAP_LEN, PathEl, Scene, Shape, StrokeSpec, bold_offset, missing_image,
 };
@@ -19,6 +20,22 @@ use crate::theme::Tokens;
 pub const DEFAULT_MARGIN: f32 = 24.0;
 
 const PNG_SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
+
+/// The width and height in a PNG's header (`IHDR`, the first chunk);
+/// `None` when `bytes` do not start like a PNG.
+fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    let header = bytes.strip_prefix(PNG_SIGNATURE)?.get(..16)?;
+    if &header[4..8] != b"IHDR" {
+        return None;
+    }
+    let be = |b: &[u8]| u32::from_be_bytes([b[0], b[1], b[2], b[3]]);
+    Some((be(&header[8..12]), be(&header[12..16])))
+}
+
+/// Whether the canvas draws an image this size (see [`MAX_STORED_SIDE`]).
+fn drawable((w, h): (u32, u32)) -> bool {
+    w.max(h) <= MAX_STORED_SIDE
+}
 
 /// How a scene is written.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -236,10 +253,11 @@ impl Writer<'_> {
         let _ = writeln!(self.out, " xml:space=\"preserve\">{}</text>", escape(row));
     }
 
-    /// An embedded PNG, or the missing-image placeholder.
+    /// An embedded PNG, or the missing-image placeholder (also for one
+    /// the canvas refuses to draw as too large).
     fn image(&mut self, r: Rect, asset: &str) {
         match self.assets.get(asset) {
-            Some(bytes) if bytes.starts_with(PNG_SIGNATURE) => {
+            Some(bytes) if png_size(&bytes).is_some_and(drawable) => {
                 let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
                 let _ = writeln!(
                     self.out,

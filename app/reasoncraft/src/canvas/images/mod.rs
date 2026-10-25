@@ -10,7 +10,7 @@ mod prepare;
 #[cfg(test)]
 mod tests;
 
-pub use cache::{ImageCache, ImageState, MAX_TEXTURE_SIDE};
+pub use cache::{ImageCache, ImageState, MAX_STORED_SIDE, MAX_TEXTURE_SIDE};
 pub use job::{ImageJobs, ImageResult, Prepared};
 pub use paint::{content_rect, image_rect, paint_image, preparing};
 pub use prepare::{

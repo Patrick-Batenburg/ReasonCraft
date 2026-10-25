@@ -186,6 +186,26 @@ fn svg_embeds_images() {
     );
 }
 
+#[test]
+fn svg_refuses_images_the_screen_refuses() {
+    let mut doc = Document::new("Claim");
+    let mut bytes = png(4, 2);
+    // A forged header: wider than any image this build stores.
+    let side = crate::canvas::images::MAX_STORED_SIDE + 1;
+    bytes[16..20].copy_from_slice(&side.to_be_bytes());
+    let mut assets = Assets::default();
+    let key = assets.insert("png", bytes);
+    let root = doc.root;
+    let image = Some(ImageRef {
+        asset: key,
+        aspect: 0.5,
+    });
+    doc.set_image(root, image).unwrap();
+    let svg = svg_of(&doc, &assets, &live());
+    assert!(!svg.contains("<image"), "{svg}");
+    assert!(text_elements(&svg).contains(&escape(&crate::scene::missing_image::label())));
+}
+
 /// The nodes under `g` (subtrees included) that match `pred`. (usvg's
 /// own `has_text_nodes` always answers yes.)
 fn count(g: &usvg::Group, pred: &dyn Fn(&usvg::Node) -> bool) -> usize {

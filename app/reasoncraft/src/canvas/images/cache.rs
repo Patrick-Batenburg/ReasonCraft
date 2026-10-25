@@ -11,8 +11,8 @@ use crate::doc_tab::DocTab;
 
 /// Stored assets wider or taller than this are not drawn: this build only
 /// stores images of at most [`super::MAX_SIDE`] px, so a larger one comes from a
-/// crafted file and would stall the UI thread.
-const MAX_STORED_SIDE: u32 = 2048;
+/// crafted file and would stall the UI thread. Exports refuse them too.
+pub const MAX_STORED_SIDE: u32 = 2048;
 /// The most decoding a stored asset may allocate.
 const MAX_STORED_ALLOC: u64 = MAX_STORED_SIDE as u64 * MAX_STORED_SIDE as u64 * 4 * 2;
 /// At most this many images are decoded per frame; the rest follow in the
