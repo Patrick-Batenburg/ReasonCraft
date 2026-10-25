@@ -27,7 +27,7 @@
   - [x] Task 5: Evaluation visuals on the map
   - [x] Task 6: Sources — adding, icons, changing type
   - [x] Task 7: Comments with presets; author name setting
-  - [ ] Task 8: Building panel with drag-and-drop
+  - [x] Task 8: Building panel with drag-and-drop
   - [ ] Task 9: Sibling reorder, Connect to…, shortcut rebinding
   - [ ] Task 10: Change card type and links
   - [ ] Task 11: Images in boxes
