@@ -66,7 +66,7 @@ impl ReasonCraftApp {
         link_opener: Box<dyn LinkOpener>,
     ) -> Self {
         Self {
-            tabs: vec![DocTab::new()],
+            tabs: vec![DocTab::with_language(&settings.default_doc_language)],
             active: 0,
             tokens: theme::resolve(settings.theme, true),
             settings,

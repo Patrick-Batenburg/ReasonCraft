@@ -899,6 +899,7 @@ fn settings_from_old_storage_fill_defaults() {
         checks: reasoncraft_core::checks::CheckSet {
             disabled: vec![reasoncraft_core::checks::CheckKind::KeyTerm],
         },
+        default_doc_language: "nl".to_owned(),
     };
     eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
     assert_eq!(

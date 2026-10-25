@@ -4,12 +4,14 @@ use std::path::PathBuf;
 
 use eframe::egui::Rect;
 use reasoncraft_core::checks::{CheckSet, Issue, run_checks};
+use reasoncraft_core::meta::LANGUAGES;
 use reasoncraft_core::outline::{OutlineLine, OutlineOptions, build_outline};
 use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Package, Uuid};
 
 use crate::canvas::Camera;
 use crate::i18n::t;
 
+mod meta_edit;
 mod snippet_edit;
 pub use snippet_edit::{cap_snippet, tidy_source};
 
@@ -57,6 +59,10 @@ pub struct DocTab {
     /// before; recorded as one history step on commit if the text changed
     /// (see [`Self::commit_snippet_edit`]).
     pub snippet_edit: Option<(Uuid, Document)>,
+    /// The document as it was when a title or author edit began, recorded
+    /// as one history step on commit if they changed (see
+    /// [`Self::commit_meta_edit`]).
+    pub meta_edit: Option<Document>,
     /// The snippet whose text field should take keyboard focus next frame.
     pub snippet_focus: Option<Uuid>,
     /// The snippet whose last text was cut at the length limit (a notice
@@ -83,6 +89,19 @@ impl DocTab {
     /// A new, clean document with an empty claim, which is selected.
     pub fn new() -> Self {
         Self::from_document(Document::new(""))
+    }
+
+    /// Like [`Self::new`], in language `lang` (`"en"` when it is not a
+    /// language the checks know).
+    pub fn with_language(lang: &str) -> Self {
+        let mut doc = Document::new("");
+        doc.meta.language = if LANGUAGES.contains(&lang) {
+            lang
+        } else {
+            "en"
+        }
+        .to_owned();
+        Self::from_document(doc)
     }
 
     /// A clean tab showing `doc`, with its claim selected.
@@ -117,6 +136,7 @@ impl DocTab {
             comments_open: None,
             connect_mode: None,
             snippet_edit: None,
+            meta_edit: None,
             snippet_focus: None,
             snippet_capped: None,
             revision: 0,
@@ -175,7 +195,10 @@ impl DocTab {
     /// Unsaved changes, counting inline-edit and snippet text not yet
     /// committed.
     pub fn is_dirty(&self) -> bool {
-        self.history.is_dirty() || self.has_pending_edit() || self.has_pending_snippet_edit()
+        self.history.is_dirty()
+            || self.has_pending_edit()
+            || self.has_pending_snippet_edit()
+            || self.has_pending_meta_edit()
     }
 
     /// The file stem, or "Untitled".
@@ -213,8 +236,7 @@ impl DocTab {
     /// Start an inline edit of box `b` and select it. `fresh`: `b` was just
     /// added, so its first text belongs to the add's history step.
     pub fn begin_edit(&mut self, b: NodeId, fresh: bool) {
-        self.commit_edit();
-        self.commit_snippet_edit();
+        self.commit_edits();
         let Some(node) = self.doc.boxes.get(&b) else {
             return;
         };

@@ -42,7 +42,10 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
         Action::Edit => matches!(sel, Some(Item::Box(_))),
         Action::JumpParking => parking_jump(&tab.doc, sel).is_some(),
         Action::Undo => {
-            !tab.history.undo.is_empty() || tab.has_pending_edit() || tab.has_pending_snippet_edit()
+            !tab.history.undo.is_empty()
+                || tab.has_pending_edit()
+                || tab.has_pending_snippet_edit()
+                || tab.has_pending_meta_edit()
         }
         Action::Redo => !tab.history.redo.is_empty(),
         _ => true,

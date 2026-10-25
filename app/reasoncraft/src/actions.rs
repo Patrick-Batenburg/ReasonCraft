@@ -20,6 +20,7 @@ mod comments;
 mod editing;
 mod evaluate;
 mod images;
+mod meta;
 pub use evaluate::{Rate, Rated, rate_action, rated};
 mod insert;
 pub use insert::{Insertable, target_allowed};
@@ -217,6 +218,17 @@ pub enum Action {
     SetOutlineOption(OutlineToggle, bool),
     /// Turn one course-rule check on or off.
     SetCheckEnabled(CheckKind, bool),
+    /// The Document page's title or author field changed: show it live,
+    /// without a history step until the session ends (like
+    /// [`Action::EditText`]).
+    SetDocMeta {
+        title: String,
+        author: String,
+    },
+    /// Set the document language (`"en"` or `"nl"`); anything else is refused.
+    SetDocLanguage(String),
+    /// Set the language new documents start with (`"en"` or `"nl"`).
+    SetDefaultDocLanguage(String),
     /// Switch to the tab at this index.
     ActivateTab(usize),
     /// Open the built-in sample map in a new tab (debug builds only).
@@ -238,17 +250,28 @@ pub enum Action {
 pub fn apply(app: &mut ReasonCraftApp, action: Action) {
     if let Some(tab) = app.tabs.get_mut(app.active) {
         match action {
-            Action::EditText { .. } | Action::TypeText(_) => tab.commit_snippet_edit(),
+            Action::EditText { .. } | Action::TypeText(_) => {
+                tab.commit_snippet_edit();
+                tab.commit_meta_edit();
+            }
             Action::EditSnippetText { .. }
             | Action::EditSnippetCitation { .. }
-            | Action::EditSnippetLink { .. } => tab.commit_edit(),
+            | Action::EditSnippetLink { .. } => {
+                tab.commit_edit();
+                tab.commit_meta_edit();
+            }
+            Action::SetDocMeta { .. } => {
+                tab.commit_edit();
+                tab.commit_snippet_edit();
+            }
             _ => tab.commit_edits(),
         }
         connect::end_unless_kept(tab, &action);
     }
     match action {
         Action::New => {
-            app.tabs.push(DocTab::new());
+            app.tabs
+                .push(DocTab::with_language(&app.settings.default_doc_language));
             app.active = app.tabs.len() - 1;
         }
         Action::Open => file_ops::open_with_dialog(app),
@@ -274,7 +297,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::ShowPanel(_)
         | Action::SetTextTab(_)
         | Action::SetOutlineOption(..)
-        | Action::SetCheckEnabled(..) => view::apply(app, action),
+        | Action::SetCheckEnabled(..)
+        | Action::SetDefaultDocLanguage(_) => view::apply(app, action),
         Action::AddComment { .. }
         | Action::RemoveComment { .. }
         | Action::OpenComments(_)
@@ -343,6 +367,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetSourceRating(_)
         | Action::ClearEvaluation(_) => evaluate::apply(tab, action),
         Action::AddSource(_) | Action::SetSourceType(_) => sources::apply(tab, action),
+        Action::SetDocMeta { .. } | Action::SetDocLanguage(_) => meta::apply(tab, action),
         Action::AddSnippet(_)
         | Action::EditSnippetText { .. }
         | Action::EditSnippetCitation { .. }
@@ -380,7 +405,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::ShowPanel(_)
         | Action::SetTextTab(_)
         | Action::SetOutlineOption(..)
-        | Action::SetCheckEnabled(..) => unreachable!("app-level action"),
+        | Action::SetCheckEnabled(..)
+        | Action::SetDefaultDocLanguage(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

@@ -226,3 +226,19 @@ fn long_selection_drop_keeps_text() {
         "the box grows to show all the text"
     );
 }
+
+#[test]
+fn unsafe_snippet_link_is_dropped_from_the_new_source() {
+    let (d, p) = claim_with_reason();
+    let mut a = app_with(d);
+    let mut src = source();
+    src.link = Some("javascript:alert(1)".into());
+    apply(&mut a, drop_on(text("t", Some(src)), Parent::Box(p)));
+    let t = tab(&a);
+    let premise = new_premise(&t.doc, &t.doc.boxes[&p].children);
+    let [Item::Box(s)] = t.doc.boxes[&premise].children[..] else {
+        panic!("one source")
+    };
+    assert_eq!(t.doc.boxes[&s].text, "Smith (2020)");
+    assert_eq!(t.doc.boxes[&s].link, None, "unsafe link not copied");
+}

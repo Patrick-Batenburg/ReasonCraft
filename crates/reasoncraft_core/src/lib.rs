@@ -10,6 +10,7 @@ pub mod fixtures;
 pub mod history;
 pub mod ids;
 pub mod layout;
+pub mod meta;
 pub mod model;
 pub mod outline;
 pub mod package;

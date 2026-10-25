@@ -121,12 +121,25 @@ error-save-other = The map could not be saved: { $detail }. Your changes are sti
 ## Backstage
 backstage-back = Back
 backstage-settings = Settings
+backstage-document = Document
 settings-title = Settings
 settings-author = Your name
 settings-author_hint = Shown on the comments you add
 settings-theme = Theme
 settings-checks = Checks
 settings-checks_hint = Which hints the Check tab shows. Checks never stop you from doing anything.
+
+settings-default_language = Language of new documents
+settings-default_language_hint = Used by the language-aware checks. Change it for one document on the Document page.
+
+## Document page
+document-title = Document
+document-title_field = Title
+document-author_field = Author
+document-language = Language
+document-language_hint = Checks such as "and"/"or" in one statement use this language.
+lang-en = English
+lang-nl = Dutch
 
 ## Themes
 theme-system = System

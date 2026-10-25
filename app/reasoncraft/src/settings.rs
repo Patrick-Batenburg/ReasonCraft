@@ -31,6 +31,8 @@ pub struct Settings {
     pub outline_colour: bool,
     /// Which course-rule checks the Check tab and the status bar report.
     pub checks: CheckSet,
+    /// The language new documents start with: `"en"` or `"nl"`.
+    pub default_doc_language: String,
 }
 
 /// One of the Outline tab's toolbar switches.
@@ -99,6 +101,7 @@ impl Default for Settings {
             outline_indent: true,
             outline_colour: true,
             checks: CheckSet::default(),
+            default_doc_language: "en".to_owned(),
         }
     }
 }

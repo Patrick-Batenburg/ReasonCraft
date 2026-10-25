@@ -12,6 +12,7 @@ use reasoncraft_core::{
 };
 
 use crate::doc_tab::DocTab;
+use crate::shell::link_modal::safe_link;
 
 /// What text dropped on `to` becomes, for [`can_attach`].
 fn new_item(doc: &Document, to: Parent) -> Option<NewItem> {
@@ -60,7 +61,7 @@ pub(super) fn insert(
                 source_type: src.source_type,
             };
             let s = d.add_box(Parent::Box(premise), kind, &src.citation)?;
-            d.set_link(s, src.link)?;
+            d.set_link(s, src.link.as_deref().and_then(safe_link))?;
         }
         Ok(premise)
     })

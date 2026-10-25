@@ -14,17 +14,28 @@ use crate::shell::text_panel::check_key;
 use crate::theme::{ThemeChoice, Tokens};
 use reasoncraft_core::checks::CheckKind;
 
+mod document;
+
+/// A page beside the entries.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Page {
+    /// Title, author and language of the document.
+    Document,
+    /// Personal preferences.
+    Settings,
+}
+
 /// What a backstage entry does.
 enum Entry {
     /// Back to the map, running the action (if any).
     Command(Option<Action>),
-    /// Show the settings page.
-    Settings,
+    /// Show (or hide) a page.
+    Page(Page),
 }
 
-/// Whether the settings page is showing (view state, kept in egui memory).
-fn settings_id() -> Id {
-    Id::unique("backstage_settings")
+/// The page showing, if any (view state, kept in egui memory).
+fn page_id() -> Id {
+    Id::unique("backstage_page")
 }
 
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
@@ -32,24 +43,27 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     egui::CentralPanel::default()
         .frame(Frame::new().fill(tk.panel).inner_margin(Margin::same(24)))
         .show(ui, |ui| {
-            let mut settings = ui.data(|d| d.get_temp::<bool>(settings_id()).unwrap_or(false));
+            let mut page = ui.data(|d| d.get_temp::<Option<Page>>(page_id()).flatten());
             ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                 ui.vertical(|ui| {
                     ui.set_width(220.0);
-                    entries(ui, app, &mut settings);
+                    entries(ui, app, &mut page);
                 });
-                if settings {
+                if let Some(page) = page {
                     ui.add_space(24.0);
                     ui.separator();
                     ui.add_space(24.0);
-                    ui.vertical(|ui| settings_page(ui, app));
+                    ui.vertical(|ui| match page {
+                        Page::Document => document::page(ui, app),
+                        Page::Settings => settings_page(ui, app),
+                    });
                 }
             });
-            ui.data_mut(|d| d.insert_temp(settings_id(), settings));
+            ui.data_mut(|d| d.insert_temp(page_id(), page));
         });
 }
 
-fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, settings: &mut bool) {
+fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>) {
     let tk = app.tokens;
     ui.spacing_mut().item_spacing.y = 4.0;
     let items = [
@@ -70,11 +84,20 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, settings: &mut bool) {
             "action.save_as",
             Entry::Command(Some(Action::SaveAs)),
         ),
-        (Icon::Settings, "backstage.settings", Entry::Settings),
+        (
+            Icon::Note,
+            "backstage.document",
+            Entry::Page(Page::Document),
+        ),
+        (
+            Icon::Settings,
+            "backstage.settings",
+            Entry::Page(Page::Settings),
+        ),
     ];
     for (icon, key, entry) in items {
         let label = t(key);
-        let on = matches!(entry, Entry::Settings) && *settings;
+        let on = matches!(entry, Entry::Page(p) if Some(p) == *page);
         let (rect, resp) = ui.allocate_exact_size(Vec2::new(220.0, 40.0), Sense::click());
         resp.widget_info(|| WidgetInfo::selected(Role::Button, true, on, &label));
         if resp.hovered() || on {
@@ -93,7 +116,7 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, settings: &mut bool) {
         );
         if resp.clicked() {
             match entry {
-                Entry::Settings => *settings = !*settings,
+                Entry::Page(p) => *page = if *page == Some(p) { None } else { Some(p) },
                 // Every file command returns to the map.
                 Entry::Command(action) => {
                     app.ribbon_tab = RibbonTab::Home;
@@ -107,7 +130,7 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, settings: &mut bool) {
     }
 }
 
-/// The author name, the theme and which checks run.
+/// The author name, the theme, the default language and which checks run.
 fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -136,6 +159,13 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             }
         }
     });
+    ui.add_space(8.0);
+    ui.label(RichText::new(t("settings.default_language")).color(tk.box_text));
+    let current = app.settings.default_doc_language.clone();
+    if let Some(lang) = document::language_picker(ui, &current) {
+        app.push(Action::SetDefaultDocLanguage(lang));
+    }
+    ui.label(RichText::new(t("settings.default_language_hint")).color(tk.text_muted));
     ui.add_space(8.0);
     checks(ui, app, &tk);
 }

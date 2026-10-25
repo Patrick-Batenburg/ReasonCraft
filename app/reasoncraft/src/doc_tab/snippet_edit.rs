@@ -63,11 +63,12 @@ impl DocTab {
         }
     }
 
-    /// End every running edit (inline box text and snippet session), as
+    /// End every running edit (inline box text, snippet and title/author sessions), as
     /// before a save, a close or any command.
     pub fn commit_edits(&mut self) {
         self.commit_edit();
         self.commit_snippet_edit();
+        self.commit_meta_edit();
     }
 
     /// Change snippet `id` live, without a history step: `change` gets a
