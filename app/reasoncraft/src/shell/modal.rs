@@ -35,6 +35,13 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
                     .color(tk.box_text),
             );
             ui.label(egui::RichText::new(body).color(tk.box_text));
+            if let Modal::Unsaved { waiting: true, .. } = modal {
+                // Save goes ahead by itself once the images are ready.
+                ui.horizontal(|ui| {
+                    ui.add(egui::Spinner::new().size(14.0).color(tk.accent));
+                    ui.label(egui::RichText::new(t("unsaved.waiting_images")).color(tk.box_text));
+                });
+            }
             let mut answer = None;
             // Laid out right to left, so the first button sits rightmost.
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -84,8 +91,8 @@ fn buttons(modal: &Modal) -> (Vec<Button>, Action) {
             vec![("modal.ok", "modal.ok", Action::DismissModal)],
             Action::DismissModal,
         ),
-        Modal::Unsaved { .. } => (
-            vec![
+        Modal::Unsaved { waiting, .. } => {
+            let mut buttons = vec![
                 (
                     "unsaved.cancel",
                     "unsaved.cancel",
@@ -96,14 +103,17 @@ fn buttons(modal: &Modal) -> (Vec<Button>, Action) {
                     "unsaved.discard",
                     unsaved(UnsavedChoice::Discard),
                 ),
-                (
+            ];
+            // While Save waits for images, it is already chosen.
+            if !waiting {
+                buttons.push((
                     "unsaved.save",
                     "unsaved.save_changes",
                     unsaved(UnsavedChoice::Save),
-                ),
-            ],
-            unsaved(UnsavedChoice::Cancel),
-        ),
+                ));
+            }
+            (buttons, unsaved(UnsavedChoice::Cancel))
+        }
         Modal::ConfirmReplace { .. } => (
             vec![
                 (

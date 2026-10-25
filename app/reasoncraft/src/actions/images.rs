@@ -10,11 +10,11 @@ use std::time::{Duration, Instant};
 
 use reasoncraft_core::{BoxKind, ImageRef, Item, NodeId};
 
-use super::Action;
+use super::{Action, UnsavedChoice};
 use crate::app::ReasonCraftApp;
-use crate::canvas::images::{ImageFailure, ImageResult};
+use crate::canvas::images::{ImageFailure, ImageResult, PreparedImage};
 use crate::doc_tab::DocTab;
-use crate::file_ops::Modal;
+use crate::file_ops::{self, Modal};
 use crate::i18n::t;
 use crate::jobs::JobId;
 
@@ -85,15 +85,33 @@ fn waiting_tab(app: &ReasonCraftApp, job: JobId, node: NodeId) -> Option<usize> 
 /// as one history step. Dropped when no tab waits for it (a newer insert
 /// replaced it, or the tab closed); discarded with a note when the box is
 /// gone or can no longer hold an image. A failure shows its message.
+/// When a "Save" in the close prompt waited for this tab's last image, the
+/// save (and the close) goes ahead now.
 pub(super) fn prepared(app: &mut ReasonCraftApp, job: JobId, node: NodeId, result: ImageResult) {
     let Some(i) = waiting_tab(app, job, node) else {
         return;
     };
     app.tabs[i].pending_images.remove(&node);
-    let image = match result {
-        Ok(image) => image,
-        Err(failure) => return show_failure(app, &failure),
+    let failure = match result {
+        Ok(image) => {
+            place(app, i, node, image);
+            None
+        }
+        Err(failure) => Some(failure),
     };
+    let save_now = matches!(app.modal, Some(Modal::Unsaved { tab, waiting: true, .. }) if tab == i)
+        && app.tabs[i].pending_images.is_empty();
+    if save_now {
+        file_ops::resolve_unsaved(app, UnsavedChoice::Save);
+    }
+    if let Some(failure) = failure {
+        show_failure(app, &failure);
+    }
+}
+
+/// Put `image` in box `node` of tab `i`, unless the box can no longer
+/// hold one (then a note says it was discarded).
+fn place(app: &mut ReasonCraftApp, i: usize, node: NodeId, image: PreparedImage) {
     let tab = &mut app.tabs[i];
     if !holds_images(tab, node) {
         app.status_note = Some(t("image.discarded"));
@@ -158,19 +176,25 @@ pub(super) fn flush_tab(app: &mut ReasonCraftApp, i: usize) {
     }
 }
 
-/// Waits for the images tab `i` still waits for and applies them, so a
-/// save before a close includes them.
-pub(super) fn finish_tab(app: &mut ReasonCraftApp, i: usize) {
-    let start = Instant::now();
-    loop {
-        flush_tab(app, i);
-        let done = app.tabs.get(i).is_none_or(|t| t.pending_images.is_empty());
-        // A worker that hangs must not keep the save from happening.
-        if done || start.elapsed() > Duration::from_secs(60) {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(2));
+/// "Save" in the close prompt: applies the tab's finished images, and when
+/// some are still being prepared, keeps the prompt open in its waiting
+/// state and returns true; [`prepared`] saves once the last one arrives.
+pub(super) fn wait_before_save(app: &mut ReasonCraftApp) -> bool {
+    let Some(Modal::Unsaved { tab, .. }) = app.modal else {
+        return false;
+    };
+    flush_tab(app, tab);
+    if app
+        .tabs
+        .get(tab)
+        .is_none_or(|t| t.pending_images.is_empty())
+    {
+        return false;
     }
+    if let Some(Modal::Unsaved { waiting, .. }) = &mut app.modal {
+        *waiting = true;
+    }
+    true
 }
 
 /// Waits for every image being prepared and applies the results: for

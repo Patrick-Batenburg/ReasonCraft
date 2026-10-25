@@ -42,7 +42,7 @@ The essay is saved inside the `.rcraft` file. Earlier versions of ReasonCraft op
 
 ## Export and print
 
-Everything is on the **Export** tab of the ribbon. Exports run in the background: the status bar shows "Exporting…", then "Export done." with an **Open folder** link. Status messages go away after a few seconds or with your next action.
+Everything is on the **Export** tab of the ribbon. Exports run in the background: the status bar shows "Exporting…", then "Export done." with an **Open folder** link. Status messages go away after a few seconds, or when you next change the map or give a file or export command.
 
 - **PNG, SVG, PDF.** A dialog first asks what to export (the whole map or the selection and what is under it) and in which colours (the light theme, the default, or the theme you are using).
   - *PNG:* scale 1× to 4×, and an optional transparent background. Images are limited to 16,384 px on a side and 256 megapixels; for larger maps, use SVG or PDF.

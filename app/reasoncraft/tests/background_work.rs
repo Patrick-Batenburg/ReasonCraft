@@ -1,6 +1,7 @@
 //! Background work and the close paths: an image still being prepared (or
-//! finished but held for an edit) counts as unsaved work, and status notes
-//! go away on their own.
+//! finished but held for an edit) counts as unsaved work, "Save" in the
+//! close prompt waits for it without blocking frames, and status notes go
+//! away on their own (or with the next edit, not with looking around).
 
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -50,35 +51,133 @@ fn photo(dir: &Path) -> PathBuf {
 }
 
 fn unsaved_prompt(app: &ReasonCraftApp, window: bool) -> bool {
-    matches!(app.modal, Some(Modal::Unsaved { tab: 0, window: w }) if w == window)
+    matches!(app.modal, Some(Modal::Unsaved { tab: 0, window: w, waiting: false }) if w == window)
+}
+
+/// Steps frames until `done` holds (at most 60 s); each frame must come
+/// back quickly, as nothing may wait on the UI thread.
+fn step_until(h: &mut H, done: impl Fn(&ReasonCraftApp) -> bool) {
+    let start = Instant::now();
+    while !done(h.state()) {
+        assert!(start.elapsed() < Duration::from_secs(60), "never happened");
+        let frame = Instant::now();
+        h.step();
+        assert!(
+            frame.elapsed() < Duration::from_millis(250),
+            "a frame blocked"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+fn waiting(app: &ReasonCraftApp) -> bool {
+    matches!(app.modal, Some(Modal::Unsaved { waiting: true, .. }))
+}
+
+/// A harness whose premise is waiting for an image (`delay` long), with
+/// `close` sent and the unsaved prompt showing; then Save is chosen.
+fn save_while_preparing(
+    dir: &Path,
+    fake: &FakeDialogs,
+    close: Action,
+    file: PathBuf,
+) -> (H, NodeId) {
+    let (mut app, premise) = app(fake);
+    app.image_jobs.delay = Some(Duration::from_millis(400));
+    let mut h = harness(app);
+    fake.set_image(file);
+    h.state_mut().push(Action::InsertImage);
+    h.step();
+    h.state_mut().push(close);
+    h.step();
+    assert!(
+        matches!(h.state().modal, Some(Modal::Unsaved { waiting: false, .. })),
+        "{:?}",
+        h.state().modal
+    );
+    fake.set_save(dir.join("with-image.rcraft"));
+    h.state_mut()
+        .push(Action::ResolveUnsaved(UnsavedChoice::Save));
+    let start = Instant::now();
+    h.step();
+    assert!(start.elapsed() < Duration::from_millis(250), "Save blocked");
+    // The frame that applied Save drew the prompt before it; one more.
+    h.step();
+    // The prompt stays, waiting, with a spinner and no Save button.
+    assert!(waiting(h.state()), "{:?}", h.state().modal);
+    // "Preparing image…": the box, the busy chip and now the prompt.
+    assert_eq!(
+        h.query_all_by_label(&t("unsaved.waiting_images")).count(),
+        3
+    );
+    assert!(h.query_by_label(&t("unsaved.save_changes")).is_none());
+    h.get_by_label(&t("unsaved.cancel"));
+    (h, premise)
+}
+
+fn saved_image(path: &Path, premise: NodeId) -> bool {
+    let saved = file::open_package(path).unwrap();
+    let image = saved.doc.boxes[&premise].image.clone();
+    image.is_some_and(|i| saved.assets.get(&i.asset).is_some())
 }
 
 #[test]
-fn closing_while_an_image_is_prepared_asks_and_save_waits_for_it() {
+fn save_on_close_waits_for_the_image_without_blocking() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
-    let (mut app, premise) = app(&fake);
-    app.image_jobs.delay = Some(Duration::from_millis(300));
-    fake.set_image(photo(dir.path()));
-    apply(&mut app, Action::InsertImage);
-    assert!(!app.active_tab().is_dirty(), "nothing in the document yet");
+    let (mut h, premise) =
+        save_while_preparing(dir.path(), &fake, Action::CloseTab(0), photo(dir.path()));
+    step_until(&mut h, |app| app.modal.is_none());
+    assert!(h.state().active_tab().path.is_none(), "the tab closed");
+    assert!(saved_image(&dir.path().join("with-image.rcraft"), premise));
+}
 
-    apply(&mut app, Action::CloseTab(0));
-    assert!(unsaved_prompt(&app, false), "{:?}", app.modal);
-    assert_eq!(app.tabs.len(), 1);
+#[test]
+fn cancel_while_save_waits_keeps_the_tab_and_the_image() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let (mut h, premise) =
+        save_while_preparing(dir.path(), &fake, Action::CloseTab(0), photo(dir.path()));
+    h.state_mut()
+        .push(Action::ResolveUnsaved(UnsavedChoice::Cancel));
+    h.step();
+    assert!(h.state().modal.is_none());
+    assert_eq!(h.state().active_tab().pending_images.len(), 1);
+    step_until(&mut h, |app| app.active_tab().pending_images.is_empty());
+    h.step();
+    let tab = h.state().active_tab();
+    assert!(tab.doc.boxes[&premise].image.is_some(), "the image landed");
+    assert!(h.state().modal.is_none(), "nothing was saved or closed");
+    assert!(!dir.path().join("with-image.rcraft").exists());
+}
 
-    // Save waits for the image, so the file has it.
-    let path = dir.path().join("with-image.rcraft");
-    fake.set_save(path.clone());
-    apply(&mut app, Action::ResolveUnsaved(UnsavedChoice::Save));
-    assert!(app.modal.is_none(), "{:?}", app.modal);
-    assert!(app.active_tab().path.is_none(), "the tab closed");
-    let saved = file::open_package(&path).unwrap();
-    let image = saved.doc.boxes[&premise]
-        .image
-        .clone()
-        .expect("saved image");
-    assert!(saved.assets.get(&image.asset).is_some());
+#[test]
+fn window_close_save_waits_for_the_image() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let (mut h, premise) =
+        save_while_preparing(dir.path(), &fake, Action::CloseWindow, photo(dir.path()));
+    step_until(&mut h, ReasonCraftApp::close_confirmed);
+    assert!(saved_image(&dir.path().join("with-image.rcraft"), premise));
+}
+
+#[test]
+fn a_failed_image_still_lets_the_waiting_save_go_ahead() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let broken = dir.path().join("broken.png");
+    std::fs::write(&broken, b"\x89PNG\r\n\x1a\n not a picture").unwrap();
+    let (mut h, premise) = save_while_preparing(dir.path(), &fake, Action::CloseTab(0), broken);
+    step_until(&mut h, |app| !waiting(app));
+    let app = h.state();
+    assert!(app.active_tab().path.is_none(), "saved and closed");
+    // The failure is reported: as a message, as no other one shows.
+    assert!(
+        matches!(app.modal, Some(Modal::Error { .. })),
+        "{:?}",
+        app.modal
+    );
+    assert!(!saved_image(&dir.path().join("with-image.rcraft"), premise));
 }
 
 #[test]
@@ -156,15 +255,30 @@ fn status_notes_expire() {
 }
 
 #[test]
-fn status_notes_clear_on_the_next_action() {
-    let (mut app, _) = app(&FakeDialogs::default());
+fn status_notes_clear_on_the_next_edit_not_on_looking_around() {
+    let (mut app, premise) = app(&FakeDialogs::default());
     let saved = Notice::Saved(std::env::temp_dir().join("map.png"));
     app.export.notice = Some(saved.clone());
     app.status_note = Some("A note".into());
-    // "Open folder" acts on the notice, so it keeps it.
-    apply(&mut app, Action::OpenExportFolder);
+    // "Open folder" acts on the notice; selecting, zooming and switching
+    // panels only look around.
+    let root = app.active_tab().doc.root;
+    for a in [
+        Action::OpenExportFolder,
+        Action::Select(Some(Item::Box(root))),
+        Action::Navigate(reasoncraft::actions::Dir::Down),
+        Action::ZoomIn,
+        Action::SetZoom(0.8),
+        Action::ZoomFit,
+        Action::TogglePanel(reasoncraft::actions::Panel::Right),
+    ] {
+        apply(&mut app, a);
+    }
     assert_eq!(app.export.notice, Some(saved));
-    apply(&mut app, Action::Select(None));
+    assert_eq!(app.status_note.as_deref(), Some("A note"));
+    // A document edit clears both.
+    apply(&mut app, Action::Select(Some(Item::Box(premise))));
+    apply(&mut app, Action::AddReason);
     assert!(app.status_note.is_none());
     assert!(app.export.notice.is_none());
 }

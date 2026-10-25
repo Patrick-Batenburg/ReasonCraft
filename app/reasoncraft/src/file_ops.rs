@@ -30,9 +30,12 @@ pub enum Modal {
     },
     /// Tab `tab` has unsaved changes and is about to close. `window`: the
     /// whole window is closing, so the remaining dirty tabs come next.
+    /// `waiting`: the user chose Save, which happens once the tab's images
+    /// are prepared (Cancel still works meanwhile).
     Unsaved {
         tab: usize,
         window: bool,
+        waiting: bool,
     },
     /// Saving tab `tab` to `path` would replace an existing file that the
     /// save dialog never checked (`.rcraft` was appended to the chosen name).
@@ -323,6 +326,7 @@ pub fn request_close_tab(app: &mut ReasonCraftApp, i: usize) {
         app.modal = Some(Modal::Unsaved {
             tab: i,
             window: false,
+            waiting: false,
         });
     } else {
         remove_tab(app, i);
@@ -359,6 +363,7 @@ fn ask_from(app: &mut ReasonCraftApp, from: usize) {
             app.modal = Some(Modal::Unsaved {
                 tab: i,
                 window: true,
+                waiting: false,
             });
         }
         None => {
@@ -370,7 +375,7 @@ fn ask_from(app: &mut ReasonCraftApp, from: usize) {
 
 /// The answer to the unsaved-changes prompt.
 pub fn resolve_unsaved(app: &mut ReasonCraftApp, choice: UnsavedChoice) {
-    let Some(Modal::Unsaved { tab, window }) = app.modal.take() else {
+    let Some(Modal::Unsaved { tab, window, .. }) = app.modal.take() else {
         return;
     };
     let then = if window {

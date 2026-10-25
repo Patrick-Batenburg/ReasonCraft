@@ -104,6 +104,7 @@ unsaved-save = Save
 unsaved-save_changes = Save changes
 unsaved-discard = Don't save
 unsaved-cancel = Cancel
+unsaved-waiting_images = Preparing image…
 replace-title = { $file } already exists. Replace it?
 replace-message = Its current contents will be overwritten.
 replace-confirm = Replace

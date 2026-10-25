@@ -241,7 +241,8 @@ fn essay_session_commits_on_save_and_close() {
         app.modal,
         Some(Modal::Unsaved {
             tab: 0,
-            window: false
+            window: false,
+            ..
         })
     ));
     run(&mut app, [Action::ResolveUnsaved(UnsavedChoice::Save)]);

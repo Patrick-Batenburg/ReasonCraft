@@ -45,7 +45,7 @@ fn committed(app: &ReasonCraftApp, i: usize) {
 
 fn unsaved_prompt(app: &ReasonCraftApp) -> Option<(usize, bool)> {
     match app.modal {
-        Some(Modal::Unsaved { tab, window }) => Some((tab, window)),
+        Some(Modal::Unsaved { tab, window, .. }) => Some((tab, window)),
         _ => None,
     }
 }

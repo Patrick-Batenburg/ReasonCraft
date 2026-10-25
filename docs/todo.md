@@ -178,11 +178,11 @@ The end-to-end tests now live in `app/reasoncraft/tests/e2e/` (`main.rs` keeps t
 
 ### Step 4 — Output: exports, print, Essay tab (2026-10-26)
 
-**Tests:** 494 pass, 5 ignored, across the workspace (debug):
+**Tests:** 497 pass, 5 ignored, across the workspace (debug):
 - core: 104 unit tests, plus `checks` 11, `checks_text` 7, `layout` 10, `outline` 8, `outline_md` 4 and `snippet_file` 2 integration tests;
-- app: 215 unit tests, 125 UI and integration tests (egui_kittest; `arrange` 8, `background_work` 5, `box_group` 7, `building` 7, `canvas_scene` 1, `check` 7, `document` 3, `essay` 7, `export` 11, `export_replace` 4, `field_shortcuts` 3, `images` 7, `outline` 6, `snippet_drag` 3, `snippets` 9, `text_panel` 1, `ui` 36) and 8 end-to-end tests (`tests/e2e/`).
+- app: 215 unit tests, 128 UI and integration tests (egui_kittest; `arrange` 8, `background_work` 8, `box_group` 7, `building` 7, `canvas_scene` 1, `check` 7, `document` 3, `essay` 7, `export` 11, `export_replace` 4, `field_shortcuts` 3, `images` 7, `outline` 6, `snippet_drag` 3, `snippets` 9, `text_panel` 1, `ui` 36) and 8 end-to-end tests (`tests/e2e/`).
 
-`cargo test --workspace --release` gives 493 passed (one debug-only test is left out of release builds). The 5 ignored release-only performance tests (`layout_500_boxes_fast`, `outline_500_boxes_fast`, `checks_500_boxes_fast`, `scene_500_boxes_fast` and the kittest `outline_scrolls_large_map`) pass with `cargo test --workspace --release -- --ignored`. `cargo clippy --workspace --all-targets -- -D warnings` and `cargo fmt --check` are clean, and `cargo build --release -p reasoncraft` succeeds.
+`cargo test --workspace --release` gives 496 passed (one debug-only test is left out of release builds). The 5 ignored release-only performance tests (`layout_500_boxes_fast`, `outline_500_boxes_fast`, `checks_500_boxes_fast`, `scene_500_boxes_fast` and the kittest `outline_scrolls_large_map`) pass with `cargo test --workspace --release -- --ignored`. `cargo clippy --workspace --all-targets -- -D warnings` and `cargo fmt --check` are clean, and `cargo build --release -p reasoncraft` succeeds.
 
 The new end-to-end test `tests/e2e/output.rs` builds a map through actions only: a claim, a strong reason, a weak reason and an objection. It writes the essay's introduction and two sections (three history steps). It deletes the weak branch and checks that its paragraph becomes an unplaced note labelled with the branch's text, then undoes and checks that the paragraph is back in its slot. It then exports in all eight formats through `RunExport` and `FakeDialogs`, waiting for the export jobs, and checks the files:
 - PNG: the signature, and an IHDR size of twice the SVG's size;
@@ -197,9 +197,9 @@ Finally it saves, closes, reopens and compares the essay.
 Writing this test showed a real bug. An image export applied without a running frame (scripted runs and tests) panicked in debug builds, because the context that measures text dropped its font-atlas delta unhandled. The delta is now cleared.
 
 **Carried fixes (from the Task 11 review)**, each with a test in `tests/background_work.rs`:
-- An image still being prepared counts as unsaved work. Closing its tab or the window shows the unsaved prompt, even when the document has no other change. **Save** waits for the image, so it lands in the file. A finished image held back for an edit session is applied before the prompt, so the prompt counts it.
+- An image still being prepared counts as unsaved work. Closing its tab or the window shows the unsaved prompt, even when the document has no other change. **Save** keeps the prompt open with a spinner ("Preparing image…", Cancel and Don't save still available) while frames keep running, and saves and closes by itself once the image has landed. If the image fails, the save still goes ahead and the error is shown. Nothing waits on the UI thread. A finished image held back for an edit session is applied before the prompt, so the prompt counts it.
 - The busy chip counts the images the tabs wait for, including one held for an edit session, so it shows exactly while a box shows "Preparing image…". The tooltip's line break is now an escaped newline instead of a literal one.
-- The status note and the export notice clear after 6 s (egui time) or with the next action. "Open folder" and closing a message keep them.
+- The status note and the export notice clear after 6 s (egui time), or with the next edit, file, export or image command. Looking around (selecting, navigating, zooming, panels, tabs, theme, closing a message, "Open folder") keeps them.
 
 **Checked by hand** (Windows 11, release build). No keyboard or mouse input was sent to the desktop (ruling O2).
 - A throwaway example built a Dutch, rated sample through actions:
@@ -228,7 +228,6 @@ Writing this test showed a real bug. An image export applied without a running f
 - resvg/usvg stay at 0.45 until svg2pdf moves on (ruling S2).
 - In exports, an image that is not stored as PNG shows as missing, and faux bold darkens translucent text.
 - The "Preparing image…" band covers the first line of the box's text while the image is prepared.
-- **Save** in the close prompt waits for a still-preparing image (at most 60 s), and the window does not respond meanwhile. If that image fails while the prompt shows, its error goes to the status bar.
 - The 6 s for an export notice also run while the busy chip hides it.
 - A Word file with no author set keeps docx-rs's "unknown" creator.
 

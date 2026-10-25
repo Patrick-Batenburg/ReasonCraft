@@ -50,10 +50,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         images::prepared(app, job, node, result);
         return;
     }
-    // The user moved on: the last status note and export notice go
-    // ("Open folder" acts on the notice, and a dismissed message may have
-    // left a note behind).
-    if !matches!(action, Action::OpenExportFolder | Action::DismissModal) {
+    // The user moved on: the last status note and export notice go.
+    if !keeps_notes(&action) {
         app.status_note = None;
         app.export.notice = None;
     }
@@ -84,13 +82,11 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             file_ops::request_close_window(app);
         }
         Action::ResolveUnsaved(choice) => {
-            // "Save" includes the images still being prepared.
-            if let (UnsavedChoice::Save, Some(&file_ops::Modal::Unsaved { tab, .. })) =
-                (choice, app.modal.as_ref())
-            {
-                images::finish_tab(app, tab);
+            // "Save" includes the images still being prepared: it waits
+            // for them with the prompt open.
+            if choice != UnsavedChoice::Save || !images::wait_before_save(app) {
+                file_ops::resolve_unsaved(app, choice);
             }
-            file_ops::resolve_unsaved(app, choice);
         }
         Action::ResolveReplace(replace) => file_ops::resolve_replace(app, replace),
         Action::DismissModal => {
@@ -145,6 +141,38 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             }
         }
     }
+}
+
+/// Whether `action` leaves the status note and export notice alone: it
+/// only looks around (selection, view, panels) or answers a message (which
+/// may have left a note behind). "Open folder" acts on the notice itself.
+/// Document edits and file, export and image commands clear them.
+fn keeps_notes(action: &Action) -> bool {
+    matches!(
+        action,
+        Action::Select(_)
+            | Action::RevealSelection
+            | Action::Navigate(_)
+            | Action::JumpParking
+            | Action::ZoomIn
+            | Action::ZoomOut
+            | Action::ZoomFit
+            | Action::Zoom100
+            | Action::SetZoom(_)
+            | Action::ActivateTab(_)
+            | Action::TogglePanel(_)
+            | Action::ShowPanel(_)
+            | Action::SetTextTab(_)
+            | Action::SetTheme(_)
+            | Action::ToggleMarkers
+            | Action::ToggleShading
+            | Action::SetOutlineOption(..)
+            | Action::OpenComments(_)
+            | Action::CloseComments
+            | Action::OpenLink(_)
+            | Action::OpenExportFolder
+            | Action::DismissModal
+    )
 }
 
 /// Whether `action` is live text for the kind of session that is running
