@@ -329,3 +329,63 @@ fn keyboard_moves_and_adds_ask_to_reveal_but_clicks_do_not() {
 fn history_keeps_500_steps() {
     assert_eq!(crate::doc_tab::HISTORY_LIMIT, 500);
 }
+
+#[test]
+fn revision_bumps_on_every_document_change() {
+    let mut a = app();
+    let rev = |a: &ReasonCraftApp| tab(a).revision();
+    assert_eq!(rev(&a), 0, "a new document starts at 0");
+
+    apply(&mut a, Action::AddReason);
+    let r = rev(&a);
+    assert!(r > 0, "a successful edit bumps");
+
+    // Typing into the new premise changes the document live.
+    apply(&mut a, Action::TypeText("x".into()));
+    assert!(rev(&a) > r, "inline text bumps");
+    let r = rev(&a);
+    apply(&mut a, Action::StopEditing);
+    assert_eq!(rev(&a), r, "committing a fresh box's text records nothing");
+
+    // Not document changes: selection, view, refused edits.
+    let root = tab(&a).doc.root;
+    apply(&mut a, Action::Select(Some(Item::Box(root))));
+    apply(&mut a, Action::ZoomIn);
+    apply(&mut a, Action::Delete);
+    apply(&mut a, Action::AddCategory);
+    assert_eq!(rev(&a), r, "selection, view and refused edits do not bump");
+
+    // Editing an existing box records on commit.
+    apply(&mut a, Action::TypeText("c".into()));
+    let r = rev(&a);
+    apply(&mut a, Action::StopEditing);
+    assert!(rev(&a) > r, "a recorded commit bumps");
+    let r = rev(&a);
+    apply(&mut a, Action::StopEditing);
+    assert_eq!(rev(&a), r, "nothing to commit");
+
+    apply(&mut a, Action::Undo);
+    assert!(rev(&a) > r, "undo bumps");
+    let r = rev(&a);
+    apply(&mut a, Action::Redo);
+    assert!(rev(&a) > r, "redo bumps");
+    let r = rev(&a);
+    apply(&mut a, Action::Redo);
+    assert_eq!(rev(&a), r, "a redo with nothing to redo does not bump");
+    while !tab(&a).history.undo.is_empty() {
+        apply(&mut a, Action::Undo);
+    }
+    let r = rev(&a);
+    apply(&mut a, Action::Undo);
+    assert_eq!(rev(&a), r, "an undo with nothing to undo does not bump");
+
+    // Opening a file, also into the untouched active tab, bumps.
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("a.rcraft");
+    reasoncraft_core::file::save(&reasoncraft_core::Document::new("A"), &path).unwrap();
+    let mut b = app();
+    let before = rev(&b);
+    crate::file_ops::open_into_app(&mut b, &path);
+    assert_eq!(b.tabs.len(), 1, "loaded into the untouched tab");
+    assert!(rev(&b) > before, "open bumps");
+}

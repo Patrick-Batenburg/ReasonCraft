@@ -46,7 +46,8 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
 }
 
 /// End "Connect to…" for every action but picking a target (selecting,
-/// navigating, zooming) and starting it again. A connecting move ends it
+/// navigating, zooming), starting it again and view preferences (theme,
+/// rating display, panels, the Text panel tab). A connecting move ends it
 /// too. The inline editor's own "stop editing" (sent when it loses focus,
 /// e.g. to the ribbon's "Connect to…") keeps it: `apply` committed the edit
 /// when the mode started, and Esc reaches here as [`Action::CancelConnect`].
@@ -63,6 +64,11 @@ pub(super) fn end_unless_kept(tab: &mut DocTab, action: &Action) {
             | Action::SetZoom(_)
             | Action::StartConnect
             | Action::StopEditing
+            | Action::SetTheme(_)
+            | Action::TogglePanel(_)
+            | Action::ToggleMarkers
+            | Action::ToggleShading
+            | Action::SetTextTab(_)
     );
     if !keeps {
         tab.connect_mode = None;

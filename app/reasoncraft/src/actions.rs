@@ -9,6 +9,7 @@ use crate::app::ReasonCraftApp;
 use crate::canvas::input::{navigate, parking_jump};
 use crate::doc_tab::DocTab;
 use crate::file_ops;
+use crate::settings::TextTab;
 use crate::theme::ThemeChoice;
 
 mod box_group;
@@ -25,6 +26,7 @@ mod connect;
 pub use connect::connect_item;
 mod sources;
 mod structure;
+mod view;
 use structure::{add_box, add_card, add_co_premise, delete};
 pub use structure::{is_attachment, moves_nowhere, sibling_list};
 
@@ -175,6 +177,8 @@ pub enum Action {
         on: Option<NodeId>,
     },
     TogglePanel(Panel),
+    /// Show this tab in the Text panel.
+    SetTextTab(TextTab),
     /// Switch to the tab at this index.
     ActivateTab(usize),
     /// Open the built-in sample map in a new tab (debug builds only).
@@ -220,9 +224,11 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
                 app.active = i;
             }
         }
-        Action::SetTheme(choice) => app.settings.theme = choice,
-        Action::ToggleMarkers => app.settings.show_markers = !app.settings.show_markers,
-        Action::ToggleShading => app.settings.eval_shading = !app.settings.eval_shading,
+        Action::SetTheme(_)
+        | Action::ToggleMarkers
+        | Action::ToggleShading
+        | Action::TogglePanel(_)
+        | Action::SetTextTab(_) => view::apply(app, action),
         Action::AddComment { .. }
         | Action::RemoveComment { .. }
         | Action::OpenComments(_)
@@ -242,8 +248,6 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         }
         #[cfg(debug_assertions)]
         Action::ToggleSourceIcons => app.show_source_icons = !app.show_source_icons,
-        Action::TogglePanel(Panel::Left) => app.left_panel = !app.left_panel,
-        Action::TogglePanel(Panel::Right) => app.right_panel = !app.right_panel,
         other => {
             if let Some(tab) = app.tabs.get_mut(app.active) {
                 apply_to_tab(tab, other);
@@ -254,14 +258,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
 
 fn apply_to_tab(tab: &mut DocTab, action: Action) {
     match action {
-        Action::Undo => {
-            tab.history.undo(&mut tab.doc);
-            tab.fix_selection();
-        }
-        Action::Redo => {
-            tab.history.redo(&mut tab.doc);
-            tab.fix_selection();
-        }
+        Action::Undo => tab.undo(),
+        Action::Redo => tab.redo(),
         Action::AddReason => add_card(tab, CardKind::Reason),
         Action::AddObjection => add_card(tab, CardKind::Objection),
         Action::AddCoPremise => add_co_premise(tab),
@@ -352,7 +350,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::OpenLink(_)
         | Action::InsertImage
         | Action::RemoveImage
-        | Action::TogglePanel(_) => unreachable!("app-level action"),
+        | Action::TogglePanel(_)
+        | Action::SetTextTab(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

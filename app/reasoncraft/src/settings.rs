@@ -19,6 +19,18 @@ pub struct Settings {
     pub show_markers: bool,
     /// Tint boxes and connectors by their rating.
     pub eval_shading: bool,
+    /// The tab the Text panel shows.
+    pub text_tab: TextTab,
+}
+
+/// The tabs of the Text panel.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum TextTab {
+    #[default]
+    Outline,
+    Essay,
+    Check,
+    Snippets,
 }
 
 impl Default for Settings {
@@ -28,6 +40,7 @@ impl Default for Settings {
             author: String::new(),
             show_markers: true,
             eval_shading: true,
+            text_tab: TextTab::default(),
         }
     }
 }

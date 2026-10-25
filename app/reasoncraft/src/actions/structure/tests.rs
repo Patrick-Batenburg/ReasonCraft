@@ -223,6 +223,26 @@ fn connect_mode_ends_on_app_level_actions() {
     assert_eq!(tab(&a).connect_mode, Some(note));
 }
 
+#[test]
+fn connect_mode_survives_theme_and_panel_toggles() {
+    let mut d = Document::new("Claim");
+    let note = d.add_loose(NewLoose::Note, "n");
+    let mut a = app_with(d);
+    a.tabs[0].selection = Some(note);
+    apply(&mut a, Action::StartConnect);
+    for keep in [
+        Action::SetTheme(crate::theme::ThemeChoice::Light),
+        Action::TogglePanel(crate::actions::Panel::Left),
+        Action::TogglePanel(crate::actions::Panel::Right),
+        Action::ToggleMarkers,
+        Action::ToggleShading,
+        Action::SetTextTab(crate::settings::TextTab::Check),
+    ] {
+        apply(&mut a, keep.clone());
+        assert_eq!(tab(&a).connect_mode, Some(note), "{keep:?}");
+    }
+}
+
 /// Children [cardA, source, cardB] show as [source, cardA, cardB]: moving
 /// cardA to just after the source changes only hidden document order.
 #[test]

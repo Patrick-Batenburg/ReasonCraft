@@ -888,6 +888,7 @@ fn settings_from_old_storage_fill_defaults() {
         author: "Ann".to_owned(),
         show_markers: false,
         eval_shading: true,
+        text_tab: reasoncraft::settings::TextTab::Check,
     };
     eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
     assert_eq!(

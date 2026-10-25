@@ -184,7 +184,9 @@ fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
     }
     let mut tab = DocTab::from_package(file::open_package(path)?);
     tab.path = Some(path.to_path_buf());
-    if app.tabs.get(app.active).is_some_and(is_untouched) {
+    let reused = app.tabs.get(app.active).filter(|t| is_untouched(t));
+    tab.mark_loaded(reused.map_or(0, DocTab::revision));
+    if reused.is_some() {
         app.tabs[app.active] = tab;
     } else {
         app.tabs.push(tab);

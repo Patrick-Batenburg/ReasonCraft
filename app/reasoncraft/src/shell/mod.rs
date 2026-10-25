@@ -10,12 +10,14 @@ pub mod ribbon;
 pub mod source_icons;
 pub mod statusbar;
 pub mod tabs;
+pub mod text_panel;
 pub mod titlebar;
 
-use eframe::egui::{self, Color32, Frame, Margin, Response, Role, Sense, Vec2, WidgetInfo};
+use eframe::egui::{
+    self, Color32, FontId, Frame, Margin, Response, Role, Sense, Stroke, Vec2, WidgetInfo,
+};
 
 use crate::app::{ReasonCraftApp, RibbonTab};
-use crate::i18n::t;
 use crate::theme::Tokens;
 use icons::Icon;
 
@@ -60,7 +62,41 @@ pub fn icon_button(
     resp.on_hover_text(label)
 }
 
-/// Building panel (left) and Text panel (right, a placeholder for now).
+/// One tab of a tab strip (ribbon, Text panel): its label, accent-coloured
+/// and underlined when `active`, on `surface`; `pad` wider than the label
+/// and `height` tall.
+pub fn tab_button(
+    ui: &mut egui::Ui,
+    tk: &Tokens,
+    label: &str,
+    active: bool,
+    surface: Color32,
+    pad: f32,
+    height: f32,
+) -> Response {
+    let galley =
+        ui.painter()
+            .layout_no_wrap(label.to_owned(), FontId::proportional(13.0), tk.box_text);
+    let size = Vec2::new(galley.size().x + pad, height);
+    let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
+    resp.widget_info(|| WidgetInfo::selected(Role::Tab, true, active, label));
+    if resp.hovered() && !active {
+        ui.painter()
+            .rect_filled(rect.shrink(2.0), 4.0, hover_fill(tk, surface));
+    }
+    let colour = if active { tk.accent } else { tk.box_text };
+    let text_pos = rect.center() - galley.size() / 2.0;
+    let text_w = galley.size().x;
+    ui.painter().galley(text_pos, galley, colour);
+    if active {
+        let x = egui::Rangef::new(text_pos.x, text_pos.x + text_w);
+        ui.painter()
+            .hline(x, rect.bottom() - 3.0, Stroke::new(2.5, tk.accent));
+    }
+    resp
+}
+
+/// Building panel (left) and Text panel (right).
 /// Hidden while the backstage is open.
 pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     if app.ribbon_tab == RibbonTab::File {
@@ -76,21 +112,14 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         .show_collapsible(ui, &mut app.left_panel, |ui| {
             building::show(ui, tab, &tk, &mut out);
         });
-    app.pending.extend(out);
     egui::Panel::right("text_panel")
         .frame(frame)
-        .default_size(260.0)
+        .default_size(300.0)
+        .min_size(290.0)
         .show_collapsible(ui, &mut app.right_panel, |ui| {
-            ui.label(
-                egui::RichText::new(t("panel.text"))
-                    .strong()
-                    .size(15.0)
-                    .color(tk.box_text),
-            );
-            ui.add_space(6.0);
-            ui.label(egui::RichText::new(t("panel.coming_later")).color(tk.text_muted));
-            ui.take_available_space();
+            text_panel::show(ui, &app.settings, &tk, &mut out);
         });
+    app.pending.extend(out);
 }
 
 /// The backstage when the File tab is open, otherwise the map area.

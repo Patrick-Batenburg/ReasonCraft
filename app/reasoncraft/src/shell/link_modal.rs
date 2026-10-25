@@ -78,17 +78,20 @@ fn decoded_lower(s: &str) -> String {
     String::from_utf8_lossy(&out).to_ascii_lowercase()
 }
 
-/// Whether a `mailto:` link asks the mail program to attach a file (an
-/// `attach` or `attachment` parameter, in any case, even percent-encoded):
-/// a file could otherwise send local files along with a mail.
-fn mailto_attaches(s: &str) -> bool {
+/// Whether a `mailto:` link has a parameter a mail program could misuse:
+/// one asking to attach a file (`attach` or `attachment`, in any case,
+/// even percent-encoded), which could send local files along with a mail,
+/// or one whose decoded name hides control characters or further `%`
+/// escapes. The whole rest of the link counts, fragment included: mail
+/// programs differ in where they think the parameters end.
+fn mailto_unsafe_params(s: &str) -> bool {
     let Some((_, query)) = s.split_once('?') else {
         return false;
     };
-    let query = query.split('#').next().unwrap_or_default();
     query.split(['&', ';']).any(|param| {
-        let name = param.split('=').next().unwrap_or_default();
-        matches!(decoded_lower(name).trim(), "attach" | "attachment")
+        let name = decoded_lower(param.split('=').next().unwrap_or_default());
+        name.chars().any(|c| c.is_control() || c == '%')
+            || matches!(name.trim(), "attach" | "attachment")
     })
 }
 
@@ -96,7 +99,7 @@ fn mailto_attaches(s: &str) -> bool {
 /// a bare domain such as `example.org/x` gets `https://`; empty means no
 /// link. Anything else (other schemes, UNC paths and backslashes, spaces,
 /// control or invisible format characters, `mailto:` links that attach a
-/// file) is refused.
+/// file or hide escapes in a parameter name) is refused.
 pub fn normalize_link(s: &str) -> Result<Option<String>, LinkError> {
     let s = s.trim();
     if s.is_empty() {
@@ -115,7 +118,7 @@ pub fn normalize_link(s: &str) -> Result<Option<String>, LinkError> {
                 .chars()
                 .next()
                 .is_some_and(|c| c.is_alphanumeric() || c == '[');
-            if scheme == "mailto:" && mailto_attaches(rest) {
+            if scheme == "mailto:" && mailto_unsafe_params(rest) {
                 return Err(LinkError::Invalid);
             }
             return if host_first {
@@ -306,5 +309,27 @@ mod tests {
         assert_eq!(visible_link("a\u{202E}b\n"), "a\u{FFFD}b\u{FFFD}");
         assert_eq!(LinkError::Invalid.message(), t("link.invalid"));
         assert_ne!(t("link.invalid"), "link.invalid");
+    }
+
+    #[test]
+    fn mailto_fragment_and_encoded_names_refused() {
+        for bad in [
+            "mailto:x@y.z?subject=a#&attach=/etc/passwd",
+            "mailto:x@y.z?attach%00=/x",
+            "mailto:x@y.z?%00attach=/x",
+            "mailto:x@y.z?att%25ach=/x",
+            "mailto:x@y.z?a%zzb=1",
+            "mailto:x@y.z?subject=a#;Attachment=/x",
+        ] {
+            assert_eq!(normalize_link(bad), Err(LinkError::Invalid), "{bad:?}");
+            assert_eq!(safe_link(bad), None, "{bad:?}");
+        }
+        for fine in [
+            "mailto:x@y.z?subject=hi",
+            "mailto:x@y.z?subject=a%25b&body=100%25",
+            "mailto:x@y.z?subject=a#frag",
+        ] {
+            assert_eq!(safe_link(fine), Some(fine.into()), "{fine:?}");
+        }
     }
 }

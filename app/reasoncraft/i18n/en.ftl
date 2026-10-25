@@ -133,8 +133,12 @@ theme-dark = Dark
 
 ## Side panels
 panel-building = Building
-panel-text = Text
 panel-coming_later = Coming in a later version.
+text-tab-outline = Outline
+text-tab-essay = Essay
+text-tab-check = Check
+text-tab-snippets = Snippets
+text-essay-coming = The essay view arrives in a later version.
 building-boxes = Boxes
 building-sources = Sources
 building-comments = Comments

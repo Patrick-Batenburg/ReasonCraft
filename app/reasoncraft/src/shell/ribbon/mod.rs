@@ -6,7 +6,7 @@ use eframe::egui::{
 };
 
 use super::icons::{self, Icon};
-use super::{hover_fill, selected_fill};
+use super::{hover_fill, selected_fill, tab_button};
 use crate::actions::{Action, Panel};
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::i18n::t;
@@ -70,27 +70,8 @@ fn tab_strip(ui: &mut Ui, app: &mut ReasonCraftApp) {
         ui.set_height(STRIP_H);
         ui.spacing_mut().item_spacing.x = 4.0;
         for (tab, key) in TABS {
-            let label = t(key);
             let active = app.ribbon_tab == tab;
-            let font = FontId::proportional(13.0);
-            let galley = ui
-                .painter()
-                .layout_no_wrap(label.clone(), font, tk.box_text);
-            let size = Vec2::new(galley.size().x + 20.0, STRIP_H);
-            let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
-            resp.widget_info(|| WidgetInfo::selected(Role::Tab, true, active, &label));
-            if resp.hovered() && !active {
-                ui.painter()
-                    .rect_filled(rect.shrink(2.0), 4.0, hover_fill(&tk, tk.ribbon));
-            }
-            let colour = if active { tk.accent } else { tk.box_text };
-            let text_pos = rect.center() - galley.size() / 2.0;
-            ui.painter().galley(text_pos, galley.clone(), colour);
-            if active {
-                let x = egui::Rangef::new(text_pos.x, text_pos.x + galley.size().x);
-                ui.painter()
-                    .hline(x, rect.bottom() - 3.0, Stroke::new(2.5, tk.accent));
-            }
+            let resp = tab_button(ui, &tk, &t(key), active, tk.ribbon, 20.0, STRIP_H);
             if resp.clicked() {
                 // Clicking File again closes the backstage.
                 app.ribbon_tab = if active && tab == RibbonTab::File {

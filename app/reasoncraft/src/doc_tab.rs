@@ -48,6 +48,9 @@ pub struct DocTab {
     pub comments_open: Option<NodeId>,
     /// The parked item waiting for a target ("Connect to…").
     pub connect_mode: Option<Item>,
+    /// Counts changes to [`Self::doc`], so text derived from it (outline,
+    /// checks) can be cached until the next change. Starts at 0.
+    revision: u64,
 }
 
 impl Default for DocTab {
@@ -93,7 +96,27 @@ impl DocTab {
             reveal_pending: false,
             comments_open: None,
             connect_mode: None,
+            revision: 0,
         }
+    }
+
+    /// The document's change count: it differs from an earlier value
+    /// whenever the document may have changed since.
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    /// Note a change to the document (edits, undo and redo, inline text,
+    /// a file loaded into the tab). Selection and view changes do not count.
+    pub fn bump_revision(&mut self) {
+        self.revision += 1;
+    }
+
+    /// Note that a file was loaded into this tab, in place of a tab at
+    /// revision `replaced` (0 for none). The new revision is past both, so
+    /// nothing cached for the replaced document is reused.
+    pub fn mark_loaded(&mut self, replaced: u64) {
+        self.revision = self.revision.max(replaced) + 1;
     }
 
     /// Unsaved changes, counting inline-edit text not yet committed.
@@ -129,6 +152,7 @@ impl DocTab {
         let out = edit(&mut draft).ok()?;
         self.history.record(&self.doc);
         self.doc = draft;
+        self.bump_revision();
         Some(out)
     }
 
@@ -150,8 +174,15 @@ impl DocTab {
     /// history step. Text for a box that is no longer being edited (a late
     /// update after the edit ended) is dropped.
     pub fn set_edit_text(&mut self, b: NodeId, text: String) {
-        if self.editing == Some(b) && self.doc.set_text(b, &text).is_ok() {
+        if self.editing != Some(b) {
+            return;
+        }
+        let changed = self.doc.boxes.get(&b).is_some_and(|n| n.text != text);
+        if self.doc.set_text(b, &text).is_ok() {
             self.edit_text = text;
+            if changed {
+                self.bump_revision();
+            }
         }
     }
 
@@ -172,6 +203,7 @@ impl DocTab {
             && let Some(before) = self.edit_snapshot.as_ref()
         {
             self.history.record(before);
+            self.bump_revision();
         }
         self.editing = None;
         self.edit_snapshot = None;
@@ -183,6 +215,22 @@ impl DocTab {
             Item::Box(b) => self.doc.boxes.contains_key(&b),
             Item::Card(c) => self.doc.cards.contains_key(&c),
         }
+    }
+
+    /// Undo one step, if there is one (a new revision), and fix the selection.
+    pub fn undo(&mut self) {
+        if self.history.undo(&mut self.doc) {
+            self.bump_revision();
+        }
+        self.fix_selection();
+    }
+
+    /// Redo one step, if there is one (a new revision), and fix the selection.
+    pub fn redo(&mut self) {
+        if self.history.redo(&mut self.doc) {
+            self.bump_revision();
+        }
+        self.fix_selection();
     }
 
     /// Drop a selection, edit target, comment popover or connect mode whose item no
