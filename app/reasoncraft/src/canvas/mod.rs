@@ -61,9 +61,11 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         images,
         ..
     } = app;
-    images.evict_closed(tabs);
+    images.evict_unused(tabs);
     let tab = &mut tabs[*active];
-    images.load(&ctx, &tab.doc, &tab.assets);
+    if images.load(&ctx, &tab.doc, &tab.assets) {
+        ctx.request_repaint();
+    }
     // Recomputed every frame: about 0.3 ms for 500 boxes, and never stale.
     let layout = layout(
         &tab.doc,

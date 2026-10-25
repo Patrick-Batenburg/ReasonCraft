@@ -309,3 +309,36 @@ fn image_actions_need_a_box_that_can_hold_an_image() {
     apply(&mut app, Action::Select(None));
     assert!(!enabled(&app, &Action::InsertImage));
 }
+
+#[test]
+fn image_actions_commit_a_running_text_edit_first() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let (mut app, premise) = app_with_premise(dir.path(), &fake);
+    for action in [Action::InsertImage, Action::RemoveImage] {
+        let text = format!("typed before {action:?}");
+        apply(&mut app, Action::Edit);
+        apply(
+            &mut app,
+            Action::EditText {
+                node: premise,
+                text: text.clone(),
+            },
+        );
+        let steps = app.active_tab().history.undo.len();
+        apply(&mut app, action);
+        let tab = app.active_tab();
+        assert_eq!(tab.editing, None, "the edit ended");
+        assert_eq!(
+            tab.history.undo.len(),
+            steps + 2,
+            "text step, then image step"
+        );
+        assert_eq!(tab.doc.boxes[&premise].text, text);
+    }
+    // Undoing the image step leaves the committed text in place.
+    apply(&mut app, Action::Undo);
+    let node = &app.active_tab().doc.boxes[&premise];
+    assert!(node.image.is_some());
+    assert_eq!(node.text, "typed before RemoveImage");
+}

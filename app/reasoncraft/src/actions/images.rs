@@ -3,6 +3,8 @@
 //! The bytes go to the tab's [`reasoncraft_core::Assets`], outside history;
 //! the document only gains an [`ImageRef`], so undo snapshots stay small.
 
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 
 use reasoncraft_core::{BoxKind, ImageRef, Item, NodeId};
@@ -42,14 +44,13 @@ enum Failure {
     Image(ImageError),
 }
 
-/// Read and prepare the image at `path`. A file over the size limit is
-/// refused without reading it.
+/// Read and prepare the image at `path`. Reading stops one byte past the
+/// size limit, so a huge file is refused without being read whole.
 fn load(path: &Path) -> Result<(Vec<u8>, f32), Failure> {
-    let len = std::fs::metadata(path).map_err(Failure::Read)?.len();
-    if len > MAX_INPUT_BYTES {
-        return Err(Failure::Image(ImageError::TooLarge));
-    }
-    let bytes = std::fs::read(path).map_err(Failure::Read)?;
+    let mut bytes = Vec::new();
+    File::open(path)
+        .and_then(|f| f.take(MAX_INPUT_BYTES + 1).read_to_end(&mut bytes))
+        .map_err(Failure::Read)?;
     prepare_image(&bytes).map_err(Failure::Image)
 }
 

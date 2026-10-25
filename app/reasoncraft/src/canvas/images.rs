@@ -2,7 +2,7 @@
 //! texture cache the canvas draws from, and painting an image (or its
 //! placeholder) in the block the layout reserves above a box's text.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
 
 use eframe::egui::{
@@ -23,6 +23,15 @@ pub const MAX_INPUT_BYTES: u64 = 40 * 1024 * 1024;
 pub const MAX_DIMENSION: u32 = 12_000;
 /// The most a decoder may allocate.
 const MAX_ALLOC: u64 = 512 * 1024 * 1024;
+/// Stored assets wider or taller than this are not drawn: this build only
+/// stores images of at most [`MAX_SIDE`] px, so a larger one comes from a
+/// crafted file and would stall the UI thread.
+const MAX_STORED_SIDE: u32 = 2048;
+/// The most decoding a stored asset may allocate.
+const MAX_STORED_ALLOC: u64 = MAX_STORED_SIDE as u64 * MAX_STORED_SIDE as u64 * 4 * 2;
+/// At most this many images are decoded per frame; the rest follow in the
+/// next frames, so opening a map with many images never stalls one frame.
+const LOADS_PER_FRAME: usize = 2;
 /// Stored images are scaled down so their longest side is at most this.
 pub const MAX_SIDE: u32 = 1600;
 /// World size of the placeholder's text.
@@ -58,9 +67,11 @@ fn classify(err: &image::ImageError) -> ImageError {
     }
 }
 
-/// Decode `bytes` (any enabled format), upright per its EXIF orientation,
-/// refusing images over the size limits before allocating their pixels.
-fn decode(bytes: &[u8]) -> Result<DynamicImage, ImageError> {
+/// Decode `bytes` (any enabled format), upright per its EXIF orientation.
+/// Images wider or taller than `max_side`, or needing more than
+/// `max_alloc` bytes, are refused from their header, before their pixels
+/// are allocated.
+fn decode(bytes: &[u8], max_side: u32, max_alloc: u64) -> Result<DynamicImage, ImageError> {
     let mut reader = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
         .map_err(|_| ImageError::Corrupt)?;
@@ -68,9 +79,9 @@ fn decode(bytes: &[u8]) -> Result<DynamicImage, ImageError> {
         return Err(ImageError::Unsupported);
     }
     let mut limits = Limits::default();
-    limits.max_image_width = Some(MAX_DIMENSION);
-    limits.max_image_height = Some(MAX_DIMENSION);
-    limits.max_alloc = Some(MAX_ALLOC);
+    limits.max_image_width = Some(max_side);
+    limits.max_image_height = Some(max_side);
+    limits.max_alloc = Some(max_alloc);
     reader.limits(limits.clone());
     let mut decoder = reader.into_decoder().map_err(|e| classify(&e))?;
     // The output buffer counts too (`ImageReader::decode` does the same).
@@ -104,7 +115,7 @@ pub fn prepare_image(bytes: &[u8]) -> Result<(Vec<u8>, f32), ImageError> {
     if bytes.len() as u64 > MAX_INPUT_BYTES {
         return Err(ImageError::TooLarge);
     }
-    let img = decode(bytes)?;
+    let img = decode(bytes, MAX_DIMENSION, MAX_ALLOC)?;
     let aspect = img.height() as f32 / img.width() as f32;
     let mut png = Vec::new();
     fit(img)
@@ -113,9 +124,12 @@ pub fn prepare_image(bytes: &[u8]) -> Result<(Vec<u8>, f32), ImageError> {
     Ok((png, aspect))
 }
 
-/// A stored asset as egui pixels (`None` when it does not decode).
+/// A stored asset as egui pixels; `None` when it does not decode or is
+/// larger than this build ever stores (never resized here).
 fn color_image(bytes: &[u8]) -> Option<ColorImage> {
-    let rgba = fit(decode(bytes).ok()?).to_rgba8();
+    let rgba = decode(bytes, MAX_STORED_SIDE, MAX_STORED_ALLOC)
+        .ok()?
+        .to_rgba8();
     let size = [rgba.width() as usize, rgba.height() as usize];
     Some(ColorImage::from_rgba_unmultiplied(size, rgba.as_raw()))
 }
@@ -129,10 +143,13 @@ pub struct ImageCache {
 }
 
 impl ImageCache {
-    /// Decode, once, every image `doc` shows that is not cached yet. A
-    /// missing asset is not cached, so it loads once its bytes arrive (from
-    /// another tab, say); one that does not decode is cached as `None`.
-    pub fn load(&mut self, ctx: &egui::Context, doc: &Document, assets: &Assets) {
+    /// Decode, once, the images `doc` shows that are not cached yet, at
+    /// most [`LOADS_PER_FRAME`] of them; returns true when more are left
+    /// for the next frame. A missing asset is not cached, so it loads once
+    /// its bytes arrive (from another tab, say); one that does not decode
+    /// is cached as `None`.
+    pub fn load(&mut self, ctx: &egui::Context, doc: &Document, assets: &Assets) -> bool {
+        let mut loaded = 0;
         for img in doc.boxes.values().filter_map(|b| b.image.as_ref()) {
             if self.textures.contains_key(&img.asset) {
                 continue;
@@ -140,18 +157,28 @@ impl ImageCache {
             let Some(bytes) = assets.get(&img.asset) else {
                 continue;
             };
+            if loaded == LOADS_PER_FRAME {
+                return true;
+            }
+            loaded += 1;
             let texture = color_image(&bytes).map(|pixels| {
                 let name = format!("asset:{}", img.asset);
                 ctx.load_texture(name, pixels, TextureOptions::LINEAR)
             });
             self.textures.insert(img.asset.clone(), texture);
         }
+        false
     }
 
-    /// Drop the textures no open tab holds the bytes of (its tab closed).
-    pub fn evict_closed(&mut self, tabs: &[DocTab]) {
-        self.textures
-            .retain(|key, _| tabs.iter().any(|tab| tab.assets.get(key).is_some()));
+    /// Drop the textures no open document shows (its tab closed, its box
+    /// deleted or its insert undone).
+    pub fn evict_unused(&mut self, tabs: &[DocTab]) {
+        let used: HashSet<&str> = tabs
+            .iter()
+            .flat_map(|tab| tab.doc.boxes.values())
+            .filter_map(|b| b.image.as_ref().map(|i| i.asset.as_str()))
+            .collect();
+        self.textures.retain(|key, _| used.contains(key.as_str()));
     }
 
     pub fn texture(&self, key: &str) -> Option<&TextureHandle> {
@@ -299,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn cache_marks_missing_and_corrupt_assets_and_evicts_closed_tabs() {
+    fn cache_marks_missing_and_corrupt_assets_and_evicts_unused() {
         let ctx = egui::Context::default();
         let mut tab = DocTab::new();
         let root = tab.doc.root;
@@ -325,15 +352,21 @@ mod tests {
         doc.set_image(q, image("missing.png")).unwrap();
 
         let mut cache = ImageCache::default();
-        cache.load(&ctx, &tab.doc, &tab.assets);
+        assert!(
+            !cache.load(&ctx, &tab.doc, &tab.assets),
+            "two loads fit a frame"
+        );
         assert_eq!(cache.texture(&good).unwrap().size(), [8, 4]);
         assert!(cache.texture(&bad).is_none());
         assert!(cache.texture("missing.png").is_none());
         assert_eq!(cache.len(), 2, "a missing asset is not cached");
 
-        cache.evict_closed(std::slice::from_ref(&tab));
+        cache.evict_unused(std::slice::from_ref(&tab));
         assert_eq!(cache.len(), 2, "its tab is still open");
-        cache.evict_closed(&[DocTab::new()]);
+        tab.doc.set_image(p, None).unwrap();
+        cache.evict_unused(std::slice::from_ref(&tab));
+        assert_eq!(cache.len(), 1, "no box shows the broken asset any more");
+        cache.evict_unused(&[DocTab::new()]);
         assert!(cache.is_empty());
     }
 
@@ -353,5 +386,84 @@ mod tests {
         let rest = content_rect(world, &node);
         assert_eq!(rest.min.y, r.max.y + IMAGE_GAP);
         assert_eq!(rest.max, world.max);
+    }
+
+    /// A PNG whose header claims `w`×`h` pixels, with almost no data:
+    /// big dimensions without the cost of encoding them.
+    fn png_header_only(w: u32, h: u32) -> Vec<u8> {
+        fn crc32(data: &[u8]) -> u32 {
+            let mut crc = !0u32;
+            for &b in data {
+                crc ^= u32::from(b);
+                for _ in 0..8 {
+                    crc = if crc & 1 == 1 {
+                        (crc >> 1) ^ 0xEDB8_8320
+                    } else {
+                        crc >> 1
+                    };
+                }
+            }
+            !crc
+        }
+        fn chunk(out: &mut Vec<u8>, kind: &[u8], data: &[u8]) {
+            out.extend((data.len() as u32).to_be_bytes());
+            let mut body = kind.to_vec();
+            body.extend(data);
+            out.extend(&body);
+            out.extend(crc32(&body).to_be_bytes());
+        }
+        let mut out = b"\x89PNG\r\n\x1a\n".to_vec();
+        let mut ihdr = Vec::new();
+        ihdr.extend(w.to_be_bytes());
+        ihdr.extend(h.to_be_bytes());
+        ihdr.extend([8, 2, 0, 0, 0]);
+        chunk(&mut out, b"IHDR", &ihdr);
+        chunk(
+            &mut out,
+            b"IDAT",
+            &[0x78, 0x9c, 0x03, 0x00, 0x00, 0x00, 0x00, 0x01],
+        );
+        chunk(&mut out, b"IEND", &[]);
+        out
+    }
+
+    #[test]
+    fn cache_refuses_assets_larger_than_this_build_stores() {
+        let ctx = egui::Context::default();
+        let mut tab = DocTab::new();
+        let root = tab.doc.root;
+        let tall = tab.assets.insert("png", png(1, 100_000));
+        let huge = tab.assets.insert("png", png_header_only(12_000, 12_000));
+        // The largest size this build stores.
+        let ok = tab.assets.insert("png", png(1600, 1));
+        let doc = &mut tab.doc;
+        let mut boxes = vec![root];
+        for _ in 0..2 {
+            let (_, b) = doc
+                .add_card(Parent::Box(root), CardKind::Reason, "")
+                .unwrap();
+            boxes.push(b);
+        }
+        for (b, asset) in boxes.into_iter().zip([&tall, &huge, &ok]) {
+            let image = ImageRef {
+                asset: asset.clone(),
+                aspect: 1.0,
+            };
+            doc.set_image(b, Some(image)).unwrap();
+        }
+
+        let mut cache = ImageCache::default();
+        let started = std::time::Instant::now();
+        assert!(
+            cache.load(&ctx, &tab.doc, &tab.assets),
+            "a third load waits"
+        );
+        assert_eq!(cache.len(), 2);
+        assert!(!cache.load(&ctx, &tab.doc, &tab.assets));
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+        assert!(cache.texture(&tall).is_none(), "placeholder");
+        assert!(cache.texture(&huge).is_none(), "placeholder");
+        assert_eq!(cache.texture(&ok).unwrap().size(), [1600, 1]);
+        assert_eq!(cache.len(), 3);
     }
 }
