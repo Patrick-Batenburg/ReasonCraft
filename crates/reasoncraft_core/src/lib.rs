@@ -1,5 +1,6 @@
 //! ReasonCraft core: document model, editing, layout and file format.
 
+pub mod checks;
 pub mod connector;
 pub mod edit;
 pub mod evaluate;
