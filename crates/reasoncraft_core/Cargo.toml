@@ -13,9 +13,14 @@ indexmap.workspace = true
 chrono.workspace = true
 thiserror.workspace = true
 zip.workspace = true
+emath.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+reasoncraft_core = { path = ".", features = ["test-fixtures"] }
+
+[features]
+test-fixtures = []
 
 [lints]
 workspace = true
