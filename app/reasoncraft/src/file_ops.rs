@@ -212,7 +212,7 @@ fn save_tab_at(
     dialogs: &dyn FileDialogs,
     save_as: bool,
 ) -> Result<SaveOutcome, (PathBuf, FileError)> {
-    tab.commit_edit();
+    tab.commit_edits();
     let path = match (&tab.path, save_as) {
         (Some(path), false) => path.clone(),
         _ => {
@@ -306,7 +306,7 @@ pub fn request_close_tab(app: &mut ReasonCraftApp, i: usize) {
     let Some(tab) = app.tabs.get_mut(i) else {
         return;
     };
-    tab.commit_edit();
+    tab.commit_edits();
     if tab.is_dirty() {
         app.modal = Some(Modal::Unsaved {
             tab: i,
@@ -334,7 +334,7 @@ pub fn remove_tab(app: &mut ReasonCraftApp, i: usize) {
 /// Close the window, asking about each dirty tab in order first.
 pub fn request_close_window(app: &mut ReasonCraftApp) {
     for tab in &mut app.tabs {
-        tab.commit_edit();
+        tab.commit_edits();
     }
     ask_from(app, 0);
 }

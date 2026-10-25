@@ -7,11 +7,11 @@ use eframe::egui::{
     text::{CCursor, CCursorRange},
     text_edit::TextEditState,
 };
-use reasoncraft_core::{Snippet, SnippetSource, SourceType};
+use reasoncraft_core::{MAX_SNIPPET_CHARS, Snippet, SnippetSource, SourceType};
 
 use crate::actions::Action;
 use crate::canvas::plus_menu::source_button;
-use crate::i18n::t;
+use crate::i18n::{FluentArgs, t, t_args};
 use crate::shell::icon_button;
 use crate::shell::icons::Icon;
 use crate::shell::link_modal::{normalize_link, visible_link};
@@ -63,7 +63,7 @@ pub(super) fn show(
         });
         text_field(ui, snippet, focus, out);
         if capped {
-            ui.label(RichText::new(t("snippet.capped")).color(tk.objection));
+            ui.label(RichText::new(capped_notice()).color(tk.objection));
         }
         source_line(ui, snippet, tk, out);
     });
@@ -71,6 +71,13 @@ pub(super) fn show(
         rect: resp.response.rect,
         handle: handle.expect("drawn"),
     }
+}
+
+/// The notice under a snippet whose text was cut at the length limit.
+pub fn capped_notice() -> String {
+    let mut args = FluentArgs::new();
+    args.set("max", MAX_SNIPPET_CHARS);
+    t_args("snippet.capped", &args)
 }
 
 /// The ⋮⋮ grip, painted as two columns of dots.
@@ -139,7 +146,9 @@ fn text_field(ui: &mut Ui, snippet: &Snippet, focus: bool, out: &mut Vec<Action>
     }
 }
 
-/// Type picker and citation on one row, the link below it.
+/// Type picker and citation on one row, the link below it. Citation and
+/// link typing shows live, in the snippet's editing session; a typed link
+/// that is not valid is not stored and shows a hint while its field has focus.
 fn source_line(ui: &mut Ui, snippet: &Snippet, tk: &Tokens, out: &mut Vec<Action>) {
     let id = snippet.id;
     let current = snippet.source.clone().unwrap_or_else(|| SnippetSource {
@@ -147,14 +156,6 @@ fn source_line(ui: &mut Ui, snippet: &Snippet, tk: &Tokens, out: &mut Vec<Action
         citation: String::new(),
         link: None,
     });
-    let set = |change: &dyn Fn(&mut SnippetSource)| {
-        let mut s = current.clone();
-        change(&mut s);
-        Action::SetSnippetSource {
-            id,
-            source: Some(s),
-        }
-    };
     ui.horizontal(|ui| {
         let st = &current.source_type;
         let name = t(&format!("source.{}", st.key()));
@@ -166,65 +167,68 @@ fn source_line(ui: &mut Ui, snippet: &Snippet, tk: &Tokens, out: &mut Vec<Action
             for st in SourceType::ALL {
                 let selected = st == current.source_type;
                 if ui.add(source_button(&st).selected(selected)).clicked() && !selected {
-                    out.push(set(&|s| s.source_type = st.clone()));
+                    let source = SnippetSource {
+                        source_type: st,
+                        ..current.clone()
+                    };
+                    out.push(Action::SetSnippetSource {
+                        id,
+                        source: Some(source),
+                    });
                 }
             }
         });
+        let mut citation = current.citation.clone();
         let field = Id::unique(("snippet_citation", id));
-        let label = t("snippet.citation");
-        if let Some(text) = draft_field(ui, field, &current.citation, &label) {
-            out.push(set(&|s| s.citation = text.clone()));
+        let resp = line_field(ui, field, &mut citation, &t("snippet.citation"));
+        if resp.changed() {
+            out.push(Action::EditSnippetCitation { id, citation });
+        }
+        if resp.lost_focus() {
+            out.push(Action::StopEditing);
         }
     });
+    // While the field has focus it shows the typed text (kept in temp
+    // memory, since an invalid link is not stored); otherwise the stored link.
     let field = Id::unique(("snippet_link", id));
-    let bad_id = field.with("invalid");
-    let shown = current
+    let stored = current
         .link
         .as_deref()
         .map(visible_link)
         .unwrap_or_default();
-    if let Some(text) = draft_field(ui, field, &shown, &t("snippet.link")) {
-        match normalize_link(&text) {
-            Ok(link) => {
-                ui.data_mut(|d| d.remove::<bool>(bad_id));
-                out.push(set(&|s| s.link = link.clone()));
-            }
-            Err(_) => {
-                // Keep the typed text showing, to be fixed.
-                ui.data_mut(|d| {
-                    d.insert_temp(field, text);
-                    d.insert_temp(bad_id, true);
-                });
-            }
-        }
+    let mut text = if ui.memory(|m| m.has_focus(field)) {
+        ui.data(|d| d.get_temp::<String>(field)).unwrap_or(stored)
+    } else {
+        stored
+    };
+    let resp = line_field(ui, field, &mut text, &t("snippet.link"));
+    let invalid = resp.has_focus() && normalize_link(&text).is_err();
+    if resp.changed() {
+        out.push(Action::EditSnippetLink {
+            id,
+            link: text.clone(),
+        });
     }
-    if ui.data(|d| d.get_temp::<bool>(bad_id)).unwrap_or(false) {
+    if resp.has_focus() {
+        ui.data_mut(|d| d.insert_temp(field, text));
+    } else {
+        ui.data_mut(|d| d.remove::<String>(field));
+    }
+    if resp.lost_focus() {
+        out.push(Action::StopEditing);
+    }
+    if invalid {
         ui.label(RichText::new(t("link.invalid")).small().color(tk.objection));
     }
 }
 
-/// A one-line field showing `current` (with `label` as its hint and
-/// accessible name). Typing is kept as a draft until the field loses
-/// focus; the draft is returned then if it differs from `current`.
-fn draft_field(ui: &mut Ui, id: Id, current: &str, label: &str) -> Option<String> {
-    let mut text = ui
-        .data(|d| d.get_temp::<String>(id))
-        .unwrap_or_else(|| current.to_owned());
-    let edit = TextEdit::singleline(&mut text)
-        .id(id.with("field"))
+/// A one-line field for `text`, with `label` as its hint and accessible name.
+fn line_field(ui: &mut Ui, id: Id, text: &mut String, label: &str) -> Response {
+    let edit = TextEdit::singleline(text)
+        .id(id)
         .hint_text(label)
         .desired_width(ui.available_width());
     let resp = ui.add(edit);
     resp.widget_info(|| WidgetInfo::labeled(Role::TextInput, true, label));
-    if resp.changed() {
-        ui.data_mut(|d| d.remove::<bool>(id.with("invalid")));
-    }
-    if resp.lost_focus() {
-        ui.data_mut(|d| d.remove::<String>(id));
-        return (text != current).then_some(text);
-    }
-    if resp.has_focus() {
-        ui.data_mut(|d| d.insert_temp(id, text));
-    }
-    None
+    resp
 }

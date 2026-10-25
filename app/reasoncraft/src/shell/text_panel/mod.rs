@@ -9,6 +9,7 @@ mod snippet_card;
 mod snippets;
 
 pub use check::check_key;
+pub use snippet_card::capped_notice;
 
 use super::tab_button;
 use crate::actions::Action;

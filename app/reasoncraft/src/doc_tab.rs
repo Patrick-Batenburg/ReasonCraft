@@ -11,7 +11,7 @@ use crate::canvas::Camera;
 use crate::i18n::t;
 
 mod snippet_edit;
-pub use snippet_edit::cap_snippet;
+pub use snippet_edit::{cap_snippet, tidy_source};
 
 /// How many undo steps a tab keeps.
 pub const HISTORY_LIMIT: usize = 500;

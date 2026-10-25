@@ -275,3 +275,110 @@ fn remove_snippet_is_one_step() {
     apply(&mut a, Action::Undo);
     assert_eq!(texts(&a), ["a1", "b"]);
 }
+
+fn cite(id: Uuid, citation: &str) -> Action {
+    Action::EditSnippetCitation {
+        id,
+        citation: citation.to_owned(),
+    }
+}
+
+fn link(id: Uuid, link: &str) -> Action {
+    Action::EditSnippetLink {
+        id,
+        link: link.to_owned(),
+    }
+}
+
+fn stored_link(a: &ReasonCraftApp) -> Option<String> {
+    tab(a).doc.snippets[0].source.as_ref()?.link.clone()
+}
+
+#[test]
+fn citation_typing_is_live_and_one_step() {
+    let (mut a, ids) = app_with(&["s"]);
+    let rev = tab(&a).revision();
+    for c in ["D", "Do", "Doe 2020 "] {
+        apply(&mut a, cite(ids[0], c));
+    }
+    let citation = |a: &ReasonCraftApp| {
+        let s = tab(a).doc.snippets[0].source.as_ref();
+        s.map(|s| s.citation.clone())
+    };
+    assert_eq!(citation(&a).as_deref(), Some("Doe 2020 "), "live");
+    assert_eq!(undo_len(&a), 0);
+    assert!(tab(&a).revision() > rev);
+    assert!(tab(&a).is_dirty());
+    // Text typed in the same snippet joins the session.
+    apply(&mut a, edit(ids[0], "s2"));
+    apply(&mut a, Action::StopEditing);
+    assert_eq!(undo_len(&a), 1);
+    assert_eq!(
+        citation(&a).as_deref(),
+        Some("Doe 2020"),
+        "trimmed on commit"
+    );
+    apply(&mut a, Action::Undo);
+    assert_eq!(tab(&a).doc.snippets[0].source, None);
+    assert_eq!(texts(&a), ["s"]);
+}
+
+#[test]
+fn blank_citation_session_records_nothing() {
+    let (mut a, ids) = app_with(&["s"]);
+    apply(&mut a, cite(ids[0], "  "));
+    assert!(!tab(&a).is_dirty(), "a blank citation is no source");
+    apply(&mut a, Action::StopEditing);
+    assert_eq!(tab(&a).doc.snippets[0].source, None);
+    assert_eq!(undo_len(&a), 0);
+}
+
+#[test]
+fn typed_link_is_stored_only_while_valid() {
+    let (mut a, ids) = app_with(&["s"]);
+    let old = source(SourceType::Web, "Doe", Some("https://old.example"));
+    apply(&mut a, set_source(ids[0], old));
+    assert_eq!(undo_len(&a), 1);
+
+    apply(&mut a, link(ids[0], "new.example"));
+    assert_eq!(stored_link(&a).as_deref(), Some("https://new.example"));
+    // Invalid while typing: the link from before the session stays.
+    apply(&mut a, link(ids[0], "new.example/a b"));
+    assert_eq!(stored_link(&a).as_deref(), Some("https://old.example"));
+    assert!(!tab(&a).has_pending_snippet_edit());
+    apply(&mut a, Action::StopEditing);
+    assert_eq!(undo_len(&a), 1, "an invalid link is no change");
+
+    apply(&mut a, link(ids[0], "javascript:alert(1)"));
+    apply(&mut a, link(ids[0], "mailto:ann@example.org"));
+    apply(&mut a, Action::StopEditing);
+    assert_eq!(stored_link(&a).as_deref(), Some("mailto:ann@example.org"));
+    assert_eq!(undo_len(&a), 2);
+    apply(&mut a, Action::Undo);
+    assert_eq!(stored_link(&a).as_deref(), Some("https://old.example"));
+}
+
+#[test]
+fn undo_during_snippet_session_undoes_the_typing() {
+    let (mut a, ids) = app_with(&["a"]);
+    apply(&mut a, edit(ids[0], "ab"));
+    apply(&mut a, Action::Undo);
+    assert_eq!(texts(&a), ["a"]);
+    assert!(tab(&a).snippet_edit.is_none());
+    assert_eq!(tab(&a).history.redo.len(), 1);
+    apply(&mut a, Action::Redo);
+    assert_eq!(texts(&a), ["ab"]);
+}
+
+#[test]
+fn closing_the_window_while_typing_a_citation_asks_to_save() {
+    let (mut a, ids) = app_with(&["s"]);
+    apply(&mut a, cite(ids[0], "Doe"));
+    // The typing is in a tab that is not active.
+    a.tabs.push(DocTab::new());
+    a.active = 1;
+    crate::file_ops::request_close_window(&mut a);
+    assert!(a.modal.is_some(), "the unsaved tab is asked about");
+    assert!(!a.close_confirmed());
+    assert_eq!(a.tabs[0].history.undo.len(), 1, "the session was committed");
+}

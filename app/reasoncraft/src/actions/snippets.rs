@@ -1,9 +1,9 @@
 //! Snippets: adding, live text editing, source tags, removal and order.
 
-use reasoncraft_core::{SnippetSource, SourceType};
+use reasoncraft_core::{Snippet, SnippetSource, SourceType};
 
 use super::Action;
-use crate::doc_tab::{DocTab, cap_snippet};
+use crate::doc_tab::{DocTab, cap_snippet, tidy_source};
 use crate::shell::link_modal::normalize_link;
 
 /// Carry out a snippet action. Changes that leave the snippet list as it
@@ -12,6 +12,26 @@ pub(super) fn apply(tab: &mut DocTab, action: Action) {
     match action {
         Action::AddSnippet(text) => add(tab, &text),
         Action::EditSnippetText { id, text } => tab.set_snippet_text(id, &text),
+        Action::EditSnippetCitation { id, citation } => tab.edit_snippet_live(id, |s, _| {
+            if source_of(s).citation != citation {
+                let mut src = source_of(s);
+                src.citation = citation;
+                s.source = Some(src);
+            }
+        }),
+        Action::EditSnippetLink { id, link } => tab.edit_snippet_live(id, |s, before| {
+            // While the typed link is invalid, the link from before the
+            // session stays.
+            let link = normalize_link(&link).unwrap_or_else(|_| {
+                let before = before.snippets.iter().find(|b| b.id == id);
+                before.and_then(|b| b.source.as_ref()?.link.clone())
+            });
+            if source_of(s).link != link {
+                let mut src = source_of(s);
+                src.link = link;
+                s.source = Some(src);
+            }
+        }),
         Action::SetSnippetSource { id, source } => {
             let Some(current) = tab.doc.snippets.iter().find(|s| s.id == id) else {
                 return;
@@ -67,21 +87,27 @@ fn add(tab: &mut DocTab, text: &str) {
     tab.snippet_capped = capped.then_some(id);
 }
 
-/// `source` as stored: citation trimmed, link checked and normalised
-/// (`Err` when it is not a valid link), and `None` when nothing is left
-/// (generic type, no citation, no link).
+/// `source` as stored: link checked and normalised (`Err` when it is not
+/// a valid link), then tidied (see [`tidy_source`]).
 fn normalise(source: Option<SnippetSource>) -> Result<Option<SnippetSource>, ()> {
     let Some(mut s) = source else {
         return Ok(None);
     };
-    s.citation = s.citation.trim().to_owned();
     s.link = match s.link.as_deref().map(normalize_link) {
         None => None,
         Some(Ok(link)) => link,
         Some(Err(_)) => return Err(()),
     };
-    let empty = s.citation.is_empty() && s.link.is_none() && s.source_type == SourceType::Source;
-    Ok((!empty).then_some(s))
+    Ok(tidy_source(Some(s)))
+}
+
+/// `s`'s source, or an empty one with the generic type.
+fn source_of(s: &Snippet) -> SnippetSource {
+    s.source.clone().unwrap_or_else(|| SnippetSource {
+        source_type: SourceType::Source,
+        citation: String::new(),
+        link: None,
+    })
 }
 
 #[cfg(test)]

@@ -117,11 +117,20 @@ pub enum Action {
     TypeText(String),
     /// Add a snippet (an empty one takes focus); text is cut at the limit.
     AddSnippet(String),
-    /// Snippet `id`'s text field changed: show it live, without a history
-    /// step until the editing session ends (like [`Action::EditText`]).
+    /// Snippet `id`'s text, citation or link field changed: show it live,
+    /// without a history step until the snippet's editing session ends
+    /// (like [`Action::EditText`]). A typed link that is not valid is not stored.
     EditSnippetText {
         id: Uuid,
         text: String,
+    },
+    EditSnippetCitation {
+        id: Uuid,
+        citation: String,
+    },
+    EditSnippetLink {
+        id: Uuid,
+        link: String,
     },
     /// Tag snippet `id` with a source (`None` clears). An invalid link is refused.
     SetSnippetSource {
@@ -232,11 +241,10 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
     if let Some(tab) = app.tabs.get_mut(app.active) {
         match action {
             Action::EditText { .. } | Action::TypeText(_) => tab.commit_snippet_edit(),
-            Action::EditSnippetText { .. } => tab.commit_edit(),
-            _ => {
-                tab.commit_edit();
-                tab.commit_snippet_edit();
-            }
+            Action::EditSnippetText { .. }
+            | Action::EditSnippetCitation { .. }
+            | Action::EditSnippetLink { .. } => tab.commit_edit(),
+            _ => tab.commit_edits(),
         }
         connect::end_unless_kept(tab, &action);
     }
@@ -367,6 +375,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         Action::AddSource(_) | Action::SetSourceType(_) => sources::apply(tab, action),
         Action::AddSnippet(_)
         | Action::EditSnippetText { .. }
+        | Action::EditSnippetCitation { .. }
+        | Action::EditSnippetLink { .. }
         | Action::SetSnippetSource { .. }
         | Action::RemoveSnippet(_)
         | Action::MoveSnippet { .. } => snippets::apply(tab, action),

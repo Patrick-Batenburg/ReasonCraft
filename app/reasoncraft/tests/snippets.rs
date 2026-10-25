@@ -5,9 +5,11 @@ use std::time::{Duration, Instant};
 use eframe::egui::{self, Key};
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
+use reasoncraft::actions::Action;
 use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::t;
 use reasoncraft::settings::TextTab;
+use reasoncraft::shell::text_panel::capped_notice;
 use reasoncraft_core::{CardKind, Document, Item, MAX_SNIPPET_CHARS, Parent};
 
 type H = Harness<'static, ReasonCraftApp>;
@@ -71,9 +73,7 @@ fn snippet_edit_is_one_history_entry() {
     h.run();
     assert!(!focused_text_field(&h));
     assert_eq!(undo_len(&h), 1);
-    h.state_mut()
-        .pending
-        .push(reasoncraft::actions::Action::Undo);
+    h.state_mut().pending.push(Action::Undo);
     h.run();
     assert_eq!(texts(&h), ["Robots"]);
 }
@@ -82,7 +82,7 @@ fn snippet_edit_is_one_history_entry() {
 fn oversized_paste_is_capped() {
     let mut h = harness_with(doc_with(&[""]));
     h.run();
-    assert!(h.query_by_label(&t("snippet.capped")).is_none());
+    assert!(h.query_by_label(&capped_notice()).is_none());
     h.get_by_label(&t("snippet.text")).click();
     h.run();
     assert!(focused_text_field(&h));
@@ -93,7 +93,7 @@ fn oversized_paste_is_capped() {
     let paste_time = start.elapsed();
     let len = h.state().tabs[0].doc.snippets[0].text.chars().count();
     assert_eq!(len, MAX_SNIPPET_CHARS);
-    h.get_by_label(&t("snippet.capped"));
+    h.get_by_label(&capped_notice());
 
     // Later frames with the long snippet stay fast.
     let start = Instant::now();
@@ -122,25 +122,68 @@ fn invalid_snippet_link_not_stored() {
     h.get_by_label(&t("snippet.link"))
         .type_text("javascript:alert(1)");
     h.run();
+    // The typed text shows with a hint while the field has focus…
+    h.get_by_label(&t("link.invalid"));
+    assert_eq!(h.state().tabs[0].doc.snippets[0].source, None);
     h.key_press(Key::Enter);
     h.run();
+    // …and is not stored.
     assert_eq!(h.state().tabs[0].doc.snippets[0].source, None);
     assert_eq!(undo_len(&h), 0);
-    h.get_by_label(&t("link.invalid"));
+    assert!(h.query_by_label(&t("link.invalid")).is_none());
+    assert!(!h.state().tabs[0].is_dirty());
+}
 
-    // A citation is stored when its field loses focus.
+#[test]
+fn citation_typing_is_live_and_kept_on_tab_switch() {
+    let mut h = harness_with(doc_with(&["Quote"]));
+    h.run();
     h.get_by_label(&t("snippet.citation")).click();
     h.run();
     h.get_by_label(&t("snippet.citation"))
         .type_text("  Doe 2020 ");
     h.run();
+    let citation = |h: &H| {
+        let s = h.state().tabs[0].doc.snippets[0].source.as_ref();
+        s.map(|s| s.citation.clone())
+    };
+    assert_eq!(citation(&h).as_deref(), Some("  Doe 2020 "), "live");
     assert_eq!(undo_len(&h), 0, "not while typing");
-    h.key_press(Key::Enter);
+    assert!(h.state().tabs[0].is_dirty());
+
+    // Another Text tab, without the field losing focus first.
+    h.state_mut()
+        .pending
+        .push(Action::SetTextTab(TextTab::Outline));
     h.run();
-    let source = h.state().tabs[0].doc.snippets[0].source.clone().unwrap();
-    assert_eq!(source.citation, "Doe 2020");
-    assert_eq!(source.link, None);
+    assert_eq!(citation(&h).as_deref(), Some("Doe 2020"));
     assert_eq!(undo_len(&h), 1);
+    h.state_mut().pending.push(Action::Undo);
+    h.run();
+    assert_eq!(h.state().tabs[0].doc.snippets[0].source, None);
+
+    // Back on the tab, the field shows the stored citation (none).
+    h.state_mut()
+        .pending
+        .push(Action::SetTextTab(TextTab::Snippets));
+    h.run();
+    let label = t("snippet.citation");
+    let value = h.get_by_label(&label).value();
+    assert_eq!(value.as_deref().unwrap_or(""), "");
+}
+
+#[test]
+fn closing_window_while_typing_citation_asks_to_save() {
+    let mut h = harness_with(doc_with(&["Quote"]));
+    h.run();
+    h.get_by_label(&t("snippet.citation")).click();
+    h.run();
+    h.get_by_label(&t("snippet.citation")).type_text("Doe");
+    h.run();
+    h.state_mut().pending.push(Action::CloseWindow);
+    h.run();
+    assert!(h.state().modal.is_some(), "unsaved prompt");
+    assert!(!h.state().close_confirmed());
 }
 
 #[test]
