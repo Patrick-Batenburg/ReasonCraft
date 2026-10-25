@@ -92,7 +92,7 @@ eval-tip-claim = Accept, doubt or reject the selected claim or premise (Alt+1, A
 eval-tip-card = Rate how strongly the selected card's premises carry its conclusion (Alt+1, Alt+2, Alt+3; Alt+0 clears)
 eval-tip-source = Rate how reliable the selected source is (Alt+1, Alt+2, Alt+3; Alt+0 clears)
 eval-tip-clear_selection = Clear the rating of the selected item (Alt+0)
-eval-tip-clear_map = Clear every rating in the map
+eval-tip-clear_map = Clear every rating in the map (Alt+Shift+0)
 
 ## Files
 file-filter = ReasonCraft map

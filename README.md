@@ -8,7 +8,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Reorder.** Drag an item between its siblings, or press Alt+Left / Alt+Right.
 - **Back claims with sources.** Seventeen source types (expert opinion, statistic, publication, web, quote, personal experience and more), each with its own icon. Add a source from the Home ribbon, the "+" menu, Ctrl+Shift+E or the building panel, and change its type later.
 - **Use the building panel.** View → Building panel lists boxes, sources and preset comments. Click an entry to insert it at the selection, or drag it onto the map. Targets that cannot take it show red, and the drop does nothing.
-- **Evaluate.** On the Evaluate tab (or with Alt+1/2/3/0), accept, doubt or reject claims and premises, rate cards strong, weak or nil, and rate sources solid, shaky or nil. Ratings tint boxes, colour borders, label cards and set connector weight. Markers and shading can be switched off, and you can clear one rating or all of them.
+- **Evaluate.** On the Evaluate tab (or with Alt+1/2/3/0, and Alt+Shift+0 to clear the whole map), accept, doubt or reject claims and premises, rate cards strong, weak or nil, and rate sources solid, shaky or nil. Ratings tint boxes, colour borders, label cards and set connector weight. Markers and shading can be switched off, and you can clear one rating or all of them.
 - **Comment.** Add your own comments or one of twelve presets (positive, needs work, problem) to any box. A badge shows the count, and Ctrl+Shift+M opens them. Set the name shown on your comments in File → Settings.
 - **Change types.** Turn a reason into an objection or back again (its strength is kept), and change a source's type.
 - **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
@@ -62,6 +62,7 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Alt+2 | Rate the selection mid: unsure, weak card, shaky source |
 | Alt+3 | Rate the selection low: reject a claim or premise, nil card or source |
 | Alt+0 | Clear the selection's rating |
+| Alt+Shift+0 | Clear every rating in the map |
 | Ctrl+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+S | Save |

@@ -225,6 +225,39 @@ fn alt_other_keys_unmapped() {
 }
 
 #[test]
+fn alt_shift_0_clears_the_whole_map() {
+    let map = Some(Action::ClearEvaluation(ClearScope::Map));
+    let alt_shift = Modifiers::ALT | Modifiers::SHIFT;
+    assert_eq!(key_to_action(Key::Num0, alt_shift, false), map);
+    assert_eq!(key_to_action(Key::Num0, alt_shift, true), None, "editing");
+    // Not with Ctrl: AltGr reports Ctrl+Alt.
+    for mods in [alt_shift | Modifiers::CTRL, alt_shift | Modifiers::COMMAND] {
+        assert_eq!(key_to_action(Key::Num0, mods, false), None, "{mods:?}");
+    }
+    for key in [Key::Num1, Key::ArrowLeft, Key::Equals] {
+        assert_eq!(key_to_action(key, alt_shift, false), None, "{key:?}");
+    }
+    // Shift+0 types a symbol ("=" on a German layout): the physical key counts.
+    for typed in [Key::Equals, Key::Num0] {
+        let key = shortcut_key(typed, Some(Key::Num0), alt_shift);
+        assert_eq!(key, Some(Key::Num0), "{typed:?}");
+        assert_eq!(key_to_action(key.unwrap(), alt_shift, false), map);
+    }
+    // Without Alt+Shift the logical key counts, and Alt-codes are dropped.
+    let alt = Modifiers::ALT;
+    assert_eq!(
+        shortcut_key(Key::Num1, Some(Key::Num1), alt),
+        Some(Key::Num1)
+    );
+    assert_eq!(shortcut_key(Key::End, Some(Key::Num1), alt), None);
+    let shift = Modifiers::SHIFT;
+    assert_eq!(
+        shortcut_key(Key::Tab, Some(Key::Tab), shift),
+        Some(Key::Tab)
+    );
+}
+
+#[test]
 fn ctrl_shift_e_adds_source() {
     use reasoncraft_core::SourceType;
     let cmd_shift = Modifiers::COMMAND | Modifiers::SHIFT;

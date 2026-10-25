@@ -2,7 +2,7 @@
 //! navigation.
 
 use eframe::egui::{self, Event, FocusDirection, Key, Modifiers, Popup};
-use reasoncraft_core::{CardKind, Document, Item, Parent, SourceType};
+use reasoncraft_core::{CardKind, ClearScope, Document, Item, Parent, SourceType};
 
 use super::editor::editor_id;
 use crate::actions::{Action, Dir, Rate, is_enabled};
@@ -20,14 +20,18 @@ use crate::app::ReasonCraftApp;
 /// Ctrl+Shift+M opens the selected box's comments and Ctrl+Shift+K starts
 /// "Connect to…" (not while editing).
 ///
-/// Alt+1/2/3/0 rate the selection and Alt+Left/Right move it one place
-/// among its siblings (not while editing); no other Alt combination is a
-/// command.
+/// Alt+1/2/3/0 rate the selection, Alt+Shift+0 clears the whole map's
+/// evaluation and Alt+Left/Right move the selection one place among its
+/// siblings (not while editing); no other Alt combination is a command.
+/// Alt with Ctrl never is: AltGr reports Ctrl+Alt.
 pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action> {
     use Action as A;
     if mods.alt {
-        if editing || mods.shift || mods.ctrl || mods.command || mods.mac_cmd {
+        if editing || mods.ctrl || mods.command || mods.mac_cmd {
             return None;
+        }
+        if mods.shift {
+            return (key == Key::Num0).then_some(A::ClearEvaluation(ClearScope::Map));
         }
         return Some(match key {
             Key::ArrowLeft => A::Reorder(Dir::Left),
@@ -123,12 +127,9 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                     modifiers,
                     ..
                 } => {
-                    let action = if modifiers.alt && is_alt_code_key(*key, *physical_key) {
-                        None
-                    } else {
-                        key_to_action(*key, *modifiers, editing.is_some())
-                    };
-                    alt_text = matches!(action, Some(Action::Rate(_)));
+                    let action = shortcut_key(*key, *physical_key, *modifiers)
+                        .and_then(|key| key_to_action(key, *modifiers, editing.is_some()));
+                    alt_text = matches!(action, Some(Action::Rate(_) | Action::ClearEvaluation(_)));
                     action
                 }
                 Event::Text(_) if std::mem::take(&mut alt_text) => return false,
@@ -158,6 +159,19 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     ctx.request_repaint();
     out.retain(|a| is_enabled(tab, a));
     out
+}
+
+/// The key [`key_to_action`] looks up for a key event, `None` for none.
+/// Alt+Shift goes by the physical key: a shifted digit arrives as the
+/// symbol it types (")" for Shift+0 on a US layout, which egui has no key
+/// for, "=" on a German one).
+/// Plain Alt drops the keys of a Windows Alt-code (see [`is_alt_code_key`]).
+pub fn shortcut_key(key: Key, physical: Option<Key>, mods: Modifiers) -> Option<Key> {
+    match (mods.alt, mods.shift) {
+        (true, true) => Some(physical.unwrap_or(key)),
+        (true, false) if is_alt_code_key(key, physical) => None,
+        _ => Some(key),
+    }
 }
 
 /// A numpad key typed as part of a Windows Alt-code (Alt+0128) with NumLock
