@@ -1,0 +1,299 @@
+//! The Essay tab: the introduction, one section per branch under the claim
+//! (strongest first), and the conclusion, each map statement with a
+//! paragraph field under it. Below them: paragraphs of items that are not
+//! in the essay right now, and unplaced notes of deleted items.
+//!
+//! The order is cached per document revision (see [`DocTab::essay`]).
+
+use eframe::egui::{
+    self, CollapsingHeader, Frame, Margin, Response, RichText, Role, ScrollArea, Sense, Stroke, Ui,
+    WidgetInfo, pos2, text::LayoutJob, vec2,
+};
+use reasoncraft_core::essay::{ElementRole, EssayElement, EssaySection, EssaySlot};
+use reasoncraft_core::{BoxKind, Document, Item, Role as CardRole};
+
+use super::essay_slot::{self, Statement};
+use crate::actions::Action;
+use crate::canvas::rating::{Mark, card_colour, mark_for, rating_label, split_dots};
+use crate::doc_tab::{DocTab, EssayView};
+use crate::i18n::{FluentArgs, t, t_args};
+use crate::settings::Settings;
+use crate::theme::Tokens;
+
+const HEADING_FONT: f32 = 14.0;
+const DOT_R: f32 = 3.0;
+const DOT_STEP: f32 = 8.0;
+
+/// What one frame of the tab needs to draw statements.
+struct Ctx<'a> {
+    doc: &'a Document,
+    view: &'a EssayView,
+    selection: Option<Item>,
+    settings: &'a Settings,
+    tk: &'a Tokens,
+}
+
+/// Draw the Essay tab for `tab` and queue the user's commands in `out`.
+pub fn show(
+    ui: &mut Ui,
+    tab: &mut DocTab,
+    settings: &Settings,
+    tk: &Tokens,
+    out: &mut Vec<Action>,
+) {
+    tab.essay();
+    let tab = &*tab;
+    let Some((_, view)) = &tab.essay_cache else {
+        return;
+    };
+    let cx = Ctx {
+        doc: &tab.doc,
+        view,
+        selection: tab.selection,
+        settings,
+        tk,
+    };
+    ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            help(ui, tk);
+            ui.add_space(6.0);
+            end_slot(ui, &cx, EssaySlot::Intro, out);
+            if view.sections.is_empty() {
+                ui.label(RichText::new(t("essay.no_sections")).color(tk.text_muted));
+            }
+            for (n, section) in view.sections.iter().enumerate() {
+                ui.add_space(10.0);
+                section_heading(ui, &cx, n + 1, section);
+                for e in &section.elements {
+                    element(ui, &cx, e, out);
+                }
+            }
+            ui.add_space(10.0);
+            end_slot(ui, &cx, EssaySlot::Conclusion, out);
+            inactive(ui, &cx, out);
+            unplaced(ui, &cx, out);
+        });
+}
+
+/// The "How to use" note: the structure the essay follows.
+fn help(ui: &mut Ui, tk: &Tokens) {
+    CollapsingHeader::new(t("essay.help.title"))
+        .id_salt("essay_help")
+        .default_open(true)
+        .show(ui, |ui| {
+            ui.label(RichText::new(t("essay.help")).color(tk.text_muted));
+        });
+}
+
+/// A heading: bold `text`, wrapped, with `dots` strength dots before it in
+/// `colour`. Read by screen readers as a heading named `text`.
+fn heading(ui: &mut Ui, text: &str, dots: usize, colour: egui::Color32, tk: &Tokens) -> Response {
+    let width = ui.available_width();
+    let lead = if dots > 0 {
+        dots as f32 * DOT_STEP + 4.0
+    } else {
+        0.0
+    };
+    let font = egui::FontId::proportional(HEADING_FONT);
+    let job = LayoutJob::simple(text.to_owned(), font, tk.box_text, (width - lead).max(1.0));
+    let galley = ui.painter().layout_job(job);
+    let (rect, resp) = ui.allocate_exact_size(vec2(width, galley.size().y), Sense::hover());
+    resp.widget_info(|| WidgetInfo::labeled(Role::Heading, true, text));
+    let painter = ui.painter();
+    let cy = rect.top() + galley.rows.first().map_or(0.0, |r| r.height()) / 2.0;
+    for i in 0..dots {
+        let x = rect.left() + DOT_R + 1.0 + i as f32 * DOT_STEP;
+        painter.circle_filled(pos2(x, cy), DOT_R, colour);
+    }
+    painter.galley(pos2(rect.left() + lead, rect.top()), galley, tk.box_text);
+    resp
+}
+
+/// The introduction or conclusion: heading, the claim, the paragraph.
+fn end_slot(ui: &mut Ui, cx: &Ctx, slot: EssaySlot, out: &mut Vec<Action>) {
+    let key = if slot == EssaySlot::Intro {
+        "essay.intro"
+    } else {
+        "essay.conclusion"
+    };
+    heading(ui, &t(key), 0, cx.tk.box_text, cx.tk);
+    ui.add_space(2.0);
+    let root = cx.doc.root;
+    if let Some(claim) = cx.doc.boxes.get(&root) {
+        let s = Statement {
+            item: Item::Box(root),
+            text: &claim.text,
+            depth: 0,
+            bar: Some(cx.tk.claim_border),
+            source: None,
+            mark: mark(cx, Item::Box(root)),
+            selected: cx.selection == Some(Item::Box(root)),
+        };
+        essay_slot::statement(ui, &s, cx.tk, out);
+    }
+    let text = cx.doc.essay.text(slot).unwrap_or("");
+    let label = t(&format!("{key}.field"));
+    let hint = t(&format!("{key}.hint"));
+    essay_slot::paragraph(ui, slot, text, 0, &label, &hint, out);
+}
+
+/// The marker for `item`, if markers are shown and it is rated.
+fn mark(cx: &Ctx, item: Item) -> Option<Mark> {
+    match item {
+        Item::Box(b) if cx.settings.show_markers => cx.doc.boxes.get(&b).and_then(mark_for),
+        _ => None,
+    }
+}
+
+/// A section's heading: strength dots, "Section n" and its premises.
+fn section_heading(ui: &mut Ui, cx: &Ctx, n: usize, section: &EssaySection) {
+    let (role, strength) = match section.item {
+        Item::Card(c) => (
+            cx.doc.card_role(c),
+            cx.doc.cards.get(&c).and_then(|c| c.strength),
+        ),
+        Item::Box(_) => (CardRole::Supports, None),
+    };
+    let label = rating_label(role, strength);
+    let (dots, rating) = split_dots(&label);
+    let own: Vec<String> = section
+        .elements
+        .iter()
+        .filter(|e| e.depth == 0)
+        .map(|e| e.text.split_whitespace().collect::<Vec<_>>().join(" "))
+        .filter(|t| !t.is_empty())
+        .collect();
+    let mut args = FluentArgs::new();
+    args.set("n", n);
+    let mut text = t_args("essay.section", &args);
+    if !own.is_empty() {
+        text = format!("{text}: {}", own.join("; "));
+    }
+    let colour = card_colour(cx.tk, role, strength);
+    heading(ui, &text, dots, colour, cx.tk).on_hover_text(rating);
+    ui.add_space(2.0);
+}
+
+/// One element of a section: its statement and its paragraph.
+fn element(ui: &mut Ui, cx: &Ctx, e: &EssayElement, out: &mut Vec<Action>) {
+    let EssaySlot::Item(item) = e.slot else {
+        return;
+    };
+    let node = match item {
+        Item::Box(b) => cx.doc.boxes.get(&b),
+        Item::Card(_) => None,
+    };
+    let source = node.and_then(|n| match &n.kind {
+        BoxKind::Source { source_type } => Some(source_type),
+        _ => None,
+    });
+    let bar = match e.role {
+        ElementRole::Evidence => None,
+        ElementRole::Claim => Some(cx.tk.claim_border),
+        ElementRole::Reason | ElementRole::Counter | ElementRole::Rebuttal => {
+            let role = match e.role {
+                ElementRole::Reason => CardRole::Supports,
+                ElementRole::Counter => CardRole::Opposes,
+                _ => CardRole::Rebuts,
+            };
+            let strength = match item {
+                Item::Box(b) => cx.view.premise_strength.get(&b).copied().flatten(),
+                Item::Card(_) => None,
+            };
+            Some(card_colour(cx.tk, role, strength))
+        }
+    };
+    let s = Statement {
+        item,
+        text: &e.text,
+        depth: e.depth,
+        bar,
+        source,
+        mark: mark(cx, item),
+        selected: cx.selection == Some(item),
+    };
+    ui.add_space(4.0);
+    essay_slot::statement(ui, &s, cx.tk, out);
+    let text = cx.doc.essay.text(e.slot).unwrap_or("");
+    let label = format!("{} {}", t("essay.paragraph_for"), one_line(&e.text));
+    essay_slot::paragraph(ui, e.slot, text, e.depth, &label, &t("essay.hint"), out);
+}
+
+fn one_line(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// A note in a frame, like a snippet card.
+fn note_frame(ui: &mut Ui, tk: &Tokens, body: impl FnOnce(&mut Ui)) {
+    Frame::new()
+        .fill(tk.box_fill)
+        .stroke(Stroke::new(1.0, tk.attachment_line.gamma_multiply(0.5)))
+        .corner_radius(6.0)
+        .inner_margin(Margin::same(6))
+        .show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            body(ui);
+        });
+    ui.add_space(6.0);
+}
+
+/// A list heading with an explanation under it.
+fn list_heading(ui: &mut Ui, tk: &Tokens, key: &str) {
+    ui.add_space(14.0);
+    heading(ui, &t(key), 0, tk.box_text, tk);
+    ui.label(RichText::new(t(&format!("{key}.hint"))).color(tk.text_muted));
+    ui.add_space(4.0);
+}
+
+/// Paragraphs of parked items and of items no longer in an argument:
+/// read-only, with Copy. They count again when the item returns.
+fn inactive(ui: &mut Ui, cx: &Ctx, out: &mut Vec<Action>) {
+    if cx.view.inactive.is_empty() {
+        return;
+    }
+    list_heading(ui, cx.tk, "essay.inactive");
+    for (item, label) in &cx.view.inactive {
+        let Some(text) = cx.doc.essay.text(EssaySlot::Item(*item)) else {
+            continue;
+        };
+        note_frame(ui, cx.tk, |ui| {
+            let s = Statement {
+                item: *item,
+                text: label,
+                depth: 0,
+                bar: None,
+                source: None,
+                mark: None,
+                selected: cx.selection == Some(*item),
+            };
+            essay_slot::statement(ui, &s, cx.tk, out);
+            ui.label(text);
+            if ui.button(t("essay.copy")).clicked() {
+                ui.ctx().copy_text(text.to_owned());
+            }
+        });
+    }
+}
+
+/// Notes whose item was deleted, with Copy and Remove.
+fn unplaced(ui: &mut Ui, cx: &Ctx, out: &mut Vec<Action>) {
+    if cx.doc.essay.unplaced.is_empty() {
+        return;
+    }
+    list_heading(ui, cx.tk, "essay.unplaced");
+    for (i, (label, text)) in cx.doc.essay.unplaced.iter().enumerate() {
+        note_frame(ui, cx.tk, |ui| {
+            ui.label(RichText::new(label).strong().color(cx.tk.text_muted));
+            ui.label(text);
+            ui.horizontal(|ui| {
+                if ui.button(t("essay.copy")).clicked() {
+                    ui.ctx().copy_text(text.clone());
+                }
+                if ui.button(t("essay.remove")).clicked() {
+                    out.push(Action::RemoveUnplaced(i));
+                }
+            });
+        });
+    }
+}

@@ -6,7 +6,7 @@
 use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::{Document, Item, NodeId, Uuid};
 
-use super::{DocTab, meta_edit, snippet_edit};
+use super::{DocTab, essay_edit, meta_edit, snippet_edit};
 
 /// What the running edit session edits.
 #[derive(Clone, Debug, PartialEq)]
@@ -79,7 +79,7 @@ impl DocTab {
             }
             EditSession::Snippet { id } => snippet_edit::differs(before, &self.doc, *id),
             EditSession::Meta => meta_edit::pending(before, &self.doc),
-            EditSession::Essay { .. } => *before != self.doc,
+            EditSession::Essay { slot } => essay_edit::pending(before, &self.doc, *slot),
         }
     }
 
@@ -99,8 +99,8 @@ impl DocTab {
             }
             EditSession::Snippet { id } => self.finish_snippet(id, &before),
             EditSession::Meta => self.finish_meta(&before),
-            EditSession::Essay { .. } => {
-                let changed = before != self.doc;
+            EditSession::Essay { slot } => {
+                let changed = essay_edit::pending(&before, &self.doc, slot);
                 self.record_if(changed, &before)
             }
         }

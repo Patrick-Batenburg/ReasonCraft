@@ -1,10 +1,12 @@
 //! The Text panel on the right: a tab strip (Outline, Essay, Check,
 //! Snippets) and the active tab's body.
 
-use eframe::egui::{self, RichText, Stroke, Ui};
+use eframe::egui::{self, Stroke, Ui};
 
 mod check;
 mod drag_chip;
+mod essay;
+mod essay_slot;
 mod outline;
 mod snippet_card;
 mod snippets;
@@ -42,14 +44,12 @@ pub fn show(
 ) {
     tab_strip(ui, settings.text_tab, tk, out);
     ui.add_space(8.0);
-    let body = match settings.text_tab {
-        TextTab::Outline => return outline::show(ui, tab, settings, tk, out),
-        TextTab::Check => return check::show(ui, tab, settings, tk, out),
-        TextTab::Snippets => return snippets::show(ui, tab, tk, out),
-        TextTab::Essay => t("text.essay.coming"),
-    };
-    ui.label(RichText::new(body).color(tk.text_muted));
-    ui.take_available_space();
+    match settings.text_tab {
+        TextTab::Outline => outline::show(ui, tab, settings, tk, out),
+        TextTab::Check => check::show(ui, tab, settings, tk, out),
+        TextTab::Snippets => snippets::show(ui, tab, tk, out),
+        TextTab::Essay => essay::show(ui, tab, settings, tk, out),
+    }
 }
 
 fn tab_strip(ui: &mut Ui, active: TextTab, tk: &Tokens, out: &mut Vec<Action>) {

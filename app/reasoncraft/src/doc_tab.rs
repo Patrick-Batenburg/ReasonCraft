@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use eframe::egui::Rect;
 use reasoncraft_core::checks::{CheckSet, Issue, run_checks};
+use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::meta::LANGUAGES;
 use reasoncraft_core::outline::{OutlineLine, OutlineOptions, build_outline};
 use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Package, Uuid};
@@ -11,9 +12,11 @@ use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Packa
 use crate::canvas::Camera;
 use crate::i18n::t;
 
+mod essay_edit;
 mod meta_edit;
 mod session;
 mod snippet_edit;
+pub use essay_edit::EssayView;
 pub use session::EditSession;
 pub use snippet_edit::{cap_snippet, tidy_source};
 
@@ -69,6 +72,9 @@ pub struct DocTab {
     /// The issues last found, with the revision and checks they were found
     /// for (see [`Self::issues`]).
     pub issue_cache: Option<(u64, CheckSet, Vec<Issue>)>,
+    /// The Essay tab's view, with the revision it was built for (see
+    /// [`Self::essay`]).
+    pub essay_cache: Option<(u64, EssayView)>,
 }
 
 impl Default for DocTab {
@@ -131,6 +137,7 @@ impl DocTab {
             revision: 0,
             outline_cache: None,
             issue_cache: None,
+            essay_cache: None,
         }
     }
 
@@ -248,9 +255,13 @@ impl DocTab {
         if self.selection.is_some_and(|s| !self.contains(s)) {
             self.selection = Some(Item::Box(self.doc.root));
         }
-        self.drop_session_if(
-            |doc, s| matches!(s, EditSession::Box { node, .. } if !doc.boxes.contains_key(node)),
-        );
+        self.drop_session_if(|doc, s| match s {
+            EditSession::Box { node, .. } => !doc.boxes.contains_key(node),
+            EditSession::Essay {
+                slot: EssaySlot::Item(Item::Box(b)),
+            } => !doc.boxes.contains_key(b),
+            _ => false,
+        });
         if self
             .comments_open
             .is_some_and(|b| !self.doc.boxes.contains_key(&b))

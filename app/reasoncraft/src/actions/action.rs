@@ -1,6 +1,7 @@
 //! The commands the user can give (see [`super::apply`]).
 
 use reasoncraft_core::checks::CheckKind;
+use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::{
     Acceptance, CardKind, CardStrength, ClearScope, Item, NewLoose, NodeId, Parent, SnippetSource,
     SourceRating, SourceType, Uuid, Verdict,
@@ -113,6 +114,15 @@ pub enum Action {
         source: Option<SnippetSource>,
     },
     RemoveSnippet(Uuid),
+    /// The paragraph field for `slot` in the Essay tab changed: show it
+    /// live, without a history step until the paragraph's editing session
+    /// ends (like [`Action::EditText`]). Card slots are refused.
+    EditEssayText {
+        slot: EssaySlot,
+        text: String,
+    },
+    /// Delete the unplaced essay note at this index.
+    RemoveUnplaced(usize),
     /// Move snippet `id` to `index` in the list (with it taken out).
     MoveSnippet {
         id: Uuid,

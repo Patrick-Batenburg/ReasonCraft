@@ -14,6 +14,7 @@ pub use box_group::{FakeOpener, LinkOpener, SystemOpener};
 pub use enabled::is_enabled;
 mod comments;
 mod editing;
+mod essay;
 mod evaluate;
 mod export;
 pub use export::poll_exports;
@@ -117,7 +118,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
 
 /// Whether `action` is live text for the kind of session that is running
 /// (box text for a box session, snippet fields for a snippet session,
-/// title and author for a title/author session), so it must not end it.
+/// title and author for a title/author session, paragraph text for an
+/// essay session), so it must not end it.
 fn continues_session(action: &Action, session: Option<&EditSession>) -> bool {
     matches!(
         (action, session),
@@ -130,6 +132,10 @@ fn continues_session(action: &Action, session: Option<&EditSession>) -> bool {
                 | Action::EditSnippetLink { .. },
             Some(EditSession::Snippet { .. })
         ) | (Action::SetDocMeta { .. }, Some(EditSession::Meta))
+            | (
+                Action::EditEssayText { .. },
+                Some(EditSession::Essay { .. })
+            )
     )
 }
 
@@ -182,6 +188,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetSnippetSource { .. }
         | Action::RemoveSnippet(_)
         | Action::MoveSnippet { .. } => snippets::apply(tab, action),
+        Action::EditEssayText { .. } | Action::RemoveUnplaced(_) => essay::apply(tab, action),
         Action::New
         | Action::Open
         | Action::Save

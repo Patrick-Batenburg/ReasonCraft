@@ -49,13 +49,13 @@ fn text_panel_tabs_switch_and_persist() {
     assert!(tab_selected(&h, "text.tab.check"));
     assert!(!tab_selected(&h, "text.tab.outline"));
 
-    // Essay shows its notice for this whole step.
+    // Essay opens with its "How to use" note.
     h.get_by_role_and_label(egui::accesskit::Role::Tab, &t("text.tab.essay"))
         .click();
     h.run();
     assert_eq!(h.state().settings.text_tab, TextTab::Essay);
-    assert_ne!(t("text.essay.coming"), "text.essay.coming");
-    h.get_by_label(&t("text.essay.coming"));
+    assert_ne!(t("essay.help.title"), "essay.help.title");
+    h.get_by_label(&t("essay.help.title"));
 
     // The tab is a setting: it survives a save and restore.
     h.state_mut()
