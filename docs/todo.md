@@ -1,7 +1,8 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor
+**Active plan:** [docs/plans/2026-10-25-step2-sources-evaluation.md](plans/2026-10-25-step2-sources-evaluation.md) — step 2, sources and evaluation
+**Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
 ## Step 1 — Core editor
 - [x] Task 1: Workspace, licences and core ID/model types
@@ -18,7 +19,19 @@
 - [x] Task 12: End-to-end verification and docs
 
 ## Later steps (plans to be written)
-- [ ] Step 2 — Sources, evaluation, notes, comments, building panel
+- [ ] Step 2 — Sources, evaluation, notes, comments, building panel ([plan](plans/2026-10-25-step2-sources-evaluation.md))
+  - [ ] Task 1: Core model — source types, ratings, comments, links, images
+  - [ ] Task 2: Layout carries roles and strength; image space
+  - [ ] Task 3: Package format — assets and unknown zip entries
+  - [ ] Task 4: Settings, evaluation actions, Evaluate ribbon tab, keyboard
+  - [ ] Task 5: Evaluation visuals on the map
+  - [ ] Task 6: Sources — adding, icons, changing type
+  - [ ] Task 7: Comments with presets; author name setting
+  - [ ] Task 8: Building panel with drag-and-drop
+  - [ ] Task 9: Sibling reorder, Connect to…, shortcut rebinding
+  - [ ] Task 10: Change card type and links
+  - [ ] Task 11: Images in boxes
+  - [ ] Task 12: End-to-end verification and docs
 - [ ] Step 3 — Text panel: Outline, Snippets, Check
 - [ ] Step 4 — Output: exports, print, Essay tab
 - [ ] Step 5 — Interchange & polish: Argdown, connector styles, layout directions, minimap, numbering, find/replace, spellcheck, autosave, Search commands
