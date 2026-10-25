@@ -30,7 +30,7 @@
   - [x] Task 8: Building panel with drag-and-drop
   - [x] Task 9: Sibling reorder, Connect to…, shortcut rebinding
   - [x] Task 10: Change card type and links
-  - [ ] Task 11: Images in boxes
+  - [x] Task 11: Images in boxes
   - [ ] Task 12: End-to-end verification and docs
 - [ ] Step 3 — Text panel: Outline, Snippets, Check
 - [ ] Step 4 — Output: exports, print, Essay tab
