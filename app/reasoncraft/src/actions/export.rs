@@ -228,11 +228,15 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
 
 /// The window is closing and every tab is resolved: close now, or keep
 /// the window open with a waiting prompt until the running exports finish.
+/// An export error not shown yet (it failed behind another prompt) stops
+/// the close: the next [`poll_exports`] shows it.
 pub(crate) fn close_after_exports(app: &mut ReasonCraftApp) {
     if app.export.busy() {
         app.modal = Some(Modal::ExportsRunning);
-    } else {
-        app.modal = None;
+        return;
+    }
+    app.modal = None;
+    if app.export.waiting_errors.is_empty() {
         app.confirm_close();
     }
 }

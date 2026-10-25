@@ -236,3 +236,41 @@ fn two_tabs_waiting_for_images_both_save_then_the_window_closes() {
     assert!(saved_image(&a, premise_a));
     assert!(saved_image(&b, premise_b));
 }
+
+#[test]
+fn an_export_failing_behind_the_unsaved_prompt_still_shows() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let mut app = ReasonCraftApp::new_for_test_with(Box::new(fake.clone()));
+    app.export.delay = Some(Duration::from_millis(100));
+    app.left_panel = false;
+    let mut h = harness(app);
+    fake.set_export(dir.path().join("missing-folder").join("map.png"));
+    h.state_mut().push(Action::RunExport(ExportRequest {
+        format: ExportFormat::Png,
+        options: ExportOptions::default(),
+        page: PageSetup::default(),
+    }));
+    h.step();
+    // Unsaved work, so the close asks first.
+    h.state_mut().push(Action::AddSnippet("unsaved".into()));
+    h.state_mut().push(Action::CloseWindow);
+    h.step();
+    assert!(matches!(
+        h.state().modal,
+        Some(Modal::Unsaved { window: true, .. })
+    ));
+    // The export fails while the prompt is open: its message waits.
+    step_until(&mut h, |app| !app.export.busy());
+    assert_eq!(h.state().export.waiting_errors.len(), 1);
+    h.state_mut()
+        .push(Action::ResolveUnsaved(UnsavedChoice::Discard));
+    h.step();
+    assert!(!h.state().close_confirmed(), "the failure was never shown");
+    h.step();
+    assert!(
+        matches!(h.state().modal, Some(Modal::Error { .. })),
+        "{:?}",
+        h.state().modal
+    );
+}
