@@ -6,8 +6,7 @@ use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
 use crate::theme::ThemeChoice;
 
-pub const ZOOM_MIN: f32 = 0.1;
-pub const ZOOM_MAX: f32 = 4.0;
+pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 const ZOOM_STEP: f32 = 1.25;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -57,6 +56,9 @@ pub enum Action {
     TogglePanel(Panel),
     /// Switch to the tab at this index.
     ActivateTab(usize),
+    /// Open the built-in sample map in a new tab (debug builds only).
+    #[cfg(debug_assertions)]
+    LoadSampleMap,
 }
 
 /// Carry out `action`. Document edits go through [`DocTab::edit`], which
@@ -76,6 +78,12 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             }
         }
         Action::SetTheme(choice) => app.theme = choice,
+        #[cfg(debug_assertions)]
+        Action::LoadSampleMap => {
+            let doc = reasoncraft_core::fixtures::sample_iot_like(117);
+            app.tabs.push(DocTab::from_document(doc));
+            app.active = app.tabs.len() - 1;
+        }
         Action::TogglePanel(Panel::Left) => app.left_panel = !app.left_panel,
         Action::TogglePanel(Panel::Right) => app.right_panel = !app.right_panel,
         other => {
@@ -148,11 +156,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         Action::Navigate(_) => {}
         Action::ZoomIn => set_zoom(tab, tab.camera.zoom * ZOOM_STEP),
         Action::ZoomOut => set_zoom(tab, tab.camera.zoom / ZOOM_STEP),
-        // Fitting needs the layout; Task 9 replaces this with a real fit.
-        Action::ZoomFit => {
-            tab.camera.offset = eframe::egui::Vec2::ZERO;
-            set_zoom(tab, 1.0);
-        }
+        // The canvas fits on its next frame, with the layout of that frame.
+        Action::ZoomFit => tab.fit_pending = true,
         Action::Zoom100 => set_zoom(tab, 1.0),
         Action::SetZoom(z) => set_zoom(tab, z),
         Action::New
@@ -163,11 +168,19 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::ActivateTab(_)
         | Action::SetTheme(_)
         | Action::TogglePanel(_) => unreachable!("app-level action"),
+        #[cfg(debug_assertions)]
+        Action::LoadSampleMap => unreachable!("app-level action"),
     }
 }
 
+/// Zoom around the centre of the view (or the world origin before the
+/// canvas has been shown), clamped to the zoom range.
 fn set_zoom(tab: &mut DocTab, zoom: f32) {
-    tab.camera.zoom = zoom.clamp(ZOOM_MIN, ZOOM_MAX);
+    let centre = tab
+        .viewport
+        .map_or(eframe::egui::Pos2::ZERO, |v| v.center());
+    let factor = zoom.clamp(ZOOM_MIN, ZOOM_MAX) / tab.camera.zoom;
+    tab.camera.zoom_at(centre, factor);
 }
 
 fn select_new(tab: &mut DocTab, item: Option<Item>) {
@@ -360,5 +373,24 @@ mod tests {
         apply(&mut a, Action::Zoom100);
         apply(&mut a, Action::ZoomIn);
         assert!((tab(&a).camera.zoom - 1.25).abs() < 1e-6);
+    }
+
+    #[test]
+    fn zoom_buttons_keep_view_centre_fixed() {
+        use eframe::egui::{Rect, pos2, vec2};
+        let mut a = app();
+        let view = Rect::from_min_size(pos2(220.0, 140.0), vec2(800.0, 500.0));
+        a.tabs[0].viewport = Some(view);
+        a.tabs[0].camera.offset = vec2(300.0, 180.0);
+        let world = a.tabs[0].camera.screen_to_world(view.center());
+        apply(&mut a, Action::ZoomIn);
+        apply(&mut a, Action::ZoomIn);
+        apply(&mut a, Action::ZoomOut);
+        let cam = tab(&a).camera;
+        assert!((cam.zoom - 1.25).abs() < 1e-5);
+        assert!((cam.world_to_screen(world) - view.center()).length() < 1e-3);
+        a.tabs[0].fit_pending = false;
+        apply(&mut a, Action::ZoomFit);
+        assert!(tab(&a).fit_pending);
     }
 }

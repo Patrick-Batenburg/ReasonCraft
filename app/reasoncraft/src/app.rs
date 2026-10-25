@@ -4,6 +4,7 @@ use eframe::egui;
 use serde::{Deserialize, Serialize};
 
 use crate::actions::{self, Action};
+use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
 use crate::shell;
 use crate::theme::{self, ThemeChoice, Tokens};
@@ -42,6 +43,8 @@ pub struct ReasonCraftApp {
     pub ribbon_tab: RibbonTab,
     /// The tokens for the current theme, resolved at the start of each frame.
     pub tokens: Tokens,
+    /// Text heights measured by the canvas, shared by all tabs.
+    pub measure_cache: MeasureCache,
     applied: Option<Tokens>,
     window_title: String,
 }
@@ -57,6 +60,7 @@ impl ReasonCraftApp {
             pending: Vec::new(),
             ribbon_tab: RibbonTab::default(),
             tokens: theme::resolve(settings.theme, true),
+            measure_cache: MeasureCache::default(),
             applied: None,
             window_title: String::new(),
         }

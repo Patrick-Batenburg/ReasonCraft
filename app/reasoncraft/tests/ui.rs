@@ -63,3 +63,66 @@ fn missing_i18n_key_returns_key() {
     assert_eq!(t("untitled"), "Untitled");
     assert_eq!(t("ribbon.coming_soon"), "Coming soon");
 }
+
+fn harness_with(doc: reasoncraft_core::Document) -> Harness<'static, ReasonCraftApp> {
+    let mut app = ReasonCraftApp::new_for_test();
+    app.tabs[0] = reasoncraft::doc_tab::DocTab::from_document(doc);
+    Harness::builder()
+        .with_size(egui::vec2(1400.0, 900.0))
+        .with_max_steps(32)
+        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
+}
+
+#[test]
+fn canvas_renders_117_box_fixture_without_panic() {
+    let doc = reasoncraft_core::fixtures::sample_iot_like(117);
+    assert!(doc.boxes.len() >= 117);
+    let mut h = harness_with(doc);
+    h.run_steps(3);
+    let tab = &h.state().tabs[0];
+    let viewport = tab.viewport.expect("canvas reports its viewport");
+    assert!(viewport.width() > 400.0 && viewport.height() > 300.0);
+    // A new document is fitted on its first frame; this map is too wide for 100%.
+    assert!(!tab.fit_pending);
+    assert!(tab.camera.zoom < 1.0);
+}
+
+/// Press and release the primary button at `pos`.
+fn click_at(h: &mut Harness<'static, ReasonCraftApp>, pos: egui::Pos2) {
+    h.event(egui::Event::PointerMoved(pos));
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+    h.run();
+}
+
+#[test]
+fn canvas_click_selects_box_and_empty_canvas_clears() {
+    use reasoncraft::canvas::measure::{EguiMeasure, MeasureCache};
+    use reasoncraft_core::{Item, LayoutParams, layout};
+
+    let doc = reasoncraft_core::fixtures::sample_iot_like(40);
+    let mut h = harness_with(doc);
+    h.run();
+    let (target, screen, corner) = {
+        let tab = &h.state().tabs[0];
+        let mut cache = MeasureCache::default();
+        let l = layout(
+            &tab.doc,
+            &EguiMeasure::new(&h.ctx, &mut cache),
+            &LayoutParams::default(),
+        );
+        let (&id, rect) = l.boxes.iter().nth(5).unwrap();
+        let screen = tab.camera.world_to_screen(rect.center());
+        (id, screen, tab.viewport.unwrap().min + egui::vec2(4.0, 4.0))
+    };
+    click_at(&mut h, screen);
+    assert_eq!(h.state().tabs[0].selection, Some(Item::Box(target)));
+    click_at(&mut h, corner);
+    assert_eq!(h.state().tabs[0].selection, None);
+}

@@ -227,6 +227,12 @@ fn view(ui: &mut Ui, app: &mut ReasonCraftApp) {
             }
         }
     });
+    #[cfg(debug_assertions)]
+    group(ui, &tk, &t("group.debug"), |ui| {
+        if large(ui, &tk, Icon::Open, &t("action.load_sample"), true, false).clicked() {
+            out.push(Action::LoadSampleMap);
+        }
+    });
     app.pending.extend(out);
 }
 

@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use eframe::egui::Rect;
 use reasoncraft_core::{Document, EditError, History, Item, NodeId};
 
 use crate::canvas::Camera;
@@ -19,6 +20,11 @@ pub struct DocTab {
     /// The box whose text is being edited inline.
     pub editing: Option<NodeId>,
     pub camera: Camera,
+    /// The screen rect the canvas showed this tab in last frame.
+    pub viewport: Option<Rect>,
+    /// Fit the map to the view on the next canvas frame (set for new
+    /// documents and by Zoom Fit, so the fit uses the fresh layout).
+    pub fit_pending: bool,
 }
 
 impl Default for DocTab {
@@ -30,7 +36,11 @@ impl Default for DocTab {
 impl DocTab {
     /// A new, clean document with an empty claim, which is selected.
     pub fn new() -> Self {
-        let doc = Document::new("");
+        Self::from_document(Document::new(""))
+    }
+
+    /// A clean tab showing `doc`, with its claim selected.
+    pub fn from_document(doc: Document) -> Self {
         let selection = Some(Item::Box(doc.root));
         Self {
             doc,
@@ -39,6 +49,8 @@ impl DocTab {
             selection,
             editing: None,
             camera: Camera::default(),
+            viewport: None,
+            fit_pending: true,
         }
     }
 

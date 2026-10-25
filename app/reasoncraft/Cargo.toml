@@ -6,7 +6,9 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-reasoncraft_core = { path = "../../crates/reasoncraft_core" }
+# `test-fixtures` also feeds the debug-only "Load sample map" command; the
+# module is unused (and stripped) in release builds.
+reasoncraft_core = { path = "../../crates/reasoncraft_core", features = ["test-fixtures"] }
 eframe.workspace = true
 serde.workspace = true
 fluent-bundle = "0.16"
@@ -14,6 +16,7 @@ unic-langid = "0.9"
 
 [dev-dependencies]
 egui_kittest = "0.37"
+reasoncraft_core = { path = "../../crates/reasoncraft_core", features = ["test-fixtures"] }
 
 [lints]
 workspace = true

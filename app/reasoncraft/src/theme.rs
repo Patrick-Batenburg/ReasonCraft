@@ -34,6 +34,9 @@ pub struct Tokens {
     pub objection: Color32,
     pub rebuttal: Color32,
     pub attachment_line: Color32,
+    /// Sticky-note fill and its text.
+    pub note: Color32,
+    pub note_text: Color32,
 }
 
 const fn hex(rgb: u32) -> Color32 {
@@ -58,6 +61,8 @@ impl Tokens {
             objection: hex(0xE05A5A),
             rebuttal: hex(0xE0A05A),
             attachment_line: hex(0x5C5C66),
+            note: hex(0xD6C267),
+            note_text: hex(0x26220F),
         }
     }
 
@@ -78,6 +83,8 @@ impl Tokens {
             objection: hex(0xB8322A),
             rebuttal: hex(0x9A5200),
             attachment_line: hex(0x9A9AA4),
+            note: hex(0xFFF1A6),
+            note_text: hex(0x3A3412),
         }
     }
 }
@@ -150,6 +157,13 @@ mod tests {
                     assert!(c >= min, "{fg:?} on {bg:?}: {c:.2} (dark = {})", t.dark);
                 }
             }
+        }
+        for t in [Tokens::dark(), Tokens::light()] {
+            assert!(
+                contrast(t.note_text, t.note) >= 4.5,
+                "note (dark = {})",
+                t.dark
+            );
         }
         // Light-theme role colours are also used for label text.
         let t = Tokens::light();

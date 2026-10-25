@@ -7,13 +7,8 @@ pub mod statusbar;
 pub mod tabs;
 pub mod titlebar;
 
-use eframe::egui::{
-    self, Color32, CornerRadius, FontId, Frame, Margin, Response, Role, Sense, Stroke, StrokeKind,
-    Vec2, WidgetInfo,
-};
-use reasoncraft_core::Item;
+use eframe::egui::{self, Color32, Frame, Margin, Response, Role, Sense, Vec2, WidgetInfo};
 
-use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::i18n::t;
 use crate::theme::Tokens;
@@ -98,52 +93,5 @@ pub fn show_central(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     egui::CentralPanel::default()
         .frame(Frame::new().fill(tk.canvas))
-        .show(ui, |ui| map_placeholder(ui, app, &tk));
-}
-
-/// Until the canvas lands (Task 9): the claim box, and a click target to
-/// clear the selection.
-fn map_placeholder(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
-    let area = ui.max_rect();
-    let background = ui.interact(area, ui.scope_id().with("canvas_bg"), Sense::click());
-    let tab = app.active_tab();
-    let root = tab.doc.root;
-    let text = tab
-        .doc
-        .boxes
-        .get(&root)
-        .map(|b| b.text.clone())
-        .unwrap_or_default();
-    let selected = tab.selection == Some(Item::Box(root));
-    let (shown, colour) = if text.is_empty() {
-        (t("canvas.empty_claim"), tk.text_muted)
-    } else {
-        (text, tk.box_text)
-    };
-
-    let galley = ui
-        .painter()
-        .layout(shown.clone(), FontId::proportional(15.0), colour, 260.0);
-    let size = galley.size() + Vec2::new(32.0, 24.0);
-    let rect = egui::Rect::from_center_size(
-        area.center_top() + Vec2::new(0.0, 60.0 + size.y / 2.0),
-        size,
-    );
-    let claim = ui.interact(rect, ui.scope_id().with("claim_box"), Sense::click());
-    claim.widget_info(|| WidgetInfo::selected(Role::Button, true, selected, &shown));
-    let painter = ui.painter();
-    painter.rect_filled(rect, CornerRadius::same(6), tk.box_fill);
-    let border = if selected {
-        Stroke::new(2.0, tk.accent)
-    } else {
-        Stroke::new(1.25, tk.claim_border)
-    };
-    painter.rect_stroke(rect, CornerRadius::same(6), border, StrokeKind::Inside);
-    painter.galley(rect.center() - galley.size() / 2.0, galley, colour);
-
-    if claim.clicked() {
-        app.push(Action::Select(Some(Item::Box(root))));
-    } else if background.clicked() {
-        app.push(Action::Select(None));
-    }
+        .show(ui, |ui| crate::canvas::show(ui, app));
 }

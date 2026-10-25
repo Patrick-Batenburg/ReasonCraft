@@ -32,6 +32,7 @@ group-editing = Editing
 group-zoom = Zoom
 group-theme = Theme
 group-panels = Panels
+group-debug = Debug
 
 ## Commands
 action-new = New
@@ -56,6 +57,7 @@ action-zoom_in = Zoom in
 action-zoom_out = Zoom out
 action-panel_left = Building panel
 action-panel_right = Text panel
+action-load_sample = Load sample map (debug)
 
 ## Backstage
 backstage-back = Back
@@ -72,6 +74,21 @@ panel-coming_later = Coming in a later version.
 
 ## Canvas
 canvas-empty_claim = Type your main claim
+canvas-label = Argument map
+parking-title = Not connected
+
+## Card roles
+role-supports = supports
+role-opposes = opposes
+role-rebuts = rebuts
+
+## Source types
+source-publication = Publication
+source-website = Website
+source-book = Book
+source-quote = Quote
+source-expert = Expert
+source-data = Data
 
 ## Status bar
 status-boxes = { $count ->
