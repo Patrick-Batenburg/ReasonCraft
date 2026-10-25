@@ -9,7 +9,7 @@
 - [x] Task 3: Move, connect, parking area and removal
 - [x] Task 4: Undo/redo history
 - [x] Task 5: `.rcraft` file format
-- [ ] Task 6: Automatic layout
+- [x] Task 6: Automatic layout
 - [ ] Task 7: Connector geometry
 - [ ] Task 8: App shell (theme, i18n, title bar, tabs, ribbon, status bar)
 - [ ] Task 9: Canvas (camera, measurement, style-D painting, hit testing)
