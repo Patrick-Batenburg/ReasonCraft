@@ -7,6 +7,11 @@ use serde_json::{Map, Value};
 
 use crate::ids::{CardId, Item, NodeId, Parent};
 
+/// The current time as an RFC 3339 string with second precision.
+pub fn now_rfc3339() -> String {
+    Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)
+}
+
 /// Current file schema version.
 pub const SCHEMA_VERSION: u32 = 1;
 
@@ -137,7 +142,7 @@ impl Document {
         let root = NodeId::new();
         let mut boxes = IndexMap::new();
         boxes.insert(root, BoxNode::new(root, BoxKind::Claim, claim_text));
-        let now = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
+        let now = now_rfc3339();
         Self {
             schema_version: SCHEMA_VERSION,
             meta: DocMeta {
