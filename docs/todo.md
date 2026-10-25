@@ -39,7 +39,7 @@
   - [x] Task 4: Core checks
   - [x] Task 5: Check tab, settings and status bar count
   - [x] Task 6: Core snippets
-  - [ ] Task 7: Snippets tab
+  - [x] Task 7: Snippets tab
   - [ ] Task 8: Drag a snippet selection onto the map
   - [ ] Task 9: Document language
   - [ ] Task 10: End-to-end verification and docs
