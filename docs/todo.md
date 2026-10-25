@@ -4,7 +4,7 @@
 **Active plan:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor
 
 ## Step 1 — Core editor
-- [ ] Task 1: Workspace, licences and core ID/model types
+- [x] Task 1: Workspace, licences and core ID/model types
 - [ ] Task 2: Structure rules and add operations
 - [ ] Task 3: Move, connect, parking area and removal
 - [ ] Task 4: Undo/redo history
