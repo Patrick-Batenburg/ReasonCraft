@@ -1,10 +1,11 @@
-//! The Home ribbon tab: clipboard, adding items and editing.
+//! The Home ribbon tab: clipboard, adding items, editing and the
+//! selected box's type and link.
 
-use eframe::egui::{Popup, Ui};
-use reasoncraft_core::SourceType;
+use eframe::egui::{Button, Popup, Ui};
+use reasoncraft_core::{BoxKind, CardKind, Item, SourceType};
 
 use super::{group, large, large_menu, small};
-use crate::actions::{Action, is_enabled};
+use crate::actions::{Action, is_enabled, selected_card};
 use crate::app::ReasonCraftApp;
 use crate::canvas::plus_menu::source_button;
 use crate::i18n::t;
@@ -96,5 +97,56 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             }
         });
     });
+    box_group(ui, app, &mut out);
     app.pending.extend(out);
+}
+
+/// "Type ▾" (a card's kind, a source's type) and "Link".
+fn box_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
+    let tk = app.tokens;
+    let tab = app.active_tab();
+    let source = match tab.selection {
+        Some(Item::Box(b)) => match &tab.doc.boxes.get(&b).map(|n| &n.kind) {
+            Some(BoxKind::Source { source_type }) => Some(source_type.clone()),
+            _ => None,
+        },
+        _ => None,
+    };
+    let card_kinds = [
+        (CardKind::Reason, "card_kind.reason"),
+        (CardKind::Objection, "card_kind.objection"),
+    ];
+    let current_kind = selected_card(tab).map(|c| tab.doc.cards[&c].kind.clone());
+    group(ui, &tk, &t("group.box"), |ui| {
+        let label = t("action.box_type");
+        let resp = large_menu(
+            ui,
+            &tk,
+            Icon::BoxType,
+            &label,
+            current_kind.is_some() || source.is_some(),
+        );
+        Popup::menu(&resp).show(|ui| {
+            if let Some(current) = &source {
+                for st in SourceType::ALL {
+                    let button = source_button(&st).selected(&st == current);
+                    if ui.add(button).clicked() {
+                        out.push(Action::SetSourceType(st));
+                    }
+                }
+            } else {
+                for (kind, key) in card_kinds {
+                    let selected = current_kind.as_ref() == Some(&kind);
+                    if ui.add(Button::selectable(selected, t(key))).clicked() {
+                        out.push(Action::SetCardKind(kind));
+                    }
+                }
+            }
+        });
+        let link = Action::EditLink;
+        let label = t("action.link");
+        if large(ui, &tk, Icon::Link, &label, is_enabled(tab, &link), false).clicked() {
+            out.push(link);
+        }
+    });
 }

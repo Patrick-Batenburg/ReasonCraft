@@ -11,7 +11,7 @@ use crate::shell::source_icons::source_atom;
 use crate::theme::Tokens;
 
 /// Diameter of the "+" button, in screen px.
-const BUTTON_PX: f32 = 20.0;
+pub(super) const BUTTON_PX: f32 = 20.0;
 
 /// The menu entries for the current selection: label key and action.
 /// Entries that do not apply to this kind of item are left out; entries the

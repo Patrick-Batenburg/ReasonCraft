@@ -268,3 +268,30 @@ fn panel_drop_needs_primary_release() {
     assert!(tab.doc.boxes[&root].children.is_empty());
     assert_eq!(tab.history.undo.len(), 0);
 }
+
+/// Inline-editing a parked box, then clicking the ribbon's "Connect to…":
+/// the editor losing focus must not end the mode; the edit is committed.
+#[test]
+fn connect_from_ribbon_while_editing_stays_on() {
+    let mut d = Document::new("Claim");
+    let note = d.add_loose(NewLoose::Note, "n");
+    let Item::Box(nb) = note else { unreachable!() };
+    let mut h = harness_with(d);
+    h.state_mut().left_panel = false;
+    h.state_mut().tabs[0].selection = Some(note);
+    h.run();
+    h.key_press(Key::F2);
+    h.run();
+    assert_eq!(h.state().tabs[0].editing, Some(nb));
+    h.event(egui::Event::Text("x".into()));
+    h.run();
+    h.get_by_label(&t("action.connect")).click();
+    h.run();
+    h.run();
+    let tab = &h.state().tabs[0];
+    assert_eq!(tab.connect_mode, Some(note));
+    assert_eq!(tab.editing, None);
+    assert_eq!(tab.doc.boxes[&nb].text, "nx");
+    assert_eq!(tab.history.undo.len(), 1);
+    h.get_by_label(&t("connect.hint"));
+}

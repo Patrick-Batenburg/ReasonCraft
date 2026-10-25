@@ -32,9 +32,8 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
     Some(match action {
         Action::Move { item, to, index } => {
             let doc = &tab.doc;
-            let unchanged = doc.owner_of(*item) == Some(*to)
-                && index.is_none_or(|i| Some(i) == position(doc, *item, *to));
-            !unchanged && doc.clone().move_item(*item, *to, *index).is_ok()
+            !moves_nowhere(doc, *item, *to, *index)
+                && doc.clone().move_item(*item, *to, *index).is_ok()
         }
         Action::Reorder(dir) => tab
             .selection
@@ -73,11 +72,30 @@ fn is_premise(doc: &Document, item: Item) -> bool {
     matches!(item, Item::Box(b) if doc.boxes.get(&b).is_some_and(|n| n.kind == BoxKind::Premise))
 }
 
-/// Where `item` sits in `to`'s list (when `to` is its owner).
-fn position(doc: &Document, item: Item, to: Parent) -> Option<usize> {
-    sibling_list(doc, to, is_premise(doc, item))
-        .iter()
-        .position(|&x| x == item)
+/// Whether moving `item` to `to` at `index` (see [`Action::Move`]) would
+/// leave the map looking the same: `to` already holds it, and its place
+/// among the siblings shown in its group (under a box, sources and notes
+/// come first) stays the same. A move that changes only the hidden
+/// document order counts as no change. With no index nothing moves.
+pub fn moves_nowhere(doc: &Document, item: Item, to: Parent, index: Option<usize>) -> bool {
+    if doc.owner_of(item) != Some(to) {
+        return false;
+    }
+    let Some(index) = index else { return true };
+    let before = sibling_list(doc, to, is_premise(doc, item));
+    let mut after: Vec<Item> = before.iter().copied().filter(|&x| x != item).collect();
+    if index > after.len() {
+        return false;
+    }
+    after.insert(index, item);
+    let shown = |list: Vec<Item>| -> Vec<Item> {
+        list.into_iter()
+            .filter(|&x| {
+                !matches!(to, Parent::Box(_)) || is_attachment(doc, x) == is_attachment(doc, item)
+            })
+            .collect()
+    };
+    shown(before) == shown(after)
 }
 
 /// The [`Action::Reorder`] move for `selected`: the item that moves (a

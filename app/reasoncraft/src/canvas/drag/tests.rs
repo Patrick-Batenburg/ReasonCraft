@@ -202,3 +202,39 @@ fn co_premise_reorder_within_card() {
     moved.move_item(Item::Box(p1), t.to, t.index).unwrap();
     assert_eq!(moved.cards[&card].premises, vec![p2, p1, p3]);
 }
+
+/// Children [cardA, source, cardB] show as [source, cardA, cardB]. Dragging
+/// cardA into the gap next to itself changes only hidden document order:
+/// no target, so no bar and no move.
+#[test]
+fn drop_that_only_changes_hidden_order_is_no_change() {
+    let mut d = Document::new("Claim");
+    let root = d.root;
+    let a = d
+        .add_card(Parent::Box(root), CardKind::Reason, "a")
+        .unwrap()
+        .0;
+    d.add_box(
+        Parent::Box(root),
+        BoxKind::Source {
+            source_type: SourceType::Web,
+        },
+        "s",
+    )
+    .unwrap();
+    let b = d
+        .add_card(Parent::Box(root), CardKind::Reason, "b")
+        .unwrap()
+        .0;
+    let l = layout(&d, &FixedMeasure, &LayoutParams::default());
+    let (ra, rb) = (l.cards[&a], l.cards[&b]);
+    assert!(ra.left() < rb.left(), "cardA shows before cardB");
+    let between = egui::pos2((ra.right() + rb.left()) / 2.0, ra.center().y);
+    assert_eq!(drop_target(&d, &l, Item::Card(a), between, 1.0), None);
+    let left_of_a = egui::pos2(ra.left() - 4.0, ra.center().y);
+    assert_eq!(drop_target(&d, &l, Item::Card(a), left_of_a, 1.0), None);
+    // Past cardB it really moves.
+    let right_end = egui::pos2(rb.right() + 4.0, rb.center().y);
+    let t = drop_target(&d, &l, Item::Card(a), right_end, 1.0).unwrap();
+    assert_eq!(t.index, Some(2));
+}

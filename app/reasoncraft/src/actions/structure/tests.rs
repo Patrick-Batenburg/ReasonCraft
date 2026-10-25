@@ -189,3 +189,69 @@ fn connect_mode_cancel_and_other_commands_end_it() {
     }
     assert!(tab(&a).history.undo.is_empty());
 }
+
+/// Children [cardA, source, cardB] show as [source, cardA, cardB]: moving
+/// cardA to just after the source changes only hidden document order.
+#[test]
+fn move_that_only_changes_hidden_order_is_disabled() {
+    let mut d = Document::new("Claim");
+    let root = d.root;
+    let ca = d
+        .add_card(Parent::Box(root), CardKind::Reason, "a")
+        .unwrap()
+        .0;
+    let src = d
+        .add_box(
+            Parent::Box(root),
+            BoxKind::Source {
+                source_type: SourceType::Web,
+            },
+            "s",
+        )
+        .unwrap();
+    let cb = d
+        .add_card(Parent::Box(root), CardKind::Reason, "b")
+        .unwrap()
+        .0;
+    let a = app_with(d);
+    assert_eq!(
+        root_cards(&a),
+        vec![Item::Card(ca), Item::Box(src), Item::Card(cb)]
+    );
+    let mv = |item, index| Action::Move {
+        item,
+        to: Parent::Box(root),
+        index: Some(index),
+    };
+    // cardA to index 1 (after the source, before cardB): shown the same.
+    assert!(!is_enabled(tab(&a), &mv(Item::Card(ca), 1)));
+    // The source before cardA: sources show first anyway.
+    assert!(!is_enabled(tab(&a), &mv(Item::Box(src), 0)));
+    // cardA after cardB: a visible change.
+    assert!(is_enabled(tab(&a), &mv(Item::Card(ca), 2)));
+}
+
+/// The inline editor losing focus (to the ribbon's "Connect to…") must not
+/// end the mode it just started; the edit is committed first.
+#[test]
+fn stop_editing_keeps_connect_mode() {
+    let mut d = Document::new("Claim");
+    let note = d.add_loose(NewLoose::Note, "n");
+    let Item::Box(nb) = note else { unreachable!() };
+    let mut a = app_with(d);
+    a.tabs[0].selection = Some(note);
+    apply(&mut a, Action::Edit);
+    apply(
+        &mut a,
+        Action::EditText {
+            node: nb,
+            text: "typed".into(),
+        },
+    );
+    apply(&mut a, Action::StartConnect);
+    assert_eq!(tab(&a).editing, None);
+    assert_eq!(tab(&a).history.undo.len(), 1, "edit committed");
+    apply(&mut a, Action::StopEditing);
+    assert_eq!(tab(&a).connect_mode, Some(note));
+    assert_eq!(tab(&a).doc.boxes[&nb].text, "typed");
+}

@@ -1,8 +1,8 @@
 //! Every command the user can give, and the one place that carries them out.
 
 use reasoncraft_core::{
-    Acceptance, BoxKind, CardId, CardKind, CardStrength, ClearScope, Item, NewItem, NewLoose,
-    NodeId, Parent, RemoveMode, SourceRating, SourceType, Uuid, Verdict, can_attach,
+    Acceptance, BoxKind, CardId, CardKind, CardStrength, ClearScope, Item, NewLoose, NodeId,
+    Parent, RemoveMode, SourceRating, SourceType, Uuid, Verdict,
 };
 
 use crate::app::ReasonCraftApp;
@@ -11,6 +11,10 @@ use crate::doc_tab::DocTab;
 use crate::file_ops;
 use crate::theme::ThemeChoice;
 
+mod box_group;
+mod enabled;
+pub use box_group::{FakeOpener, LinkOpener, SystemOpener};
+pub use enabled::is_enabled;
 mod comments;
 mod evaluate;
 pub use evaluate::{Rate, Rated, rate_action, rated};
@@ -21,7 +25,7 @@ pub use connect::connect_item;
 mod sources;
 mod structure;
 use structure::{add_box, add_card, add_co_premise, delete};
-pub use structure::{is_attachment, sibling_list};
+pub use structure::{is_attachment, moves_nowhere, sibling_list};
 
 pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 const ZOOM_STEP: f32 = 1.25;
@@ -76,6 +80,16 @@ pub enum Action {
     AddSource(SourceType),
     /// Change the type of the selected source.
     SetSourceType(SourceType),
+    /// Make the selected card (or the card of the selected premise) a
+    /// reason or an objection; its strength is kept.
+    SetCardKind(CardKind),
+    /// Open the link editor for the selected box.
+    EditLink,
+    /// Set (`None`: remove) the link of the box being edited, or of the
+    /// selected box, and close the link editor.
+    SetLink(Option<String>),
+    /// Open box `node`'s link in the browser (a click on its link glyph).
+    OpenLink(NodeId),
     /// Add a card that targets the whole selected card (or the card of the selected premise).
     TargetWholeCard(CardKind),
     Delete,
@@ -190,7 +204,10 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         Action::CloseWindow => file_ops::request_close_window(app),
         Action::ResolveUnsaved(choice) => file_ops::resolve_unsaved(app, choice),
         Action::ResolveReplace(replace) => file_ops::resolve_replace(app, replace),
-        Action::DismissModal => app.modal = None,
+        Action::DismissModal => {
+            app.modal = None;
+            app.link_edit = None;
+        }
         Action::ActivateTab(i) => {
             if i < app.tabs.len() {
                 app.active = i;
@@ -206,6 +223,9 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::CloseComments
         | Action::SetAuthor(_) => comments::apply(app, action),
         Action::Insert { .. } => insert::apply(app, action),
+        Action::SetCardKind(_) | Action::EditLink | Action::SetLink(_) | Action::OpenLink(_) => {
+            box_group::apply(app, action)
+        }
         #[cfg(debug_assertions)]
         Action::LoadSampleMap => {
             let doc = reasoncraft_core::fixtures::sample_iot_like(117);
@@ -319,6 +339,10 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::CloseComments
         | Action::SetAuthor(_)
         | Action::Insert { .. }
+        | Action::SetCardKind(_)
+        | Action::EditLink
+        | Action::SetLink(_)
+        | Action::OpenLink(_)
         | Action::TogglePanel(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
@@ -350,49 +374,13 @@ fn select_new(tab: &mut DocTab, item: Option<Item>) {
 
 /// The card a whole-card target or co-premise goes to: the selected card,
 /// or the card that owns the selected premise.
-fn selected_card(tab: &DocTab) -> Option<CardId> {
+pub fn selected_card(tab: &DocTab) -> Option<CardId> {
     match tab.selection? {
         Item::Card(c) => Some(c),
         Item::Box(b) => match tab.doc.owner_of(Item::Box(b)) {
             Some(Parent::Card(c)) => Some(c),
             _ => None,
         },
-    }
-}
-
-/// Whether `action` would do something for `tab` right now. Ribbon, "+"
-/// menu and keyboard all ask this, so refused commands are greyed out
-/// instead of silently doing nothing.
-pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
-    if let Some(enabled) = evaluate::is_enabled(tab, action)
-        .or_else(|| sources::is_enabled(tab, action))
-        .or_else(|| comments::is_enabled(tab, action))
-        .or_else(|| insert::is_enabled(tab, action))
-        .or_else(|| structure::is_enabled(tab, action))
-        .or_else(|| connect::is_enabled(tab, action))
-    {
-        return enabled;
-    }
-    let sel = tab.selection;
-    let attach = |new: NewItem| match sel {
-        Some(Item::Box(b)) => can_attach(&tab.doc, Parent::Box(b), new),
-        Some(Item::Card(c)) => can_attach(&tab.doc, Parent::Card(c), new),
-        None => true,
-    };
-    match action {
-        Action::AddReason => attach(NewItem::Card(CardKind::Reason)),
-        Action::AddObjection => attach(NewItem::Card(CardKind::Objection)),
-        Action::AddCategory => attach(NewItem::Category),
-        Action::AddNote => attach(NewItem::Note),
-        Action::AddCoPremise => selected_card(tab).is_some(),
-        Action::TargetWholeCard(kind) => selected_card(tab)
-            .is_some_and(|c| can_attach(&tab.doc, Parent::Card(c), NewItem::Card(kind.clone()))),
-        Action::Delete | Action::DeleteBranch => sel.is_some_and(|s| s != Item::Box(tab.doc.root)),
-        Action::Edit => matches!(sel, Some(Item::Box(_))),
-        Action::JumpParking => parking_jump(&tab.doc, sel).is_some(),
-        Action::Undo => !tab.history.undo.is_empty() || tab.has_pending_edit(),
-        Action::Redo => !tab.history.redo.is_empty(),
-        _ => true,
     }
 }
 

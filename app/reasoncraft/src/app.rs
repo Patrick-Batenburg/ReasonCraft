@@ -1,11 +1,12 @@
 //! The application: open tabs, settings and the per-frame loop.
 
-use crate::actions::{self, Action};
+use crate::actions::{self, Action, FakeOpener, LinkOpener, SystemOpener};
 use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
 use crate::file_ops::{FakeDialogs, FileDialogs, Modal, RfdDialogs};
 pub use crate::settings::{SETTINGS_KEY, Settings};
 use crate::shell;
+use crate::shell::link_modal::LinkEdit;
 use crate::theme::{self, Tokens};
 use eframe::egui;
 
@@ -40,6 +41,10 @@ pub struct ReasonCraftApp {
     pub dialogs: Box<dyn FileDialogs>,
     /// The error message or unsaved-changes prompt being shown.
     pub modal: Option<Modal>,
+    /// The link editor, when open.
+    pub link_edit: Option<LinkEdit>,
+    /// Opens links in the browser: the platform's handler, or a fake in tests.
+    pub link_opener: Box<dyn LinkOpener>,
     applied: Option<Tokens>,
     window_title: String,
     /// Every unsaved-changes question was answered: let the window close.
@@ -52,7 +57,11 @@ pub struct ReasonCraftApp {
 }
 
 impl ReasonCraftApp {
-    fn with_settings(settings: Settings, dialogs: Box<dyn FileDialogs>) -> Self {
+    fn with_settings(
+        settings: Settings,
+        dialogs: Box<dyn FileDialogs>,
+        link_opener: Box<dyn LinkOpener>,
+    ) -> Self {
         Self {
             tabs: vec![DocTab::new()],
             active: 0,
@@ -65,6 +74,8 @@ impl ReasonCraftApp {
             measure_cache: MeasureCache::default(),
             dialogs,
             modal: None,
+            link_edit: None,
+            link_opener,
             applied: None,
             window_title: String::new(),
             close_confirmed: false,
@@ -80,18 +91,22 @@ impl ReasonCraftApp {
             .storage
             .and_then(|s| eframe::get_value::<Settings>(s, SETTINGS_KEY))
             .unwrap_or_default();
-        Self::with_settings(settings, Box::new(RfdDialogs))
+        Self::with_settings(settings, Box::new(RfdDialogs), Box::new(SystemOpener))
     }
 
-    /// Build the app with default settings, no storage and file dialogs
-    /// that always cancel.
+    /// Build the app with default settings, no storage, file dialogs that
+    /// always cancel and a link opener that only records links.
     pub fn new_for_test() -> Self {
         Self::new_for_test_with(Box::new(FakeDialogs::default()))
     }
 
     /// Like [`Self::new_for_test`], with the given file dialogs.
     pub fn new_for_test_with(dialogs: Box<dyn FileDialogs>) -> Self {
-        Self::with_settings(Settings::default(), dialogs)
+        Self::with_settings(
+            Settings::default(),
+            dialogs,
+            Box::new(FakeOpener::default()),
+        )
     }
 
     /// True once the user has answered every unsaved-changes question of a
@@ -128,7 +143,8 @@ impl ReasonCraftApp {
         // Shortcuts are taken out first, so no widget sees (or moves focus
         // with) them, but run after the widgets' own actions (see `handle_keys`).
         // A modal takes all keys (Esc closes it).
-        let keys = if self.ribbon_tab == RibbonTab::File || self.modal.is_some() {
+        let modal = self.modal.is_some() || self.link_edit.is_some();
+        let keys = if self.ribbon_tab == RibbonTab::File || modal {
             Vec::new()
         } else {
             crate::canvas::input::handle_keys(&ctx, self)
@@ -140,6 +156,7 @@ impl ReasonCraftApp {
         shell::statusbar::show(ui, self);
         shell::show_side_panels(ui, self);
         shell::show_central(ui, self);
+        shell::link_modal::show(&ctx, self);
         shell::modal::show(&ctx, self);
         #[cfg(debug_assertions)]
         shell::source_icons::preview(&ctx, self);

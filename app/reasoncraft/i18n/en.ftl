@@ -40,6 +40,7 @@ group-eval_source = Sources
 group-eval_clear = Clear
 group-eval_view = Display
 group-evaluation = Evaluation
+group-box = Box
 
 ## Commands
 action-new = New
@@ -59,6 +60,8 @@ action-add_note = Note
 action-add_source = Source
 action-comment = Comment
 action-connect = Connect to…
+action-box_type = Type
+action-link = Link
 action-delete = Delete
 action-delete_branch = Delete branch
 action-zoom_fit = Fit
@@ -234,3 +237,18 @@ comment-preset-unclear = Unclear: what is meant here?
 comment-preset-rethink_structure = Rethink how this is built.
 comment-preset-source_not_appropriate = This source does not fit.
 comment-preset-inconsistent_evaluation = Ratings contradict each other.
+
+## Box type and links
+card_kind-reason = Reason
+card_kind-objection = Objection
+link-title = Link
+link-url = Link address
+link-hint = https://example.org/page
+link-save = Save
+link-save_link = Save link
+link-cancel = Cancel
+link-remove = Remove link
+link-invalid = Enter a web address (https://…, or a domain such as example.org/page) or an e-mail link (mailto:…).
+link-open = Open link: { $url }
+link-open_failed = Could not open the link
+link-open_failed_detail = { $url } could not be opened: { $detail }

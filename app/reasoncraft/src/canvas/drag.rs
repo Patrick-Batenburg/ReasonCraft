@@ -9,7 +9,7 @@ use reasoncraft_core::{BoxKind, Document, Item, Layout, LayoutParams, Parent};
 
 use super::hit::{BOTTOM_EDGE_BAND, Hit, hit_test};
 use super::paint::{FRAME_RADIUS, parking_frame};
-use crate::actions::{Action, is_attachment, is_enabled, sibling_list};
+use crate::actions::{Action, is_attachment, is_enabled, moves_nowhere, sibling_list};
 use crate::doc_tab::DocTab;
 use crate::theme::Tokens;
 
@@ -111,12 +111,9 @@ pub fn drop_target(
     if target.to != Parent::Parking {
         (target.index, target.bar) = insertion(doc, layout, item, target.to, world.x, is_premise);
     }
-    // Back where it is, or a card onto itself: nothing would change.
+    // Back where it is (as shown), or a card onto itself: nothing would change.
     let onto_itself = matches!((item, target.to), (Item::Card(a), Parent::Card(b)) if a == b);
-    let same_place = doc.owner_of(item) == Some(target.to)
-        && target
-            .index
-            .is_none_or(|i| sibling_list(doc, target.to, is_premise).get(i) == Some(&item));
+    let same_place = moves_nowhere(doc, item, target.to, target.index);
     (!(onto_itself || same_place)).then_some(target)
 }
 

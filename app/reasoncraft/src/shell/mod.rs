@@ -3,6 +3,7 @@
 pub mod backstage;
 pub mod building;
 pub mod icons;
+pub mod link_modal;
 pub mod modal;
 pub mod resize;
 pub mod ribbon;

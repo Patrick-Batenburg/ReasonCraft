@@ -6,6 +6,7 @@ use eframe::egui::{Color32, Painter, Pos2, Rect, Stroke};
 
 use crate::theme::Tokens;
 
+mod box_group;
 mod evaluate;
 mod pen;
 pub(super) use pen::Pen;
@@ -60,6 +61,10 @@ pub enum Icon {
     Comment,
     /// A box with a line up to another box ("Connect to…").
     Connect,
+    /// A box between turning arrows (change a box's type).
+    BoxType,
+    /// Two chain links (a box's link).
+    Link,
 }
 
 /// Draw `icon` in `rect` (a square). `fg` is the main colour, `bg` the
@@ -314,5 +319,6 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         | Icon::Shading
         | Icon::Comment
         | Icon::Connect => evaluate::paint(&pen, icon, fg, t),
+        Icon::BoxType | Icon::Link => box_group::paint(&pen, icon, fg, t),
     }
 }
