@@ -19,9 +19,8 @@ fn escape(s: &str, line_start: bool) -> String {
             out.push('\\');
         }
     }
-    for (i, c) in rest.char_indices() {
-        let literal = i == 0 && out.ends_with('\\') && !out.ends_with("\\\\");
-        if !literal && matches!(c, '\\' | '*' | '_' | '#' | '`' | '[' | ']' | '<' | '>') {
+    for c in rest.chars() {
+        if matches!(c, '\\' | '*' | '_' | '#' | '`' | '[' | ']' | '<' | '>') {
             out.push('\\');
         }
         out.push(c);
