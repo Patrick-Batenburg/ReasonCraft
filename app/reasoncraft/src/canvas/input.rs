@@ -93,8 +93,8 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
 /// Take this frame's command keys out of the input before any widget sees
 /// them and return their actions. Typed text on a selected box starts
 /// editing it (whitespace alone does not: Space is held to pan). Keys are
-/// left alone while another text field has focus or a menu is open (Esc
-/// closes the menu).
+/// left alone while a menu is open (Esc closes the menu); while another
+/// text field has focus only the file keys are taken (see [`file_keys`]).
 ///
 /// The caller queues the returned actions after the frame's widgets have
 /// run, so text typed into the inline editor in the same frame as a command
@@ -105,8 +105,11 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     };
     let editing = tab.editing;
     let focused = ctx.memory(|m| m.focused());
-    if (ctx.text_edit_focused() && focused != editing.map(editor_id)) || Popup::is_any_open(ctx) {
+    if Popup::is_any_open(ctx) {
         return Vec::new();
+    }
+    if ctx.text_edit_focused() && focused != editing.map(editor_id) {
+        return file_keys(ctx, app);
     }
     // Esc drops widget focus as the frame begins; keep it on the editor for
     // this frame so text typed alongside the Esc still lands in the box.
@@ -157,6 +160,41 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     // Tab and the arrows are ours: keep egui from moving widget focus too.
     ctx.memory_mut(|m| m.move_focus(FocusDirection::None));
     ctx.request_repaint();
+    out.retain(|a| is_enabled(tab, a));
+    out
+}
+
+/// The file keys while a text field other than the box editor has focus
+/// (a snippet's text, citation or link, the document title or author):
+/// Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N, the same subset that works
+/// while editing a box. They are taken out of the input; every other key
+/// stays with the field. Applying the action first ends the field's
+/// editing session, so its typing becomes a history step before the save.
+pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
+    let Some(tab) = app.tabs.get(app.active) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    ctx.input_mut(|i| {
+        i.events.retain(|e| {
+            let Event::Key {
+                key,
+                pressed: true,
+                modifiers,
+                ..
+            } = e
+            else {
+                return true;
+            };
+            match key_to_action(*key, *modifiers, true) {
+                Some(a @ (Action::Save | Action::SaveAs | Action::Open | Action::New)) => {
+                    out.push(a);
+                    false
+                }
+                _ => true,
+            }
+        });
+    });
     out.retain(|a| is_enabled(tab, a));
     out
 }

@@ -146,10 +146,17 @@ impl ReasonCraftApp {
         }
         // Shortcuts are taken out first, so no widget sees (or moves focus
         // with) them, but run after the widgets' own actions (see `handle_keys`).
-        // A modal takes all keys (Esc closes it).
+        // A modal takes all keys (Esc closes it). In the backstage only a
+        // focused field (the document title or author) passes on the file keys.
         let modal = self.modal.is_some() || self.link_edit.is_some();
-        let keys = if self.ribbon_tab == RibbonTab::File || modal {
+        let keys = if modal {
             Vec::new()
+        } else if self.ribbon_tab == RibbonTab::File {
+            if ctx.text_edit_focused() {
+                crate::canvas::input::file_keys(&ctx, self)
+            } else {
+                Vec::new()
+            }
         } else {
             crate::canvas::input::handle_keys(&ctx, self)
         };

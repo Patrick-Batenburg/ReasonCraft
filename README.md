@@ -21,7 +21,7 @@ Files from older versions open unchanged, and files from newer versions keep any
 ## The Text panel
 
 - **Outline.** The map as a numbered list in canvas order: `1`, `1.1`, … for cards, letters for co-premises (`1a`, `1b`), `.w1` for an attack on a whole card, and `P1`, `P2` for items in the parking area. Sources sit unnumbered under their box. Switches turn the numbers, the linking words (because, but, however), indenting, role colours and notes on or off; your choice is remembered. Click a line to select its box on the map. **Copy all** puts the outline on the clipboard as indented plain text.
-- **Check.** Hints based on the course rules: missing key words (a word of the statement above that none of a card's premises uses), two statements in one ("and"/"or", or "en"/"of" in Dutch), questions, premises nothing supports, empty top-level categories, a partly rated map, ratings that disagree, and items in the parking area. Click a hint to select the item and bring it into view. The status bar shows the number of hints; click it to open this tab. Each check can be turned off in File → Settings. Checks are hints only: they never block anything.
+- **Check.** Hints based on the course rules: missing key words (a word of the statement above that none of a card's premises uses), two statements in one ("and"/"or", or "en"/"of" in Dutch), questions, premises nothing supports, empty top-level categories, a partly rated map (one hint with the number of unrated items; click it to go to the first), ratings that disagree, and items in the parking area (notes there are left alone, and parked items are drafts: they are not asked for support or a rating). Click a hint to select the item and bring it into view. The status bar shows the number of hints; click it to open this tab. Each check can be turned off in File → Settings. Checks are hints only: they never block anything.
 - **Snippets.** Keep pieces of source text beside the map. **New snippet** adds an empty one; **Paste as snippet** (or Ctrl+V while the pointer is over the tab and no text field has focus) adds the clipboard text. A snippet holds up to 50,000 characters; longer text is cut, with a notice. Tag a snippet with a source type, a citation and a link, and drag the handle to reorder the list.
 - **Build the map from snippets.** Select text in a snippet and drag the **Drag to map** chip onto the map, or hold Alt and drag a snippet's handle to take its whole text. On a claim or premise the text becomes a new reason under it, on a card a reason for the whole card, on empty canvas a reason in the parking area, and on a category a new category. The snippet's source goes under the new premise, and the drop is one undo step. Change the new card's type afterwards with **Type**. Blank text, notes and sources refuse the drop and show red.
 
@@ -100,6 +100,17 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Ctrl+N | Finish and start a new map |
 
 All other keys are typed into the box.
+
+### While typing in a snippet, citation, link, title or author field
+
+| Keys | Action |
+| --- | --- |
+| Ctrl+S | Finish and save |
+| Ctrl+Shift+S | Finish and save as |
+| Ctrl+O | Finish and open |
+| Ctrl+N | Finish and start a new map |
+
+All other keys stay with the field.
 
 ### While connecting a parked item (Connect to…)
 
