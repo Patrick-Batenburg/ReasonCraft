@@ -5,10 +5,13 @@ use std::path::PathBuf;
 use eframe::egui::Rect;
 use reasoncraft_core::checks::{CheckSet, Issue, run_checks};
 use reasoncraft_core::outline::{OutlineLine, OutlineOptions, build_outline};
-use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Package};
+use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Package, Uuid};
 
 use crate::canvas::Camera;
 use crate::i18n::t;
+
+mod snippet_edit;
+pub use snippet_edit::cap_snippet;
 
 /// How many undo steps a tab keeps.
 pub const HISTORY_LIMIT: usize = 500;
@@ -50,6 +53,15 @@ pub struct DocTab {
     pub comments_open: Option<NodeId>,
     /// The parked item waiting for a target ("Connect to…").
     pub connect_mode: Option<Item>,
+    /// The snippet whose text is being edited, with the document as it was
+    /// before; recorded as one history step on commit if the text changed
+    /// (see [`Self::commit_snippet_edit`]).
+    pub snippet_edit: Option<(Uuid, Document)>,
+    /// The snippet whose text field should take keyboard focus next frame.
+    pub snippet_focus: Option<Uuid>,
+    /// The snippet whose last text was cut at the length limit (a notice
+    /// shows under it).
+    pub snippet_capped: Option<Uuid>,
     /// Counts changes to [`Self::doc`], so text derived from it (outline,
     /// checks) can be cached until the next change. Starts at 0.
     revision: u64,
@@ -104,6 +116,9 @@ impl DocTab {
             reveal_pending: false,
             comments_open: None,
             connect_mode: None,
+            snippet_edit: None,
+            snippet_focus: None,
+            snippet_capped: None,
             revision: 0,
             outline_cache: None,
             issue_cache: None,
@@ -157,9 +172,10 @@ impl DocTab {
         self.revision = self.revision.max(replaced) + 1;
     }
 
-    /// Unsaved changes, counting inline-edit text not yet committed.
+    /// Unsaved changes, counting inline-edit and snippet text not yet
+    /// committed.
     pub fn is_dirty(&self) -> bool {
-        self.history.is_dirty() || self.has_pending_edit()
+        self.history.is_dirty() || self.has_pending_edit() || self.has_pending_snippet_edit()
     }
 
     /// The file stem, or "Untitled".
@@ -198,6 +214,7 @@ impl DocTab {
     /// added, so its first text belongs to the add's history step.
     pub fn begin_edit(&mut self, b: NodeId, fresh: bool) {
         self.commit_edit();
+        self.commit_snippet_edit();
         let Some(node) = self.doc.boxes.get(&b) else {
             return;
         };
@@ -294,6 +311,7 @@ impl DocTab {
         if self.connect_mode.is_some_and(|i| !self.contains(i)) {
             self.connect_mode = None;
         }
+        self.fix_snippet_state();
     }
 }
 

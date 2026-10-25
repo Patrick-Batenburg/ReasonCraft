@@ -1,9 +1,9 @@
 //! Adding cards, premises, categories and notes, deleting items, and
 //! moving them (drag and drop, "Connect to…", Alt+Left/Right reordering).
 
-use reasoncraft_core::{BoxKind, CardKind, Document, Item, NewLoose, Parent, RemoveMode};
+use reasoncraft_core::{BoxKind, CardId, CardKind, Document, Item, NewLoose, Parent, RemoveMode};
 
-use super::{Action, Dir, selected_card};
+use super::{Action, Dir};
 use crate::doc_tab::DocTab;
 
 /// Moves and reorders.
@@ -188,6 +188,18 @@ pub(super) fn delete(tab: &mut DocTab, mode: RemoveMode) {
     };
     tab.editing = None;
     tab.fix_selection();
+}
+
+/// The card a whole-card target or co-premise goes to: the selected card,
+/// or the card that owns the selected premise.
+pub fn selected_card(tab: &DocTab) -> Option<CardId> {
+    match tab.selection? {
+        Item::Card(c) => Some(c),
+        Item::Box(b) => match tab.doc.owner_of(Item::Box(b)) {
+            Some(Parent::Card(c)) => Some(c),
+            _ => None,
+        },
+    }
 }
 
 #[cfg(test)]

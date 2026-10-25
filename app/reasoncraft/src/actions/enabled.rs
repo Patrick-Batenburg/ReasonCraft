@@ -41,7 +41,9 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
         Action::Delete | Action::DeleteBranch => sel.is_some_and(|s| s != Item::Box(tab.doc.root)),
         Action::Edit => matches!(sel, Some(Item::Box(_))),
         Action::JumpParking => parking_jump(&tab.doc, sel).is_some(),
-        Action::Undo => !tab.history.undo.is_empty() || tab.has_pending_edit(),
+        Action::Undo => {
+            !tab.history.undo.is_empty() || tab.has_pending_edit() || tab.has_pending_snippet_edit()
+        }
         Action::Redo => !tab.history.redo.is_empty(),
         _ => true,
     }

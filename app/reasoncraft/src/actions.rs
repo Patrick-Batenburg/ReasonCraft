@@ -2,8 +2,8 @@
 
 use reasoncraft_core::checks::CheckKind;
 use reasoncraft_core::{
-    Acceptance, BoxKind, CardId, CardKind, CardStrength, ClearScope, Item, NewLoose, NodeId,
-    Parent, RemoveMode, SourceRating, SourceType, Uuid, Verdict,
+    Acceptance, BoxKind, CardKind, CardStrength, ClearScope, Item, NewLoose, NodeId, Parent,
+    RemoveMode, SnippetSource, SourceRating, SourceType, Uuid, Verdict,
 };
 
 use crate::app::ReasonCraftApp;
@@ -25,11 +25,12 @@ mod insert;
 pub use insert::{Insertable, target_allowed};
 mod connect;
 pub use connect::connect_item;
+mod snippets;
 mod sources;
 mod structure;
 mod view;
 use structure::{add_box, add_card, add_co_premise, delete, select_new};
-pub use structure::{is_attachment, moves_nowhere, sibling_list};
+pub use structure::{is_attachment, moves_nowhere, selected_card, sibling_list};
 use view::set_zoom;
 
 pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
@@ -114,6 +115,25 @@ pub enum Action {
     },
     /// Text typed while a box is selected: start editing it (if needed) and append.
     TypeText(String),
+    /// Add a snippet (an empty one takes focus); text is cut at the limit.
+    AddSnippet(String),
+    /// Snippet `id`'s text field changed: show it live, without a history
+    /// step until the editing session ends (like [`Action::EditText`]).
+    EditSnippetText {
+        id: Uuid,
+        text: String,
+    },
+    /// Tag snippet `id` with a source (`None` clears). An invalid link is refused.
+    SetSnippetSource {
+        id: Uuid,
+        source: Option<SnippetSource>,
+    },
+    RemoveSnippet(Uuid),
+    /// Move snippet `id` to `index` in the list (with it taken out).
+    MoveSnippet {
+        id: Uuid,
+        index: usize,
+    },
     /// Connect, reattach, detach or reorder `item` (drag and drop, "Connect
     /// to…"). `index` counts `to`'s children with `item` taken out; `None`
     /// appends.
@@ -203,14 +223,20 @@ pub enum Action {
 /// Carry out `action`. Document edits go through [`DocTab::edit`], which
 /// records history only when the edit succeeds.
 ///
-/// Every action except the inline editor's own text updates first commits a
-/// running inline edit, so it lands in history before anything else happens.
+/// Every action except text updates first commits a running inline or
+/// snippet edit, so it lands in history before anything else happens; a
+/// box's text updates commit a snippet edit and the other way round.
 /// Every action but picking a target then ends "Connect to…" in the active
 /// tab, app-level ones (inserting, comments, links, switching tabs) too.
 pub fn apply(app: &mut ReasonCraftApp, action: Action) {
     if let Some(tab) = app.tabs.get_mut(app.active) {
-        if !matches!(action, Action::EditText { .. } | Action::TypeText(_)) {
-            tab.commit_edit();
+        match action {
+            Action::EditText { .. } | Action::TypeText(_) => tab.commit_snippet_edit(),
+            Action::EditSnippetText { .. } => tab.commit_edit(),
+            _ => {
+                tab.commit_edit();
+                tab.commit_snippet_edit();
+            }
         }
         connect::end_unless_kept(tab, &action);
     }
@@ -339,6 +365,11 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetSourceRating(_)
         | Action::ClearEvaluation(_) => evaluate::apply(tab, action),
         Action::AddSource(_) | Action::SetSourceType(_) => sources::apply(tab, action),
+        Action::AddSnippet(_)
+        | Action::EditSnippetText { .. }
+        | Action::SetSnippetSource { .. }
+        | Action::RemoveSnippet(_)
+        | Action::MoveSnippet { .. } => snippets::apply(tab, action),
         Action::New
         | Action::Open
         | Action::Save
@@ -372,18 +403,6 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetCheckEnabled(..) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
-    }
-}
-
-/// The card a whole-card target or co-premise goes to: the selected card,
-/// or the card that owns the selected premise.
-pub fn selected_card(tab: &DocTab) -> Option<CardId> {
-    match tab.selection? {
-        Item::Card(c) => Some(c),
-        Item::Box(b) => match tab.doc.owner_of(Item::Box(b)) {
-            Some(Parent::Card(c)) => Some(c),
-            _ => None,
-        },
     }
 }
 
