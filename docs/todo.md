@@ -31,7 +31,7 @@
   - [x] Task 9: Sibling reorder, Connect to…, shortcut rebinding
   - [x] Task 10: Change card type and links
   - [x] Task 11: Images in boxes
-  - [ ] Task 12: End-to-end verification and docs
+  - [x] Task 12: End-to-end verification and docs
 - [ ] Step 3 — Text panel: Outline, Snippets, Check
 - [ ] Step 4 — Output: exports, print, Essay tab
 - [ ] Step 5 — Interchange & polish: Argdown, connector styles, layout directions, minimap, numbering, find/replace, spellcheck, autosave, Search commands
@@ -77,10 +77,58 @@ I checked all eight directions by hand and checked the cursor shapes against the
 - The Building and Text side panels are placeholders until steps 2 and 3.
 - The debug-only "Load sample map" always opens a new tab, even when the current tab is untouched.
 
+### Step 2 — Sources, evaluation, notes, comments, building panel (2026-10-25)
+
+**Tests:** 258 pass, 1 ignored, across the workspace:
+- core: 71 unit tests and 10 layout tests;
+- app: 114 unit tests, 36 UI tests (egui_kittest), 25 integration tests (`arrange` 8, `box_group` 7, `building` 7, `images` 3) and 2 end-to-end tests (`tests/e2e.rs`).
+
+The ignored test is still `layout_500_boxes_fast` (run it with `--release -- --ignored`). `cargo clippy --workspace --all-targets -- -D warnings` and `cargo fmt --check` are clean, and `cargo build --release -p reasoncraft` succeeds.
+
+The end-to-end test builds the step 1 map through actions only, then adds:
+- ratings on the claim, a premise, a card and a source (through `Rate`, as Alt+1/2/3 sends them);
+- an expert-opinion source with a link;
+- a typed comment (with a trimmed author name) and a preset comment;
+- an image (FakeDialogs and a generated PNG);
+- a co-premise moved one place left with `Reorder`;
+- a parked reason connected under the claim with `StartConnect` and `Move`, plus a loose source that stays parked.
+
+It saves, closes, reopens and checks that the documents are equal, the assets are equal, and the layout matches within 0.5 px (every box and card, plus card roles, card strengths and connector count). A second test opens a `.rcraft` that has an extra `thumbnail.png` zip entry, edits it, saves it under a new name through the app, and checks that the entry is still there (Review Focus 5). Two deliberately broken builds each made these tests fail: one dropped unknown entries on save, the other skipped `source_rating` in serde.
+
+**Verified by hand** (Windows 11, release build, 1500×950 window, driven with Win32 input):
+- Built a map by keyboard (claim; a reason with two co-premises; a second reason; an objection), then rated it by keyboard:
+  - Alt+1 on the claim;
+  - Alt+1 and Alt+3 on two co-premises;
+  - Alt+2 on the objection and on its card;
+  - Alt+2 on the first reason's card and Alt+1 on the second.
+
+  The markers, "weakly/strongly supports" labels, connector weights and (with shading on) tints all showed.
+- Dragged "Expert opinion" from the building panel onto a premise. The target outlined green, the source appeared under it with its icon, and the edit started. Typed the citation, then Alt+1 rated it solid.
+- Comments:
+  - Ctrl+Shift+M opened the popover, and Presets → "Needs more evidence." added an orange "1" badge;
+  - dragging the "Well supported by evidence." preset from the panel onto the source added a green badge.
+- Alt+Left moved the third co-premise one place left.
+- Clicked empty canvas, then Tab added a parking item. Ctrl+Shift+K showed the hint in the status bar, and Enter connected the item under the claim.
+- Home → Image picked a PNG in the native dialog. The image showed above the premise text, with nothing clipped.
+- Evaluate → Show markers and Evaluation shading off and on again: the markers and tints went away and came back.
+- Saved with Ctrl+S, killed the app, and started it with the file. Everything came back.
+- Screenshots: `task-12-dark.png` and `task-12-light.png` in `.superpowers/sdd/2026-10-25-step2-sources-evaluation/`.
+
+**Known limitations:**
+- With NumLock on, Alt+numpad digits still rate: egui 0.37 reports numpad digits exactly like top-row digits. With NumLock off, Alt-codes are filtered.
+- Dropping an item on a box that already has children inserts it at the pointer's x position among them. There is no "append" drop zone.
+- Items in the parking area can be reordered by keyboard only (Alt+Left/Right), not by drag.
+- Image insert runs synchronously: about 0.2 s for a typical photo, and about 1 s for a 9000×9000 image in release (more in debug).
+- Images are re-encoded as PNG, so a photo can take more space than the JPEG it came from.
+- A placeholder flashes briefly while a stored image decodes.
+- A comment badge (top-right of a box) can overlap the rating marker of the next co-premise in the same card (top-left), because premises sit only 8 px apart.
+- The building panel's Templates section is deferred to step 6, with the bundled templates.
+- Colour and font size in the Home "Box" group are deferred to step 5.
+
 ## Carry-over from step 1 reviews (put into the step 2+ plans)
-- [ ] Step 2, first item: drag siblings to reorder them (spec §5), with a keyboard equivalent; add a "Connect to…" command for parking items
-- [ ] Step 2: rebind the whole-card objection shortcut — Ctrl+Shift+Tab is the app switcher on macOS (Cmd) and usually "previous tab"
-- [ ] Step 2: store roles/strength in `Layout` so evaluation visuals add no per-frame `owner_of` scans; design an image asset store kept out of undo snapshots; save must keep unknown zip entries
+- [x] Step 2, first item: drag siblings to reorder them (spec §5), with a keyboard equivalent; add a "Connect to…" command for parking items
+- [x] Step 2: rebind the whole-card objection shortcut — Ctrl+Shift+Tab is the app switcher on macOS (Cmd) and usually "previous tab"
+- [x] Step 2: store roles/strength in `Layout` so evaluation visuals add no per-frame `owner_of` scans; design an image asset store kept out of undo snapshots; save must keep unknown zip entries
 - [ ] Step 5: compact layout (contour packing) so 100+ box maps stay readable at Fit; lay out on main/cross axes for layout directions
 - [ ] Step 5: `validate()` should also check map key == stored id and kind-level attach rules (needed for Argdown import)
 - [ ] Step 6: make the i18n bundle swappable for Dutch; Backspace deletes on macOS; verify Cmd+Q goes through the unsaved-changes prompt; close-button glyph contrast; long tab titles truncate
