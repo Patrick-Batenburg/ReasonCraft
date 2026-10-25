@@ -1,5 +1,9 @@
 //! UI tests for images in boxes: the ribbon's Image and Remove image
-//! buttons, their errors and the missing-asset placeholder.
+//! buttons, their errors, preparing images off the UI thread and the
+//! missing-asset placeholder.
+
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use eframe::egui;
 use egui_kittest::{
@@ -7,6 +11,7 @@ use egui_kittest::{
     kittest::{NodeT, Queryable},
 };
 use reasoncraft::ReasonCraftApp;
+use reasoncraft::actions::Action;
 use reasoncraft::doc_tab::DocTab;
 use reasoncraft::file_ops::{FakeDialogs, Modal};
 use reasoncraft::i18n::t;
@@ -33,6 +38,28 @@ fn harness(fake: &FakeDialogs) -> (H, NodeId) {
     (h, premise)
 }
 
+/// Steps frames until no image is being prepared, then lets the frame
+/// loop settle (the spinner keeps repainting meanwhile, so `run` alone
+/// would not).
+fn wait(h: &mut H) {
+    let start = Instant::now();
+    while h.state().image_jobs.busy() {
+        assert!(start.elapsed() < Duration::from_secs(60), "image job hangs");
+        h.step();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    h.run();
+}
+
+/// A `w`×`h` PNG file in `dir`.
+fn photo(dir: &Path, name: &str, w: u32, h: u32) -> PathBuf {
+    let file = dir.join(name);
+    image::RgbImage::from_pixel(w, h, image::Rgb([200, 40, 40]))
+        .save(&file)
+        .unwrap();
+    file
+}
+
 #[test]
 fn corrupt_image_shows_error() {
     let dir = tempfile::tempdir().unwrap();
@@ -45,6 +72,7 @@ fn corrupt_image_shows_error() {
     fake.set_image(file);
     h.get_by_label(&t("action.image")).click();
     h.run();
+    wait(&mut h);
 
     match &h.state().modal {
         Some(Modal::Error { title, message }) => {
@@ -63,10 +91,7 @@ fn corrupt_image_shows_error() {
 #[test]
 fn image_button_inserts_and_remove_button_removes() {
     let dir = tempfile::tempdir().unwrap();
-    let file = dir.path().join("photo.png");
-    image::RgbImage::from_pixel(40, 20, image::Rgb([200, 40, 40]))
-        .save(&file)
-        .unwrap();
+    let file = photo(dir.path(), "photo.png", 40, 20);
     let fake = FakeDialogs::default();
     let (mut h, premise) = harness(&fake);
     assert!(
@@ -79,6 +104,7 @@ fn image_button_inserts_and_remove_button_removes() {
     fake.set_image(file);
     h.get_by_label(&t("action.image")).click();
     h.run();
+    wait(&mut h);
     assert!(h.state().modal.is_none());
     let image = h.state().active_tab().doc.boxes[&premise].image.clone();
     assert!(image.is_some_and(|i| (i.aspect - 0.5).abs() < 1e-6));
@@ -104,4 +130,128 @@ fn missing_asset_shows_placeholder() {
     h.run();
     // Painted without panicking; the cache marks the asset as missing.
     assert!(h.state().images.texture("0000.png").is_none());
+}
+
+#[test]
+fn image_insert_runs_off_ui_thread() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let (mut h, premise) = harness(&fake);
+    let delay = Duration::from_millis(600);
+    h.state_mut().image_jobs.delay = Some(delay);
+    let steps = h.state().active_tab().history.undo.len();
+    fake.set_image(photo(dir.path(), "slow.png", 40, 20));
+    let start = Instant::now();
+    h.get_by_label(&t("action.image")).click();
+    for _ in 0..6 {
+        h.step();
+    }
+    assert!(
+        start.elapsed() < delay,
+        "frames keep coming while the image is prepared"
+    );
+    assert!(h.state().image_jobs.busy());
+    assert!(h.state().active_tab().pending_images.contains_key(&premise));
+    assert!(h.state().active_tab().doc.boxes[&premise].image.is_none());
+    // The box shows a placeholder; the status bar shows the busy chip
+    // (both read "Preparing image…").
+    assert_eq!(t("image.preparing"), t("status.preparing_image"));
+    assert_eq!(h.get_all_by_label(&t("image.preparing")).count(), 2);
+
+    wait(&mut h);
+    let tab = h.state().active_tab();
+    assert!(tab.doc.boxes[&premise].image.is_some());
+    assert_eq!(tab.history.undo.len(), steps + 1, "one history step");
+    assert!(tab.pending_images.is_empty());
+    assert_eq!(h.query_all_by_label(&t("image.preparing")).count(), 0);
+}
+
+#[test]
+fn image_prepared_for_deleted_box_is_discarded() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let (mut h, premise) = harness(&fake);
+    h.state_mut().image_jobs.delay = Some(Duration::from_millis(300));
+    fake.set_image(photo(dir.path(), "late.png", 40, 20));
+    h.get_by_label(&t("action.image")).click();
+    h.step();
+    assert!(h.state().image_jobs.busy());
+    h.state_mut().push(Action::Delete);
+    h.step();
+    assert!(!h.state().active_tab().doc.boxes.contains_key(&premise));
+    let steps = h.state().active_tab().history.undo.len();
+
+    wait(&mut h);
+    let app = h.state();
+    let tab = app.active_tab();
+    assert!(tab.doc.boxes.values().all(|b| b.image.is_none()));
+    assert!(tab.assets.is_empty(), "nothing stored");
+    assert_eq!(tab.history.undo.len(), steps, "no history step");
+    assert!(app.modal.is_none());
+    assert_eq!(
+        app.status_note.as_deref(),
+        Some(t("image.discarded").as_str())
+    );
+    h.get_by_label(&t("image.discarded"));
+
+    // Undoing the delete brings the box back, without the image.
+    h.state_mut().push(Action::Undo);
+    h.run();
+    assert!(h.state().active_tab().doc.boxes[&premise].image.is_none());
+}
+
+#[test]
+fn second_insert_for_the_same_box_replaces_the_first() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let (mut h, premise) = harness(&fake);
+    h.state_mut().image_jobs.delay = Some(Duration::from_millis(200));
+    let steps = h.state().active_tab().history.undo.len();
+    fake.set_image(photo(dir.path(), "wide.png", 40, 20));
+    h.get_by_label(&t("action.image")).click();
+    h.step();
+    // The second job finishes first.
+    h.state_mut().image_jobs.delay = None;
+    fake.set_image(photo(dir.path(), "tall.png", 20, 40));
+    h.get_by_label(&t("action.image")).click();
+    h.step();
+
+    wait(&mut h);
+    let tab = h.state().active_tab();
+    let image = tab.doc.boxes[&premise].image.clone().unwrap();
+    assert!((image.aspect - 2.0).abs() < 1e-6, "the newer image wins");
+    assert_eq!(tab.history.undo.len(), steps + 1, "one history step");
+    assert_eq!(tab.assets.len(), 1, "the older result was dropped");
+}
+
+#[test]
+fn prepared_image_waits_for_the_running_edit() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let (mut h, premise) = harness(&fake);
+    h.state_mut().image_jobs.delay = Some(Duration::from_millis(100));
+    fake.set_image(photo(dir.path(), "photo.png", 40, 20));
+    h.get_by_label(&t("action.image")).click();
+    h.step();
+    h.state_mut().push(Action::Edit);
+    h.step();
+    assert_eq!(h.state().active_tab().editing(), Some(premise));
+
+    let start = Instant::now();
+    while h.state().image_jobs.busy() {
+        assert!(start.elapsed() < Duration::from_secs(60));
+        h.step();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    h.step();
+    let tab = h.state().active_tab();
+    assert_eq!(tab.editing(), Some(premise), "the edit keeps running");
+    assert!(tab.doc.boxes[&premise].image.is_none(), "the image waits");
+    h.get_by_label(&t("image.preparing"));
+
+    h.state_mut().push(Action::StopEditing);
+    h.run();
+    let tab = h.state().active_tab();
+    assert!(tab.doc.boxes[&premise].image.is_some());
+    assert!(tab.pending_images.is_empty());
 }

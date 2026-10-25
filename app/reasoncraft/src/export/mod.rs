@@ -17,9 +17,7 @@ use eframe::egui::emath::GuiRounding as _;
 use resvg::usvg::fontdb;
 
 pub use docx::{essay_docx, outline_docx};
-pub use job::{
-    ExportJobs, ExportWork, Job, JobState, Notice, Outcome, SharedClipboard, Snapshot, Target,
-};
+pub use job::{ExportJobs, ExportWork, Notice, Outcome, SharedClipboard, Snapshot, Target};
 pub use pdf::{
     Fit, MAX_PAGES, Orientation, PRINT_FILE_MAX_AGE, PageSetup, Paper, clean_old_print_files,
     clean_print_files, print_via_pdf, print_via_pdf_with, svg_to_pdf, write_print_file,

@@ -7,6 +7,7 @@ pub mod doc_tab;
 pub mod export;
 pub mod file_ops;
 pub mod i18n;
+pub mod jobs;
 pub mod scene;
 pub mod settings;
 pub mod shell;

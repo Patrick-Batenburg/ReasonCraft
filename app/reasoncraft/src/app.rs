@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::actions::{self, Action, FakeOpener, LinkOpener, SystemOpener};
-use crate::canvas::images::ImageCache;
+use crate::canvas::images::{ImageCache, ImageJobs};
 use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
 use crate::export::{ExportJobs, FakeClipboard, SharedClipboard, SystemClipboard};
@@ -55,6 +55,11 @@ pub struct ReasonCraftApp {
     pub link_opener: Box<dyn LinkOpener>,
     /// Exports running in the background, and the last one's notice.
     pub export: ExportJobs,
+    /// Inserted images being prepared in the background.
+    pub image_jobs: ImageJobs,
+    /// A short message in the status bar (an inserted image that was
+    /// discarded, say), until the next image insert.
+    pub status_note: Option<String>,
     /// The export or page setup dialog, when open.
     pub export_dialog: Option<ExportDialog>,
     /// The egui context of the running frame: exports measure text with it.
@@ -93,6 +98,8 @@ impl ReasonCraftApp {
             link_edit: None,
             link_opener,
             export: ExportJobs::new(clipboard, std::env::temp_dir()),
+            image_jobs: ImageJobs::default(),
+            status_note: None,
             export_dialog: None,
             egui_ctx: None,
             applied: None,
@@ -162,6 +169,7 @@ impl ReasonCraftApp {
         let ctx = ui.ctx().clone();
         self.egui_ctx = Some(ctx.clone());
         actions::poll_exports(self);
+        actions::poll_images(self);
         self.sync_theme(&ctx);
         self.sync_window_title(&ctx);
         // The OS (or the title bar on macOS) asks to close: ask about unsaved
@@ -209,7 +217,7 @@ impl ReasonCraftApp {
             }
             ctx.request_repaint();
         }
-        if self.export.busy() {
+        if self.export.busy() || self.image_jobs.busy() {
             // Look for the result again soon, without spinning.
             ctx.request_repaint_after(Duration::from_millis(30));
         }

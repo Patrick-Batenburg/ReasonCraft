@@ -7,6 +7,7 @@ use reasoncraft_core::{Assets, CardKind, Document, Parent};
 use super::pdf::placements;
 use super::tests::scene_of;
 use super::*;
+use crate::jobs::{Job, JobState};
 use crate::scene::{Scene, Shape};
 use crate::theme::Tokens;
 

@@ -1,5 +1,5 @@
 use super::*;
-use crate::actions::{Action, apply, is_enabled};
+use crate::actions::{Action, apply, is_enabled, wait_for_images};
 use reasoncraft_core::{CardKind, NodeId, Parent};
 
 #[test]
@@ -191,6 +191,7 @@ fn image_roundtrip_through_save() {
     let fake = FakeDialogs::default();
     let (mut app, premise) = app_with_premise(dir.path(), &fake);
     apply(&mut app, Action::InsertImage);
+    wait_for_images(&mut app);
     assert!(app.modal.is_none(), "{:?}", app.modal);
     let image = app.active_tab().doc.boxes[&premise].image.clone().unwrap();
     assert!((image.aspect - 0.75).abs() < 1e-6);
@@ -216,6 +217,7 @@ fn undo_image_insert_keeps_assets_out_of_history() {
     let fake = FakeDialogs::default();
     let (mut app, premise) = app_with_premise(dir.path(), &fake);
     apply(&mut app, Action::InsertImage);
+    wait_for_images(&mut app);
     let key = app.active_tab().doc.boxes[&premise]
         .image
         .clone()
@@ -294,6 +296,7 @@ fn image_actions_need_a_box_that_can_hold_an_image() {
         "nothing to remove yet"
     );
     apply(&mut app, Action::InsertImage);
+    wait_for_images(&mut app);
     assert!(enabled(&app, &Action::RemoveImage));
     apply(&mut app, Action::RemoveImage);
     assert!(app.active_tab().doc.boxes[&premise].image.is_none());
@@ -327,6 +330,7 @@ fn image_actions_commit_a_running_text_edit_first() {
         );
         let steps = app.active_tab().history.undo.len();
         apply(&mut app, action);
+        wait_for_images(&mut app);
         let tab = app.active_tab();
         assert_eq!(tab.editing(), None, "the edit ended");
         assert_eq!(

@@ -111,6 +111,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     );
     comments::badges(ui, tab, &layout, pending);
     links::glyphs(ui, tab, &layout, pending);
+    images::preparing(ui, tab, &layout, &tokens);
     connect::update(ui, &response, &layout, tab, &tokens, pending, panning);
     drag::update(ui, &response, &layout, tab, &tokens, pending, panning);
     drag::panel_drop(ui, &response, &layout, tab, &tokens, pending);

@@ -4,14 +4,13 @@
 //! text) and hands it over with copies of everything else (assets, the
 //! document); the worker writes the SVG, rasterises, makes the PDF and
 //! writes the file. Editing during an export cannot change what is
-//! exported. The frame loop polls [`ExportJobs::finished`] and repaints
-//! while [`ExportJobs::busy`].
+//! exported. Each export is a [`Job`]; the frame loop polls
+//! [`ExportJobs::finished`] and repaints while [`ExportJobs::busy`].
 
 use std::collections::VecDeque;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -26,46 +25,9 @@ use super::{
     bundled_font_family, copy_scene_to_clipboard, scene_to_png, scene_to_svg, shared_fontdb,
     svg_to_pdf, write_print_file,
 };
+use crate::jobs::{Job, JobState};
 use crate::scene::Scene;
 use crate::theme::Tokens;
-
-/// Work running on its own thread, whose result is picked up by polling.
-pub struct Job<T> {
-    rx: Receiver<T>,
-}
-
-/// What a poll of a [`Job`] found.
-pub enum JobState<T> {
-    Running,
-    Done(T),
-    /// The worker stopped without a result (it panicked).
-    Lost,
-}
-
-impl<T: Send + 'static> Job<T> {
-    /// Runs `work` on a new thread, after `delay` when one is given (tests
-    /// use it to keep a job running while frames go by).
-    pub fn spawn(delay: Option<Duration>, work: impl FnOnce() -> T + Send + 'static) -> Self {
-        let (tx, rx) = mpsc::channel();
-        std::thread::spawn(move || {
-            if let Some(delay) = delay {
-                std::thread::sleep(delay);
-            }
-            // The receiver is gone only when the app closed; nothing to do.
-            let _ = tx.send(work());
-        });
-        Self { rx }
-    }
-
-    /// The result, once the work is done. Never blocks.
-    pub fn poll(&self) -> JobState<T> {
-        match self.rx.try_recv() {
-            Ok(out) => JobState::Done(out),
-            Err(TryRecvError::Empty) => JobState::Running,
-            Err(TryRecvError::Disconnected) => JobState::Lost,
-        }
-    }
-}
 
 /// A clipboard the worker can reach.
 pub type SharedClipboard = Arc<Mutex<dyn ClipboardSink + Send>>;
@@ -269,6 +231,11 @@ impl ExportJobs {
     /// Whether an export is still running.
     pub fn busy(&self) -> bool {
         !self.running.is_empty()
+    }
+
+    /// How many exports are running.
+    pub fn running(&self) -> usize {
+        self.running.len()
     }
 
     /// Starts `work` on a worker thread and clears the last notice.

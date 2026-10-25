@@ -374,6 +374,9 @@ image-error-too_large = The image is too large. Use an image under 40 MB and at 
 image-error-unsupported = This file is not a PNG, JPEG or WebP image.
 image-error-corrupt = The image is damaged and cannot be read.
 image-error-read = The file could not be read: { $detail }
+image-error-stopped = Preparing the image stopped unexpectedly. Please try again.
+image-preparing = Preparing image…
+image-discarded = The image was not added: its box was deleted or can no longer hold an image.
 export-error-too_large = This map is too large to export as an image ({ $detail } pixels). Use a lower scale, or export as SVG or PDF.
 export-error-io = The file could not be written: { $detail }
 export-error-render = The image could not be drawn: { $detail }
@@ -431,5 +434,14 @@ export-done = Export done.
 export-open_folder = Open folder
 export-copied = Copied to the clipboard.
 status-exporting = Exporting…
+status-preparing_image = Preparing image…
+status-jobs-exports = { $count ->
+    [one] One export running
+   *[other] { $count } exports running
+}
+status-jobs-images = { $count ->
+    [one] One image being prepared
+   *[other] { $count } images being prepared
+}
 export-error-stopped = The export stopped unexpectedly. Please try again.
 export-error-unsupported = This kind of export is not available yet ({ $detail }).

@@ -19,6 +19,7 @@ mod evaluate;
 mod export;
 pub use export::poll_exports;
 mod images;
+pub use images::{poll_images, wait_for_images};
 mod meta;
 pub use evaluate::{Rate, Rated, rate_action, rated};
 mod insert;
@@ -43,6 +44,12 @@ pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 /// Every action but picking a target then ends "Connect to…" in the active
 /// tab, app-level ones (inserting, comments, links, switching tabs) too.
 pub fn apply(app: &mut ReasonCraftApp, action: Action) {
+    // A finished image job is not the user's doing: it leaves the active
+    // tab's edit session and "Connect to…" alone.
+    if let Action::ImagePrepared { job, node, result } = action {
+        images::prepared(app, job, node, result);
+        return;
+    }
     if let Some(tab) = app.tabs.get_mut(app.active) {
         if !continues_session(&action, tab.session()) {
             tab.commit_session();
@@ -214,6 +221,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetLink(_)
         | Action::OpenLink(_)
         | Action::InsertImage
+        | Action::ImagePrepared { .. }
         | Action::RemoveImage
         | Action::TogglePanel(_)
         | Action::ShowPanel(_)

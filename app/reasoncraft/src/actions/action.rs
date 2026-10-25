@@ -8,7 +8,9 @@ use reasoncraft_core::{
 };
 
 use super::{Insertable, Rate};
+use crate::canvas::images::ImageResult;
 use crate::export::{ExportFormat, ExportRequest, PageSetup};
+use crate::jobs::JobId;
 use crate::settings::{OutlineToggle, TextTab};
 use crate::theme::ThemeChoice;
 
@@ -74,6 +76,15 @@ pub enum Action {
     OpenLink(NodeId),
     /// Pick an image file and put it in the selected box (replacing its image).
     InsertImage,
+    /// The image prepared by `job` for box `node` (pushed by the frame
+    /// loop when the job ends): put it in the box as one history step if
+    /// the box can still hold it. Ignored when a newer insert replaced the
+    /// job, or its tab was closed.
+    ImagePrepared {
+        job: JobId,
+        node: NodeId,
+        result: ImageResult,
+    },
     RemoveImage,
     /// Add a card that targets the whole selected card (or the card of the selected premise).
     TargetWholeCard(CardKind),

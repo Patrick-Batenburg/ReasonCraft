@@ -1,28 +1,37 @@
 //! Putting an image in the selected box, and taking it out again.
 //!
-//! The bytes go to the tab's [`reasoncraft_core::Assets`], outside history;
-//! the document only gains an [`ImageRef`], so undo snapshots stay small.
+//! The picked file is read and prepared on a worker thread (see
+//! [`crate::canvas::images::ImageJobs`]); the frame loop hands the result
+//! back as [`Action::ImagePrepared`]. The bytes go to the tab's
+//! [`reasoncraft_core::Assets`], outside history; the document only gains
+//! an [`ImageRef`], so undo snapshots stay small.
 
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
+use std::time::{Duration, Instant};
 
 use reasoncraft_core::{BoxKind, ImageRef, Item, NodeId};
 
 use super::Action;
 use crate::app::ReasonCraftApp;
-use crate::canvas::images::{ImageError, MAX_INPUT_BYTES, prepare_image};
+use crate::canvas::images::{ImageFailure, ImageResult};
 use crate::doc_tab::DocTab;
 use crate::file_ops::Modal;
-use crate::i18n::{FluentArgs, t, t_args};
+use crate::i18n::t;
+use crate::jobs::JobId;
 
 /// The selected box, when it is a kind that can hold an image (not a note).
 fn image_box(tab: &DocTab) -> Option<NodeId> {
     let Some(Item::Box(b)) = tab.selection else {
         return None;
     };
-    let node = tab.doc.boxes.get(&b)?;
-    (node.kind != BoxKind::Note).then_some(b)
+    holds_images(tab, b).then_some(b)
+}
+
+/// Whether box `b` exists and is a kind that can hold an image.
+fn holds_images(tab: &DocTab, b: NodeId) -> bool {
+    tab.doc
+        .boxes
+        .get(&b)
+        .is_some_and(|n| n.kind != BoxKind::Note)
 }
 
 fn has_image(tab: &DocTab, b: NodeId) -> bool {
@@ -38,23 +47,7 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
     })
 }
 
-/// Why a picked file could not be used.
-enum Failure {
-    Read(std::io::Error),
-    Image(ImageError),
-}
-
-/// Read and prepare the image at `path`. Reading stops one byte past the
-/// size limit, so a huge file is refused without being read whole.
-fn load(path: &Path) -> Result<(Vec<u8>, f32), Failure> {
-    let mut bytes = Vec::new();
-    File::open(path)
-        .and_then(|f| f.take(MAX_INPUT_BYTES + 1).read_to_end(&mut bytes))
-        .map_err(Failure::Read)?;
-    prepare_image(&bytes).map_err(Failure::Image)
-}
-
-/// Carry out an image action.
+/// Carry out an image action on the active tab's selected box.
 pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
     let Some(tab) = app.tabs.get(app.active) else {
         return;
@@ -67,30 +60,10 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
             let Some(path) = app.dialogs.pick_image() else {
                 return;
             };
-            match load(&path) {
-                Ok((png, aspect)) => {
-                    let tab = &mut app.tabs[app.active];
-                    // Only ever "png": the bytes were re-encoded as PNG.
-                    let asset = tab.assets.insert("png", png);
-                    tab.edit(|d| d.set_image(b, Some(ImageRef { asset, aspect })));
-                }
-                Err(failure) => {
-                    let mut args = FluentArgs::new();
-                    let file = path.file_name().unwrap_or(path.as_os_str());
-                    args.set("file", file.to_string_lossy().into_owned());
-                    let message = match failure {
-                        Failure::Image(e) => t(e.key()),
-                        Failure::Read(e) => {
-                            args.set("detail", e.to_string());
-                            t_args("image.error.read", &args)
-                        }
-                    };
-                    app.modal = Some(Modal::Error {
-                        title: t_args("image.error.title", &args),
-                        message,
-                    });
-                }
-            }
+            let job = app.image_jobs.start(b, path);
+            app.status_note = None;
+            // A newer insert for the same box replaces the older one.
+            app.tabs[app.active].pending_images.insert(b, job);
         }
         Action::RemoveImage => {
             let tab = &mut app.tabs[app.active];
@@ -99,5 +72,94 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
             }
         }
         _ => unreachable!("not an image action"),
+    }
+}
+
+/// The tab waiting for `job` to fill box `node`, if any.
+fn waiting_tab(app: &ReasonCraftApp, job: JobId, node: NodeId) -> Option<usize> {
+    app.tabs
+        .iter()
+        .position(|t| t.pending_images.get(&node) == Some(&job))
+}
+
+/// Put the image `job` prepared in box `node` of the tab waiting for it,
+/// as one history step. Dropped when no tab waits for it (a newer insert
+/// replaced it, or the tab closed); discarded with a note when the box is
+/// gone or can no longer hold an image. A failure shows its message.
+pub(super) fn prepared(app: &mut ReasonCraftApp, job: JobId, node: NodeId, result: ImageResult) {
+    let Some(i) = waiting_tab(app, job, node) else {
+        return;
+    };
+    app.tabs[i].pending_images.remove(&node);
+    let image = match result {
+        Ok(image) => image,
+        Err(failure) => return show_failure(app, &failure),
+    };
+    let tab = &mut app.tabs[i];
+    if !holds_images(tab, node) {
+        app.status_note = Some(t("image.discarded"));
+        return;
+    }
+    // The frame loop waits for the tab's edit session to end; a direct
+    // call still keeps the edit and the image as separate steps.
+    tab.commit_session();
+    // Only ever "png": the bytes were re-encoded as PNG.
+    let asset = tab.assets.insert("png", image.png);
+    let aspect = image.aspect;
+    tab.edit(|d| d.set_image(node, Some(ImageRef { asset, aspect })));
+}
+
+/// An error message for `failure`, or a status note when another message
+/// is showing.
+fn show_failure(app: &mut ReasonCraftApp, failure: &ImageFailure) {
+    if app.modal.is_some() {
+        app.status_note = Some(format!("{}: {}", failure.title(), failure.message()));
+        return;
+    }
+    app.modal = Some(Modal::Error {
+        title: failure.title(),
+        message: failure.message(),
+    });
+}
+
+/// Picks up the images that finished preparing and queues each as
+/// [`Action::ImagePrepared`]. A result for a tab with a running edit
+/// session waits until the session ends; one nobody waits for is dropped.
+pub fn poll_images(app: &mut ReasonCraftApp) {
+    let mut done = std::mem::take(&mut app.image_jobs.waiting);
+    done.extend(app.image_jobs.finished());
+    for p in done {
+        let Some(i) = waiting_tab(app, p.job, p.node) else {
+            continue;
+        };
+        if app.tabs[i].session().is_some() {
+            app.image_jobs.waiting.push(p);
+        } else {
+            app.pending.push(Action::ImagePrepared {
+                job: p.job,
+                node: p.node,
+                result: p.result,
+            });
+        }
+    }
+}
+
+/// Waits for every image being prepared and applies the results: for
+/// tests and scripted runs, which have no frame loop.
+pub fn wait_for_images(app: &mut ReasonCraftApp) {
+    let start = Instant::now();
+    loop {
+        poll_images(app);
+        if !app.image_jobs.busy() {
+            break;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(60),
+            "image preparation hangs"
+        );
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    for action in std::mem::take(&mut app.pending) {
+        super::apply(app, action);
     }
 }

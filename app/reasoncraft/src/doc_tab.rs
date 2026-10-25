@@ -1,5 +1,6 @@
 //! One open document: its content, history, file path and view state.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use eframe::egui::Rect;
@@ -11,6 +12,7 @@ use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Packa
 
 use crate::canvas::Camera;
 use crate::i18n::t;
+use crate::jobs::JobId;
 
 mod essay_edit;
 mod meta_edit;
@@ -75,6 +77,10 @@ pub struct DocTab {
     /// The Essay tab's view, with the revision it was built for (see
     /// [`Self::essay`]).
     pub essay_cache: Option<(u64, EssayView)>,
+    /// The boxes whose inserted image is being prepared, with the job
+    /// preparing it; a newer insert for the same box replaces the entry,
+    /// so the older result is dropped when it arrives.
+    pub pending_images: HashMap<NodeId, JobId>,
 }
 
 impl Default for DocTab {
@@ -138,6 +144,7 @@ impl DocTab {
             outline_cache: None,
             issue_cache: None,
             essay_cache: None,
+            pending_images: HashMap::new(),
         }
     }
 

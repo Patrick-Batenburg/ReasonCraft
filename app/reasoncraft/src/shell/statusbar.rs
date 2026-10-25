@@ -1,5 +1,6 @@
 //! Status bar: box count, issue count (or the "Connect to…" hint), the
-//! export busy chip or the last export's notice, theme toggle and zoom slider.
+//! busy chip of background jobs or the last export's notice, a status
+//! note, theme toggle and zoom slider.
 
 use eframe::egui::{
     self, Align, FontId, Frame, Layout, Margin, Response, RichText, Role, Sense, Slider,
@@ -51,7 +52,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     );
                 }
 
-                export_status(ui, app, &tk);
+                job_status(ui, app, &tk);
 
                 let zoom = app.active_tab().camera.zoom;
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -90,30 +91,56 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         });
 }
 
-/// "Exporting…" with a spinner while an export runs; otherwise what the
-/// last one did ("Export done" with "Open folder", or "Copied").
-fn export_status(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
-    let text = |key: &str| RichText::new(t(key)).size(12.0).color(tk.text_muted);
-    if app.export.busy() {
+/// A spinner while background jobs run ("Exporting…", or "Preparing
+/// image…" when only images are; the tooltip lists them all); otherwise
+/// what the last export did ("Export done" with "Open folder", or
+/// "Copied"). Then the status note, if any.
+fn job_status(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
+    let text = |s: String| RichText::new(s).size(12.0).color(tk.text_muted);
+    let (exports, images) = (app.export.running(), app.image_jobs.running());
+    if exports + images > 0 {
         ui.add_space(16.0);
         ui.add(egui::Spinner::new().size(12.0).color(tk.accent));
-        ui.label(text("status.exporting"));
-        return;
-    }
-    match &app.export.notice {
-        Some(Notice::Saved(_)) => {
-            ui.add_space(16.0);
-            ui.label(text("export.done"));
-            let link = RichText::new(t("export.open_folder")).size(12.0);
-            if ui.link(link).clicked() {
-                app.pending.push(Action::OpenExportFolder);
+        let key = if exports > 0 {
+            "status.exporting"
+        } else {
+            "status.preparing_image"
+        };
+        let mut lines = Vec::new();
+        for (key, count) in [
+            ("status.jobs.exports", exports),
+            ("status.jobs.images", images),
+        ] {
+            if count > 0 {
+                let mut args = FluentArgs::new();
+                args.set("count", count);
+                lines.push(t_args(key, &args));
             }
         }
-        Some(Notice::Copied) => {
-            ui.add_space(16.0);
-            ui.label(text("export.copied"));
+        ui.label(text(t(key))).on_hover_text(lines.join(
+            "
+",
+        ));
+    } else {
+        match &app.export.notice {
+            Some(Notice::Saved(_)) => {
+                ui.add_space(16.0);
+                ui.label(text(t("export.done")));
+                let link = RichText::new(t("export.open_folder")).size(12.0);
+                if ui.link(link).clicked() {
+                    app.pending.push(Action::OpenExportFolder);
+                }
+            }
+            Some(Notice::Copied) => {
+                ui.add_space(16.0);
+                ui.label(text(t("export.copied")));
+            }
+            None => {}
         }
-        None => {}
+    }
+    if let Some(note) = &app.status_note {
+        ui.add_space(16.0);
+        ui.label(text(note.clone()));
     }
 }
 

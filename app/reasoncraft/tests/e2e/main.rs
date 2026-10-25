@@ -7,7 +7,7 @@
 mod meta_sessions;
 mod text_panel;
 
-use reasoncraft::actions::{Action, Dir, Insertable, Rate, apply};
+use reasoncraft::actions::{Action, Dir, Insertable, Rate, apply, wait_for_images};
 use reasoncraft::app::ReasonCraftApp;
 use reasoncraft::canvas::comments::PRESETS;
 use reasoncraft::file_ops::FakeDialogs;
@@ -229,6 +229,7 @@ fn e2e_build_save_reopen() {
         &mut app,
         [Action::Select(Some(Item::Box(r1))), Action::InsertImage],
     );
+    wait_for_images(&mut app);
     assert!(app.modal.is_none(), "image insert failed: {:?}", app.modal);
     let asset = app.active_tab().doc.boxes[&r1].image.clone().unwrap().asset;
     let asset_bytes = app.active_tab().assets.get(&asset).unwrap();
