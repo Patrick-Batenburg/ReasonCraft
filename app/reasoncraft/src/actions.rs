@@ -17,6 +17,7 @@ mod editing;
 mod essay;
 mod evaluate;
 mod export;
+pub(crate) use export::close_after_exports;
 pub use export::poll_exports;
 mod images;
 pub use images::{poll_images, wait_for_images};
@@ -126,7 +127,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::CopyAsImage
         | Action::Print
         | Action::OpenExportFolder
-        | Action::ResolveExportReplace(_) => export::apply(app, action),
+        | Action::ResolveExportReplace(_)
+        | Action::ResolveClosingExports(_) => export::apply(app, action),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap => {
             let doc = reasoncraft_core::fixtures::sample_iot_like(117);
@@ -289,7 +291,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::CopyAsImage
         | Action::Print
         | Action::OpenExportFolder
-        | Action::ResolveExportReplace(_) => unreachable!("app-level action"),
+        | Action::ResolveExportReplace(_)
+        | Action::ResolveClosingExports(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

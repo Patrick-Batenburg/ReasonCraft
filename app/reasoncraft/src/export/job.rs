@@ -11,7 +11,7 @@ use std::collections::VecDeque;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use reasoncraft_core::essay_markdown;
@@ -79,6 +79,11 @@ pub struct ExportWork {
 impl ExportWork {
     /// Makes the export and writes (or copies) it.
     pub fn run(self) -> Result<Outcome, ExportError> {
+        self.run_gated(&WriteGate::default())
+    }
+
+    /// Like [`Self::run`], writing the file only while `gate` is open.
+    fn run_gated(self, gate: &WriteGate) -> Result<Outcome, ExportError> {
         let fonts = shared_fontdb();
         let bytes = match (&self.snapshot, self.format) {
             (
@@ -133,6 +138,9 @@ impl ExportWork {
                 }
             }
         };
+        // Held until the file is complete, so a closed gate never leaves a
+        // half-written file behind.
+        let _writing = gate.enter()?;
         match self.target {
             Target::File(path) => {
                 write_atomically(&path, &bytes)?;
@@ -191,6 +199,30 @@ pub(super) fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), ExportEr
     Ok(result?)
 }
 
+/// Lets exports write their files until it is closed. Closing waits for a
+/// write in progress, so afterwards no export is in the middle of writing
+/// and none starts: the process can end without leaving a temporary file.
+#[derive(Clone, Default)]
+pub struct WriteGate(Arc<Mutex<bool>>);
+
+impl WriteGate {
+    /// Holds the gate open while the returned guard lives; an error once
+    /// it is closed.
+    fn enter(&self) -> Result<MutexGuard<'_, bool>, ExportError> {
+        // A writer that panicked left nothing half done we could fix.
+        let closed = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if *closed {
+            return Err(ExportError::Stopped);
+        }
+        Ok(closed)
+    }
+
+    /// Closes the gate, after the write in progress (if any) finished.
+    pub fn close(&self) {
+        *self.0.lock().unwrap_or_else(|e| e.into_inner()) = true;
+    }
+}
+
 /// A message about the last export, shown in the status bar.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Notice {
@@ -214,6 +246,8 @@ pub struct ExportJobs {
     pub notice: Option<Notice>,
     /// Export errors waiting for the message on screen to close.
     pub waiting_errors: VecDeque<ExportError>,
+    /// Closed when the window quits while exports run (see [`Self::stop`]).
+    gate: WriteGate,
 }
 
 impl ExportJobs {
@@ -225,6 +259,7 @@ impl ExportJobs {
             print_dir,
             notice: None,
             waiting_errors: VecDeque::new(),
+            gate: WriteGate::default(),
         }
     }
 
@@ -241,8 +276,16 @@ impl ExportJobs {
     /// Starts `work` on a worker thread and clears the last notice.
     pub fn start(&mut self, work: ExportWork) {
         self.notice = None;
+        let gate = self.gate.clone();
         self.running
-            .push(Job::spawn(self.delay, move || work.run()));
+            .push(Job::spawn(self.delay, move || work.run_gated(&gate)));
+    }
+
+    /// For quitting while exports run: no export writes a file from now
+    /// on. Returns once a write in progress is complete, which is quick:
+    /// the export is made in memory before its file is written.
+    pub fn stop(&self) {
+        self.gate.close();
     }
 
     /// The results of the exports that ended since the last call.

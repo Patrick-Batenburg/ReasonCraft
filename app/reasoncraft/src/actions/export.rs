@@ -83,6 +83,16 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
                 export_to(app, request, path);
             }
         }
+        Action::ResolveClosingExports(quit) => {
+            if app.modal != Some(Modal::ExportsRunning) {
+                return;
+            }
+            app.modal = None;
+            if quit {
+                app.export.stop();
+                app.confirm_close();
+            }
+        }
         Action::OpenExportFolder => {
             let Some(Notice::Saved(path)) = &app.export.notice else {
                 return;
@@ -215,8 +225,21 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
     }
 }
 
+/// The window is closing and every tab is resolved: close now, or keep
+/// the window open with a waiting prompt until the running exports finish.
+pub(crate) fn close_after_exports(app: &mut ReasonCraftApp) {
+    if app.export.busy() {
+        app.modal = Some(Modal::ExportsRunning);
+    } else {
+        app.modal = None;
+        app.confirm_close();
+    }
+}
+
 /// Picks up the exports that ended: a notice for a written file or a
 /// copied image, the PDF viewer for a print, an error message otherwise.
+/// A close waiting for the exports goes ahead once they are done, unless
+/// one failed: then its message shows and the window stays open.
 pub fn poll_exports(app: &mut ReasonCraftApp) {
     for result in app.export.finished() {
         match result {
@@ -228,6 +251,13 @@ pub fn poll_exports(app: &mut ReasonCraftApp) {
                 }
             }
             Err(e) => show_error(app, e),
+        }
+    }
+    if app.modal == Some(Modal::ExportsRunning) && !app.export.busy() {
+        app.modal = None;
+        if app.export.waiting_errors.is_empty() {
+            app.confirm_close();
+            return;
         }
     }
     if app.modal.is_none()

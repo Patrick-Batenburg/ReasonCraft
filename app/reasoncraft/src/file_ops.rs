@@ -44,6 +44,9 @@ pub enum Modal {
         path: PathBuf,
         then: AfterSave,
     },
+    /// The window is closing, every tab is saved or discarded, and exports
+    /// are still running: it closes once they finish (or on Quit anyway).
+    ExportsRunning,
     /// An export to `path` would replace an existing file that the file
     /// dialog never checked (the extension was added to the chosen name).
     ConfirmExportReplace {
@@ -355,7 +358,8 @@ pub fn request_close_window(app: &mut ReasonCraftApp) {
     ask_from(app, 0);
 }
 
-/// Ask about the first dirty tab at or after `from`; with none left, close.
+/// Ask about the first dirty tab at or after `from`; with none left, close
+/// (once the running exports finish).
 fn ask_from(app: &mut ReasonCraftApp, from: usize) {
     match (from..app.tabs.len()).find(|&i| app.tabs[i].has_unsaved_work()) {
         Some(i) => {
@@ -366,10 +370,7 @@ fn ask_from(app: &mut ReasonCraftApp, from: usize) {
                 waiting: false,
             });
         }
-        None => {
-            app.modal = None;
-            app.confirm_close();
-        }
+        None => crate::actions::close_after_exports(app),
     }
 }
 

@@ -249,6 +249,10 @@ pub enum Action {
     /// The answer to "replace the existing file?" for an export (true:
     /// replace and export).
     ResolveExportReplace(bool),
+    /// The answer to "finishing exports" while the window closes: true
+    /// quits now (the running exports write nothing more), false keeps
+    /// the window open.
+    ResolveClosingExports(bool),
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,

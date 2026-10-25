@@ -35,11 +35,16 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
                     .color(tk.box_text),
             );
             ui.label(egui::RichText::new(body).color(tk.box_text));
-            if let Modal::Unsaved { waiting: true, .. } = modal {
-                // Save goes ahead by itself once the images are ready.
+            // Save (or the close) goes ahead by itself once the work is done.
+            let waiting = match modal {
+                Modal::Unsaved { waiting: true, .. } => Some("unsaved.waiting_images"),
+                Modal::ExportsRunning => Some("closing.exports.waiting"),
+                _ => None,
+            };
+            if let Some(key) = waiting {
                 ui.horizontal(|ui| {
                     ui.add(egui::Spinner::new().size(14.0).color(tk.accent));
-                    ui.label(egui::RichText::new(t("unsaved.waiting_images")).color(tk.box_text));
+                    ui.label(egui::RichText::new(t(key)).color(tk.box_text));
                 });
             }
             let mut answer = None;
@@ -74,6 +79,7 @@ fn texts(app: &ReasonCraftApp, modal: &Modal) -> (String, String) {
             args.set("name", name);
             (t_args("unsaved.title", &args), t("unsaved.message"))
         }
+        Modal::ExportsRunning => (t("closing.exports.title"), t("closing.exports.message")),
         Modal::ConfirmReplace { path, .. } | Modal::ConfirmExportReplace { path, .. } => {
             let mut args = FluentArgs::new();
             let file = path.file_name().unwrap_or(path.as_os_str());
@@ -128,6 +134,21 @@ fn buttons(modal: &Modal) -> (Vec<Button>, Action) {
                 ),
             ],
             Action::ResolveReplace(false),
+        ),
+        Modal::ExportsRunning => (
+            vec![
+                (
+                    "unsaved.cancel",
+                    "unsaved.cancel",
+                    Action::ResolveClosingExports(false),
+                ),
+                (
+                    "closing.exports.quit",
+                    "closing.exports.quit",
+                    Action::ResolveClosingExports(true),
+                ),
+            ],
+            Action::ResolveClosingExports(false),
         ),
         Modal::ConfirmExportReplace { .. } => (
             vec![
