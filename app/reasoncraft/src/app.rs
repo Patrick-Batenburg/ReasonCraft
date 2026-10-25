@@ -1,12 +1,17 @@
 //! The application: open tabs, settings and the per-frame loop.
 
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
 use crate::actions::{self, Action, FakeOpener, LinkOpener, SystemOpener};
 use crate::canvas::images::ImageCache;
 use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
+use crate::export::{ExportJobs, FakeClipboard, SharedClipboard, SystemClipboard};
 use crate::file_ops::{FakeDialogs, FileDialogs, Modal, RfdDialogs};
 pub use crate::settings::{SETTINGS_KEY, Settings};
 use crate::shell;
+use crate::shell::export_dialog::ExportDialog;
 use crate::shell::link_modal::LinkEdit;
 use crate::theme::{self, Tokens};
 use eframe::egui;
@@ -48,6 +53,12 @@ pub struct ReasonCraftApp {
     pub link_edit: Option<LinkEdit>,
     /// Opens links in the browser: the platform's handler, or a fake in tests.
     pub link_opener: Box<dyn LinkOpener>,
+    /// Exports running in the background, and the last one's notice.
+    pub export: ExportJobs,
+    /// The export or page setup dialog, when open.
+    pub export_dialog: Option<ExportDialog>,
+    /// The egui context of the running frame: exports measure text with it.
+    pub(crate) egui_ctx: Option<egui::Context>,
     applied: Option<Tokens>,
     window_title: String,
     /// Every unsaved-changes question was answered: let the window close.
@@ -64,6 +75,7 @@ impl ReasonCraftApp {
         settings: Settings,
         dialogs: Box<dyn FileDialogs>,
         link_opener: Box<dyn LinkOpener>,
+        clipboard: SharedClipboard,
     ) -> Self {
         Self {
             tabs: vec![DocTab::with_language(&settings.default_doc_language)],
@@ -80,6 +92,9 @@ impl ReasonCraftApp {
             modal: None,
             link_edit: None,
             link_opener,
+            export: ExportJobs::new(clipboard, std::env::temp_dir()),
+            export_dialog: None,
+            egui_ctx: None,
             applied: None,
             window_title: String::new(),
             close_confirmed: false,
@@ -98,11 +113,16 @@ impl ReasonCraftApp {
         // Print files from earlier runs; off the UI thread, as the temp
         // folder can be large.
         std::thread::spawn(crate::export::clean_old_print_files);
-        Self::with_settings(settings, Box::new(RfdDialogs), Box::new(SystemOpener))
+        Self::with_settings(
+            settings,
+            Box::new(RfdDialogs),
+            Box::new(SystemOpener),
+            Arc::new(Mutex::new(SystemClipboard)),
+        )
     }
 
     /// Build the app with default settings, no storage, file dialogs that
-    /// always cancel and a link opener that only records links.
+    /// always cancel, and a link opener and clipboard that only record.
     pub fn new_for_test() -> Self {
         Self::new_for_test_with(Box::new(FakeDialogs::default()))
     }
@@ -113,6 +133,7 @@ impl ReasonCraftApp {
             Settings::default(),
             dialogs,
             Box::new(FakeOpener::default()),
+            Arc::new(Mutex::new(FakeClipboard::default())),
         )
     }
 
@@ -139,6 +160,8 @@ impl ReasonCraftApp {
     /// Draw one frame and apply the actions it produced.
     pub fn show(&mut self, ui: &mut egui::Ui) {
         let ctx = ui.ctx().clone();
+        self.egui_ctx = Some(ctx.clone());
+        actions::poll_exports(self);
         self.sync_theme(&ctx);
         self.sync_window_title(&ctx);
         // The OS (or the title bar on macOS) asks to close: ask about unsaved
@@ -151,7 +174,8 @@ impl ReasonCraftApp {
         // with) them, but run after the widgets' own actions (see `handle_keys`).
         // A modal takes all keys (Esc closes it). In the backstage only a
         // focused field (the document title or author) passes on the file keys.
-        let modal = self.modal.is_some() || self.link_edit.is_some();
+        let modal =
+            self.modal.is_some() || self.link_edit.is_some() || self.export_dialog.is_some();
         let keys = if modal {
             Vec::new()
         } else if self.ribbon_tab == RibbonTab::File {
@@ -171,6 +195,7 @@ impl ReasonCraftApp {
         shell::show_side_panels(ui, self);
         shell::show_central(ui, self);
         shell::link_modal::show(&ctx, self);
+        shell::export_dialog::show(&ctx, self);
         shell::modal::show(&ctx, self);
         #[cfg(debug_assertions)]
         shell::source_icons::preview(&ctx, self);
@@ -183,6 +208,10 @@ impl ReasonCraftApp {
                 actions::apply(self, action);
             }
             ctx.request_repaint();
+        }
+        if self.export.busy() {
+            // Look for the result again soon, without spinning.
+            ctx.request_repaint_after(Duration::from_millis(30));
         }
         if std::mem::take(&mut self.close_now) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);

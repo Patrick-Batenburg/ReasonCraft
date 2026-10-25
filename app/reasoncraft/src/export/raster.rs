@@ -7,12 +7,22 @@ use image::ImageFormat;
 use resvg::tiny_skia::{Color, Pixmap, Transform};
 use resvg::usvg::{self, fontdb};
 
-use super::ExportError;
+use reasoncraft_core::Assets;
+
+use super::svg::{SvgOptions, scene_to_svg, svg_size};
+use super::{ExportError, bundled_font_family};
+use crate::scene::Scene;
+use crate::theme::Tokens;
 
 /// The longest side of an exported image, in pixels.
 pub const MAX_SIDE_PX: u32 = 16_384;
 /// The most pixels an exported image may have.
 pub const MAX_PIXELS: u64 = 256_000_000;
+
+/// The most pixels an image put on the clipboard may have. The clipboard
+/// holds straight RGBA and the OS copies it again, so this stays well
+/// under [`MAX_PIXELS`] (64 MP is about 256 MB per copy).
+pub const MAX_CLIPBOARD_PIXELS: u64 = 64_000_000;
 
 /// How an SVG is rasterised.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -136,6 +146,25 @@ impl ClipboardSink for SystemClipboard {
     }
 }
 
+/// An image as width, height and straight RGBA pixels.
+pub type RgbaImage = (u32, u32, Vec<u8>);
+
+/// A clipboard for tests: it keeps every image put on it. Clones share
+/// what they hold, so a test keeps a clone to look at the app's copy.
+#[derive(Clone, Default)]
+pub struct FakeClipboard {
+    pub images: Arc<std::sync::Mutex<Vec<RgbaImage>>>,
+}
+
+impl ClipboardSink for FakeClipboard {
+    fn set_image(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<(), ExportError> {
+        if let Ok(mut images) = self.images.lock() {
+            images.push((width, height, rgba.to_vec()));
+        }
+        Ok(())
+    }
+}
+
 /// Puts an RGBA image (width, height, pixels) on `sink`, checking that
 /// the pixel buffer fits the size first.
 pub fn copy_image(
@@ -153,4 +182,46 @@ pub fn copy_image(
 /// Puts an RGBA image on the system clipboard.
 pub fn copy_png_to_clipboard(png_rgba: (u32, u32, Vec<u8>)) -> Result<(), ExportError> {
     copy_image(&mut SystemClipboard, png_rgba)
+}
+
+/// `scene` in the colours of `tokens` as the live-text SVG a raster is
+/// drawn from. Its background follows `opts.transparent`, so the PNG and
+/// the SVG under it never disagree about transparency.
+fn raster_svg(scene: &Scene, assets: &Assets, tokens: &Tokens, opts: &PngOptions) -> String {
+    let svg_opts = SvgOptions {
+        text_as_paths: false,
+        transparent: opts.transparent,
+        ..SvgOptions::new(tokens)
+    };
+    scene_to_svg(scene, assets, &svg_opts, &bundled_font_family())
+}
+
+/// `scene` (drawn at zoom 1) as PNG bytes in the colours of `tokens`.
+pub fn scene_to_png(
+    scene: &Scene,
+    assets: &Assets,
+    tokens: &Tokens,
+    opts: &PngOptions,
+    fonts: &fontdb::Database,
+) -> Result<Vec<u8>, ExportError> {
+    svg_to_png(&raster_svg(scene, assets, tokens, opts), opts, fonts)
+}
+
+/// Puts `scene` on `sink` as an image. Fails with `ClipboardTooLarge`
+/// before drawing anything when it would pass [`MAX_CLIPBOARD_PIXELS`].
+pub fn copy_scene_to_clipboard(
+    scene: &Scene,
+    assets: &Assets,
+    tokens: &Tokens,
+    opts: &PngOptions,
+    fonts: &fontdb::Database,
+    sink: &mut dyn ClipboardSink,
+) -> Result<(), ExportError> {
+    let (w, h) = svg_size(scene, &SvgOptions::new(tokens));
+    let (pw, ph) = pixel_size(w, h, opts.scale)?;
+    if u64::from(pw) * u64::from(ph) > MAX_CLIPBOARD_PIXELS {
+        return Err(ExportError::ClipboardTooLarge { w: pw, h: ph });
+    }
+    let rgba = svg_to_rgba(&raster_svg(scene, assets, tokens, opts), opts, fonts)?;
+    copy_image(sink, rgba)
 }

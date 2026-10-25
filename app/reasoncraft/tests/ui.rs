@@ -906,6 +906,13 @@ fn settings_from_old_storage_fill_defaults() {
             fit: reasoncraft::export::Fit::Tile { scale: 1.5 },
             margin_mm: 5.0,
         },
+        export: reasoncraft::export::ExportOptions {
+            scope: reasoncraft::export::ExportScope::Selection,
+            theme: reasoncraft::export::ExportTheme::Current,
+            png_scale: 3,
+            transparent: true,
+            svg_outlines: false,
+        },
     };
     eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
     assert_eq!(

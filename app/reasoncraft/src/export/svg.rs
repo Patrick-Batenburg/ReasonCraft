@@ -83,9 +83,20 @@ fn outline_text(svg: &str) -> Result<String, usvg::Error> {
     Ok(tree.to_string(&usvg::WriteOptions::default()))
 }
 
+/// The world rect an SVG of `scene` shows: its bounds plus the margin.
+fn view_rect(scene: &Scene, opts: &SvgOptions) -> Rect {
+    scene.bounds.expand(opts.margin.max(0.0))
+}
+
+/// The width and height in px of the SVG [`scene_to_svg`] writes.
+pub fn svg_size(scene: &Scene, opts: &SvgOptions) -> (f32, f32) {
+    let view = view_rect(scene, opts);
+    (view.width().max(1.0), view.height().max(1.0))
+}
+
 fn live_svg(scene: &Scene, assets: &Assets, opts: &SvgOptions, font_family: &str) -> String {
-    let view = scene.bounds.expand(opts.margin.max(0.0));
-    let (w, h) = (view.width().max(1.0), view.height().max(1.0));
+    let view = view_rect(scene, opts);
+    let (w, h) = svg_size(scene, opts);
     let mut out = String::new();
     out.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     let _ = writeln!(

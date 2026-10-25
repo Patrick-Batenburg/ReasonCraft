@@ -22,6 +22,10 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         ui.vertical(|ui| {
             small(ui, &tk, Icon::Cut, &t("action.cut"), false);
             small(ui, &tk, Icon::Copy, &t("action.copy"), false);
+            let label = t("action.copy_image");
+            if small(ui, &tk, Icon::CopyImage, &label, true).clicked() {
+                out.push(Action::CopyAsImage);
+            }
         });
     });
     group(ui, &tk, &t("group.add"), |ui| {

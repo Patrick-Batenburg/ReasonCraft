@@ -39,7 +39,7 @@ pub(super) fn paint(pen: &Pen, icon: Icon, fg: Color32, t: &Tokens) {
 }
 
 /// A framed landscape: hills and a sun (`sun` colour).
-fn picture(pen: &Pen, sun: Color32) {
+pub(super) fn picture(pen: &Pen, sun: Color32) {
     pen.rect(0.12, 0.2, 0.88, 0.8, pen.stroke.color);
     pen.line(&[
         (0.18, 0.74),

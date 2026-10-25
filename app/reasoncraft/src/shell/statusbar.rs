@@ -1,5 +1,5 @@
-//! Status bar: box count, issue count (or the "Connect to…" hint), theme
-//! toggle and zoom slider.
+//! Status bar: box count, issue count (or the "Connect to…" hint), the
+//! export busy chip or the last export's notice, theme toggle and zoom slider.
 
 use eframe::egui::{
     self, Align, FontId, Frame, Layout, Margin, Response, RichText, Role, Sense, Slider,
@@ -10,6 +10,7 @@ use super::icons::Icon;
 use super::{hover_fill, icon_button};
 use crate::actions::{Action, Panel, ZOOM_MAX, ZOOM_MIN};
 use crate::app::ReasonCraftApp;
+use crate::export::Notice;
 use crate::i18n::{FluentArgs, t, t_args};
 use crate::settings::TextTab;
 use crate::theme::{ThemeChoice, Tokens};
@@ -50,7 +51,9 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     );
                 }
 
-                let zoom = tab.camera.zoom;
+                export_status(ui, app, &tk);
+
+                let zoom = app.active_tab().camera.zoom;
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     let mut args = FluentArgs::new();
                     args.set("percent", (zoom * 100.0).round());
@@ -85,6 +88,33 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                 });
             });
         });
+}
+
+/// "Exporting…" with a spinner while an export runs; otherwise what the
+/// last one did ("Export done" with "Open folder", or "Copied").
+fn export_status(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
+    let text = |key: &str| RichText::new(t(key)).size(12.0).color(tk.text_muted);
+    if app.export.busy() {
+        ui.add_space(16.0);
+        ui.add(egui::Spinner::new().size(12.0).color(tk.accent));
+        ui.label(text("status.exporting"));
+        return;
+    }
+    match &app.export.notice {
+        Some(Notice::Saved(_)) => {
+            ui.add_space(16.0);
+            ui.label(text("export.done"));
+            let link = RichText::new(t("export.open_folder")).size(12.0);
+            if ui.link(link).clicked() {
+                app.pending.push(Action::OpenExportFolder);
+            }
+        }
+        Some(Notice::Copied) => {
+            ui.add_space(16.0);
+            ui.label(text("export.copied"));
+        }
+        None => {}
+    }
 }
 
 /// "3 issues", with a dot when there are any; a click shows them in the

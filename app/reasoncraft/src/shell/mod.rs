@@ -2,6 +2,7 @@
 
 pub mod backstage;
 pub mod building;
+pub mod export_dialog;
 pub mod icons;
 pub mod link_modal;
 pub mod modal;

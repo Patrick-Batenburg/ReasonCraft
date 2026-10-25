@@ -4,7 +4,7 @@ use reasoncraft_core::checks::{CheckKind, CheckSet};
 use reasoncraft_core::outline::OutlineOptions;
 use serde::{Deserialize, Serialize};
 
-use crate::export::PageSetup;
+use crate::export::{ExportOptions, PageSetup};
 use crate::theme::ThemeChoice;
 
 /// eframe storage key for [`Settings`].
@@ -36,6 +36,8 @@ pub struct Settings {
     pub default_doc_language: String,
     /// Paper, orientation, fit and margins for PDF export and printing.
     pub page_setup: PageSetup,
+    /// The export dialog's last choices (scope, theme, PNG and SVG options).
+    pub export: ExportOptions,
 }
 
 /// One of the Outline tab's toolbar switches.
@@ -106,6 +108,7 @@ impl Default for Settings {
             checks: CheckSet::default(),
             default_doc_language: "en".to_owned(),
             page_setup: PageSetup::default(),
+            export: ExportOptions::default(),
         }
     }
 }

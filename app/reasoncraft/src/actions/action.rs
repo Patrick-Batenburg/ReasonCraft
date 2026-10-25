@@ -7,6 +7,7 @@ use reasoncraft_core::{
 };
 
 use super::{Insertable, Rate};
+use crate::export::{ExportFormat, ExportRequest, PageSetup};
 use crate::settings::{OutlineToggle, TextTab};
 use crate::theme::ThemeChoice;
 
@@ -206,6 +207,24 @@ pub enum Action {
     SetDefaultDocLanguage(String),
     /// Switch to the tab at this index.
     ActivateTab(usize),
+    /// Open the export dialog for an image format; a text format asks
+    /// for a file right away.
+    OpenExport(ExportFormat),
+    /// Remember the request's options, ask where to save and start the
+    /// export on a worker thread.
+    RunExport(ExportRequest),
+    /// Close the export or page setup dialog without exporting.
+    CloseExportDialog,
+    /// Open the page setup dialog.
+    OpenPageSetup,
+    /// Remember the page setup for PDF export and printing.
+    SetPageSetup(PageSetup),
+    /// Put the whole map on the clipboard as an image (current theme, 2x).
+    CopyAsImage,
+    /// Make a PDF with the saved page setup and open it to print.
+    Print,
+    /// Show the folder of the last exported file.
+    OpenExportFolder,
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,

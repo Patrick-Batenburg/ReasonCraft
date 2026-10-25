@@ -13,6 +13,7 @@ use crate::i18n::t;
 use crate::theme::{ThemeChoice, Tokens};
 
 mod evaluate;
+mod export;
 mod home;
 
 const STRIP_H: f32 = 30.0;
@@ -48,6 +49,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
                         RibbonTab::Home => home::show(ui, app),
                         RibbonTab::Evaluate => evaluate::show(ui, app),
                         RibbonTab::View => view(ui, app),
+                        RibbonTab::Export => export::show(ui, app),
                         _ => {
                             ui.add_space(8.0);
                             ui.label(

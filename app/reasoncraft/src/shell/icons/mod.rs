@@ -8,6 +8,7 @@ use crate::theme::Tokens;
 
 mod box_group;
 mod evaluate;
+mod export;
 mod pen;
 pub(super) use pen::Pen;
 
@@ -69,6 +70,21 @@ pub enum Icon {
     Image,
     /// A framed landscape, crossed out (take a box's image out).
     RemoveImage,
+    /// Export tab: a picture with an arrow out of it (PNG).
+    ExportPng,
+    /// A curve between two anchor handles (SVG).
+    ExportSvg,
+    /// A page with a folded corner (PDF).
+    ExportPdf,
+    /// A picture in front of a copy (copy as image).
+    CopyImage,
+    /// Rows of a nested list.
+    Outline,
+    /// A page of paragraphs.
+    Essay,
+    /// A page and its margins.
+    PageSetup,
+    Print,
 }
 
 /// Draw `icon` in `rect` (a square). `fg` is the main colour, `bg` the
@@ -326,5 +342,13 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         Icon::BoxType | Icon::Link | Icon::Image | Icon::RemoveImage => {
             box_group::paint(&pen, icon, fg, t)
         }
+        Icon::ExportPng
+        | Icon::ExportSvg
+        | Icon::ExportPdf
+        | Icon::CopyImage
+        | Icon::Outline
+        | Icon::Essay
+        | Icon::PageSetup
+        | Icon::Print => export::paint(&pen, icon, fg, t),
     }
 }

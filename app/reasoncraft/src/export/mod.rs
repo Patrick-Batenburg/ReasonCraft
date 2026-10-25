@@ -2,8 +2,10 @@
 //! with the fonts the screen uses, so a file looks like the canvas on any
 //! machine.
 
+mod job;
 mod pdf;
 mod raster;
+mod request;
 mod svg;
 
 use std::sync::{Arc, LazyLock};
@@ -12,15 +14,20 @@ use eframe::egui::FontDefinitions;
 use eframe::egui::emath::GuiRounding as _;
 use resvg::usvg::fontdb;
 
+pub use job::{
+    ExportJobs, ExportWork, Job, JobState, Notice, Outcome, SharedClipboard, Snapshot, Target,
+};
 pub use pdf::{
     Fit, MAX_PAGES, Orientation, PRINT_FILE_MAX_AGE, PageSetup, Paper, clean_old_print_files,
-    clean_print_files, print_via_pdf, print_via_pdf_with, svg_to_pdf,
+    clean_print_files, print_via_pdf, print_via_pdf_with, svg_to_pdf, write_print_file,
 };
 pub use raster::{
-    ClipboardSink, MAX_PIXELS, MAX_SIDE_PX, PngOptions, SystemClipboard, copy_image,
-    copy_png_to_clipboard, png_to_rgba, svg_to_png, svg_to_rgba,
+    ClipboardSink, FakeClipboard, MAX_CLIPBOARD_PIXELS, MAX_PIXELS, MAX_SIDE_PX, PngOptions,
+    SystemClipboard, copy_image, copy_png_to_clipboard, copy_scene_to_clipboard, png_to_rgba,
+    scene_to_png, svg_to_png, svg_to_rgba,
 };
-pub use svg::{DEFAULT_MARGIN, SvgOptions, scene_to_svg};
+pub use request::{ExportFormat, ExportOptions, ExportRequest, ExportScope, ExportTheme};
+pub use svg::{DEFAULT_MARGIN, SvgOptions, scene_to_svg, svg_size};
 
 /// Why an export failed. The app layer shows [`key`](Self::key) through
 /// `t`; the details are for logs.
@@ -28,6 +35,11 @@ pub use svg::{DEFAULT_MARGIN, SvgOptions, scene_to_svg};
 pub enum ExportError {
     /// The image would pass the pixel caps.
     TooLarge {
+        w: u32,
+        h: u32,
+    },
+    /// The image would pass the (lower) clipboard cap.
+    ClipboardTooLarge {
         w: u32,
         h: u32,
     },
@@ -45,6 +57,7 @@ impl ExportError {
     pub fn key(&self) -> &'static str {
         match self {
             Self::TooLarge { .. } => "export-error-too_large",
+            Self::ClipboardTooLarge { .. } => "export-error-clipboard_too_large",
             Self::Io(_) => "export-error-io",
             Self::Render(_) => "export-error-render",
             Self::Clipboard(_) => "export-error-clipboard",
@@ -56,7 +69,7 @@ impl ExportError {
     /// The part of the error to show next to the message (`{ $detail }`).
     pub fn detail(&self) -> String {
         match self {
-            Self::TooLarge { w, h } => format!("{w} × {h}"),
+            Self::TooLarge { w, h } | Self::ClipboardTooLarge { w, h } => format!("{w} × {h}"),
             Self::Io(e) => e.to_string(),
             Self::Render(s) | Self::Clipboard(s) | Self::Pdf(s) | Self::Open(s) => s.clone(),
         }
@@ -167,6 +180,8 @@ impl TextFace {
     }
 }
 
+#[cfg(test)]
+mod output_tests;
 #[cfg(test)]
 mod pdf_tests;
 #[cfg(test)]

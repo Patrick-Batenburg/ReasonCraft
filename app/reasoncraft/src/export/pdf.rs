@@ -127,7 +127,9 @@ pub(super) fn placements(
     let area = [margin, margin, aw, ah];
     match setup.fit {
         Fit::OnePage => {
-            let scale = (aw / w).min(ah / h);
+            // Shrink to fit, but never enlarge past the natural size (as a
+            // tile at scale 1), so a small map prints at normal text size.
+            let scale = (aw / w).min(ah / h).min(MM_PER_PX * PT_PER_MM);
             let page = Placement {
                 scale,
                 left: margin + (aw - w * scale) / 2.0,
@@ -191,8 +193,9 @@ pub fn svg_to_pdf(
     let mut alloc = Ref::new(1);
     let catalog_id = alloc.bump();
     let tree_id = alloc.bump();
-    // The label font, only for tiles.
-    let font_id = pages[0].tile.map(|_| alloc.bump());
+    // The label font, only for tiles with room for labels in the margin.
+    let labels = pages[0].tile.is_some() && ay >= LABEL_SIZE;
+    let font_id = labels.then(|| alloc.bump());
     let mut map = HashMap::new();
     let chunk = chunk.renumber(|old| *map.entry(old).or_insert_with(|| alloc.bump()));
     let svg_id = map[&svg_ref];
@@ -230,7 +233,7 @@ pub fn svg_to_pdf(
         content.transform([dw, 0.0, 0.0, dh, place.left, place.top - dh]);
         content.x_object(svg_name);
         content.restore_state();
-        if let Some((r, c)) = place.tile {
+        if let Some((r, c)) = place.tile.filter(|_| labels) {
             let label = format!("{r}/{c}");
             let x = pw - ax - helvetica_width(&label) * LABEL_SIZE;
             let y = ((ay - LABEL_SIZE) / 2.0).max(2.0);
@@ -272,15 +275,22 @@ pub fn print_via_pdf_with(
     dir: &Path,
     opener: &dyn LinkOpener,
 ) -> Result<PathBuf, ExportError> {
+    let path = write_print_file(pdf, dir)?;
+    opener
+        .open(&path.to_string_lossy())
+        .map_err(ExportError::Open)?;
+    Ok(path)
+}
+
+/// Writes `pdf` to a new print file in `dir` (named so
+/// [`clean_print_files`] finds it later) and returns its path.
+pub fn write_print_file(pdf: &[u8], dir: &Path) -> Result<PathBuf, ExportError> {
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis();
     let path = dir.join(format!("{PRINT_PREFIX}{stamp}{PRINT_SUFFIX}"));
     std::fs::write(&path, pdf)?;
-    opener
-        .open(&path.to_string_lossy())
-        .map_err(ExportError::Open)?;
     Ok(path)
 }
 

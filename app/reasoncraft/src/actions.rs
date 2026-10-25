@@ -15,6 +15,8 @@ pub use enabled::is_enabled;
 mod comments;
 mod editing;
 mod evaluate;
+mod export;
+pub use export::poll_exports;
 mod images;
 mod meta;
 pub use evaluate::{Rate, Rated, rate_action, rated};
@@ -88,6 +90,14 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             box_group::apply(app, action)
         }
         Action::InsertImage | Action::RemoveImage => images::apply(app, action),
+        Action::OpenExport(_)
+        | Action::RunExport(_)
+        | Action::CloseExportDialog
+        | Action::OpenPageSetup
+        | Action::SetPageSetup(_)
+        | Action::CopyAsImage
+        | Action::Print
+        | Action::OpenExportFolder => export::apply(app, action),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap => {
             let doc = reasoncraft_core::fixtures::sample_iot_like(117);
@@ -202,7 +212,15 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetTextTab(_)
         | Action::SetOutlineOption(..)
         | Action::SetCheckEnabled(..)
-        | Action::SetDefaultDocLanguage(_) => unreachable!("app-level action"),
+        | Action::SetDefaultDocLanguage(_)
+        | Action::OpenExport(_)
+        | Action::RunExport(_)
+        | Action::CloseExportDialog
+        | Action::OpenPageSetup
+        | Action::SetPageSetup(_)
+        | Action::CopyAsImage
+        | Action::Print
+        | Action::OpenExportFolder => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

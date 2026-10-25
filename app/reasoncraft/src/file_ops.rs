@@ -72,15 +72,20 @@ pub enum FileOp {
 
 /// `path` with `.rcraft` appended unless it already ends in it (any case).
 pub fn with_rcraft_extension(path: PathBuf) -> PathBuf {
-    let has_ext = path
+    with_extension(path, EXTENSION)
+}
+
+/// `path` with `.ext` appended unless it already ends in it (any case).
+pub fn with_extension(path: PathBuf, ext: &str) -> PathBuf {
+    if path
         .extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case(EXTENSION));
-    if has_ext {
+        .is_some_and(|e| e.eq_ignore_ascii_case(ext))
+    {
         return path;
     }
     let mut name = OsString::from(path.as_os_str());
     name.push(".");
-    name.push(EXTENSION);
+    name.push(ext);
     PathBuf::from(name)
 }
 
