@@ -137,7 +137,7 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
         }
     }
 
-    out.connectors = ports::assign(pending, &out, p);
+    out.connectors = ports::assign(doc, pending, &out, p);
     out.bounds = out
         .parking_bounds
         .map_or(out.main_bounds, |b| b.union(out.main_bounds));

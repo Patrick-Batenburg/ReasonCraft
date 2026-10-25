@@ -136,6 +136,62 @@ fn whole_card_target_attaches_at_frame_bottom() {
     assert!(n >= 3, "sample has {n} whole-card attacks");
 }
 
+/// On a single-premise card the premise centre and the frame centre share
+/// an x, so the two attack kinds must be spread apart.
+#[test]
+fn premise_and_whole_card_ports_do_not_coincide() {
+    use reasoncraft_core::connector::{STUB_PX, Segment, curved_path};
+    let p = LayoutParams::default();
+    for premises in [1, 3] {
+        let mut doc = Document::new("Claim");
+        let (card, first) = doc
+            .add_card(Parent::Box(doc.root), CardKind::Reason, "Reason")
+            .unwrap();
+        let mut middle = first;
+        for i in 1..premises {
+            let id = doc.add_premise(card, None, "Co-premise").unwrap();
+            if i == premises / 2 {
+                middle = id;
+            }
+        }
+        let (on_premise, _) = doc
+            .add_card(Parent::Box(middle), CardKind::Objection, "Untrue")
+            .unwrap();
+        let (on_card, _) = doc
+            .add_card(Parent::Card(card), CardKind::Objection, "Does not follow")
+            .unwrap();
+        let l = run(&doc);
+        let find = |id| {
+            l.connectors
+                .iter()
+                .find(|c| c.child == Item::Card(id))
+                .unwrap()
+        };
+        let (a, w) = (find(on_premise), find(on_card));
+        assert_eq!(a.target, TargetKind::Box);
+        assert_eq!(a.to.y, l.boxes[&middle].bottom());
+        assert_eq!(w.target, TargetKind::WholeCard);
+        assert_eq!(w.to.y, l.cards[&card].bottom());
+        assert!(
+            (a.to.x - w.to.x).abs() >= p.port_spacing - 1e-3,
+            "{premises} premises: ports {} and {} too close",
+            a.to.x,
+            w.to.x
+        );
+        // The premise connector's stub must not run through the whole-card end.
+        let path = curved_path(a.from, a.to, STUB_PX);
+        let Some(Segment::Line([s0, s1])) = path.last().copied() else {
+            panic!("path ends in a stub");
+        };
+        let on_stub =
+            (w.to.x - s0.x).abs() < 1.0 && w.to.y >= s0.y.min(s1.y) && w.to.y <= s0.y.max(s1.y);
+        assert!(
+            !on_stub,
+            "{premises} premises: stub crosses the whole-card end"
+        );
+    }
+}
+
 #[test]
 fn shared_ports_are_spread_and_ordered() {
     let mut doc = Document::new("Claim");
