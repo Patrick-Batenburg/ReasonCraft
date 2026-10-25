@@ -177,9 +177,10 @@ fn open_package_with_limits(
             supported: SCHEMA_VERSION,
         });
     }
-    let doc: Document =
+    let mut doc: Document =
         serde_json::from_str(&text).map_err(|e| FileError::Malformed(e.to_string()))?;
     doc.validate().map_err(FileError::Malformed)?;
+    doc.cap_snippet_texts();
 
     let mut assets = Assets::default();
     let mut other_entries = Vec::new();

@@ -103,11 +103,9 @@ fn normalise(source: Option<SnippetSource>) -> Result<Option<SnippetSource>, ()>
 
 /// `s`'s source, or an empty one with the generic type.
 fn source_of(s: &Snippet) -> SnippetSource {
-    s.source.clone().unwrap_or_else(|| SnippetSource {
-        source_type: SourceType::Source,
-        citation: String::new(),
-        link: None,
-    })
+    s.source
+        .clone()
+        .unwrap_or_else(|| SnippetSource::new(SourceType::Source, "", None))
 }
 
 #[cfg(test)]

@@ -65,11 +65,11 @@ fn e2e_snippets_language_outline_save_reopen() {
         assert_eq!(sn.len(), 2);
         (sn[0].id, sn[1].id)
     };
-    let source = SnippetSource {
-        source_type: SourceType::Statistic,
-        citation: "CBS (2024)".into(),
-        link: Some("https://example.org/cbs".into()),
-    };
+    let source = SnippetSource::new(
+        SourceType::Statistic,
+        "CBS (2024)",
+        Some("https://example.org/cbs"),
+    );
     run(
         &mut app,
         [Action::SetSnippetSource {

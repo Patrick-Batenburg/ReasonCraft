@@ -1,6 +1,7 @@
 //! Snippets: pieces of source text kept beside the map.
 
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use uuid::Uuid;
 
 use crate::edit::EditError;
@@ -16,6 +17,20 @@ pub struct SnippetSource {
     pub citation: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub link: Option<String>,
+    /// Unknown fields, kept so files roundtrip.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+impl SnippetSource {
+    pub fn new(source_type: SourceType, citation: &str, link: Option<&str>) -> Self {
+        Self {
+            source_type,
+            citation: citation.to_owned(),
+            link: link.map(Into::into),
+            extra: Map::new(),
+        }
+    }
 }
 
 /// A piece of text, optionally tagged with its source.
@@ -25,17 +40,36 @@ pub struct Snippet {
     pub text: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<SnippetSource>,
+    /// Unknown fields, kept so files roundtrip.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }
 
 /// `text` cut to at most [`MAX_SNIPPET_CHARS`] characters.
 fn capped(text: &str) -> String {
+    text[..capped_len(text)].to_owned()
+}
+
+/// The byte length of `text` cut to at most [`MAX_SNIPPET_CHARS`]
+/// characters (always on a char boundary).
+fn capped_len(text: &str) -> usize {
     match text.char_indices().nth(MAX_SNIPPET_CHARS) {
-        Some((end, _)) => text[..end].to_owned(),
-        None => text.to_owned(),
+        Some((end, _)) => end,
+        None => text.len(),
     }
 }
 
 impl Document {
+    /// Cut every snippet's text to [`MAX_SNIPPET_CHARS`] characters, as
+    /// editing does, so an oversized text from a file never reaches the
+    /// UI. Not an edit: the modified time is left alone.
+    pub(crate) fn cap_snippet_texts(&mut self) {
+        for s in &mut self.snippets {
+            let end = capped_len(&s.text);
+            s.text.truncate(end);
+        }
+    }
+
     fn finish_snippet_edit(&mut self) {
         self.touch();
         #[cfg(debug_assertions)]
@@ -56,6 +90,7 @@ impl Document {
             id,
             text: capped(text),
             source: None,
+            extra: Map::new(),
         });
         self.finish_snippet_edit();
         id
@@ -111,11 +146,7 @@ mod tests {
     use super::*;
 
     fn src(link: Option<&str>) -> SnippetSource {
-        SnippetSource {
-            source_type: SourceType::Publication,
-            citation: "Doe 2020".into(),
-            link: link.map(Into::into),
-        }
+        SnippetSource::new(SourceType::Publication, "Doe 2020", link)
     }
 
     #[test]

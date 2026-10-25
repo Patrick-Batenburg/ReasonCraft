@@ -30,11 +30,11 @@ fn harness_with(doc: Document) -> H {
 fn doc_with_snippet(text: &str) -> Document {
     let mut d = Document::new("Robots help people");
     let id = d.add_snippet(text);
-    let source = SnippetSource {
-        source_type: SourceType::Web,
-        citation: "Smith (2020)".into(),
-        link: Some("https://example.org/robots".into()),
-    };
+    let source = SnippetSource::new(
+        SourceType::Web,
+        "Smith (2020)",
+        Some("https://example.org/robots"),
+    );
     d.set_snippet_source(id, Some(source)).unwrap();
     d
 }

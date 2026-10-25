@@ -28,11 +28,7 @@ fn texts(a: &ReasonCraftApp) -> Vec<String> {
 }
 
 fn source(st: SourceType, citation: &str, link: Option<&str>) -> Option<SnippetSource> {
-    Some(SnippetSource {
-        source_type: st,
-        citation: citation.to_owned(),
-        link: link.map(Into::into),
-    })
+    Some(SnippetSource::new(st, citation, link))
 }
 
 fn set_source(id: Uuid, source: Option<SnippetSource>) -> Action {

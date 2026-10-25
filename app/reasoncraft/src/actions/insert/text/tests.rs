@@ -19,11 +19,11 @@ fn tab(app: &ReasonCraftApp) -> &DocTab {
 }
 
 fn source() -> SnippetSource {
-    SnippetSource {
-        source_type: SourceType::Web,
-        citation: "Smith (2020)".into(),
-        link: Some("https://example.org/robots".into()),
-    }
+    SnippetSource::new(
+        SourceType::Web,
+        "Smith (2020)",
+        Some("https://example.org/robots"),
+    )
 }
 
 fn text(text: &str, source: Option<SnippetSource>) -> Insertable {

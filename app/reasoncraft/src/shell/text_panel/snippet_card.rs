@@ -172,11 +172,10 @@ fn text_field(
 /// that is not valid is not stored and shows a hint while its field has focus.
 fn source_line(ui: &mut Ui, snippet: &Snippet, tk: &Tokens, out: &mut Vec<Action>) {
     let id = snippet.id;
-    let current = snippet.source.clone().unwrap_or_else(|| SnippetSource {
-        source_type: SourceType::Source,
-        citation: String::new(),
-        link: None,
-    });
+    let current = snippet
+        .source
+        .clone()
+        .unwrap_or_else(|| SnippetSource::new(SourceType::Source, "", None));
     ui.horizontal(|ui| {
         let st = &current.source_type;
         let name = t(&format!("source.{}", st.key()));
