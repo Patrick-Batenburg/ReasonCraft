@@ -33,7 +33,7 @@
   - [x] Task 11: Images in boxes
   - [x] Task 12: End-to-end verification and docs
 - [ ] Step 3 — Text panel: Outline, Snippets, Check ([plan](plans/2026-10-26-step3-text-panel.md))
-  - [ ] Task 1: Carry-over fixes, revision counter, text panel tab shell
+  - [x] Task 1: Carry-over fixes, revision counter, text panel tab shell
   - [ ] Task 2: Core outline builder
   - [ ] Task 3: Outline tab
   - [ ] Task 4: Core checks
