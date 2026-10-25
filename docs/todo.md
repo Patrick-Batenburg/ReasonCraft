@@ -1,7 +1,7 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** step 5 plan (being written)
+**Active plan:** [docs/plans/2026-10-25-step5-interchange-polish.md](plans/2026-10-25-step5-interchange-polish.md) — step 5, interchange and polish
 **Merged:** steps 1–4
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
@@ -57,7 +57,23 @@
   - [x] Task 10: Word export
   - [x] Task 11: Image insert off the UI thread
   - [x] Task 12: End-to-end verification and docs
-- [ ] Step 5 — Interchange & polish: Argdown, connector styles, layout directions, minimap, numbering, find/replace, spellcheck, autosave, Search commands
+- [ ] Step 5 — Interchange & polish ([plan](plans/2026-10-25-step5-interchange-polish.md))
+  - [ ] Task 1: Split core files; stronger validate()
+  - [ ] Task 2: Spec-alignment items from the step 4 review
+  - [ ] Task 3: Command registry and Search commands
+  - [ ] Task 4: Axis-neutral compact tree layout
+  - [ ] Task 5: Layout directions
+  - [ ] Task 6: Connector styles (Curved, Elbow, Tapered)
+  - [ ] Task 7: Minimap, numbering on the map, fit selection
+  - [ ] Task 8: Find and replace
+  - [ ] Task 9: reasoncraft_spell crate
+  - [ ] Task 10: Spellcheck in the app
+  - [ ] Task 11: Autosave and crash recovery
+  - [ ] Task 12: Argdown export
+  - [ ] Task 13: Argdown import
+  - [ ] Task 14: Check carry-overs
+  - [ ] Task 15: Export and panel carry-overs
+  - [ ] Task 16: End-to-end verification and docs
 - [ ] Step 6 — Release readiness: Dutch, accessibility, help, examples, templates, installers
 
 ## Review
