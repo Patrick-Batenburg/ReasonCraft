@@ -190,6 +190,39 @@ fn connect_mode_cancel_and_other_commands_end_it() {
     assert!(tab(&a).history.undo.is_empty());
 }
 
+#[test]
+fn connect_mode_ends_on_app_level_actions() {
+    let mut d = Document::new("Claim");
+    let note = d.add_loose(NewLoose::Note, "n");
+    let mut a = app_with(d);
+    let insert = Action::Insert {
+        what: crate::actions::Insertable::Reason,
+        to: None,
+        on: None,
+    };
+    for end in [
+        insert,
+        Action::CommentSelected,
+        Action::EditLink,
+        Action::ActivateTab(0),
+    ] {
+        a.tabs[0].selection = Some(note);
+        apply(&mut a, Action::StartConnect);
+        assert_eq!(tab(&a).connect_mode, Some(note));
+        apply(&mut a, end.clone());
+        assert_eq!(tab(&a).connect_mode, None, "{end:?}");
+        assert_eq!(tab(&a).doc.parking, vec![note], "{end:?}");
+        a.modal = None;
+        a.link_edit = None;
+    }
+    // Picking a target (selecting, zooming) still keeps the mode.
+    a.tabs[0].selection = Some(note);
+    apply(&mut a, Action::StartConnect);
+    apply(&mut a, Action::ZoomIn);
+    apply(&mut a, Action::Select(None));
+    assert_eq!(tab(&a).connect_mode, Some(note));
+}
+
 /// Children [cardA, source, cardB] show as [source, cardA, cardB]: moving
 /// cardA to just after the source changes only hidden document order.
 #[test]

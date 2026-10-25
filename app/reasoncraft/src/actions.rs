@@ -190,11 +190,14 @@ pub enum Action {
 ///
 /// Every action except the inline editor's own text updates first commits a
 /// running inline edit, so it lands in history before anything else happens.
+/// Every action but picking a target then ends "Connect to…" in the active
+/// tab, app-level ones (inserting, comments, links, switching tabs) too.
 pub fn apply(app: &mut ReasonCraftApp, action: Action) {
-    if !matches!(action, Action::EditText { .. } | Action::TypeText(_))
-        && let Some(tab) = app.tabs.get_mut(app.active)
-    {
-        tab.commit_edit();
+    if let Some(tab) = app.tabs.get_mut(app.active) {
+        if !matches!(action, Action::EditText { .. } | Action::TypeText(_)) {
+            tab.commit_edit();
+        }
+        connect::end_unless_kept(tab, &action);
     }
     match action {
         Action::New => {
@@ -250,7 +253,6 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
 }
 
 fn apply_to_tab(tab: &mut DocTab, action: Action) {
-    connect::end_unless_kept(tab, &action);
     match action {
         Action::Undo => {
             tab.history.undo(&mut tab.doc);
