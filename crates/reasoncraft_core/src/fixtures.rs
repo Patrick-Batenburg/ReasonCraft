@@ -68,7 +68,7 @@ pub fn sample_iot_like(n_boxes: usize) -> Document {
     let mut d = Document::new("Smart home devices make homes safer");
     let root = Parent::Box(d.root);
     let source = || BoxKind::Source {
-        source_type: "publication".to_owned(),
+        source_type: crate::model::SourceType::Publication,
     };
 
     // A fixed prologue that guarantees every feature.

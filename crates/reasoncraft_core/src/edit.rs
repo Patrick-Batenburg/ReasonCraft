@@ -3,7 +3,7 @@
 use thiserror::Error;
 
 use crate::ids::{CardId, Item, NodeId, Parent};
-use crate::model::{BoxKind, BoxNode, Card, CardKind, Document, now_rfc3339};
+use crate::model::{BoxKind, BoxNode, Card, CardKind, Document, SourceType, now_rfc3339};
 use crate::rules::{NewItem, can_attach};
 
 /// Why an edit was refused.
@@ -178,7 +178,7 @@ impl Document {
                 let kind = match other {
                     NewLoose::Category => BoxKind::Category,
                     NewLoose::Source => BoxKind::Source {
-                        source_type: "publication".to_owned(),
+                        source_type: SourceType::Source,
                     },
                     _ => BoxKind::Note,
                 };
@@ -413,6 +413,27 @@ impl Document {
         if root.kind != BoxKind::Claim {
             return Err("the root box is not a claim".to_owned());
         }
+        for node in self.boxes.values() {
+            let id = node.id;
+            if node.acceptance.is_some() && !matches!(node.kind, BoxKind::Claim | BoxKind::Premise)
+            {
+                return Err(format!(
+                    "box {id:?} has an acceptance but is not a claim or premise"
+                ));
+            }
+            if node.source_rating.is_some() && !matches!(node.kind, BoxKind::Source { .. }) {
+                return Err(format!(
+                    "box {id:?} has a source rating but is not a source"
+                ));
+            }
+            if node.image.is_some() && node.kind == BoxKind::Note {
+                return Err(format!("note {id:?} has an image"));
+            }
+            let mut ids = HashSet::new();
+            if let Some(c) = node.comments.iter().find(|c| !ids.insert(c.id)) {
+                return Err(format!("box {id:?} has duplicate comment id {}", c.id));
+            }
+        }
         let mut owners: HashMap<Item, usize> = HashMap::new();
         let mut claim = |what: &str, item: Item| -> Result<(), String> {
             if !self.exists(item) {
@@ -500,7 +521,7 @@ mod tests {
 
     fn publication() -> BoxKind {
         BoxKind::Source {
-            source_type: "publication".into(),
+            source_type: SourceType::Publication,
         }
     }
 

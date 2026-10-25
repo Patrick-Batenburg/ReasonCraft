@@ -63,7 +63,7 @@ impl Pass<'_> {
         let text_width = world.width() - 2.0 * BOX_TEXT_PAD;
         match kind {
             BoxKind::Source { source_type } => {
-                self.source_header(world, source_type);
+                self.source_header(world, source_type.key());
                 if let Some(text) = text {
                     let top = world.top() + SOURCE_HEADER;
                     self.text(world.center().x, top, text, text_width, kind, text_colour);

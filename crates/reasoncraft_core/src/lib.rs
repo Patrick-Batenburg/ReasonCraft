@@ -2,6 +2,7 @@
 
 pub mod connector;
 pub mod edit;
+pub mod evaluate;
 pub mod file;
 #[cfg(feature = "test-fixtures")]
 pub mod fixtures;
@@ -12,10 +13,12 @@ pub mod model;
 pub mod rules;
 
 pub use edit::{EditError, NewLoose, RemoveMode};
+pub use evaluate::ClearScope;
 pub use history::History;
 pub use ids::{CardId, Item, NodeId, Parent};
 pub use layout::{Connector, ConnectorKind, Layout, LayoutParams, Measure, TargetKind, layout};
 pub use model::{
-    BoxKind, BoxNode, Card, CardKind, DocMeta, Document, MapKind, Role, SCHEMA_VERSION,
+    Acceptance, BoxKind, BoxNode, Card, CardKind, CardStrength, Comment, DocMeta, Document,
+    ImageRef, MapKind, Role, SCHEMA_VERSION, SourceRating, SourceType, Verdict,
 };
 pub use rules::{NewItem, can_attach};

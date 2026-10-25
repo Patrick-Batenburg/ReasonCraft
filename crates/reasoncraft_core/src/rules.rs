@@ -78,7 +78,7 @@ mod tests {
             .add_box(
                 Parent::Box(d.root),
                 BoxKind::Source {
-                    source_type: "publication".into(),
+                    source_type: crate::model::SourceType::Publication,
                 },
                 "s",
             )

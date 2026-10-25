@@ -4,6 +4,7 @@ use chrono::{SecondsFormat, Utc};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use uuid::Uuid;
 
 use crate::ids::{CardId, Item, NodeId, Parent};
 
@@ -22,11 +23,135 @@ pub enum BoxKind {
     Claim,
     Premise,
     Category,
-    /// `source_type` is a stable key such as `"publication"`.
-    Source {
-        source_type: String,
-    },
+    Source { source_type: SourceType },
     Note,
+}
+
+/// The kind of a source box. Unknown strings from newer files fall back to
+/// [`SourceType::Unknown`], which displays as the generic source.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceType {
+    Source,
+    MyBasis,
+    Assertion,
+    ByDefinition,
+    CaseStudy,
+    CommonBelief,
+    Data,
+    Event,
+    Example,
+    ExpertOpinion,
+    Law,
+    Media,
+    PersonalExperience,
+    Publication,
+    Quote,
+    Statistic,
+    Web,
+    #[serde(other)]
+    Unknown,
+}
+
+impl SourceType {
+    /// Every selectable type, in menu order (without `Unknown`).
+    pub const ALL: [SourceType; 17] = [
+        SourceType::Source,
+        SourceType::MyBasis,
+        SourceType::Assertion,
+        SourceType::ByDefinition,
+        SourceType::CaseStudy,
+        SourceType::CommonBelief,
+        SourceType::Data,
+        SourceType::Event,
+        SourceType::Example,
+        SourceType::ExpertOpinion,
+        SourceType::Law,
+        SourceType::Media,
+        SourceType::PersonalExperience,
+        SourceType::Publication,
+        SourceType::Quote,
+        SourceType::Statistic,
+        SourceType::Web,
+    ];
+
+    /// The stable snake_case name; `Unknown` shows as the generic `"source"`.
+    pub fn key(self) -> &'static str {
+        match self {
+            SourceType::Source | SourceType::Unknown => "source",
+            SourceType::MyBasis => "my_basis",
+            SourceType::Assertion => "assertion",
+            SourceType::ByDefinition => "by_definition",
+            SourceType::CaseStudy => "case_study",
+            SourceType::CommonBelief => "common_belief",
+            SourceType::Data => "data",
+            SourceType::Event => "event",
+            SourceType::Example => "example",
+            SourceType::ExpertOpinion => "expert_opinion",
+            SourceType::Law => "law",
+            SourceType::Media => "media",
+            SourceType::PersonalExperience => "personal_experience",
+            SourceType::Publication => "publication",
+            SourceType::Quote => "quote",
+            SourceType::Statistic => "statistic",
+            SourceType::Web => "web",
+        }
+    }
+}
+
+/// The reader's verdict on a claim or premise.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Acceptance {
+    Accept,
+    Unsure,
+    Reject,
+}
+
+/// How strongly a card's premises carry its conclusion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CardStrength {
+    Strong,
+    Weak,
+    Nil,
+}
+
+/// How reliable a source is judged to be.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceRating {
+    Solid,
+    Shaky,
+    Nil,
+}
+
+/// The tone of a comment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Verdict {
+    Positive,
+    NeedsWork,
+    Problem,
+}
+
+/// A comment attached to a box. `created` is RFC 3339.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Comment {
+    pub id: Uuid,
+    pub author: String,
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verdict: Option<Verdict>,
+    pub created: String,
+}
+
+/// A reference to an image asset stored beside the document.
+/// `aspect` is height divided by width.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ImageRef {
+    pub asset: String,
+    pub aspect: f32,
 }
 
 /// A box in the map.
@@ -42,6 +167,16 @@ pub struct BoxNode {
     pub width: Option<f32>,
     #[serde(default)]
     pub children: Vec<Item>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub acceptance: Option<Acceptance>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_rating: Option<SourceRating>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments: Vec<Comment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<ImageRef>,
     /// Unknown fields, kept so files roundtrip.
     #[serde(flatten)]
     pub extra: Map<String, Value>,
@@ -55,6 +190,11 @@ impl BoxNode {
             text: text.to_owned(),
             width: None,
             children: Vec::new(),
+            acceptance: None,
+            source_rating: None,
+            link: None,
+            comments: Vec::new(),
+            image: None,
             extra: Map::new(),
         }
     }
@@ -77,6 +217,8 @@ pub struct Card {
     /// Cards targeting the whole card.
     #[serde(default)]
     pub children: Vec<CardId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strength: Option<CardStrength>,
     /// Unknown fields, kept so files roundtrip.
     #[serde(flatten)]
     pub extra: Map<String, Value>,
@@ -89,6 +231,7 @@ impl Card {
             kind,
             premises,
             children: Vec::new(),
+            strength: None,
             extra: Map::new(),
         }
     }
@@ -263,5 +406,94 @@ mod tests {
         assert_eq!(d.card_role(a), Role::Opposes);
         assert_eq!(d.card_role(b), Role::Rebuts);
         assert_eq!(d.map_kind(), MapKind::Reasoning);
+    }
+
+    fn step1_json() -> String {
+        let root = NodeId::new();
+        let src = NodeId::new();
+        format!(
+            r#"{{"schema_version":1,
+"meta":{{"title":"t","author":"a","created":"c","modified":"m","language":"en"}},
+"root":"{root}",
+"boxes":{{
+ "{root}":{{"id":"{root}","kind":{{"type":"claim"}},"text":"C","children":[{{"Box":"{src}"}}]}},
+ "{src}":{{"id":"{src}","kind":{{"type":"source","source_type":"publication"}},"text":"S","children":[]}}
+}},
+"cards":{{}},"parking":[]}}"#,
+            root = root.0,
+            src = src.0
+        )
+    }
+
+    #[test]
+    fn source_type_compat_and_unknown_fallback() {
+        let k: BoxKind =
+            serde_json::from_str(r#"{"type":"source","source_type":"publication"}"#).unwrap();
+        assert_eq!(
+            k,
+            BoxKind::Source {
+                source_type: SourceType::Publication
+            }
+        );
+        let k: BoxKind =
+            serde_json::from_str(r#"{"type":"source","source_type":"hologram"}"#).unwrap();
+        let BoxKind::Source { source_type } = k else {
+            panic!("not a source")
+        };
+        assert_eq!(source_type, SourceType::Unknown);
+        assert_eq!(source_type.key(), "source");
+        assert_eq!(SourceType::ALL.len(), 17);
+        assert!(!SourceType::ALL.contains(&SourceType::Unknown));
+        for t in SourceType::ALL {
+            let json = serde_json::to_string(&t).unwrap();
+            assert_eq!(json, format!("\"{}\"", t.key()));
+        }
+    }
+
+    #[test]
+    fn old_document_json_still_deserializes() {
+        let d: Document = serde_json::from_str(&step1_json()).unwrap();
+        let out = serde_json::to_string(&d).unwrap();
+        let again: Document = serde_json::from_str(&out).unwrap();
+        assert_eq!(d, again);
+        assert!(d.extra.is_empty());
+        assert!(d.boxes.values().all(|b| b.extra.is_empty()));
+        assert_eq!(d.validate(), Ok(()));
+        // No new keys are written for untouched boxes.
+        for key in [
+            "acceptance",
+            "source_rating",
+            "link",
+            "comments",
+            "image",
+            "strength",
+        ] {
+            assert!(!out.contains(key), "{key} was written");
+        }
+    }
+
+    #[test]
+    fn new_fields_do_not_leak_into_extra() {
+        let mut d = Document::new("C");
+        let root = d.root;
+        let b = d.boxes.get_mut(&root).unwrap();
+        b.acceptance = Some(Acceptance::Accept);
+        b.link = Some("https://example.org".into());
+        b.image = Some(ImageRef {
+            asset: "a".into(),
+            aspect: 0.5,
+        });
+        b.comments.push(Comment {
+            id: Uuid::new_v4(),
+            author: "A".into(),
+            text: "T".into(),
+            verdict: Some(Verdict::NeedsWork),
+            created: now_rfc3339(),
+        });
+        let json = serde_json::to_string(&d).unwrap();
+        assert!(json.contains("\"acceptance\":\"accept\""));
+        let back: Document = serde_json::from_str(&json).unwrap();
+        assert!(back.boxes[&root].extra.is_empty());
+        assert_eq!(back, d);
     }
 }

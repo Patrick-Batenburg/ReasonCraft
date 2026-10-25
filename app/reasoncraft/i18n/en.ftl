@@ -111,12 +111,23 @@ role-opposes = opposes
 role-rebuts = rebuts
 
 ## Source types
-source-publication = Publication
-source-website = Website
-source-book = Book
-source-quote = Quote
-source-expert = Expert
+source-source = Source
+source-my_basis = My own basis
+source-assertion = Assertion
+source-by_definition = By definition
+source-case_study = Case study
+source-common_belief = Common belief
 source-data = Data
+source-event = Event
+source-example = Example
+source-expert_opinion = Expert opinion
+source-law = Law
+source-media = Media
+source-personal_experience = Personal experience
+source-publication = Publication
+source-quote = Quote
+source-statistic = Statistic
+source-web = Web
 
 ## Status bar
 status-boxes = { $count ->
