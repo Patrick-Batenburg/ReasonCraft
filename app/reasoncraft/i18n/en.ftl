@@ -57,6 +57,7 @@ action-add_co_premise = Co-premise
 action-add_category = Category
 action-add_note = Note
 action-add_source = Source
+action-comment = Comment
 action-delete = Delete
 action-delete_branch = Delete branch
 action-zoom_fit = Fit
@@ -112,6 +113,11 @@ error-save-other = The map could not be saved: { $detail }. Your changes are sti
 
 ## Backstage
 backstage-back = Back
+backstage-settings = Settings
+settings-title = Settings
+settings-author = Your name
+settings-author_hint = Shown on the comments you add
+settings-theme = Theme
 
 ## Themes
 theme-system = System
@@ -193,3 +199,33 @@ status-boxes = { $count ->
 status-toggle_theme = Toggle theme
 status-zoom = Zoom
 status-zoom_value = { $percent }%
+
+## Comments
+comment-anonymous = Anonymous
+comment-title = Comments
+comment-close = Close comments
+comment-none = No comments yet.
+comment-hint = Write a comment
+comment-add = Add
+comment-presets = Presets
+comment-delete = Delete comment
+comment-badge = { $count ->
+    [one] { $count } comment
+   *[other] { $count } comments
+}
+comment-verdict-none = None
+comment-verdict-positive = Positive
+comment-verdict-needs_work = Needs work
+comment-verdict-problem = Problem
+comment-preset-great_work = Great work.
+comment-preset-good_structure = Clear, well-built structure.
+comment-preset-strong_evidence = Well supported by evidence.
+comment-preset-excellent_evaluation = Careful, well-judged ratings.
+comment-preset-getting_there = Getting there.
+comment-preset-refinement_needed = Could be sharper.
+comment-preset-more_evidence_needed = Needs more evidence.
+comment-preset-too_accepting = Accepted too easily.
+comment-preset-unclear = Unclear: what is meant here?
+comment-preset-rethink_structure = Rethink how this is built.
+comment-preset-source_not_appropriate = This source does not fit.
+comment-preset-inconsistent_evaluation = Ratings contradict each other.

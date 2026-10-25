@@ -3,7 +3,8 @@
 //! Everything is laid out in world units and drawn through the [`Camera`].
 //! Stroke widths, arrowheads and bars are in screen px so they stay visible
 //! at every zoom. Draw order: background, parking area, connectors, card
-//! frames, boxes (each with its rating marker), labels, selection.
+//! frames, boxes (each with its rating marker), labels, selection, comment
+//! badges (on top, so the selection ring never hides them).
 
 use std::collections::HashMap;
 
@@ -168,6 +169,11 @@ pub fn paint(
     };
     if let Some((rect, radius)) = selected {
         p.selection(rect, radius);
+    }
+    for (id, &rect) in &layout.boxes {
+        if let Some(node) = doc.boxes.get(id) {
+            p.comment_badge(rect, &node.comments);
+        }
     }
 }
 

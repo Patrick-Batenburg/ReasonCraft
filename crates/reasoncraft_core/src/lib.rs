@@ -24,3 +24,5 @@ pub use model::{
 };
 pub use package::{Assets, Package};
 pub use rules::{NewItem, can_attach};
+/// Comment ids.
+pub use uuid::Uuid;

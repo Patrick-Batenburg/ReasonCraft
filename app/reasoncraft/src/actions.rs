@@ -2,7 +2,7 @@
 
 use reasoncraft_core::{
     Acceptance, BoxKind, CardId, CardKind, CardStrength, ClearScope, Item, NewItem, NewLoose,
-    NodeId, Parent, RemoveMode, SourceRating, SourceType, can_attach,
+    NodeId, Parent, RemoveMode, SourceRating, SourceType, Uuid, Verdict, can_attach,
 };
 
 use crate::app::ReasonCraftApp;
@@ -11,9 +11,12 @@ use crate::doc_tab::DocTab;
 use crate::file_ops;
 use crate::theme::ThemeChoice;
 
+mod comments;
 mod evaluate;
 pub use evaluate::{Rate, Rated, rate_action, rated};
 mod sources;
+mod structure;
+use structure::{add_box, add_card, add_co_premise, delete};
 
 pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 const ZOOM_STEP: f32 = 1.25;
@@ -114,6 +117,23 @@ pub enum Action {
     ToggleMarkers,
     /// Turn evaluation shading on or off.
     ToggleShading,
+    /// Comment on box `node` as the author in the settings. Blank text is refused.
+    AddComment {
+        node: NodeId,
+        text: String,
+        verdict: Option<Verdict>,
+    },
+    RemoveComment {
+        node: NodeId,
+        comment: Uuid,
+    },
+    /// Show the comment popover of a box (and select it).
+    OpenComments(NodeId),
+    /// Show the comment popover of the selected box (ribbon, Ctrl+Shift+M).
+    CommentSelected,
+    CloseComments,
+    /// Set the name put on new comments (trimmed).
+    SetAuthor(String),
     TogglePanel(Panel),
     /// Switch to the tab at this index.
     ActivateTab(usize),
@@ -157,6 +177,12 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         Action::SetTheme(choice) => app.settings.theme = choice,
         Action::ToggleMarkers => app.settings.show_markers = !app.settings.show_markers,
         Action::ToggleShading => app.settings.eval_shading = !app.settings.eval_shading,
+        Action::AddComment { .. }
+        | Action::RemoveComment { .. }
+        | Action::OpenComments(_)
+        | Action::CommentSelected
+        | Action::CloseComments
+        | Action::SetAuthor(_) => comments::apply(app, action),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap => {
             let doc = reasoncraft_core::fixtures::sample_iot_like(117);
@@ -266,6 +292,12 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetTheme(_)
         | Action::ToggleMarkers
         | Action::ToggleShading
+        | Action::AddComment { .. }
+        | Action::RemoveComment { .. }
+        | Action::OpenComments(_)
+        | Action::CommentSelected
+        | Action::CloseComments
+        | Action::SetAuthor(_)
         | Action::TogglePanel(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
@@ -311,8 +343,9 @@ fn selected_card(tab: &DocTab) -> Option<CardId> {
 /// menu and keyboard all ask this, so refused commands are greyed out
 /// instead of silently doing nothing.
 pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
-    if let Some(enabled) =
-        evaluate::is_enabled(tab, action).or_else(|| sources::is_enabled(tab, action))
+    if let Some(enabled) = evaluate::is_enabled(tab, action)
+        .or_else(|| sources::is_enabled(tab, action))
+        .or_else(|| comments::is_enabled(tab, action))
     {
         return enabled;
     }
@@ -341,63 +374,6 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
         }
         _ => true,
     }
-}
-
-/// Selected box → card under it; selected card → card targeting the whole
-/// card; nothing selected → loose card in the parking area.
-fn add_card(tab: &mut DocTab, kind: CardKind) {
-    let premise = match tab.selection {
-        Some(Item::Box(b)) => tab
-            .edit(|d| d.add_card(Parent::Box(b), kind, ""))
-            .map(|(_, p)| p),
-        Some(Item::Card(c)) => tab
-            .edit(|d| d.add_card(Parent::Card(c), kind, ""))
-            .map(|(_, p)| p),
-        None => tab.edit(|d| {
-            let item = d.add_loose(NewLoose::Card(kind), "");
-            Ok(match item {
-                Item::Card(c) => d.cards[&c].premises[0],
-                Item::Box(b) => b,
-            })
-        }),
-    };
-    select_new(tab, premise.map(Item::Box));
-}
-
-/// A premise for the selected card, or for the card that owns the selected premise.
-fn add_co_premise(tab: &mut DocTab) {
-    if let Some(c) = selected_card(tab) {
-        let p = tab.edit(|d| d.add_premise(c, None, ""));
-        select_new(tab, p.map(Item::Box));
-    }
-}
-
-/// A category or note under the selected box, or loose when nothing is selected.
-fn add_box(tab: &mut DocTab, kind: BoxKind, loose: NewLoose) {
-    let item = match tab.selection {
-        Some(Item::Box(b)) => tab
-            .edit(|d| d.add_box(Parent::Box(b), kind, ""))
-            .map(Item::Box),
-        Some(Item::Card(_)) => None,
-        None => tab.edit(|d| Ok(d.add_loose(loose, ""))),
-    };
-    select_new(tab, item);
-}
-
-/// Remove the selection, then select what held it (or the root).
-fn delete(tab: &mut DocTab, mode: RemoveMode) {
-    let Some(item) = tab.selection else { return };
-    let owner = tab.doc.owner_of(item);
-    if tab.edit(|d| d.remove_item(item, mode)).is_none() {
-        return;
-    }
-    tab.selection = match owner {
-        Some(Parent::Box(b)) => Some(Item::Box(b)),
-        Some(Parent::Card(c)) => Some(Item::Card(c)),
-        Some(Parent::Parking) | None => None,
-    };
-    tab.editing = None;
-    tab.fix_selection();
 }
 
 #[cfg(test)]

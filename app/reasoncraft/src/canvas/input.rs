@@ -16,6 +16,8 @@ use crate::app::ReasonCraftApp;
 /// Ctrl+Shift+S, Ctrl+O and Ctrl+N (finish, then the command) are commands;
 /// every other key is text.
 ///
+/// Ctrl+Shift+M opens the selected box's comments (not while editing).
+///
 /// Alt+1/2/3/0 rate the selection (not while editing); no other Alt combination
 /// is a command.
 pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action> {
@@ -54,6 +56,7 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
         (Key::R, true, true) => A::TargetWholeCard(CardKind::Reason),
         (Key::E, true, true) => A::AddSource(SourceType::Source),
         (Key::P, true, true) => A::JumpParking,
+        (Key::M, true, true) => A::CommentSelected,
         (Key::Enter, true, _) => A::AddCoPremise,
         (Key::Enter | Key::F2, false, false) => A::Edit,
         (Key::Escape, false, _) => A::StopEditing,
@@ -128,6 +131,14 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     });
     if out.is_empty() {
         return out;
+    }
+    // Esc closes the comment popover before it stops anything else.
+    if tab.comments_open.is_some() && editing.is_none() {
+        for a in &mut out {
+            if *a == Action::StopEditing {
+                *a = Action::CloseComments;
+            }
+        }
     }
     // Tab and the arrows are ours: keep egui from moving widget focus too.
     ctx.memory_mut(|m| m.move_focus(FocusDirection::None));

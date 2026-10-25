@@ -16,7 +16,7 @@ pub const FRAME_ALPHA: f32 = 0.12;
 pub const STRONG_ALPHA: f32 = 0.22;
 /// Marker diameter in world px; hidden below [`MARKER_MIN_ZOOM`].
 const MARKER_SIZE: f32 = 16.0;
-const MARKER_MIN_ZOOM: f32 = 0.35;
+pub(super) const MARKER_MIN_ZOOM: f32 = 0.35;
 
 /// Fill alpha of a card frame.
 pub fn frame_alpha(strength: Option<CardStrength>, shading: bool) -> f32 {

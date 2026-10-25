@@ -36,6 +36,8 @@ pub struct DocTab {
     /// Pan the selection into view on the next canvas frame (set by
     /// keyboard navigation and adds, so it uses the fresh layout).
     pub reveal_pending: bool,
+    /// The box whose comment popover is showing.
+    pub comments_open: Option<NodeId>,
 }
 
 impl Default for DocTab {
@@ -66,6 +68,7 @@ impl DocTab {
             viewport: None,
             fit_pending: true,
             reveal_pending: false,
+            comments_open: None,
         }
     }
 
@@ -158,8 +161,9 @@ impl DocTab {
         }
     }
 
-    /// Drop a selection or edit target that no longer exists (after undo,
-    /// redo or delete), falling back to the root.
+    /// Drop a selection, edit target or comment popover whose item no
+    /// longer exists (after undo, redo or delete); the selection falls back
+    /// to the root.
     pub fn fix_selection(&mut self) {
         if self.selection.is_some_and(|s| !self.contains(s)) {
             self.selection = Some(Item::Box(self.doc.root));
@@ -170,6 +174,12 @@ impl DocTab {
         {
             self.editing = None;
             self.edit_snapshot = None;
+        }
+        if self
+            .comments_open
+            .is_some_and(|b| !self.doc.boxes.contains_key(&b))
+        {
+            self.comments_open = None;
         }
     }
 }

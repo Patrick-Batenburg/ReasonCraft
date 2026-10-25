@@ -234,3 +234,15 @@ fn ctrl_shift_e_adds_source() {
     assert_eq!(key_to_action(Key::E, Modifiers::COMMAND, false), None);
     assert_eq!(key_to_action(Key::E, Modifiers::COMMAND, true), None);
 }
+
+#[test]
+fn ctrl_shift_m_opens_comments() {
+    let cmd_shift = Modifiers::COMMAND | Modifiers::SHIFT;
+    assert_eq!(
+        key_to_action(Key::M, cmd_shift, false),
+        Some(Action::CommentSelected)
+    );
+    // While editing, M is text (no command).
+    assert_eq!(key_to_action(Key::M, cmd_shift, true), None);
+    assert_eq!(key_to_action(Key::M, Modifiers::COMMAND, false), None);
+}

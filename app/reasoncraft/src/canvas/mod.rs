@@ -1,8 +1,10 @@
 //! The map canvas: camera, text measurement, painting, hit testing and
-//! editing interactions (selection, inline text, keyboard, "+" menu, drag).
+//! editing interactions (selection, inline text, keyboard, "+" menu, drag,
+//! comments).
 
 mod boxes;
 pub mod camera;
+pub mod comments;
 pub mod drag;
 pub mod editor;
 pub mod hit;
@@ -100,11 +102,13 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             eval_shading: settings.eval_shading,
         },
     );
+    comments::badges(ui, tab, &layout, pending);
     drag::update(ui, &response, &layout, tab, &tokens, pending, panning);
     editor::show(ui, tab, &layout, &tokens, pending);
     if !response.dragged() {
         plus_menu::show(ui, tab, &layout, &tokens, pending);
     }
+    comments::show(ui, tab, &layout, &tokens, pending);
 }
 
 /// Pan with middle or right drag, or space + left drag; Ctrl+wheel and pinch

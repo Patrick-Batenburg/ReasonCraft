@@ -1,21 +1,19 @@
 //! The ribbon: a tab strip and, for the active tab, labelled groups of commands.
 
 use eframe::egui::{
-    self, Align, Align2, Color32, FontId, Frame, Layout, Margin, Popup, Rect, Response, Role,
-    Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, pos2,
+    self, Align, Align2, Color32, FontId, Frame, Layout, Margin, Rect, Response, Role, Sense,
+    Stroke, StrokeKind, Ui, Vec2, WidgetInfo, pos2,
 };
-
-use reasoncraft_core::SourceType;
 
 use super::icons::{self, Icon};
 use super::{hover_fill, selected_fill};
-use crate::actions::{Action, Panel, is_enabled};
+use crate::actions::{Action, Panel};
 use crate::app::{ReasonCraftApp, RibbonTab};
-use crate::canvas::plus_menu::source_button;
 use crate::i18n::t;
 use crate::theme::{ThemeChoice, Tokens};
 
 mod evaluate;
+mod home;
 
 const STRIP_H: f32 = 30.0;
 const BUTTON_H: f32 = 66.0;
@@ -47,7 +45,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
                 ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                     ui.set_height(BUTTON_H + LABEL_H + 4.0);
                     match app.ribbon_tab {
-                        RibbonTab::Home => home(ui, app),
+                        RibbonTab::Home => home::show(ui, app),
                         RibbonTab::Evaluate => evaluate::show(ui, app),
                         RibbonTab::View => view(ui, app),
                         _ => {
@@ -104,84 +102,6 @@ fn tab_strip(ui: &mut Ui, app: &mut ReasonCraftApp) {
             }
         }
     });
-}
-
-fn home(ui: &mut Ui, app: &mut ReasonCraftApp) {
-    let tk = app.tokens;
-    let tab = app.active_tab();
-    let enabled = |a: &Action| is_enabled(tab, a);
-    let mut out = Vec::new();
-
-    group(ui, &tk, &t("group.clipboard"), |ui| {
-        large(ui, &tk, Icon::Paste, &t("action.paste"), false, false);
-        ui.vertical(|ui| {
-            small(ui, &tk, Icon::Cut, &t("action.cut"), false);
-            small(ui, &tk, Icon::Copy, &t("action.copy"), false);
-        });
-    });
-    group(ui, &tk, &t("group.add"), |ui| {
-        let adds = [
-            (Icon::Reason, "action.add_reason", Action::AddReason),
-            (
-                Icon::Objection,
-                "action.add_objection",
-                Action::AddObjection,
-            ),
-            (
-                Icon::CoPremise,
-                "action.add_co_premise",
-                Action::AddCoPremise,
-            ),
-            (Icon::Category, "action.add_category", Action::AddCategory),
-            (Icon::Note, "action.add_note", Action::AddNote),
-        ];
-        for (icon, key, action) in adds {
-            if large(ui, &tk, icon, &t(key), enabled(&action), false).clicked() {
-                out.push(action);
-            }
-        }
-        let generic = Action::AddSource(SourceType::Source);
-        let label = t("action.add_source");
-        let resp = large_menu(ui, &tk, Icon::Source, &label, enabled(&generic));
-        Popup::menu(&resp).show(|ui| {
-            for st in SourceType::ALL {
-                let action = Action::AddSource(st.clone());
-                if ui
-                    .add_enabled(enabled(&action), source_button(&st))
-                    .clicked()
-                {
-                    out.push(action);
-                }
-            }
-        });
-    });
-    group(ui, &tk, &t("group.editing"), |ui| {
-        let deletes = [
-            (Icon::Delete, "action.delete", Action::Delete),
-            (
-                Icon::DeleteBranch,
-                "action.delete_branch",
-                Action::DeleteBranch,
-            ),
-        ];
-        for (icon, key, action) in deletes {
-            if large(ui, &tk, icon, &t(key), enabled(&action), false).clicked() {
-                out.push(action);
-            }
-        }
-        ui.vertical(|ui| {
-            let history = [
-                (Icon::Undo, "action.undo", Action::Undo),
-                (Icon::Redo, "action.redo", Action::Redo),
-            ];
-            for (icon, key, action) in history {
-                if small(ui, &tk, icon, &t(key), enabled(&action)).clicked() {
-                    out.push(action);
-                }
-            }
-        });
-    });
-    app.pending.extend(out);
 }
 
 fn view(ui: &mut Ui, app: &mut ReasonCraftApp) {
