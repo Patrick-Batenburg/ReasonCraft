@@ -10,3 +10,6 @@ Patterns learned from corrections during this project. Review at session start.
 ## Argument-map semantics
 - **Distinguish whole-card targets from single-premise targets.** An argument against a whole card connects to the card frame's edge, not to a premise or through the boxes.
 - **Keep labels out of connector paths.** Put rating labels inside the card frame, align arrowheads with a straight stub, and spread connectors that share an attach point.
+
+## Agent safety
+- **Never inject OS-level keyboard/mouse input (SendKeys, SendInput, xdotool) into the desktop for manual checks.** Focus can change to another application and keystrokes land there. Drive the app through kittests, debug-only scenario loaders, or `--scenario` style startup flags; screenshots of the app window are fine.
