@@ -40,7 +40,7 @@
   - [x] Task 5: Check tab, settings and status bar count
   - [x] Task 6: Core snippets
   - [x] Task 7: Snippets tab
-  - [ ] Task 8: Drag a snippet selection onto the map
+  - [x] Task 8: Drag a snippet selection onto the map
   - [ ] Task 9: Document language
   - [ ] Task 10: End-to-end verification and docs
 - [ ] Step 4 — Output: exports, print, Essay tab
