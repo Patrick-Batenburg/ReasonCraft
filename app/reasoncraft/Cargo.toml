@@ -1,0 +1,13 @@
+[package]
+name = "reasoncraft"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+reasoncraft_core = { path = "../../crates/reasoncraft_core" }
+eframe.workspace = true
+
+[lints]
+workspace = true

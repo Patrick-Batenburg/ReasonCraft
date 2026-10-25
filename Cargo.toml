@@ -1,0 +1,20 @@
+[workspace]
+resolver = "3"
+members = ["crates/reasoncraft_core", "app/reasoncraft"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.95"
+version = "0.1.0"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+indexmap = { version = "2", features = ["serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "accesskit", "persistence", "wayland", "x11"] }
+
+[workspace.lints.clippy]
+all = "warn"
