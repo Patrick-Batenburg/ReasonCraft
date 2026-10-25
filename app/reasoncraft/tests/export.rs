@@ -209,13 +209,23 @@ fn copy_as_image_puts_image_on_clipboard() {
     assert_eq!(images.len(), 1);
     let (w, hgt, px) = &images[0];
     assert_eq!(px.len() as u32, w * hgt * 4);
-    // The current (dark) theme, at scale 2.
-    let c = Tokens::dark().canvas;
+    // The export theme (light by default) while the UI is dark, at scale 2.
+    assert!(h.state().tokens.dark);
+    let c = Tokens::light().canvas;
     assert_eq!(px[..4], [c.r(), c.g(), c.b(), 255]);
     assert!(w % 2 == 0 && hgt % 2 == 0);
     drop(images);
     assert_eq!(h.state().export.notice, Some(Notice::Copied));
     h.get_by_label(&t("export.copied"));
+
+    // With the current theme chosen for exports, the copy is dark.
+    h.state_mut().settings.export.theme = ExportTheme::Current;
+    h.get_by_label(&t("action.copy_image")).click();
+    h.run_steps(2);
+    wait(&mut h);
+    let images = fakes.clipboard.images.lock().unwrap();
+    let c = Tokens::dark().canvas;
+    assert_eq!(images[1].2[..4], [c.r(), c.g(), c.b(), 255]);
 }
 
 #[test]

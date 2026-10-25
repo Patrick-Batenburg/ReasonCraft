@@ -240,7 +240,8 @@ pub enum Action {
     OpenPageSetup,
     /// Remember the page setup for PDF export and printing.
     SetPageSetup(PageSetup),
-    /// Put the whole map on the clipboard as an image (current theme, 2x).
+    /// Put the whole map on the clipboard as an image (in the export
+    /// theme, like Print; 2x).
     CopyAsImage,
     /// Make a PDF with the saved page setup and open it to print.
     Print,

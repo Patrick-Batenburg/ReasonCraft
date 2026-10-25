@@ -59,7 +59,8 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
             app.export_dialog = None;
         }
         Action::CopyAsImage => {
-            let snapshot = scene_snapshot(app, None, app.tokens);
+            let tokens = tokens_for(app, app.settings.export.theme);
+            let snapshot = scene_snapshot(app, None, tokens);
             let target = Target::Clipboard(app.export.clipboard.clone());
             let options = ExportOptions {
                 png_scale: 2,
