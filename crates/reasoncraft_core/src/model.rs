@@ -1,5 +1,7 @@
 //! The document model: boxes, cards and the document that owns them.
 
+use std::collections::HashMap;
+
 use chrono::{SecondsFormat, Utc};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -366,6 +368,32 @@ impl Document {
                 .map(|c| Parent::Card(c.id)),
         }
     }
+}
+
+/// Who holds each placed item, built in one pass. Same answers as
+/// [`Document::owner_of`] (parking first, then box children, then card
+/// children and premises), without a scan per query.
+pub fn owner_index(doc: &Document) -> HashMap<Item, Parent> {
+    let mut index = HashMap::new();
+    for &item in &doc.parking {
+        index.entry(item).or_insert(Parent::Parking);
+    }
+    for b in doc.boxes.values() {
+        for &item in &b.children {
+            index.entry(item).or_insert(Parent::Box(b.id));
+        }
+    }
+    for c in doc.cards.values() {
+        for &child in &c.children {
+            index.entry(Item::Card(child)).or_insert(Parent::Card(c.id));
+        }
+    }
+    for c in doc.cards.values() {
+        for &pid in &c.premises {
+            index.entry(Item::Box(pid)).or_insert(Parent::Card(c.id));
+        }
+    }
+    index
 }
 
 #[cfg(test)]

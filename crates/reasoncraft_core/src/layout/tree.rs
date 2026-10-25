@@ -11,9 +11,10 @@ use std::ops::Range;
 use emath::{Pos2, Rect, Vec2};
 
 use super::ports::{Pending, PortKey};
-use super::{BOX_TEXT_PAD, ConnectorKind, Layout, LayoutParams, Measure};
-use crate::ids::{Item, NodeId};
-use crate::model::{BoxKind, BoxNode, Card, Document, Role};
+use super::{BOX_TEXT_PAD, ConnectorKind, IMAGE_GAP, Layout, LayoutParams, Measure};
+use crate::connector::Strength;
+use crate::ids::{Item, NodeId, Parent};
+use crate::model::{BoxKind, BoxNode, Card, CardKind, CardStrength, Document, Role, owner_index};
 
 /// A card, a box outside cards, or the root.
 struct Unit {
@@ -124,11 +125,14 @@ impl Tree {
             bounds = bounds.union(rect);
             self.emit(doc, u, rect, p, out);
             if let Some(port) = u.port {
+                let (strength, nil) = connector_strength(out, u.item);
                 pending.push(Pending {
                     child: u.item,
                     from: rect.center_top(),
                     port,
-                    kind: connector_kind(doc, u.item),
+                    kind: connector_kind(doc, out, u.item),
+                    strength,
+                    nil,
                 });
             }
             let mut x = centre_x - row_width(&self.units, u.children.clone(), p.h_gap) * 0.5;
@@ -244,11 +248,15 @@ fn box_size(node: &BoxNode, m: &dyn Measure, p: &LayoutParams) -> Vec2 {
     };
     let width = node.width.unwrap_or(default_width);
     let text_height = m.text_height(&node.text, width - 2.0 * BOX_TEXT_PAD, &node.kind);
+    let image_height = node.image.as_ref().map_or(0.0, |img| {
+        (width - 2.0 * BOX_TEXT_PAD) * img.aspect.clamp(0.05, 4.0) + BOX_TEXT_PAD + IMAGE_GAP
+    });
     let height = if is_source {
         // Room for the icon and the source type line.
-        text_height + 30.0
+        text_height + 30.0 + image_height
     } else {
-        p.min_box_height.max(text_height + 2.0 * BOX_TEXT_PAD)
+        p.min_box_height
+            .max(text_height + 2.0 * BOX_TEXT_PAD + image_height)
     };
     Vec2::new(width, height)
 }
@@ -266,16 +274,96 @@ fn frame_size(premises: &[Vec2], p: &LayoutParams) -> Vec2 {
 }
 
 /// How the connector from `child` to its parent is drawn.
-fn connector_kind(doc: &Document, child: Item) -> ConnectorKind {
+fn connector_kind(doc: &Document, out: &Layout, child: Item) -> ConnectorKind {
     match child {
-        Item::Card(id) => match doc.card_role(id) {
-            Role::Supports => ConnectorKind::Supports,
-            Role::Opposes => ConnectorKind::Opposes,
-            Role::Rebuts => ConnectorKind::Rebuts,
+        Item::Card(id) => match out.card_roles.get(&id) {
+            Some(Role::Supports) => ConnectorKind::Supports,
+            Some(Role::Rebuts) => ConnectorKind::Rebuts,
+            Some(Role::Opposes) | None => ConnectorKind::Opposes,
         },
         Item::Box(id) => match doc.boxes.get(&id).map(|n| &n.kind) {
             Some(BoxKind::Category) => ConnectorKind::Neutral,
             _ => ConnectorKind::Attachment,
         },
+    }
+}
+
+/// Connector strength and nil flag from a card's rating.
+fn connector_strength(out: &Layout, child: Item) -> (Strength, bool) {
+    let rating = match child {
+        Item::Card(id) => out.card_strength.get(&id).copied().flatten(),
+        Item::Box(_) => None,
+    };
+    match rating {
+        Some(CardStrength::Strong) => (Strength::Strong, false),
+        Some(CardStrength::Weak) => (Strength::Weak, false),
+        Some(CardStrength::Nil) => (Strength::Weak, true),
+        None => (Strength::Normal, false),
+    }
+}
+
+/// Fill `out.card_roles` and `out.card_strength` for every card, using one
+/// owner index. The rule is that of `Document::card_role`: reasons support;
+/// an objection owned by an objection card, or by a premise of one, rebuts;
+/// any other objection opposes.
+pub(super) fn card_roles(doc: &Document, out: &mut Layout) {
+    let owners = owner_index(doc);
+    let objection_premises: HashSet<NodeId> = doc
+        .cards
+        .values()
+        .filter(|c| c.kind == CardKind::Objection)
+        .flat_map(|c| c.premises.iter().copied())
+        .collect();
+    for (&id, card) in &doc.cards {
+        let role = if card.kind == CardKind::Reason {
+            Role::Supports
+        } else {
+            let rebuts = match owners.get(&Item::Card(id)) {
+                Some(Parent::Card(c)) => doc
+                    .cards
+                    .get(c)
+                    .is_some_and(|c| c.kind == CardKind::Objection),
+                Some(Parent::Box(b)) => objection_premises.contains(b),
+                Some(Parent::Parking) | None => false,
+            };
+            if rebuts { Role::Rebuts } else { Role::Opposes }
+        };
+        out.card_roles.insert(id, role);
+        out.card_strength.insert(id, card.strength);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fixtures::{FixedMeasure, sample_iot_like};
+    use crate::layout::layout;
+
+    #[test]
+    fn owner_index_matches_owner_of() {
+        let doc = sample_iot_like(117);
+        let idx = owner_index(&doc);
+        for &id in doc.cards.keys() {
+            assert_eq!(
+                idx.get(&Item::Card(id)).copied(),
+                doc.owner_of(Item::Card(id))
+            );
+        }
+        for &id in doc.boxes.keys() {
+            assert_eq!(
+                idx.get(&Item::Box(id)).copied(),
+                doc.owner_of(Item::Box(id))
+            );
+        }
+    }
+
+    #[test]
+    fn index_derived_roles_equal_card_role() {
+        let doc = sample_iot_like(117);
+        let l = layout(&doc, &FixedMeasure, &LayoutParams::default());
+        assert_eq!(l.card_roles.len(), doc.cards.len());
+        for &id in doc.cards.keys() {
+            assert_eq!(l.card_roles[&id], doc.card_role(id));
+        }
     }
 }

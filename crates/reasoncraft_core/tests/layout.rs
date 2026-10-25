@@ -289,3 +289,69 @@ fn layout_500_boxes_fast() {
     assert_eq!(l.boxes.len(), doc.boxes.len());
     assert!(elapsed < Duration::from_millis(50), "took {elapsed:?}");
 }
+
+#[test]
+fn layout_reports_roles_and_strength() {
+    use reasoncraft_core::CardStrength;
+    use reasoncraft_core::connector::Strength;
+    let mut doc = Document::new("Claim");
+    let (reason, rp) = doc
+        .add_card(Parent::Box(doc.root), CardKind::Reason, "R")
+        .unwrap();
+    let (objection, _) = doc
+        .add_card(Parent::Box(rp), CardKind::Objection, "O")
+        .unwrap();
+    let (rebuttal, _) = doc
+        .add_card(Parent::Card(objection), CardKind::Objection, "Re")
+        .unwrap();
+    doc.cards.get_mut(&reason).unwrap().strength = Some(CardStrength::Strong);
+    doc.cards.get_mut(&objection).unwrap().strength = Some(CardStrength::Weak);
+    doc.cards.get_mut(&rebuttal).unwrap().strength = Some(CardStrength::Nil);
+    let l = run(&doc);
+    assert_eq!(l.card_roles[&reason], Role::Supports);
+    assert_eq!(l.card_roles[&objection], Role::Opposes);
+    assert_eq!(l.card_roles[&rebuttal], Role::Rebuts);
+    assert_eq!(l.card_strength[&reason], Some(CardStrength::Strong));
+    assert_eq!(l.card_strength[&objection], Some(CardStrength::Weak));
+    assert_eq!(l.card_strength[&rebuttal], Some(CardStrength::Nil));
+    let conn = |c| {
+        let k = l
+            .connectors
+            .iter()
+            .find(|k| k.child == Item::Card(c))
+            .unwrap();
+        (k.strength, k.nil)
+    };
+    assert_eq!(conn(reason), (Strength::Strong, false));
+    assert_eq!(conn(objection), (Strength::Weak, false));
+    assert_eq!(conn(rebuttal), (Strength::Weak, true));
+    for k in l
+        .connectors
+        .iter()
+        .filter(|k| matches!(k.child, Item::Box(_)))
+    {
+        assert_eq!((k.strength, k.nil), (Strength::Normal, false));
+    }
+}
+
+#[test]
+fn image_adds_height() {
+    use reasoncraft_core::ImageRef;
+    use reasoncraft_core::layout::IMAGE_GAP;
+    let mut doc = Document::new("Claim");
+    let (_, p) = doc
+        .add_card(
+            Parent::Box(doc.root),
+            CardKind::Reason,
+            "A premise long enough to wrap onto several lines of text",
+        )
+        .unwrap();
+    let before = run(&doc).boxes[&p].height();
+    doc.boxes.get_mut(&p).unwrap().image = Some(ImageRef {
+        asset: "a".into(),
+        aspect: 0.5,
+    });
+    let after = run(&doc).boxes[&p].height();
+    let expected = (156.0 - 12.0) * 0.5 + 6.0 + IMAGE_GAP;
+    assert!((after - before - expected).abs() < 0.5, "{before} {after}");
+}

@@ -13,6 +13,8 @@
 use emath::{Pos2, Rect};
 use indexmap::IndexMap;
 
+use crate::connector::Strength;
+
 use super::{Connector, ConnectorKind, Layout, LayoutParams, TargetKind};
 use crate::ids::{CardId, Item, NodeId};
 use crate::model::Document;
@@ -32,6 +34,8 @@ pub(super) struct Pending {
     pub from: Pos2,
     pub port: PortKey,
     pub kind: ConnectorKind,
+    pub strength: Strength,
+    pub nil: bool,
 }
 
 /// Turn pending connectors into connectors with spread ports, in the
@@ -87,6 +91,8 @@ pub(super) fn assign(
                 from: c.from,
                 to: to?,
                 kind: c.kind,
+                strength: c.strength,
+                nil: c.nil,
                 target: match c.port {
                     PortKey::Box(_) => TargetKind::Box,
                     PortKey::Whole(_) => TargetKind::WholeCard,

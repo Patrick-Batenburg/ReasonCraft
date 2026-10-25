@@ -10,13 +10,17 @@ mod tree;
 use emath::{Pos2, Rect, Vec2};
 use indexmap::IndexMap;
 
+use crate::connector::Strength;
 use crate::ids::{CardId, Item, NodeId};
-use crate::model::{BoxKind, Document};
+use crate::model::{BoxKind, CardStrength, Document, Role};
 
 /// Horizontal and vertical padding between a box's edge and its text.
 /// A [`Measure`] is asked for the height of text wrapped at
 /// `box width - 2 * BOX_TEXT_PAD`; painters must wrap at the same width.
 pub const BOX_TEXT_PAD: f32 = 6.0;
+
+/// Vertical gap between a box's image and its text.
+pub const IMAGE_GAP: f32 = 6.0;
 
 /// Measures wrapped text. Implemented by the UI with its real fonts.
 pub trait Measure {
@@ -89,6 +93,10 @@ pub struct Connector {
     pub to: Pos2,
     pub kind: ConnectorKind,
     pub target: TargetKind,
+    /// Evaluated strength of a card's connector; `Normal` for other items.
+    pub strength: Strength,
+    /// The card is rated nil (drawn weak, flagged for a distinct look).
+    pub nil: bool,
 }
 
 /// The result of [`layout`].
@@ -100,6 +108,10 @@ pub struct Layout {
     pub cards: IndexMap<CardId, Rect>,
     /// Top-right anchor inside each frame for the right-aligned rating label.
     pub card_labels: IndexMap<CardId, Pos2>,
+    /// Role of every card.
+    pub card_roles: IndexMap<CardId, Role>,
+    /// Rating of every card (`None` when unrated).
+    pub card_strength: IndexMap<CardId, Option<CardStrength>>,
     pub connectors: Vec<Connector>,
     pub main_bounds: Rect,
     pub parking_bounds: Option<Rect>,
@@ -112,12 +124,15 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
         boxes: IndexMap::with_capacity(doc.boxes.len()),
         cards: IndexMap::with_capacity(doc.cards.len()),
         card_labels: IndexMap::with_capacity(doc.cards.len()),
+        card_roles: IndexMap::with_capacity(doc.cards.len()),
+        card_strength: IndexMap::with_capacity(doc.cards.len()),
         connectors: Vec::new(),
         main_bounds: Rect::NOTHING,
         parking_bounds: None,
         bounds: Rect::NOTHING,
     };
     let mut pending = Vec::new();
+    tree::card_roles(doc, &mut out);
 
     let main = tree::Tree::build(doc, Item::Box(doc.root), m, p);
     out.main_bounds = main.place(doc, Pos2::ZERO, p, &mut out, &mut pending);
