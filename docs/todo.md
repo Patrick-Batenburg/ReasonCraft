@@ -1,7 +1,7 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** [docs/plans/2026-10-25-step2-sources-evaluation.md](plans/2026-10-25-step2-sources-evaluation.md) — step 2, sources and evaluation
+**Active plan:** [docs/plans/2026-10-26-step3-text-panel.md](plans/2026-10-26-step3-text-panel.md) — step 3, text panel
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
 ## Step 1 — Core editor
@@ -32,7 +32,17 @@
   - [x] Task 10: Change card type and links
   - [x] Task 11: Images in boxes
   - [x] Task 12: End-to-end verification and docs
-- [ ] Step 3 — Text panel: Outline, Snippets, Check
+- [ ] Step 3 — Text panel: Outline, Snippets, Check ([plan](plans/2026-10-26-step3-text-panel.md))
+  - [ ] Task 1: Carry-over fixes, revision counter, text panel tab shell
+  - [ ] Task 2: Core outline builder
+  - [ ] Task 3: Outline tab
+  - [ ] Task 4: Core checks
+  - [ ] Task 5: Check tab, settings and status bar count
+  - [ ] Task 6: Core snippets
+  - [ ] Task 7: Snippets tab
+  - [ ] Task 8: Drag a snippet selection onto the map
+  - [ ] Task 9: Document language
+  - [ ] Task 10: End-to-end verification and docs
 - [ ] Step 4 — Output: exports, print, Essay tab
 - [ ] Step 5 — Interchange & polish: Argdown, connector styles, layout directions, minimap, numbering, find/replace, spellcheck, autosave, Search commands
 - [ ] Step 6 — Release readiness: Dutch, accessibility, help, examples, templates, installers
