@@ -101,26 +101,105 @@ fn incomplete_only_after_first_rating() {
     let s = d.add_box(Parent::Box(p), source(), "Report").unwrap();
     assert!(of_kind(&run_checks(&d, &all_on()), CheckKind::IncompleteEvaluation).is_empty());
 
+    // One issue on the first unrated item, carrying the count.
+    let incomplete = |d: &Document| -> Vec<(Item, Vec<String>)> {
+        of_kind(&run_checks(d, &all_on()), CheckKind::IncompleteEvaluation)
+            .iter()
+            .map(|i| (i.item, i.terms.clone()))
+            .collect()
+    };
     d.set_acceptance(d.root, Some(Acceptance::Accept)).unwrap();
-    let issues = run_checks(&d, &all_on());
-    let incomplete: Vec<Item> = of_kind(&issues, CheckKind::IncompleteEvaluation)
-        .iter()
-        .map(|i| i.item)
-        .collect();
-    assert_eq!(incomplete, [Item::Card(card), Item::Box(p), Item::Box(s)]);
+    assert_eq!(incomplete(&d), [(Item::Card(card), vec!["3".to_owned()])]);
 
     // A source rating alone also counts as "a rating exists".
     d.set_acceptance(d.root, None).unwrap();
     d.set_source_rating(s, Some(SourceRating::Shaky)).unwrap();
-    let incomplete: Vec<Item> =
-        of_kind(&run_checks(&d, &all_on()), CheckKind::IncompleteEvaluation)
+    assert_eq!(incomplete(&d), [(Item::Box(d.root), vec!["3".to_owned()])]);
+
+    // Everything rated: no issue.
+    d.set_acceptance(d.root, Some(Acceptance::Accept)).unwrap();
+    d.set_acceptance(p, Some(Acceptance::Accept)).unwrap();
+    d.set_card_strength(card, Some(CardStrength::Strong))
+        .unwrap();
+    assert!(incomplete(&d).is_empty());
+}
+
+#[test]
+fn parked_items_are_drafts() {
+    let mut d = doc("en", "Claim");
+    let (card, p) = d
+        .add_card(Parent::Box(d.root), CardKind::Reason, "Claim holds")
+        .unwrap();
+    d.add_box(Parent::Box(p), source(), "Report").unwrap();
+    let note = d.add_loose(NewLoose::Note, "Idea");
+    let parked = d.add_loose(NewLoose::Card(CardKind::Reason), "Draft");
+    let Item::Card(parked_card) = parked else {
+        panic!()
+    };
+    let parked_premise = d.cards[&parked_card].premises[0];
+
+    // A rating on a parked item does not start the evaluation.
+    d.set_acceptance(parked_premise, Some(Acceptance::Accept))
+        .unwrap();
+    let issues = run_checks(&d, &all_on());
+    assert!(of_kind(&issues, CheckKind::IncompleteEvaluation).is_empty());
+    // The parked premise has no support, but it is a draft.
+    assert!(
+        !of_kind(&issues, CheckKind::Unsupported)
             .iter()
-            .map(|i| i.item)
-            .collect();
-    assert_eq!(
-        incomplete,
-        [Item::Box(d.root), Item::Card(card), Item::Box(p)]
+            .any(|i| i.item == Item::Box(parked_premise))
     );
+    // The parked card is listed; the parked note is not.
+    let loose: Vec<Item> = of_kind(&issues, CheckKind::NotConnected)
+        .iter()
+        .map(|i| i.item)
+        .collect();
+    assert_eq!(loose, [parked]);
+    assert!(!loose.contains(&note));
+
+    // Once the main map is rated, parked items are not counted.
+    d.set_acceptance(d.root, Some(Acceptance::Accept)).unwrap();
+    let issues = run_checks(&d, &all_on());
+    let incomplete = of_kind(&issues, CheckKind::IncompleteEvaluation);
+    assert_eq!(incomplete.len(), 1);
+    assert_eq!(incomplete[0].item, Item::Card(card));
+    assert_eq!(incomplete[0].terms, ["3"]);
+}
+
+#[test]
+fn dutch_sample_is_not_noisy() {
+    // The course sample: a claim, three reasons each with a source, a
+    // parked card and a parked note; only the claim and one card rated.
+    let mut d = doc("nl", "Robots kosten banen");
+    let root = Parent::Box(d.root);
+    let mut cards = Vec::new();
+    for (premise, src) in [
+        ("Robots kosten banen in fabrieken", "CBS-rapport"),
+        ("Robots kosten banen in magazijnen", "Krantenartikel"),
+        ("Robots kosten banen bij banken", "Interview"),
+    ] {
+        let (card, p) = d.add_card(root, CardKind::Reason, premise).unwrap();
+        d.add_box(Parent::Box(p), source(), src).unwrap();
+        cards.push(card);
+    }
+    d.add_loose(
+        NewLoose::Card(CardKind::Objection),
+        "Er komen ook banen bij",
+    );
+    d.add_loose(NewLoose::Note, "Nog uitzoeken");
+    d.set_acceptance(d.root, Some(Acceptance::Accept)).unwrap();
+    d.set_card_strength(cards[0], Some(CardStrength::Strong))
+        .unwrap();
+
+    let issues = run_checks(&d, &all_on());
+    assert!(issues.len() <= 8, "{} issues: {issues:?}", issues.len());
+    let incomplete = of_kind(&issues, CheckKind::IncompleteEvaluation);
+    assert_eq!(incomplete.len(), 1, "{issues:?}");
+    // Two cards, three premises and three sources are not rated yet.
+    assert_eq!(incomplete[0].terms, ["8"]);
+    // The first unrated item in tree order: the rated card's premise.
+    let first = d.cards[&cards[0]].premises[0];
+    assert_eq!(incomplete[0].item, Item::Box(first));
 }
 
 #[test]
@@ -178,7 +257,9 @@ fn not_connected_lists_parking() {
         .iter()
         .map(|i| i.item)
         .collect();
-    assert_eq!(loose, [a, b]);
+    // A parked note is a jotting, not an unconnected argument part.
+    assert!(!loose.contains(&a));
+    assert_eq!(loose, [b]);
     // Main tree first, then parking in pre-order: the parked card, then its
     // premise.
     let Item::Card(card) = b else { panic!() };
@@ -188,7 +269,6 @@ fn not_connected_lists_parking() {
         order,
         [
             (Item::Box(d.root), CheckKind::Question),
-            (a, CheckKind::NotConnected),
             (b, CheckKind::NotConnected),
             (premise, CheckKind::Question),
         ]
@@ -216,11 +296,9 @@ fn issues_follow_display_order_and_kind_order() {
             (Item::Box(d.root), CheckKind::Question),
             (Item::Box(d.root), CheckKind::IncompleteEvaluation),
             (Item::Card(card), CheckKind::KeyTerm),
-            (Item::Card(card), CheckKind::IncompleteEvaluation),
             (Item::Box(p), CheckKind::Compound),
             (Item::Box(p), CheckKind::Question),
             (Item::Box(p), CheckKind::Unsupported),
-            (Item::Box(p), CheckKind::IncompleteEvaluation),
         ]
     );
 }
@@ -290,7 +368,7 @@ fn checks_500_boxes_fast() {
         let t = Instant::now();
         let issues = run_checks(&doc, &set);
         best = best.min(t.elapsed());
-        assert!(issues.len() >= 400);
+        assert!(!issues.is_empty());
     }
     eprintln!("run_checks on 500 boxes: {best:?}");
     assert!(best.as_millis() < 20, "took {best:?}");

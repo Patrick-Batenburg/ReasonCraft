@@ -196,20 +196,20 @@ check-kind-empty_category = Empty categories
 check-kind-incomplete_evaluation = Not rated yet
 check-kind-inconsistent_evaluation = Ratings that disagree
 check-kind-not_connected = In the parking area
-check-help-key_term = Every key word of a statement should come back in the premises of the reason or objection under it (the key-word rule). Short words in singular and plural (job, jobs) may be reported even when they are covered.
-check-help-compound = Each box should say one thing. A statement joined with "and" or "or" is really two.
+check-help-key_term = Every key word of a statement should come back in the premises of the reason or objection under it (the key-word rule): add a co-premise that covers the missing words. Short words in singular and plural (job, jobs) may be reported even when they are covered.
+check-help-compound = Each box should say one thing. If you could accept one part of a statement and reject the other, it is really two.
 check-help-question = Claims and premises are statements: you can accept or reject them, but not a question.
 check-help-unsupported = Every premise needs support: a reason or a source under it.
 check-help-empty_category = A main category should have something under it.
 check-help-incomplete_evaluation = Once you start rating, rate every statement, card and source.
 check-help-inconsistent_evaluation = A rating should fit the ratings it rests on.
 check-help-not_connected = Items in the parking area are not part of the argument yet.
-check-explain-key_term = These words from the statement above don't appear in this card: { $terms }. Every key word should be covered — add a co-premise.
-check-explain-compound = This joins two statements with "{ $terms }". Split it so each box says one thing.
+check-explain-key_term = Missing: { $terms }
+check-explain-compound = Does this say two things (joined by “{ $terms }”)? If you could accept one part and reject the other, split it.
 check-explain-question = This is a question. Write it as a statement you can accept or reject.
 check-explain-unsupported = Nothing supports this premise yet. Add a reason or a source under it.
 check-explain-empty_category = This category has nothing under it. Add items or remove it.
-check-explain-incomplete_evaluation = This is not rated yet, while other parts of the map are.
+check-explain-incomplete_evaluation = { $count } items are not rated yet, while other parts are. Click to go to the next one.
 check-explain-inconsistent_evaluation = { $case ->
     [strong] This card is rated strong, but all its premises are rejected.
     [solid] This source is rated solid, but the premise it supports is rejected.

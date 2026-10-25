@@ -5,18 +5,17 @@
 
 mod stopwords;
 mod tokens;
-
-use std::collections::HashSet;
+mod walk;
 
 use serde::{Deserialize, Serialize};
 
 use crate::ids::{CardId, Item, NodeId, Parent};
-use crate::layout::display_children;
 use crate::model::{
     Acceptance, BoxKind, BoxNode, Card, CardKind, CardStrength, Document, MapKind, SourceRating,
 };
 
 pub use tokens::tokenise;
+use walk::{Visit, rated, visit_order};
 
 /// One course rule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -69,8 +68,9 @@ impl CheckSet {
 }
 
 /// A hint about one item. `terms` holds the missing terms for
-/// [`CheckKind::KeyTerm`] and the conjunctions found for
-/// [`CheckKind::Compound`]; it is empty otherwise.
+/// [`CheckKind::KeyTerm`], the conjunctions found for
+/// [`CheckKind::Compound`] and the number of unrated items (as text) for
+/// [`CheckKind::IncompleteEvaluation`]; it is empty otherwise.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Issue {
     pub kind: CheckKind,
@@ -81,46 +81,37 @@ pub struct Issue {
 /// Run the enabled checks. Issues follow the main tree in pre-order (the
 /// display order of the canvas and the outline), then the parking area;
 /// within one item they follow [`CheckKind::ALL`].
+///
+/// Unrated items are reported as ONE [`CheckKind::IncompleteEvaluation`]
+/// issue on the first of them, carrying their count. Parked items (anything
+/// inside a top-level parking fragment) are drafts: they get no
+/// `Unsupported` or `IncompleteEvaluation` issue, their ratings do not
+/// count as "rating has started", and a parked note is not reported as
+/// `NotConnected`.
 pub fn run_checks(doc: &Document, set: &CheckSet) -> Vec<Issue> {
+    let order = visit_order(doc);
+    let any_rating = order
+        .iter()
+        .any(|v| !v.parked && rated(doc, v.item) == Some(true));
     let run = Run::new(doc, set);
     let mut issues = Vec::new();
-    // `seen` keeps a damaged, cyclic structure from looping forever.
-    let mut seen = HashSet::with_capacity(doc.boxes.len() + doc.cards.len());
-    let tops = std::iter::once((Item::Box(doc.root), None))
-        .chain(doc.parking.iter().map(|&i| (i, Some(Parent::Parking))));
-    let mut stack: Vec<(Item, Option<Parent>)> = Vec::new();
-    for top in tops {
-        stack.push(top);
-        while let Some((item, parent)) = stack.pop() {
-            if !seen.insert(item) {
-                continue;
-            }
-            let start = stack.len();
-            match item {
-                Item::Box(id) => {
-                    let Some(node) = doc.boxes.get(&id) else {
-                        continue;
-                    };
-                    run.check_box(node, parent, &mut issues);
-                    let me = Some(Parent::Box(id));
-                    stack.extend(display_children(doc, id).into_iter().map(|c| (c, me)));
-                }
-                Item::Card(id) => {
-                    let Some(card) = doc.cards.get(&id) else {
-                        continue;
-                    };
-                    run.check_card(card, parent, &mut issues);
-                    let me = Some(Parent::Card(id));
-                    let premises = card.premises.iter().map(|&p| (Item::Box(p), me));
-                    let whole = card.children.iter().map(|&c| (Item::Card(c), me));
-                    stack.extend(premises.chain(whole));
-                }
-            }
-            if parent == Some(Parent::Parking) {
-                run.emit(&mut issues, CheckKind::NotConnected, item, Vec::new());
-            }
-            stack[start..].reverse();
+    // Where the single "not rated yet" issue goes, and its count.
+    let mut first_unrated: Option<(usize, Item)> = None;
+    let mut unrated = 0usize;
+    for v in &order {
+        run.check_before_rating(v, &mut issues);
+        if any_rating && !v.parked && rated(doc, v.item) == Some(false) {
+            unrated += 1;
+            first_unrated.get_or_insert((issues.len(), v.item));
         }
+        run.check_after_rating(v, &mut issues);
+    }
+    if let Some((at, item)) = first_unrated
+        && run.on(CheckKind::IncompleteEvaluation)
+    {
+        let terms = vec![unrated.to_string()];
+        let kind = CheckKind::IncompleteEvaluation;
+        issues.insert(at, Issue { kind, item, terms });
     }
     issues
 }
@@ -131,22 +122,35 @@ struct Run<'a> {
     set: &'a CheckSet,
     lang: &'a str,
     map: MapKind,
-    any_rating: bool,
 }
 
 impl<'a> Run<'a> {
     fn new(doc: &'a Document, set: &'a CheckSet) -> Self {
-        let any_rating = doc
-            .boxes
-            .values()
-            .any(|b| b.acceptance.is_some() || b.source_rating.is_some())
-            || doc.cards.values().any(|c| c.strength.is_some());
         Self {
             doc,
             set,
             lang: &doc.meta.language,
             map: doc.map_kind(),
-            any_rating,
+        }
+    }
+
+    /// The item's checks listed before `IncompleteEvaluation`.
+    fn check_before_rating(&self, v: &Visit, issues: &mut Vec<Issue>) {
+        match v.item {
+            Item::Box(id) => self.check_box(&self.doc.boxes[&id], v, issues),
+            Item::Card(id) => self.check_card(&self.doc.cards[&id], v.parent, issues),
+        }
+    }
+
+    /// The item's checks listed after `IncompleteEvaluation`.
+    fn check_after_rating(&self, v: &Visit, issues: &mut Vec<Issue>) {
+        match v.item {
+            Item::Box(id) => self.check_box_rating(&self.doc.boxes[&id], v.parent, issues),
+            Item::Card(id) => self.check_card_rating(&self.doc.cards[&id], issues),
+        }
+        let note = self.is_kind(v.item, |k| *k == BoxKind::Note);
+        if v.parent == Some(Parent::Parking) && !note {
+            self.emit(issues, CheckKind::NotConnected, v.item, Vec::new());
         }
     }
 
@@ -160,8 +164,9 @@ impl<'a> Run<'a> {
         }
     }
 
-    fn check_box(&self, node: &BoxNode, parent: Option<Parent>, issues: &mut Vec<Issue>) {
+    fn check_box(&self, node: &BoxNode, v: &Visit, issues: &mut Vec<Issue>) {
         let item = Item::Box(node.id);
+        let parent = v.parent;
         let statement = matches!(node.kind, BoxKind::Claim | BoxKind::Premise);
         if statement && self.on(CheckKind::Compound) {
             let found = conjunctions(&node.text, self.lang);
@@ -172,7 +177,10 @@ impl<'a> Run<'a> {
         if statement && node.text.trim_end().ends_with('?') {
             self.emit(issues, CheckKind::Question, item, Vec::new());
         }
-        if node.kind == BoxKind::Premise && self.map == MapKind::Reasoning && !self.supported(node)
+        if node.kind == BoxKind::Premise
+            && self.map == MapKind::Reasoning
+            && !v.parked
+            && !self.supported(node)
         {
             self.emit(issues, CheckKind::Unsupported, item, Vec::new());
         }
@@ -183,12 +191,11 @@ impl<'a> Run<'a> {
         {
             self.emit(issues, CheckKind::EmptyCategory, item, Vec::new());
         }
+    }
+
+    fn check_box_rating(&self, node: &BoxNode, parent: Option<Parent>, issues: &mut Vec<Issue>) {
+        let item = Item::Box(node.id);
         let is_source = matches!(node.kind, BoxKind::Source { .. });
-        let unrated =
-            (statement && node.acceptance.is_none()) || (is_source && node.source_rating.is_none());
-        if self.any_rating && unrated {
-            self.emit(issues, CheckKind::IncompleteEvaluation, item, Vec::new());
-        }
         let under_rejected = match parent {
             Some(Parent::Box(p)) => self.doc.boxes.get(&p).is_some_and(|p| {
                 p.kind == BoxKind::Premise && p.acceptance == Some(Acceptance::Reject)
@@ -211,9 +218,10 @@ impl<'a> Run<'a> {
                 self.emit(issues, CheckKind::KeyTerm, item, missing);
             }
         }
-        if self.any_rating && card.strength.is_none() {
-            self.emit(issues, CheckKind::IncompleteEvaluation, item, Vec::new());
-        }
+    }
+
+    fn check_card_rating(&self, card: &Card, issues: &mut Vec<Issue>) {
+        let item = Item::Card(card.id);
         let all_premises = |a: Acceptance| {
             !card.premises.is_empty()
                 && card.premises.iter().all(|p| {

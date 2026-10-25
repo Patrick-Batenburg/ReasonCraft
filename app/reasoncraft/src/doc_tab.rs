@@ -386,7 +386,7 @@ mod tests {
         let all = CheckSet::default();
         assert!(tab.issues(&all).is_empty());
         // A change made behind the cache's back is not seen…
-        tab.doc.add_loose(reasoncraft_core::NewLoose::Note, "n");
+        tab.doc.add_loose(reasoncraft_core::NewLoose::Category, "n");
         assert!(tab.issues(&all).is_empty());
         // …until the revision moves on, or the checks change.
         tab.bump_revision();

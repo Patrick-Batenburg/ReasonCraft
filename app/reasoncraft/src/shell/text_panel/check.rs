@@ -58,7 +58,14 @@ pub fn show(
                 if group.is_empty() {
                     continue;
                 }
-                heading(ui, kind, group.len(), tk);
+                // "Not rated yet" is one row standing for many items.
+                let count = match group.as_slice() {
+                    [one] if kind == CheckKind::IncompleteEvaluation => {
+                        one.terms.first().and_then(|n| n.parse().ok()).unwrap_or(1)
+                    }
+                    _ => group.len(),
+                };
+                heading(ui, kind, count, tk);
                 for (n, issue) in group.into_iter().enumerate() {
                     let selected = tab.selection == Some(issue.item);
                     let id = ui.scope_id().with((check_key(kind), n));
@@ -117,6 +124,15 @@ pub fn item_text(doc: &Document, item: Item) -> String {
 pub fn explain(doc: &Document, issue: &Issue) -> String {
     let mut args = FluentArgs::new();
     args.set("terms", issue.terms.join(", "));
+    if issue.kind == CheckKind::IncompleteEvaluation {
+        // The one "not rated yet" issue carries the number of unrated items.
+        let count: usize = issue
+            .terms
+            .first()
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(1);
+        args.set("count", count);
+    }
     if issue.kind == CheckKind::InconsistentEvaluation {
         // The issue carries no terms: which rule it broke follows from the item.
         let case = match issue.item {
@@ -235,12 +251,43 @@ mod tests {
     }
 
     #[test]
+    fn incomplete_evaluation_explains_the_count() {
+        let mut d = Document::new("Robots help");
+        d.add_card(Parent::Box(d.root), CardKind::Reason, "Robots help")
+            .unwrap();
+        d.set_acceptance(d.root, Some(Acceptance::Accept)).unwrap();
+        let text = explanation(&d, CheckKind::IncompleteEvaluation);
+        assert!(text.starts_with("2 items are not rated yet"), "{text}");
+        assert!(text.contains("next one"), "{text}");
+    }
+
+    #[test]
+    fn compound_explanation_asks_and_quotes_the_word() {
+        let mut d = Document::new("Robots help or hurt");
+        d.meta.language = "en".into();
+        let text = explanation(&d, CheckKind::Compound);
+        assert!(text.contains("(joined by “or”)"), "{text}");
+        assert!(
+            text.contains("accept one part and reject the other"),
+            "{text}"
+        );
+        // The group help names no particular conjunction.
+        let help = t("check.help.compound");
+        assert!(
+            !help.contains("\"and\"") && !help.contains("\"or\""),
+            "{help}"
+        );
+    }
+
+    #[test]
     fn key_term_explanation_lists_the_missing_words() {
         let mut d = Document::new("Robots replace teachers");
         d.add_card(Parent::Box(d.root), CardKind::Reason, "Robots are cheap")
             .unwrap();
         let text = explanation(&d, CheckKind::KeyTerm);
-        assert!(text.contains("replace, teachers"), "{text}");
+        assert_eq!(text, "Missing: replace, teachers");
+        // The key-word rule is explained once, in the group help.
+        assert!(t("check.help.key_term").contains("key-word rule"));
         let issues = run_checks(&d, &CheckSet::default());
         let card = issues
             .iter()

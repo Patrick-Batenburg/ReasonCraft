@@ -99,7 +99,7 @@ fn issues_refresh_after_undo() {
 #[test]
 fn issue_click_selects_item() {
     let mut d = clean_doc();
-    let parked = d.add_loose(reasoncraft_core::NewLoose::Note, "Parked thought");
+    let parked = d.add_loose(reasoncraft_core::NewLoose::Category, "Parked thought");
     let mut h = harness_with(d, TextTab::Check);
     h.run();
     assert!(has(&h, &heading("not_connected", 1)));
@@ -123,7 +123,7 @@ fn issue_click_selects_item() {
 #[test]
 fn status_chip_opens_check_tab() {
     let mut d = clean_doc();
-    d.add_loose(reasoncraft_core::NewLoose::Note, "Parked");
+    d.add_loose(reasoncraft_core::NewLoose::Category, "Parked");
     let mut h = harness_with(d, TextTab::Outline);
     h.state_mut().right_panel = false;
     h.run();
@@ -156,7 +156,7 @@ fn disabled_check_hidden_in_tab_and_count() {
         source_type: SourceType::Web,
     };
     d.add_box(Parent::Box(p), source, "robots.example").unwrap();
-    d.add_loose(reasoncraft_core::NewLoose::Note, "Parked");
+    d.add_loose(reasoncraft_core::NewLoose::Category, "Parked");
     let mut h = harness_with(d, TextTab::Check);
     h.run();
     assert!(has(&h, &heading("question", 1)));
@@ -254,4 +254,35 @@ fn resolve_issue_by_clicking_then_fixing() {
     h.run();
     assert!(has(&h, &t("check.all_clear")));
     assert!(has(&h, &chip(0)));
+}
+
+/// Unrated items are one row; clicking it goes to the first of them.
+#[test]
+fn incomplete_evaluation_is_one_row_that_goes_to_the_next() {
+    let mut d = clean_doc();
+    d.set_acceptance(d.root, Some(reasoncraft_core::Acceptance::Accept))
+        .unwrap();
+    let card = d.boxes[&d.root].children[0];
+    let mut h = harness_with(d, TextTab::Check);
+    h.run();
+    let issues = h.state_mut().tabs[0].issues(&CheckSet::default()).to_vec();
+    let incomplete: Vec<_> = issues
+        .iter()
+        .filter(|i| i.kind == CheckKind::IncompleteEvaluation)
+        .collect();
+    assert_eq!(incomplete.len(), 1, "{issues:?}");
+    assert_eq!(incomplete[0].item, card);
+    // The card, its premise and the source.
+    assert!(has(&h, &heading("incomplete_evaluation", 3)));
+    let mut args = FluentArgs::new();
+    args.set("count", 3);
+    assert!(has(
+        &h,
+        &t_args("check.explain.incomplete_evaluation", &args)
+    ));
+
+    let row = reasoncraft::shell::text_panel::item_text(&h.state().tabs[0].doc, card);
+    h.get_by_role_and_label(Role::ListItem, &row).click();
+    h.run();
+    assert_eq!(h.state().tabs[0].selection, Some(card));
 }
