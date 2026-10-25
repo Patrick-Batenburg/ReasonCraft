@@ -10,7 +10,7 @@
 - [x] Task 4: Undo/redo history
 - [x] Task 5: `.rcraft` file format
 - [x] Task 6: Automatic layout
-- [ ] Task 7: Connector geometry
+- [x] Task 7: Connector geometry
 - [ ] Task 8: App shell (theme, i18n, title bar, tabs, ribbon, status bar)
 - [ ] Task 9: Canvas (camera, measurement, style-D painting, hit testing)
 - [ ] Task 10: Editing interactions
