@@ -1,7 +1,8 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** [docs/plans/2026-10-26-step4-output-essay.md](plans/2026-10-26-step4-output-essay.md) — step 4, output and essay
+**Active plan:** step 5 plan (being written)
+**Merged:** steps 1–4
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
 ## Step 1 — Core editor
@@ -218,6 +219,8 @@ Writing this test showed a real bug. An image export applied without a running f
   - A temporary local build put the ribbon on Export; it was reverted before the commit.
   - The settings file was backed up and was unchanged afterwards.
 
+**Final review fixes** (507 tests pass): text-field ids are salted per tab so egui's undo never crosses documents (essay, title, author, box editor, snippets, comments); closing the window waits for running exports (waiting prompt with Cancel and Quit anyway; Quit anyway writes nothing; an export failing behind another prompt is still shown); print and export temp files are created new, never overwritten, private (0600) on Unix; Copy as image uses the export theme; exports show the placeholder for images the canvas refuses as too large.
+
 **Known limitations:**
 - No word processor is installed here. The Word files were checked as OOXML (zip, well-formed XML, styles) but never opened in Word or LibreOffice.
 - The Linux clipboard (Copy as image) was not tested on a real Linux desktop.
@@ -235,6 +238,8 @@ Writing this test showed a real bug. An image export applied without a running f
 - [ ] Step 5: draw PDF bold once (no duplicate text on copy); non-PNG assets in exports; split `crates/reasoncraft_core/src/edit.rs` (916 lines) and `file.rs` (603 lines)
 - [ ] Step 5: virtualise the Essay tab (cached heights) and the Check tab
 - [ ] Step 6: map labels and source names in exports by document language (with the Dutch UI); open the Word files in Word and LibreOffice; test the clipboard on Linux; upgrade resvg/usvg together with svg2pdf
+- [ ] Step 5 (final review): Copy as image of the selection (spec §9); essay plain-text export (`essay_plain_text` exists); File backstage Export…/Print entries (spec §6); essay paragraphs for vanished boxes become unplaced notes on load; Word files carry the document language; split `app/reasoncraft/tests/ui.rs` (1228 lines) and `tests/export.rs`; tell the user when a paste is cut at 50 000 characters; clear `edit_focus` when undo drops an inline edit; setext/indented-code Markdown escaping; mesh/strip fill in the scene painter (tapered connectors are not convex); connector style and direction in `SceneOptions`
+- [ ] Step 6 (final review): lower the 256 MP PNG cap or check memory first (allocation failure aborts the app); swappable i18n bundle plus a document-language label provider for the scene (labels are also made on the export worker); one home for source-type names (en.ftl and core words.rs); translate the page-cap detail and the new close/export prompts into Dutch; Windows: a print file name still being deleted gives PermissionDenied instead of trying the next name
 
 ## Carry-over from step 1 reviews (put into the step 2+ plans)
 - [x] Step 2, first item: drag siblings to reorder them (spec §5), with a keyboard equivalent; add a "Connect to…" command for parking items
