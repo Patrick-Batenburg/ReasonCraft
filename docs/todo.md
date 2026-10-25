@@ -35,7 +35,7 @@
 - [ ] Step 3 — Text panel: Outline, Snippets, Check ([plan](plans/2026-10-26-step3-text-panel.md))
   - [x] Task 1: Carry-over fixes, revision counter, text panel tab shell
   - [x] Task 2: Core outline builder
-  - [ ] Task 3: Outline tab
+  - [x] Task 3: Outline tab
   - [ ] Task 4: Core checks
   - [ ] Task 5: Check tab, settings and status bar count
   - [ ] Task 6: Core snippets
