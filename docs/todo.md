@@ -132,3 +132,11 @@ It saves, closes, reopens and checks that the documents are equal, the assets ar
 - [ ] Step 5: compact layout (contour packing) so 100+ box maps stay readable at Fit; lay out on main/cross axes for layout directions
 - [ ] Step 5: `validate()` should also check map key == stored id and kind-level attach rules (needed for Argdown import)
 - [ ] Step 6: make the i18n bundle swappable for Dutch; Backspace deletes on macOS; verify Cmd+Q goes through the unsaved-changes prompt; close-button glyph contrast; long tab titles truncate
+
+## Carry-over from step 2 reviews
+- [ ] Step 3, first item: mailto attach check — drop the '#' truncation and refuse control chars / '%' in parameter names
+- [ ] Step 3: keep theme/panel/marker toggles on the Connect-mode keep-list (optional polish)
+- [ ] Step 4, first task: backend-neutral painter (shape list / surface trait, images by asset key, PaintOptions export flag without selection/badges/link glyphs/grid) before any exporter
+- [ ] Step 4: inserting large photos off the UI thread (worker + busy state)
+- [ ] Step 5: link glyph vs rightmost arrowheads on busy boxes; badge/marker overlap between adjacent co-premises
+- [ ] Step 6: store empty comment author and translate on display; stop parsing '●' out of ftl strings (dot count in code); Unicode Cf characters in links; duplicate accessible names (Nil, panel vs ribbon)
