@@ -68,6 +68,7 @@ fn docx_is_valid_ooxml() {
             &build_outline(&doc, &OutlineOptions::default()),
             &OutlineOptions::default(),
             "en",
+            "",
         )
         .unwrap(),
     ] {
@@ -168,7 +169,7 @@ fn outline_docx_dutch_words() {
     let (doc, _) = sample();
     let opts = OutlineOptions::default();
     let lines = build_outline(&doc, &opts);
-    let bytes = outline_docx(&lines, &opts, "nl").unwrap();
+    let bytes = outline_docx(&lines, &opts, "nl", "").unwrap();
     let xml = part(&bytes, "word/document.xml");
     let paras = paragraphs(&xml);
     assert_eq!(
@@ -216,7 +217,7 @@ fn outline_docx_dutch_words() {
     assert_eq!(left, (INDENT_TWIPS * depth as i32).to_string());
 
     // The same document in English uses English words.
-    let en = outline_docx(&lines, &opts, "en").unwrap();
+    let en = outline_docx(&lines, &opts, "en", "").unwrap();
     assert!(part(&en, "word/document.xml").contains("because "));
 }
 
@@ -230,7 +231,7 @@ fn outline_docx_options_and_parked_heading() {
         notes: false,
     };
     let lines = build_outline(&doc, &opts);
-    let bytes = outline_docx(&lines, &opts, "nl").unwrap();
+    let bytes = outline_docx(&lines, &opts, "nl", "").unwrap();
     let paras = paragraphs(&part(&bytes, "word/document.xml"));
     let texts: Vec<&str> = paras.iter().map(|(_, t)| t.as_str()).collect();
     assert!(texts.contains(&"Air gets cleaner & safer"), "{texts:?}");
@@ -274,4 +275,82 @@ fn text_formats_run_through_the_export_job() {
             part(&bytes, "word/document.xml");
         }
     }
+}
+
+/// The text of element `tag` (namespace `ns`) in `xml`.
+fn element(xml: &str, ns: &str, tag: &str) -> Option<String> {
+    let doc = roxmltree::Document::parse(xml).expect("well-formed xml");
+    doc.descendants()
+        .find(|n| n.has_tag_name((ns, tag)))
+        .map(|n| n.text().unwrap_or("").to_owned())
+}
+
+const DC: &str = "http://purl.org/dc/elements/1.1/";
+const CP: &str = "http://schemas.openxmlformats.org/package/2006/metadata/core-properties";
+const DCTERMS: &str = "http://purl.org/dc/terms/";
+
+#[test]
+fn docx_core_properties_name_the_author_and_the_time() {
+    let (mut doc, _) = sample();
+    doc.meta.author = "Ada & <Lovelace>".into();
+    let opts = OutlineOptions::default();
+    let lines = build_outline(&doc, &opts);
+    for bytes in [
+        essay_docx(&doc, "en").unwrap(),
+        outline_docx(&lines, &opts, "en", &doc.meta.author).unwrap(),
+    ] {
+        let core = part(&bytes, "docProps/core.xml");
+        assert_eq!(
+            element(&core, DC, "creator").as_deref(),
+            Some("Ada & <Lovelace>")
+        );
+        assert_eq!(
+            element(&core, CP, "lastModifiedBy").as_deref(),
+            Some("Ada & <Lovelace>")
+        );
+        for tag in ["created", "modified"] {
+            let stamp = element(&core, DCTERMS, tag).unwrap();
+            assert_eq!(stamp.len(), 20, "{stamp}");
+            assert!(
+                stamp.ends_with('Z') && stamp.as_bytes()[10] == b'T',
+                "{stamp}"
+            );
+            assert!(stamp.as_str() > "2020", "{stamp} is now, not 1970");
+        }
+        // The rest of the package is intact.
+        let paras = paragraphs(&part(&bytes, "word/document.xml"));
+        assert_eq!(paras[0].1, "Cities should ban cars");
+        part(&bytes, "[Content_Types].xml");
+    }
+    // Without an author the core properties are still well-formed.
+    let bytes = outline_docx(&lines, &opts, "en", "  ").unwrap();
+    let core = part(&bytes, "docProps/core.xml");
+    assert!(element(&core, DC, "creator").is_some());
+}
+
+#[test]
+fn docx_text_drops_noncharacters_and_tabs() {
+    let (mut doc, _) = sample();
+    doc.set_essay_text(EssaySlot::Intro, "One\u{FFFE}\ttwo\u{FFFF} three")
+        .unwrap();
+    let bytes = essay_docx(&doc, "en").unwrap();
+    let xml = part(&bytes, "word/document.xml");
+    let paras = paragraphs(&xml);
+    assert!(paras.iter().any(|(_, t)| t == "One two three"), "{paras:?}");
+    assert!(!xml.contains('\u{FFFE}') && !xml.contains('\u{FFFF}'));
+    assert!(!xml.contains('\t'));
+}
+
+#[test]
+fn docx_sets_a_default_body_font() {
+    let (doc, _) = sample();
+    let styles = part(&essay_docx(&doc, "en").unwrap(), "word/styles.xml");
+    let tree = roxmltree::Document::parse(&styles).unwrap();
+    let fonts = tree
+        .descendants()
+        .find(|n| n.has_tag_name((W, "docDefaults")))
+        .and_then(|d| d.descendants().find(|n| n.has_tag_name((W, "rFonts"))))
+        .expect("docDefaults has fonts");
+    assert_eq!(fonts.attribute((W, "ascii")), Some("Calibri"));
+    assert_eq!(fonts.attribute((W, "hAnsi")), Some("Calibri"));
 }

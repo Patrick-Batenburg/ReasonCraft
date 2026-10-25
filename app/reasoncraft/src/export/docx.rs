@@ -8,7 +8,7 @@
 
 use std::io::Cursor;
 
-use docx_rs::{BreakType, Docx, Paragraph, Run, Style, StyleType};
+use docx_rs::{BreakType, Docx, Paragraph, Run, RunFonts, Style, StyleType};
 use reasoncraft_core::essay::essay_order;
 use reasoncraft_core::outline::{LineKind, OutlineLine, OutlineOptions};
 use reasoncraft_core::words::{
@@ -17,6 +17,7 @@ use reasoncraft_core::words::{
 use reasoncraft_core::{Document, EssaySlot};
 
 use super::ExportError;
+use super::docx_props::{now_w3cdtf, set_author};
 use crate::theme::Tokens;
 
 /// Left indent per outline level: 0.6 cm in twentieths of a point.
@@ -26,6 +27,9 @@ pub(crate) const INDENT_TWIPS: i32 = 340;
 const TEXT_SIZE: usize = 22;
 const TITLE_SIZE: usize = 52;
 const HEADING_SIZE: usize = 32;
+/// The body font: Word's long-time default, which LibreOffice maps to the
+/// metric-compatible Carlito.
+const BODY_FONT: &str = "Calibri";
 
 /// The document with the styles every paragraph below refers to.
 fn base() -> Docx {
@@ -42,25 +46,38 @@ fn base() -> Docx {
         .size(HEADING_SIZE)
         .bold()
         .outline_lvl(0);
+    let fonts = RunFonts::new()
+        .ascii(BODY_FONT)
+        .hi_ansi(BODY_FONT)
+        .cs(BODY_FONT)
+        .east_asia(BODY_FONT);
+    let now = now_w3cdtf();
     // The writer already defines `Normal`; only its size is set here.
     Docx::new()
         .default_size(TEXT_SIZE)
+        .default_fonts(fonts)
+        .created_at(&now)
+        .updated_at(&now)
         .add_style(title)
         .add_style(heading)
 }
 
-fn pack(docx: Docx) -> Result<Vec<u8>, ExportError> {
+/// The finished package, with `author` as its creator.
+fn pack(docx: Docx, author: &str) -> Result<Vec<u8>, ExportError> {
     let mut out = Cursor::new(Vec::new());
     docx.build()
         .pack(&mut out)
         .map_err(|e| ExportError::Render(e.to_string()))?;
-    Ok(out.into_inner())
+    set_author(out.into_inner(), &one_line(author))
 }
 
-/// `s` without the control characters XML 1.0 cannot hold.
+/// `s` without the characters XML 1.0 cannot hold (control characters,
+/// U+FFFE and U+FFFF); a tab becomes a space, as a run's text keeps no tabs.
 fn clean(s: &str) -> String {
     s.chars()
+        .filter(|c| !matches!(c, '\u{FFFE}' | '\u{FFFF}'))
         .filter(|c| !c.is_control() || matches!(c, '\n' | '\t'))
+        .map(|c| if c == '\t' { ' ' } else { c })
         .collect()
 }
 
@@ -105,12 +122,13 @@ fn heading(text: &str) -> Paragraph {
     styled("Heading1", text)
 }
 
-/// The outline: the claim as title, one indented paragraph per line, and
+/// The outline, by `author`: the claim as title, one indented paragraph per line, and
 /// parked fragments under a heading in the document language.
 pub fn outline_docx(
     lines: &[OutlineLine],
     opts: &OutlineOptions,
     lang: &str,
+    author: &str,
 ) -> Result<Vec<u8>, ExportError> {
     let words = linking_words(lang);
     let mut docx = base();
@@ -145,7 +163,7 @@ pub fn outline_docx(
         p = p.add_run(text_run(&content_lines(&line.text)));
         docx = docx.add_paragraph(p);
     }
-    pack(docx)
+    pack(docx, author)
 }
 
 /// `RRGGBB` for the muted text of the light theme.
@@ -222,5 +240,5 @@ pub fn essay_docx(doc: &Document, lang: &str) -> Result<Vec<u8>, ExportError> {
     }
     docx = docx.add_paragraph(heading(essay_heading(lang, EssayHeading::Conclusion)));
     docx = slot(docx, doc, EssaySlot::Conclusion, claim);
-    pack(docx)
+    pack(docx, &doc.meta.author)
 }

@@ -162,7 +162,9 @@ impl ExportWork {
                     ExportFormat::OutlineText => {
                         outline_plain_text_lang(&lines, outline, lang).into_bytes()
                     }
-                    ExportFormat::OutlineDocx => outline_docx(&lines, outline, lang)?,
+                    ExportFormat::OutlineDocx => {
+                        outline_docx(&lines, outline, lang, &doc.meta.author)?
+                    }
                     ExportFormat::EssayMarkdown => essay_markdown(doc, lang).into_bytes(),
                     ExportFormat::EssayDocx => essay_docx(doc, lang)?,
                     other => return Err(ExportError::Unsupported(other)),

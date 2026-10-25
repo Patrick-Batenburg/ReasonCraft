@@ -3,6 +3,7 @@
 //! machine.
 
 mod docx;
+mod docx_props;
 mod job;
 mod pdf;
 mod raster;

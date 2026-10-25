@@ -23,6 +23,8 @@ skrifa = "0.44"
 svg2pdf = { version = "0.13", default-features = false, features = ["text", "image"] }
 pdf-writer = "0.12"
 docx-rs = { version = "0.4", default-features = false }
+# Patches the core properties of Word files (and reads zips in tests).
+zip.workspace = true
 
 [dev-dependencies]
 egui_kittest = "0.37"
@@ -31,7 +33,6 @@ tempfile.workspace = true
 serde_json.workspace = true
 miniz_oxide = "0.8"
 roxmltree = "0.20"
-zip.workspace = true
 
 [lints]
 workspace = true
