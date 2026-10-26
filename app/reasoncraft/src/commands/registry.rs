@@ -122,6 +122,7 @@ pub(super) fn build() -> Vec<Command> {
         ),
         cmd("home.find_next", "command.find_next", editing, A::FindNext),
         cmd("home.find_prev", "command.find_prev", editing, A::FindPrev),
+        cmd("home.spelling", "action.spelling", editing, A::OpenSpelling),
     ]);
 
     let bx = "group.box";

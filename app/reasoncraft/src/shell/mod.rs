@@ -11,6 +11,7 @@ pub mod modal;
 pub mod resize;
 pub mod ribbon;
 pub mod source_icons;
+pub mod spelling_panel;
 pub mod statusbar;
 pub mod tabs;
 pub mod text_panel;
@@ -21,6 +22,7 @@ use eframe::egui::{
 };
 
 use crate::app::{ReasonCraftApp, RibbonTab};
+use crate::spell::SpellFields;
 use crate::theme::Tokens;
 use icons::Icon;
 
@@ -120,7 +122,10 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         .default_size(300.0)
         .min_size(290.0)
         .show_collapsible(ui, &mut app.right_panel, |ui| {
-            text_panel::show(ui, tab, &app.settings, &tk, &mut out);
+            spelling_panel::show(ui, tab, &mut app.spell, &tk, &mut out);
+            let lang = tab.doc.meta.language.clone();
+            let mut spell = SpellFields::new(&mut app.spell, &app.settings, &lang, &tk);
+            text_panel::show(ui, tab, &app.settings, &tk, &mut spell, &mut out);
         });
     app.pending.extend(out);
 }

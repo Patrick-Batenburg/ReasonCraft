@@ -13,6 +13,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Write from the Text panel.** View → Text panel opens the panel on the right, with four tabs (see [The Text panel](#the-text-panel)): an **Outline** of the map, an **Essay** written along the map (see [The Essay tab](#the-essay-tab)), a **Check** tab with course-rule hints, and **Snippets** of source text to build the map from.
 - **Set the document language.** File → Document holds the title, author and language (English or Dutch) of the open map. The language drives the "and"/"or" and key-term checks; File → Settings sets the language new documents start with.
 - **Find and replace.** Ctrl+F (or Find… in the Home ribbon) opens a find bar above the map that searches the text of every box: claims, premises, categories, sources and notes, the main map first, then the parking area. Match case and whole word are switches in the bar; the counter shows which hit you are on, the hit's box is selected and brought into view, and every box with a hit gets an outline. Ctrl+H (Replace…) adds Replace and Replace all; Replace all is one undo step.
+- **Check spelling.** Misspelled words get a red underline while you type in a box, an essay paragraph, a snippet or a comment, using the English or Dutch dictionary of the document's language (bundled, so it works offline). F7 (or Spelling in the Home ribbon) walks the misspellings of box text, sources and notes from the selection, with suggestions and Change, Change all, Ignore, Ignore all and Add to dictionary; Change and Change all are one undo step each. Underlines never show on the map or in exports. Turn spellcheck off in File → Settings.
 - **Change types.** Turn a reason into an objection or back again (its strength is kept), and change a source's type.
 - **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
 - **Add images.** Put a PNG, JPEG or WebP image in a box. The image is prepared in the background, so a large photo never freezes the window: the box shows "Preparing image…" until it is ready. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.
@@ -85,6 +86,7 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Ctrl+F | Find in box text, sources and notes, also while typing in a box or field: the find bar opens above the map (in its field Enter / Shift+Enter go to the next / previous hit, Esc closes it) |
 | Ctrl+H | Find and replace (on macOS Cmd+H hides the app: use Replace in the Home ribbon or Search commands instead) |
 | F3 / Shift+F3 | Go to the next / previous hit |
+| F7 | Spelling, also while typing in a box or field: check the spelling of box text, sources and notes from the selection, one misspelling at a time |
 
 ### While a box or card is selected
 

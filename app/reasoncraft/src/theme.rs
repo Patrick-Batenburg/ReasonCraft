@@ -41,6 +41,8 @@ pub struct Tokens {
     pub note_text: Color32,
     /// The screen-only outline around boxes with a find hit.
     pub find_hit: Color32,
+    /// The screen-only underline under misspelled words in editing fields.
+    pub spell_error: Color32,
 }
 
 const fn hex(rgb: u32) -> Color32 {
@@ -69,6 +71,7 @@ impl Tokens {
             note: hex(0xD6C267),
             note_text: hex(0x26220F),
             find_hit: hex(0xE879F9),
+            spell_error: hex(0xFF5C5C),
         }
     }
 
@@ -93,6 +96,7 @@ impl Tokens {
             note: hex(0xFFF1A6),
             note_text: hex(0x3A3412),
             find_hit: hex(0xA21CAF),
+            spell_error: hex(0xD92020),
         }
     }
 }
@@ -177,6 +181,13 @@ mod tests {
         for t in [Tokens::dark(), Tokens::light()] {
             let c = contrast(t.find_hit, t.canvas);
             assert!(c >= 4.5, "find_hit: {c:.2} (dark = {})", t.dark);
+        }
+        // Spelling underlines must stand out under field text.
+        for t in [Tokens::dark(), Tokens::light()] {
+            for bg in [t.panel, t.box_fill, t.canvas] {
+                let c = contrast(t.spell_error, bg);
+                assert!(c >= 3.0, "spell_error: {c:.2} (dark = {})", t.dark);
+            }
         }
         // Light-theme role colours are also used for label text.
         let t = Tokens::light();

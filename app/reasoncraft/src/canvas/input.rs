@@ -76,6 +76,7 @@ fn works_while_editing(action: &Action) -> bool {
             | Action::OpenFind { .. }
             | Action::FindNext
             | Action::FindPrev
+            | Action::OpenSpelling
     )
 }
 
@@ -165,8 +166,14 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     // Tab and the arrows are ours: keep egui from moving widget focus too.
     ctx.memory_mut(|m| m.move_focus(FocusDirection::None));
     ctx.request_repaint();
-    out.retain(|a| is_enabled(tab, a));
+    out.retain(|a| allowed(app, tab, a));
     out
+}
+
+/// Whether a key's command may run: enabled for `tab`, and F7 only with
+/// spellcheck on.
+fn allowed(app: &ReasonCraftApp, tab: &crate::doc_tab::DocTab, action: &Action) -> bool {
+    is_enabled(tab, action) && (*action != Action::OpenSpelling || app.settings.spellcheck)
 }
 
 /// The file keys while a text field other than the box editor has focus
@@ -205,7 +212,8 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                     | Action::OpenCommandSearch
                     | Action::OpenFind { .. }
                     | Action::FindNext
-                    | Action::FindPrev),
+                    | Action::FindPrev
+                    | Action::OpenSpelling),
                 ) => {
                     alt_text = a == Action::OpenCommandSearch;
                     out.push(a);
@@ -218,7 +226,7 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
             }
         });
     });
-    out.retain(|a| is_enabled(tab, a));
+    out.retain(|a| allowed(app, tab, a));
     out
 }
 

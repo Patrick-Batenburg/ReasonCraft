@@ -71,6 +71,7 @@ action-delete = Delete
 action-delete_branch = Delete branch
 action-find = Find…
 action-replace = Replace…
+action-spelling = Spelling
 action-zoom_fit = Fit
 action-zoom_fit_selection = Fit selection
 action-zoom_100 = 100%
@@ -117,6 +118,21 @@ find-replace = Replace
 find-replace_all = Replace all
 find-close = Close find
 find-replaced = Replaced { $count }
+
+## Spelling panel
+spell-title = Spelling
+spell-loading = Loading dictionary…
+spell-done = Spelling check complete
+spell-no_suggestions = No suggestions
+spell-change_to = Change to
+spell-change = Change
+spell-change_all = Change all
+spell-ignore = Ignore
+spell-ignore_all = Ignore all
+spell-add = Add to dictionary
+spell-close = Close
+spell-add_refused = This word cannot be added to the dictionary.
+spell-load_failed = The spelling dictionary could not be loaded ({ $error }). Editing works as usual, without spellcheck.
 
 ## Evaluation
 eval-accept = Accept
@@ -180,6 +196,8 @@ settings-checks_hint = Which hints the Check tab shows. Checks never stop you fr
 
 settings-default_language = Language of new documents
 settings-default_language_hint = Used by the language-aware checks. Change it for one document on the Document page.
+settings-spellcheck = Check spelling in the document language
+settings-spellcheck_hint = Underlines misspelled words while you type and enables Spelling (F7).
 
 ## Document page
 document-title = Document

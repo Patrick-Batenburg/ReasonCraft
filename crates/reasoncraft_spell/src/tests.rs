@@ -48,8 +48,21 @@ fn tokenizer_keeps_internal_connectors_only() {
 fn add_word_accepts() {
     let mut s = Speller::load("en").unwrap();
     assert_eq!(flagged(&s, "Reasoncraftish"), ["Reasoncraftish"]);
-    s.add_word("Reasoncraftish");
+    assert!(s.add_word("Reasoncraftish"));
     assert!(flagged(&s, "Reasoncraftish").is_empty());
+}
+
+#[test]
+fn add_word_refuses_affix_flags_and_blanks() {
+    let mut s = Speller::load("en").unwrap();
+    for bad in ["Reasoncraftish/S", "/", "", "  "] {
+        assert!(!s.add_word(bad), "{bad:?} must be refused");
+    }
+    assert_eq!(
+        flagged(&s, "Reasoncraftish"),
+        ["Reasoncraftish"],
+        "nothing added"
+    );
 }
 
 #[test]

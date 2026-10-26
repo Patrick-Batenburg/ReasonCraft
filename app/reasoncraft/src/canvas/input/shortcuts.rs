@@ -107,6 +107,7 @@ pub const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     }),
     (Shortcut::new(Key::F3, NONE), || Action::FindNext),
     (Shortcut::new(Key::F3, SHIFT), || Action::FindPrev),
+    (Shortcut::new(Key::F7, NONE), || Action::OpenSpelling),
 ];
 
 /// The action of the table entry `key` with `mods` presses, if any.

@@ -13,6 +13,7 @@ pub use crate::settings::{SETTINGS_KEY, Settings};
 use crate::shell;
 use crate::shell::export_dialog::ExportDialog;
 use crate::shell::link_modal::LinkEdit;
+use crate::spell::SpellService;
 use crate::theme::{self, Tokens};
 use eframe::egui;
 
@@ -57,6 +58,9 @@ pub struct ReasonCraftApp {
     pub export: ExportJobs,
     /// Inserted images being prepared in the background.
     pub image_jobs: ImageJobs,
+    /// Spelling dictionaries (loaded in the background) and the
+    /// misspellings found, shared by all tabs.
+    pub spell: SpellService,
     /// A short message in the status bar (an inserted image that was
     /// discarded, say). It and the export notice go after
     /// [`shell::statusbar::NOTE_SECS`] or with the next action.
@@ -90,6 +94,7 @@ impl ReasonCraftApp {
             tabs: vec![DocTab::with_language(&settings.default_doc_language)],
             active: 0,
             tokens: theme::resolve(settings.theme, true),
+            spell: SpellService::new(&settings.spell_words),
             settings,
             left_panel: true,
             right_panel: true,
@@ -175,6 +180,7 @@ impl ReasonCraftApp {
         self.egui_ctx = Some(ctx.clone());
         actions::poll_exports(self);
         actions::poll_images(self);
+        crate::spell::poll(self);
         shell::statusbar::expire_notes(&ctx, self);
         self.sync_theme(&ctx);
         self.sync_window_title(&ctx);
@@ -223,7 +229,7 @@ impl ReasonCraftApp {
             }
             ctx.request_repaint();
         }
-        if self.export.busy() || self.image_jobs.busy() {
+        if self.export.busy() || self.image_jobs.busy() || self.spell.busy() {
             // Look for the result again soon, without spinning.
             ctx.request_repaint_after(Duration::from_millis(30));
         }

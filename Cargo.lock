@@ -2771,6 +2771,7 @@ dependencies = [
  "open",
  "pdf-writer",
  "reasoncraft_core",
+ "reasoncraft_spell",
  "resvg",
  "rfd",
  "roxmltree",

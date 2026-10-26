@@ -2,7 +2,7 @@
 //! space, with the box's font scaled by the zoom.
 
 use eframe::egui::{
-    self, Align2, FontId, Frame, Id, Margin, TextEdit,
+    self, Align, Align2, FontId, Frame, Id, Margin, TextEdit,
     text::{CCursor, CCursorRange},
     text_edit::TextEditState,
 };
@@ -16,6 +16,7 @@ use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::scene::SOURCE_HEADER;
+use crate::spell::{FieldStyle, SpellFields};
 use crate::theme::Tokens;
 
 /// The most characters a box keeps from the editor: a longer paste is cut
@@ -34,6 +35,7 @@ pub(super) fn show(
     tab: &mut DocTab,
     layout: &Layout,
     tk: &Tokens,
+    spell: &mut SpellFields,
     pending: &mut Vec<Action>,
 ) {
     let Some(b) = tab.editing() else { return };
@@ -70,10 +72,16 @@ pub(super) fn show(
         ui.memory_mut(|m| m.request_focus(id));
         tab.edit_focus = false;
     }
+    let mut layouter = spell.layouter(FieldStyle {
+        font: Some(font.clone()),
+        colour: Some(colour),
+        halign: Align::Center,
+    });
     let editor = TextEdit::multiline(&mut tab.edit_text)
         .id(id)
         .font(font)
         .text_color(colour)
+        .layouter(&mut layouter)
         .hint_text(hint)
         .frame(Frame::NONE)
         .margin(Margin::ZERO)

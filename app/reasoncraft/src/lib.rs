@@ -12,6 +12,7 @@ pub mod jobs;
 pub mod scene;
 pub mod settings;
 pub mod shell;
+pub mod spell;
 pub mod theme;
 
 pub use app::ReasonCraftApp;

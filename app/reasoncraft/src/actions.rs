@@ -21,6 +21,7 @@ mod export;
 mod find;
 pub(crate) use export::close_after_exports;
 pub use export::poll_exports;
+pub(crate) use find::cap_box;
 mod images;
 pub use images::{poll_images, wait_for_images};
 mod meta;
@@ -112,7 +113,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::SetTextTab(_)
         | Action::SetOutlineOption(..)
         | Action::SetCheckEnabled(..)
-        | Action::SetDefaultDocLanguage(_) => view::apply(app, action),
+        | Action::SetDefaultDocLanguage(_)
+        | Action::SetSpellcheck(_) => view::apply(app, action),
         Action::AddComment { .. }
         | Action::RemoveComment { .. }
         | Action::OpenComments(_)
@@ -133,6 +135,13 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::SetFindQuery(_)
         | Action::SetReplaceText(_)
         | Action::SetFindOptions(_) => find::apply(app, action),
+        Action::OpenSpelling
+        | Action::CloseSpelling
+        | Action::SpellChange { .. }
+        | Action::SpellChangeAll { .. }
+        | Action::SpellIgnore
+        | Action::SpellIgnoreAll(_)
+        | Action::SpellAddWord(_) => crate::spell::apply(app, action),
         // Editing a box: text past the limit is cut, with a note.
         Action::Edit | Action::StopEditing | Action::EditText { .. } | Action::TypeText(_) => {
             if let Some(tab) = app.tabs.get_mut(app.active)
@@ -215,6 +224,10 @@ fn keeps_notes(action: &Action) -> bool {
             | Action::SetFindQuery(_)
             | Action::SetReplaceText(_)
             | Action::SetFindOptions(_)
+            | Action::OpenSpelling
+            | Action::CloseSpelling
+            | Action::SpellIgnore
+            | Action::SpellIgnoreAll(_)
     )
 }
 
@@ -349,7 +362,15 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::ReplaceAll
         | Action::SetFindQuery(_)
         | Action::SetReplaceText(_)
-        | Action::SetFindOptions(_) => unreachable!("app-level action"),
+        | Action::SetFindOptions(_)
+        | Action::OpenSpelling
+        | Action::CloseSpelling
+        | Action::SpellChange { .. }
+        | Action::SpellChangeAll { .. }
+        | Action::SpellIgnore
+        | Action::SpellIgnoreAll(_)
+        | Action::SpellAddWord(_)
+        | Action::SetSpellcheck(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

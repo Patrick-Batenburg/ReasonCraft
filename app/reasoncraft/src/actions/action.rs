@@ -3,7 +3,7 @@
 use reasoncraft_core::checks::CheckKind;
 use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::{
-    Acceptance, CardKind, CardStrength, ClearScope, ConnectorStyle, FindOptions, Item,
+    Acceptance, CardKind, CardStrength, ClearScope, ConnectorStyle, FindHit, FindOptions, Item,
     LayoutDirection, NewLoose, NodeId, Parent, SnippetSource, SourceRating, SourceType, Uuid,
     Verdict,
 };
@@ -294,6 +294,32 @@ pub enum Action {
     SetReplaceText(String),
     /// Match case and whole word changed: go to the first hit.
     SetFindOptions(FindOptions),
+    /// Start a spelling pass from the selection and show its panel above
+    /// the Text panel. Does nothing with spellcheck off.
+    OpenSpelling,
+    /// Close the spelling panel.
+    CloseSpelling,
+    /// Replace the pass's current misspelling `hit` with `with` (one
+    /// history step) and go to the next. A stale hit only moves on.
+    SpellChange {
+        hit: FindHit,
+        with: String,
+    },
+    /// Replace every whole-word, same-case `word` with `with` (one history
+    /// step) and go to the next misspelling.
+    SpellChangeAll {
+        word: String,
+        with: String,
+    },
+    /// Skip the current misspelling.
+    SpellIgnore,
+    /// Accept this word everywhere until the app closes, and go on.
+    SpellIgnoreAll(String),
+    /// Add this word to the personal dictionary (kept in the settings),
+    /// and go on.
+    SpellAddWord(String),
+    /// Turn spellcheck (underlines and the spelling pass) on or off.
+    SetSpellcheck(bool),
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,

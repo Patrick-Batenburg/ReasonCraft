@@ -12,12 +12,13 @@ use eframe::egui::{
 use reasoncraft_core::essay::{ElementRole, EssayElement, EssaySection, EssaySlot};
 use reasoncraft_core::{BoxKind, Document, Item, Role as CardRole};
 
-use super::essay_slot::{self, Statement};
+use super::essay_slot::{self, Paragraph, Statement};
 use crate::actions::Action;
 use crate::canvas::rating::{Mark, card_colour, mark_for, rating_label, split_dots};
 use crate::doc_tab::{DocTab, EssayView};
 use crate::i18n::{FluentArgs, t, t_args};
 use crate::settings::Settings;
+use crate::spell::SpellFields;
 use crate::theme::Tokens;
 
 const HEADING_FONT: f32 = 14.0;
@@ -40,6 +41,7 @@ pub fn show(
     tab: &mut DocTab,
     settings: &Settings,
     tk: &Tokens,
+    spell: &mut SpellFields,
     out: &mut Vec<Action>,
 ) {
     tab.essay();
@@ -60,7 +62,7 @@ pub fn show(
         .show(ui, |ui| {
             help(ui, tk);
             ui.add_space(6.0);
-            end_slot(ui, &cx, EssaySlot::Intro, out);
+            end_slot(ui, &cx, EssaySlot::Intro, spell, out);
             if view.sections.is_empty() {
                 ui.label(RichText::new(t("essay.no_sections")).color(tk.text_muted));
             }
@@ -68,11 +70,11 @@ pub fn show(
                 ui.add_space(10.0);
                 section_heading(ui, &cx, n + 1, section);
                 for e in &section.elements {
-                    element(ui, &cx, e, out);
+                    element(ui, &cx, e, spell, out);
                 }
             }
             ui.add_space(10.0);
-            end_slot(ui, &cx, EssaySlot::Conclusion, out);
+            end_slot(ui, &cx, EssaySlot::Conclusion, spell, out);
             inactive(ui, &cx, out);
             unplaced(ui, &cx, out);
         });
@@ -113,7 +115,13 @@ fn heading(ui: &mut Ui, text: &str, dots: usize, colour: egui::Color32, tk: &Tok
 }
 
 /// The introduction or conclusion: heading, the claim, the paragraph.
-fn end_slot(ui: &mut Ui, cx: &Ctx, slot: EssaySlot, out: &mut Vec<Action>) {
+fn end_slot(
+    ui: &mut Ui,
+    cx: &Ctx,
+    slot: EssaySlot,
+    spell: &mut SpellFields,
+    out: &mut Vec<Action>,
+) {
     let key = if slot == EssaySlot::Intro {
         "essay.intro"
     } else {
@@ -136,7 +144,13 @@ fn end_slot(ui: &mut Ui, cx: &Ctx, slot: EssaySlot, out: &mut Vec<Action>) {
     }
     let label = t(&format!("{key}.field"));
     let hint = t(&format!("{key}.hint"));
-    essay_slot::paragraph(ui, cx.tab, slot, 0, &label, &hint, out);
+    let field = Paragraph {
+        slot,
+        depth: 0,
+        label: &label,
+        hint: &hint,
+    };
+    essay_slot::paragraph(ui, cx.tab, field, spell, out);
 }
 
 /// The marker for `item`, if markers are shown and it is rated.
@@ -179,7 +193,13 @@ fn section_heading(ui: &mut Ui, cx: &Ctx, n: usize, section: &EssaySection) {
 }
 
 /// One element of a section: its statement and its paragraph.
-fn element(ui: &mut Ui, cx: &Ctx, e: &EssayElement, out: &mut Vec<Action>) {
+fn element(
+    ui: &mut Ui,
+    cx: &Ctx,
+    e: &EssayElement,
+    spell: &mut SpellFields,
+    out: &mut Vec<Action>,
+) {
     let EssaySlot::Item(item) = e.slot else {
         return;
     };
@@ -221,7 +241,14 @@ fn element(ui: &mut Ui, cx: &Ctx, e: &EssayElement, out: &mut Vec<Action>) {
     let mut args = FluentArgs::new();
     args.set("statement", one_line(&e.text));
     let label = t_args("essay.paragraph_for", &args);
-    essay_slot::paragraph(ui, cx.tab, e.slot, e.depth, &label, &t("essay.hint"), out);
+    let hint = t("essay.hint");
+    let field = Paragraph {
+        slot: e.slot,
+        depth: e.depth,
+        label: &label,
+        hint: &hint,
+    };
+    essay_slot::paragraph(ui, cx.tab, field, spell, out);
 }
 
 fn one_line(text: &str) -> String {

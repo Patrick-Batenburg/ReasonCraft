@@ -19,6 +19,7 @@ use crate::shell::icon_button;
 use crate::shell::icons::Icon;
 use crate::shell::link_modal::{normalize_link, visible_link};
 use crate::shell::source_icons::source_atom;
+use crate::spell::{FieldStyle, SpellFields};
 use crate::theme::Tokens;
 
 /// The tallest a snippet's text gets before it scrolls inside the card.
@@ -39,17 +40,25 @@ pub(super) struct Card {
     pub to_map: bool,
 }
 
-/// Draw one snippet card. `focus`: give its text field keyboard focus,
-/// with the cursor at the end. `capped`: show the length-limit notice.
+/// How a card shows this frame.
+pub(super) struct State {
+    /// Give its text field keyboard focus, with the cursor at the end.
+    pub focus: bool,
+    /// Show the length-limit notice.
+    pub capped: bool,
+}
+
+/// Draw one snippet card, misspellings in its text underlined.
 pub(super) fn show(
     ui: &mut Ui,
     tab: &DocTab,
     snippet: &Snippet,
-    focus: bool,
-    capped: bool,
+    state: State,
     tk: &Tokens,
+    spell: &mut SpellFields,
     out: &mut Vec<Action>,
 ) -> Card {
+    let State { focus, capped } = state;
     let id = snippet.id;
     let frame = Frame::new()
         .fill(tk.box_fill)
@@ -68,7 +77,7 @@ pub(super) fn show(
                 }
             });
         });
-        let (focused, selection) = text_field(ui, tab, snippet, focus, out);
+        let (focused, selection) = text_field(ui, tab, snippet, focus, spell, out);
         drag_chip::chip(ui, snippet, focused, selection, tk);
         if capped {
             ui.label(RichText::new(capped_notice()).color(tk.objection));
@@ -122,6 +131,7 @@ fn text_field(
     tab: &DocTab,
     snippet: &Snippet,
     focus: bool,
+    spell: &mut SpellFields,
     out: &mut Vec<Action>,
 ) -> (bool, Option<String>) {
     let id = text_id(tab, snippet);
@@ -138,8 +148,10 @@ fn text_field(
         .max_height(TEXT_MAX_H)
         .auto_shrink([false, true])
         .show(ui, |ui| {
+            let mut layouter = spell.layouter(FieldStyle::default());
             let edit = TextEdit::multiline(&mut text)
                 .id(id)
+                .layouter(&mut layouter)
                 .hint_text(t("snippet.hint"))
                 .desired_width(f32::INFINITY)
                 .desired_rows(2);

@@ -136,7 +136,7 @@ fn step(tab: &mut DocTab, forward: bool) {
 }
 
 /// Cut box `node` to [`MAX_BOX_CHARS`] characters; true when it was cut.
-fn cap(d: &mut Document, node: NodeId) -> bool {
+pub(crate) fn cap_box(d: &mut Document, node: NodeId) -> bool {
     let Some(text) = d.boxes.get(&node).map(|b| &b.text) else {
         return false;
     };
@@ -163,7 +163,7 @@ fn replace_current(tab: &mut DocTab) -> bool {
     if !same {
         let done = tab.edit(|d| {
             d.replace_range(hit.node, hit.range.clone(), &with)?;
-            Ok(cap(d, hit.node))
+            Ok(cap_box(d, hit.node))
         });
         match done {
             Some(c) => cut = c,
@@ -201,7 +201,7 @@ fn replace_all(tab: &mut DocTab) -> (usize, bool) {
     nodes.dedup();
     let cut = tab.edit(|d| match d.replace_all(&query, &with, opts) {
         0 => Err(EditError::NotFound),
-        _ => Ok(nodes.into_iter().fold(false, |cut, n| cap(d, n) | cut)),
+        _ => Ok(nodes.into_iter().fold(false, |cut, n| cap_box(d, n) | cut)),
     });
     (changes, cut.unwrap_or(false))
 }

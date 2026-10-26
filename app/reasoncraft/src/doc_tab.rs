@@ -97,6 +97,8 @@ pub struct DocTab {
     pub pending_images: HashMap<NodeId, JobId>,
     /// The find bar: its query, options, current hit and cached hits.
     pub find: FindState,
+    /// The spelling pass (F7), while its panel is open.
+    pub spelling: Option<crate::spell::SpellPass>,
     /// Unique to this tab, so its text fields' widget state (cursor, undo
     /// history) is never shared with another tab (see [`Self::widget_id`]).
     ui_key: u64,
@@ -167,6 +169,7 @@ impl DocTab {
             essay_cache: None,
             pending_images: HashMap::new(),
             find: FindState::default(),
+            spelling: None,
             ui_key: NEXT_UI_KEY.fetch_add(1, Ordering::Relaxed),
         }
     }

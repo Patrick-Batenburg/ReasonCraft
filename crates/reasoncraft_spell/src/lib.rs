@@ -70,9 +70,14 @@ impl Speller {
         out
     }
 
-    /// Adds a word to the personal dictionary for this session.
-    pub fn add_word(&mut self, word: &str) {
-        // Words the dictionary cannot represent (e.g. invalid flags) are ignored.
-        let _ = self.dict.add(&word.replace('’', "'"));
+    /// Adds a word to the personal dictionary for this session. Returns
+    /// false, adding nothing, for a blank word or one holding `/` (the
+    /// dictionary would read what follows as affix flags).
+    pub fn add_word(&mut self, word: &str) -> bool {
+        let word = word.trim();
+        if word.is_empty() || word.contains('/') {
+            return false;
+        }
+        self.dict.add(&word.replace('’', "'")).is_ok()
     }
 }

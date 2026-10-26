@@ -35,6 +35,14 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
                 s.default_doc_language = lang;
             }
         }
+        Action::SetSpellcheck(on) => {
+            s.spellcheck = on;
+            if !on {
+                for tab in &mut app.tabs {
+                    tab.spelling = None;
+                }
+            }
+        }
         _ => unreachable!("not a view action"),
     }
 }

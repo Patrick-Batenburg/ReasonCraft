@@ -15,6 +15,7 @@ use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::shell::source_icons::paint_source_icon;
 use crate::shell::{hover_fill, selected_fill};
+use crate::spell::{FieldStyle, SpellFields};
 use crate::theme::Tokens;
 
 /// Indent per depth level.
@@ -105,26 +106,40 @@ pub fn paragraph_id(tab: &DocTab, slot: EssaySlot) -> Id {
     tab.widget_id(("essay_paragraph", slot))
 }
 
-/// `tab`'s paragraph field for `slot`, indented to `depth`, holding the
-/// slot's text.
-/// `label` names it for screen readers; `hint` shows while it is empty.
-/// Changes go out live; losing focus ends the editing session.
+/// A paragraph field: its slot, indent depth, accessible name and hint.
+pub(super) struct Paragraph<'a> {
+    pub slot: EssaySlot,
+    pub depth: usize,
+    /// Names it for screen readers.
+    pub label: &'a str,
+    /// Shows while it is empty.
+    pub hint: &'a str,
+}
+
+/// `tab`'s paragraph field `p`, holding the slot's text, misspellings
+/// underlined. Changes go out live; losing focus ends the editing session.
 pub(super) fn paragraph(
     ui: &mut Ui,
     tab: &DocTab,
-    slot: EssaySlot,
-    depth: usize,
-    label: &str,
-    hint: &str,
+    p: Paragraph,
+    spell: &mut SpellFields,
     out: &mut Vec<Action>,
 ) {
+    let Paragraph {
+        slot,
+        depth,
+        label,
+        hint,
+    } = p;
     let pad = 4.0 + indent(depth, ui.available_width()) + BAR_W + GAP;
     ui.horizontal(|ui| {
         ui.add_space(pad);
         let mut buffer = tab.doc.essay.text(slot).unwrap_or("").to_owned();
+        let mut layouter = spell.layouter(FieldStyle::default());
         let resp = ui.add(
             TextEdit::multiline(&mut buffer)
                 .id(paragraph_id(tab, slot))
+                .layouter(&mut layouter)
                 .hint_text(hint)
                 .desired_width(f32::INFINITY)
                 .desired_rows(2),

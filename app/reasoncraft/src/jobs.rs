@@ -1,8 +1,10 @@
 //! Work on worker threads, so the window keeps drawing while it runs:
-//! exports ([`crate::export::ExportJobs`]) and inserted images
-//! ([`crate::canvas::images::ImageJobs`]). The frame loop polls each job
+//! exports ([`crate::export::ExportJobs`]), inserted images
+//! ([`crate::canvas::images::ImageJobs`]) and spelling dictionaries
+//! ([`crate::spell::SpellService`]). The frame loop polls each job
 //! (it never blocks), keeps repainting while one runs, and the status bar
-//! shows one busy chip for all of them.
+//! shows one busy chip for the exports and images (a
+//! loading dictionary shows in the spelling panel instead).
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, TryRecvError};

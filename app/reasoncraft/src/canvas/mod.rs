@@ -29,6 +29,7 @@ use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::i18n::t;
 use crate::scene::marks_leads;
+use crate::spell::SpellFields;
 
 impl From<Hit> for Item {
     fn from(hit: Hit) -> Self {
@@ -61,6 +62,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         pending,
         settings,
         images,
+        spell,
         ..
     } = app;
     images.evict_unused(tabs);
@@ -145,11 +147,12 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         settings.minimap,
         params.indicators,
     );
-    editor::show(ui, tab, &layout, &tokens, pending);
+    let mut fields = SpellFields::new(spell, settings, &tab.doc.meta.language, &tokens);
+    editor::show(ui, tab, &layout, &tokens, &mut fields, pending);
     if !response.dragged() {
         plus_menu::show(ui, tab, &layout, &tokens, pending);
     }
-    comments::show(ui, tab, &layout, &tokens, pending);
+    comments::show(ui, tab, &layout, &tokens, &mut fields, pending);
 }
 
 /// The world rect of `item` in `layout`: a box's own rect, or a card's

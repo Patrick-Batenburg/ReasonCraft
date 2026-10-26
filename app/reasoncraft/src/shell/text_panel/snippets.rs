@@ -14,13 +14,20 @@ use super::snippet_card::{self, Card};
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
+use crate::spell::SpellFields;
 use crate::theme::Tokens;
 
 /// How many frames a "Paste as snippet" click waits for the clipboard text.
 const PASTE_WAIT_PASSES: u64 = 3;
 
 /// Draw the Snippets tab for `tab` and queue the user's commands in `out`.
-pub fn show(ui: &mut Ui, tab: &mut DocTab, tk: &Tokens, out: &mut Vec<Action>) {
+pub fn show(
+    ui: &mut Ui,
+    tab: &mut DocTab,
+    tk: &Tokens,
+    spell: &mut SpellFields,
+    out: &mut Vec<Action>,
+) {
     let area = ui.max_rect();
     paste_as_snippet(ui, area, out);
     toolbar(ui, out);
@@ -39,7 +46,8 @@ pub fn show(ui: &mut Ui, tab: &mut DocTab, tk: &Tokens, out: &mut Vec<Action>) {
             for snippet in &tab.doc.snippets {
                 let focus = focus == Some(snippet.id);
                 let capped = tab.snippet_capped == Some(snippet.id);
-                let card = snippet_card::show(ui, tab, snippet, focus, capped, tk, out);
+                let state = snippet_card::State { focus, capped };
+                let card = snippet_card::show(ui, tab, snippet, state, tk, spell, out);
                 cards.push((snippet.id, card));
                 ui.add_space(6.0);
             }

@@ -20,6 +20,7 @@ use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::settings::{Settings, TextTab};
+use crate::spell::SpellFields;
 use crate::theme::Tokens;
 
 const STRIP_H: f32 = 28.0;
@@ -40,6 +41,7 @@ pub fn show(
     tab: &mut DocTab,
     settings: &Settings,
     tk: &Tokens,
+    spell: &mut SpellFields,
     out: &mut Vec<Action>,
 ) {
     tab_strip(ui, settings.text_tab, tk, out);
@@ -47,8 +49,8 @@ pub fn show(
     match settings.text_tab {
         TextTab::Outline => outline::show(ui, tab, settings, tk, out),
         TextTab::Check => check::show(ui, tab, settings, tk, out),
-        TextTab::Snippets => snippets::show(ui, tab, tk, out),
-        TextTab::Essay => essay::show(ui, tab, settings, tk, out),
+        TextTab::Snippets => snippets::show(ui, tab, tk, spell, out),
+        TextTab::Essay => essay::show(ui, tab, settings, tk, spell, out),
     }
 }
 

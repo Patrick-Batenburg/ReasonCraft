@@ -46,6 +46,10 @@ pub struct Settings {
     pub page_setup: PageSetup,
     /// The export dialog's last choices (scope, theme, PNG and SVG options).
     pub export: ExportOptions,
+    /// Underline misspellings in editing fields and allow the spelling pass (F7).
+    pub spellcheck: bool,
+    /// The personal dictionary: words accepted in every language.
+    pub spell_words: Vec<String>,
 }
 
 /// When the overview minimap shows.
@@ -158,6 +162,8 @@ impl Default for Settings {
             default_doc_language: "en".to_owned(),
             page_setup: PageSetup::default(),
             export: ExportOptions::default(),
+            spellcheck: true,
+            spell_words: Vec::new(),
         }
     }
 }

@@ -219,6 +219,8 @@ fn settings_from_old_storage_fill_defaults() {
             transparent: true,
             svg_outlines: false,
         },
+        spellcheck: false,
+        spell_words: vec!["Reasoncraftish".to_owned()],
     };
     eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
     assert_eq!(
@@ -238,6 +240,10 @@ fn connector_style_persists_in_settings() {
     storage_set(&mut storage, "(theme:Light)");
     let old: Settings = eframe::get_value(&storage, SETTINGS_KEY).unwrap();
     assert_eq!(old.connector_style, ConnectorStyle::Curved);
+    assert!(
+        old.spellcheck && old.spell_words.is_empty(),
+        "spellcheck on"
+    );
 
     let mut app = reasoncraft::ReasonCraftApp::new_for_test();
     apply(&mut app, Action::SetConnectorStyle(ConnectorStyle::Tapered));

@@ -86,6 +86,8 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             for (icon, id) in [(Icon::Find, "home.find"), (Icon::Replace, "home.replace")] {
                 small_command(ui, &tk, icon, id, true, &mut out);
             }
+            let spelling = app.settings.spellcheck;
+            small_command(ui, &tk, Icon::Spelling, "home.spelling", spelling, &mut out);
         });
     });
     box_group(ui, app, &mut out);

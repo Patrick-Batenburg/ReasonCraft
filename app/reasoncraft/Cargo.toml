@@ -9,6 +9,7 @@ rust-version.workspace = true
 # `test-fixtures` also feeds the debug-only "Load sample map" command; the
 # module is unused (and stripped) in release builds.
 reasoncraft_core = { path = "../../crates/reasoncraft_core", features = ["test-fixtures"] }
+reasoncraft_spell = { path = "../../crates/reasoncraft_spell" }
 eframe.workspace = true
 serde.workspace = true
 fluent-bundle = "0.16"

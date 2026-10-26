@@ -16,6 +16,7 @@ use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::shell::icon_button;
 use crate::shell::icons::Icon;
+use crate::spell::{FieldStyle, SpellFields};
 use crate::theme::Tokens;
 
 /// The choices of the popover's verdict picker, with their label keys.
@@ -54,6 +55,7 @@ pub(in crate::canvas) fn show(
     tab: &DocTab,
     layout: &Layout,
     tk: &Tokens,
+    spell: &mut SpellFields,
     pending: &mut Vec<Action>,
 ) {
     let Some(node) = tab.comments_open else {
@@ -106,21 +108,37 @@ pub(in crate::canvas) fn show(
                 .shadow(ui.style().visuals.popup_shadow)
                 .show(ui, |ui| {
                     ui.set_width(inner);
-                    contents(ui, node, field_id, &data.comments, &mut draft, tk, pending);
+                    let field = Field {
+                        id: field_id,
+                        draft: &mut draft,
+                        spell,
+                    };
+                    contents(ui, node, &data.comments, field, tk, pending);
                 });
         });
     ctx.data_mut(|d| d.insert_temp(draft_id, draft));
 }
 
+/// The popover's comment field: its id, what is typed and the underlines.
+struct Field<'a, 'b> {
+    id: Id,
+    draft: &'a mut Draft,
+    spell: &'a mut SpellFields<'b>,
+}
+
 fn contents(
     ui: &mut Ui,
     node: NodeId,
-    field_id: Id,
     comments: &[Comment],
-    draft: &mut Draft,
+    field: Field,
     tk: &Tokens,
     pending: &mut Vec<Action>,
 ) {
+    let Field {
+        id: field_id,
+        draft,
+        spell,
+    } = field;
     ui.horizontal(|ui| {
         ui.label(
             RichText::new(t("comment.title"))
@@ -156,9 +174,11 @@ fn contents(
             });
     }
     ui.separator();
+    let mut layouter = spell.layouter(FieldStyle::default());
     ui.add(
         TextEdit::multiline(&mut draft.text)
             .id(field_id)
+            .layouter(&mut layouter)
             .hint_text(t("comment.hint"))
             .desired_rows(3)
             .desired_width(f32::INFINITY),

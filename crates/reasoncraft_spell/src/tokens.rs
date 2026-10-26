@@ -51,7 +51,6 @@ fn chunk_words(text: &str, chunk: Range<usize>, out: &mut Vec<Range<usize>>) {
         while i < chars.len()
             && (chars[i].1.is_alphanumeric()
                 || (is_connector(chars[i].1)
-                    && i > start
                     && chars.get(i + 1).is_some_and(|n| n.1.is_alphanumeric())))
         {
             i += 1;

@@ -170,6 +170,15 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     ui.label(RichText::new(t("settings.default_language_hint")).color(tk.text_muted));
     ui.add_space(8.0);
+    let mut spellcheck = app.settings.spellcheck;
+    if ui
+        .checkbox(&mut spellcheck, t("settings.spellcheck"))
+        .on_hover_text(t("settings.spellcheck_hint"))
+        .changed()
+    {
+        app.push(Action::SetSpellcheck(spellcheck));
+    }
+    ui.add_space(8.0);
     checks(ui, app, &tk);
 }
 
