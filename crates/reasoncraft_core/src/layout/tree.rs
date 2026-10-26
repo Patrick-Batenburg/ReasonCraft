@@ -112,15 +112,15 @@ impl Tree {
             u.offset = Contour::separation(&acc, &next).max(0.0) + p.h_gap;
             acc.merge(&next, u.offset);
         }
-        let centre = self.units[kids.end - 1].offset * 0.5;
+        let half_span = self.units[kids.end - 1].offset * 0.5;
         for u in &mut self.units[kids] {
-            u.offset -= centre;
+            u.offset -= half_span;
         }
         // Keep the band the connectors cross clear of neighbouring subtrees.
-        let reach = half.max(centre);
+        let reach = half.max(half_span);
         let band = Contour::rect(main_hi, main_hi + p.v_gap, -reach, reach);
         contour.merge(&band, 0.0);
-        contour.merge(&acc, -centre);
+        contour.merge(&acc, -half_span);
         contour
     }
 

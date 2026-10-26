@@ -111,6 +111,31 @@ mod tests {
     }
 
     #[test]
+    fn separation_takes_the_largest_overlap() {
+        let mut left = Contour::rect(0.0, 10.0, 0.0, 5.0);
+        left.merge(&Contour::rect(10.0, 20.0, 0.0, 30.0), 0.0);
+        left.merge(&Contour::rect(20.0, 30.0, 0.0, 8.0), 0.0);
+        let mut right = Contour::rect(5.0, 25.0, -2.0, 2.0);
+        assert_eq!(Contour::separation(&left, &right), 32.0);
+        // Several right segments against one long left segment.
+        right.merge(&Contour::rect(25.0, 35.0, -10.0, 0.0), 0.0);
+        assert_eq!(Contour::separation(&left, &right), 32.0);
+        let long = Contour::rect(0.0, 40.0, 0.0, 1.0);
+        assert_eq!(Contour::separation(&long, &right), 11.0);
+    }
+
+    #[test]
+    fn merge_with_empty_contours() {
+        let c = Contour::rect(0.0, 10.0, 1.0, 2.0);
+        let mut a = c.clone();
+        a.merge(&Contour::default(), 5.0);
+        assert_eq!(a, c);
+        let mut b = Contour::default();
+        b.merge(&c, 5.0);
+        assert_eq!(b, Contour::rect(0.0, 10.0, 6.0, 7.0));
+    }
+
+    #[test]
     fn merge_keeps_the_envelope_and_shifts_other() {
         let mut c = Contour::rect(0.0, 10.0, 0.0, 4.0);
         c.merge(&Contour::rect(5.0, 20.0, 0.0, 2.0), 10.0);
