@@ -114,10 +114,7 @@ fn recover_body(docs: &[RecoveredDoc]) -> String {
         args.set("file", file);
         let time = doc.meta.saved_at.with_timezone(&chrono::Local);
         args.set("time", time.format("%Y-%m-%d %H:%M").to_string());
-        body.push_str(
-            "
-• ",
-        );
+        body.push_str("\n• ");
         body.push_str(&t_args("recovery.entry", &args));
     }
     body

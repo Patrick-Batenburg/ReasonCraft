@@ -212,8 +212,9 @@ recovery-restore_all = Restore all
 recovery-discard_all = Discard all
 recovery-later = Decide later
 recovery-tab_title = { $name } (recovered)
-recovery-original_changed = The file changed after this copy was autosaved. Replacing it overwrites those changes.
+recovery-original_changed = The file changed since you opened or last saved it. Replacing it overwrites those changes.
 recovery-unavailable = Autosave is off: the recovery folder cannot be used.
+recovery-write_failed = Autosave could not write a copy: { $detail }. It tries again at the next autosave.
 
 ## Document page
 document-title = Document

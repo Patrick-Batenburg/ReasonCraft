@@ -9,13 +9,20 @@ use std::path::Path;
 use chrono::Utc;
 use reasoncraft_core::Package;
 
-use super::{RecoveryMeta, RecoveryStore};
+use super::{RecoveredDoc, RecoveryMeta, RecoveryStore};
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
-use crate::file_ops::file_mtime;
+use crate::i18n::{FluentArgs, t_args};
+
+/// [`DocTab::autosaved_revision`] after a failed write: no revision
+/// matches it, so the next autosave tries again, and the tab still counts
+/// as having a copy (an older one may be there), so it is removed once the
+/// tab is clean or closed.
+const RETRY: u64 = u64::MAX;
 
 /// Run once per frame with the egui time `now` (seconds). Shows a recovery
-/// prompt that waited for another message to close. Removes the copies
+/// prompt that waited for another message to close, and notes failed
+/// writes (their tabs are written again next time). Removes the copies
 /// of tabs that became clean; when the interval has passed since the last
 /// autosave, snapshots every tab whose unsaved work changed since its last
 /// copy and hands it to the worker. Never waits for the disk.
@@ -24,6 +31,21 @@ pub fn tick(app: &mut ReasonCraftApp, now: f64) {
     let Some(store) = &app.recovery else {
         return;
     };
+    let failures = store.failed_writes();
+    if let Some(last) = failures.last() {
+        let mut args = FluentArgs::new();
+        args.set("detail", last.reason.clone());
+        app.status_note = Some(t_args("recovery.write_failed", &args));
+    }
+    for failure in &failures {
+        let tab = app
+            .tabs
+            .iter_mut()
+            .find(|t| t.recovery_key == failure.tab_key);
+        if let Some(tab) = tab {
+            tab.autosaved_revision = RETRY;
+        }
+    }
     for tab in &mut app.tabs {
         if tab.autosaved_revision != 0 && !tab.has_unsaved_work() {
             store.remove(tab.recovery_key);
@@ -40,7 +62,7 @@ pub fn tick(app: &mut ReasonCraftApp, now: f64) {
     }
     app.autosave_clock = Some(now);
     for tab in app.tabs.iter_mut().filter(|t| needs_autosave(t)) {
-        autosave_tab(store, tab);
+        autosave_tab(store, tab, None);
     }
 }
 
@@ -61,8 +83,13 @@ fn needs_autosave(tab: &DocTab) -> bool {
 }
 
 /// Snapshot `tab` (live edit-session text included: it is already in the
-/// document) and send it to the worker.
-pub(super) fn autosave_tab(store: &RecoveryStore, tab: &mut DocTab) {
+/// document) and send it to the worker. `replaces`: the orphaned copy the
+/// tab was restored from, deleted only once this copy is written.
+pub(super) fn autosave_tab(
+    store: &RecoveryStore,
+    tab: &mut DocTab,
+    replaces: Option<&RecoveredDoc>,
+) {
     let meta = RecoveryMeta {
         original: tab.path.clone(),
         original_mtime: tab.disk_mtime,
@@ -74,7 +101,10 @@ pub(super) fn autosave_tab(store: &RecoveryStore, tab: &mut DocTab) {
         assets: tab.assets.clone(),
         other_entries: tab.other_entries.clone(),
     };
-    store.write(tab.recovery_key, pkg, meta);
+    match replaces {
+        Some(doc) => store.write_then_discard(tab.recovery_key, pkg, meta, doc),
+        None => store.write(tab.recovery_key, pkg, meta),
+    }
     tab.autosaved_revision = tab.revision();
 }
 
@@ -97,6 +127,11 @@ pub(crate) fn original_changed(tab: &DocTab, path: &Path) -> bool {
     meta.original.as_deref() == Some(path)
         && path.exists()
         && file_mtime(path) != meta.original_mtime
+}
+
+/// When `path` was last modified, if it can be read.
+pub(crate) fn file_mtime(path: &Path) -> Option<std::time::SystemTime> {
+    std::fs::metadata(path).and_then(|m| m.modified()).ok()
 }
 
 /// The app exits normally: end the recovery session (its copies go).

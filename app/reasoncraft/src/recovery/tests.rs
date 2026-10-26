@@ -111,3 +111,77 @@ fn default_dir_is_a_recovery_folder() {
         assert!(dir.ends_with("recovery"));
     }
 }
+
+#[test]
+fn restore_write_failure_keeps_the_orphan() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    write(&a, "Robots");
+    drop(a);
+    let mut b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    let found = b.orphaned();
+    let pkg = || Package::new(Document::new("Robots"));
+    b.set_fail_writes(true);
+    let key = Uuid::new_v4();
+    b.write_then_discard(key, pkg(), meta("Robots"), &found[0]);
+    b.wait_idle();
+    assert!(found[0].package.is_file(), "the only copy is kept");
+    let failures = b.failed_writes();
+    assert_eq!(failures.len(), 1);
+    assert_eq!(failures[0].tab_key, key);
+    b.set_fail_writes(false);
+    b.write_then_discard(key, pkg(), meta("Robots"), &found[0]);
+    b.wait_idle();
+    assert!(b.failed_writes().is_empty());
+    assert!(!found[0].package.exists());
+    assert!(!found[0].package.parent().unwrap().exists());
+}
+
+#[test]
+fn a_new_session_leaves_no_staging_folder() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    let names: Vec<_> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .collect();
+    assert_eq!(names, [a.session_dir()]);
+    assert!(a.session_dir().join("session.lock").is_file());
+    assert!(!a.session_dir().join("session.lock.tmp").exists());
+}
+
+#[test]
+fn folder_without_lock_file_is_not_offered() {
+    let dir = tempfile::tempdir().unwrap();
+    let lockless = dir.path().join(Uuid::new_v4().to_string());
+    std::fs::create_dir(&lockless).unwrap();
+    let key = Uuid::new_v4();
+    let pkg = Package::new(Document::new("Robots"));
+    reasoncraft_core::file::save_package(&pkg, &lockless.join(format!("{key}.rcraft"))).unwrap();
+    let json = serde_json::to_vec(&meta("Robots")).unwrap();
+    std::fs::write(lockless.join(format!("{key}.json")), json).unwrap();
+    let b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    assert!(b.orphaned().is_empty());
+    assert_eq!(entries(&lockless), 2, "left alone");
+}
+
+/// The start race: A's folder and lock exist but A has not locked it yet
+/// (as when sessions were not made under a temporary name). B takes it for
+/// a crashed, empty session and tidies it away; A's write must not bring
+/// back a folder without a lock that a third app would offer.
+#[test]
+fn tidied_session_folder_is_not_made_again_by_a_write() {
+    let dir = tempfile::tempdir().unwrap();
+    let a_folder = dir.path().join(Uuid::new_v4().to_string());
+    std::fs::create_dir(&a_folder).unwrap();
+    std::fs::File::create(a_folder.join("session.lock")).unwrap();
+    let b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    assert!(b.orphaned().is_empty());
+    assert!(!a_folder.exists(), "B tidied the empty folder");
+    let pkg = Package::new(Document::new("Robots"));
+    let written = super::disk::write_entry(&a_folder, Uuid::new_v4(), &pkg, &meta("Robots"));
+    assert!(written.is_err());
+    assert!(!a_folder.exists());
+    let c = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    assert!(c.orphaned().is_empty());
+}

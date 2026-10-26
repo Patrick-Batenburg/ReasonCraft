@@ -186,13 +186,20 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     checks(ui, app, &tk);
 }
 
-/// Autosave on or off, and its interval in seconds.
+/// Autosave on or off, and its interval in seconds. Turning it back on
+/// brings back the interval it had (while the app runs).
 fn autosave(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
     let secs = app.settings.autosave_interval();
     let mut on = secs.is_some();
+    let last_id = Id::unique("settings_autosave_last");
     ui.horizontal(|ui| {
         if ui.checkbox(&mut on, t("settings.autosave")).changed() {
-            let secs = if on { AUTOSAVE_DEFAULT } else { 0 };
+            let secs = if on {
+                ui.data(|d| d.get_temp(last_id)).unwrap_or(AUTOSAVE_DEFAULT)
+            } else {
+                ui.data_mut(|d| d.insert_temp(last_id, secs.unwrap_or(AUTOSAVE_DEFAULT)));
+                0
+            };
             app.push(Action::SetAutosaveSecs(secs));
         }
         if let Some(mut secs) = secs {

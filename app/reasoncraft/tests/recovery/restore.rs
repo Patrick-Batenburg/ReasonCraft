@@ -161,11 +161,7 @@ fn recovery_prompt_lists_documents_and_restores() {
     h.run();
     h.get_by_label(&t("recovery.title"));
     // One label: the message, then a line per document.
-    let entry = format!(
-        "{}
-• robots (",
-        t("recovery.message")
-    );
+    let entry = format!("{}\n• robots (", t("recovery.message"));
     h.get_by_label_contains(&entry);
     h.get_by_label(&t("recovery.discard_all"));
     h.get_by_label(&t("recovery.later"));
@@ -228,4 +224,48 @@ fn command_line_error_does_not_swallow_recovery_prompt() {
     actions::apply(&mut app, Action::DismissModal);
     recovery::tick(&mut app, 0.0);
     assert_eq!(offered(&app).len(), 1);
+}
+
+#[test]
+fn restore_keeps_the_orphan_when_its_new_copy_fails() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let mut app = app_with_recovery(rec.path());
+    let orphan = offered(&app)[0].package.clone();
+    app.recovery.as_mut().unwrap().set_fail_writes(true);
+    actions::apply(
+        &mut app,
+        Action::ResolveRecovery(RecoveryChoice::RestoreAll),
+    );
+    wait(&app);
+    assert_eq!(
+        app.active_tab().doc.boxes[&app.active_tab().doc.root].text,
+        "Edited"
+    );
+    assert!(orphan.is_file(), "the only copy on disk is kept");
+    // A crash now still leaves it to restore.
+    drop(app);
+    let next = app_with_recovery(rec.path());
+    assert_eq!(offered(&next).len(), 1);
+}
+
+#[test]
+fn unreadable_copy_is_named_by_its_document_and_kept() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let mut app = app_with_recovery(rec.path());
+    let orphan = offered(&app)[0].package.clone();
+    std::fs::write(&orphan, b"damaged").unwrap();
+    actions::apply(
+        &mut app,
+        Action::ResolveRecovery(RecoveryChoice::RestoreAll),
+    );
+    wait(&app);
+    match &app.modal {
+        Some(Modal::Error { title, .. }) => assert!(title.contains("robots"), "{title}"),
+        other => panic!("expected an error, got {other:?}"),
+    }
+    assert!(orphan.is_file());
 }

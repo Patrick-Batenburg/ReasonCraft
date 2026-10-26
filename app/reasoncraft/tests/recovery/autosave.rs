@@ -173,19 +173,45 @@ fn settings_page_sets_the_autosave_interval() {
     h.get_by_label(&t("backstage.settings")).click();
     h.run();
     h.get_by_label(&t("settings.autosave_interval"));
-    h.get_by_role_and_label(egui::accesskit::Role::CheckBox, &t("settings.autosave"))
-        .click();
+    h.state_mut().settings.autosave_secs = 120;
+    h.run();
+    let checkbox = || (egui::accesskit::Role::CheckBox, t("settings.autosave"));
+    let (role, label) = checkbox();
+    h.get_by_role_and_label(role, &label).click();
     h.run();
     assert_eq!(h.state().settings.autosave_interval(), None);
     assert!(
         h.query_by_label(&t("settings.autosave_interval")).is_none(),
         "no interval while off"
     );
-    h.get_by_role_and_label(egui::accesskit::Role::CheckBox, &t("settings.autosave"))
-        .click();
+    // Back on: the interval it had before.
+    h.get_by_role_and_label(role, &label).click();
     h.run();
-    assert_eq!(h.state().settings.autosave_interval(), Some(45));
+    assert_eq!(h.state().settings.autosave_interval(), Some(120));
     // Older settings without the field autosave every 45 seconds.
     let old: reasoncraft::app::Settings = serde_json::from_str(r#"{"theme":"Light"}"#).unwrap();
     assert_eq!(old.autosave_secs, 45);
+}
+
+#[test]
+fn failed_write_is_noted_and_retried() {
+    let rec = tempfile::tempdir().unwrap();
+    let mut app = app_with_recovery(rec.path());
+    app.recovery.as_mut().unwrap().set_fail_writes(true);
+    set_claim(&mut app, "Robots help");
+    autosave(&mut app, 0.0);
+    let copy = recovery_file(&app, 0);
+    assert!(!copy.exists());
+    // The next frame picks up the failure.
+    recovery::tick(&mut app, 47.0);
+    let note = app.status_note.clone().unwrap_or_default();
+    let prefix = t("recovery.write_failed");
+    let prefix = prefix.split(':').next().unwrap();
+    assert!(note.starts_with(prefix), "{note}");
+    // Once the folder works again, the next autosave writes the copy.
+    app.recovery.as_mut().unwrap().set_fail_writes(false);
+    recovery::tick(&mut app, 100.0);
+    wait(&app);
+    assert!(copy.is_file());
+    assert_eq!(root_text(&copy), "Robots help");
 }

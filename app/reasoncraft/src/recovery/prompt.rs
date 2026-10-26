@@ -1,5 +1,7 @@
 //! The offer, on start, to restore documents a crashed session left behind.
 
+use std::path::Path;
+
 use reasoncraft_core::file::{self, FileError};
 
 use super::{RecoveredDoc, session};
@@ -58,9 +60,11 @@ pub(crate) fn resolve(app: &mut ReasonCraftApp, choice: RecoveryChoice) {
                     first_error.get_or_insert((doc, err));
                 }
             }
-            // A copy that cannot be read is kept; the next start offers it again.
+            // A copy that cannot be read is kept; the next start offers it
+            // again. The message names the document, not the copy's file.
             if let Some((doc, err)) = first_error {
-                file_ops::show_error(app, FileOp::Open, &doc.package, &err);
+                let name = Path::new(&doc.meta.title);
+                file_ops::show_error(app, FileOp::Open, name, &err);
             }
         }
         RecoveryChoice::DiscardAll => {
@@ -75,8 +79,8 @@ pub(crate) fn resolve(app: &mut ReasonCraftApp, choice: RecoveryChoice) {
 }
 
 /// Open `doc` in a tab: unsaved, under its original path, marked as
-/// recovered. It is autosaved under this session at once, then the
-/// orphaned copy is deleted.
+/// recovered. It is autosaved under this session at once; the orphaned
+/// copy is deleted only once that write succeeded.
 fn restore(app: &mut ReasonCraftApp, doc: &RecoveredDoc) -> Result<(), FileError> {
     let mut tab = DocTab::from_package(file::open_package(&doc.package)?);
     tab.path = doc.meta.original.clone();
@@ -85,8 +89,7 @@ fn restore(app: &mut ReasonCraftApp, doc: &RecoveredDoc) -> Result<(), FileError
     tab.recovered_from = Some(doc.meta.clone());
     let i = file_ops::place_tab(app, tab);
     if let Some(store) = &app.recovery {
-        session::autosave_tab(store, &mut app.tabs[i]);
-        store.discard(doc);
+        session::autosave_tab(store, &mut app.tabs[i], Some(doc));
     }
     Ok(())
 }
