@@ -35,6 +35,15 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     group(ui, &tk, &t("group.text"), |ui| {
         menu(ui, &tk, Icon::Outline, "export.outline", &OUTLINE, &mut out);
         menu(ui, &tk, Icon::Essay, "export.essay", &ESSAY, &mut out);
+        command(
+            ui,
+            &tk,
+            Icon::Argdown,
+            "export.argdown",
+            true,
+            false,
+            &mut out,
+        );
     });
     group(ui, &tk, &t("group.print"), |ui| {
         command(

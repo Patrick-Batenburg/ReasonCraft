@@ -173,6 +173,63 @@ fn essay_text_export_writes_plain_text() {
     assert!(!text.contains('#'), "{text}");
 }
 
+#[test]
+fn export_argdown_via_ribbon() {
+    use reasoncraft_core::ImageRef;
+
+    let dir = tempfile::tempdir().unwrap();
+    let (mut h, fakes, alpha) = harness(dir.path());
+    let file = dir.path().join("map.argdown");
+    fakes.dialogs.set_export(file.clone());
+    open_export_tab(&mut h);
+    click_button(&mut h, "export.argdown");
+    wait(&mut h);
+    assert!(h.state().modal.is_none());
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert!(
+        text.starts_with(
+            "===
+"
+        ),
+        "{text}"
+    );
+    assert!(
+        text.contains(
+            "[Claim]: Claim
+    <+ <R1>
+    <- <O1>
+"
+        ),
+        "{text}"
+    );
+    assert!(
+        text.contains(
+            "(1) [Alpha]: Alpha
+    <+ <R2>
+"
+        ),
+        "{text}"
+    );
+    assert_eq!(h.state().status_note, None, "no images, no notice");
+
+    // A map with an image says the image is left out.
+    let image = ImageRef {
+        asset: "0000.png".into(),
+        aspect: 0.5,
+    };
+    h.state_mut().tabs[0]
+        .doc
+        .set_image(alpha, Some(image))
+        .unwrap();
+    fakes.dialogs.set_export(file);
+    click_button(&mut h, "export.argdown");
+    wait(&mut h);
+    assert_eq!(
+        h.state().status_note.as_deref(),
+        Some(t("export.argdown_no_images").as_str())
+    );
+}
+
 /// With `RC_EXPORT_OUT=<dir>` set, writes `task-10-outline.docx` and
 /// `task-10-essay.docx` (a Dutch sample with written paragraphs), for
 /// looking at by eye.

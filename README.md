@@ -17,7 +17,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Change types.** Turn a reason into an objection or back again (its strength is kept), and change a source's type.
 - **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
 - **Add images.** Put a PNG, JPEG or WebP image in a box. The image is prepared in the background, so a large photo never freezes the window: the box shows "Preparing image…" until it is ready. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.
-- **Export and print.** The Export tab saves the map as PNG, SVG or PDF, copies it to the clipboard as an image, prints it, and saves the outline or the essay as Markdown, plain text or Word (see [Export and print](#export-and-print)).
+- **Export and print.** The Export tab saves the map as PNG, SVG or PDF, copies it to the clipboard as an image, prints it, saves the outline or the essay as Markdown, plain text or Word, and saves the whole map as Argdown text (see [Export and print](#export-and-print)).
 
 Files from older versions open unchanged, and files from newer versions keep any parts this version does not understand when you save them.
 
@@ -54,6 +54,7 @@ Everything is on the **Export** tab of the ribbon. Exports run in the background
 - **Print** makes a PDF with the page setup and opens it in your PDF viewer, where you print it.
 - **Outline** (menu): the outline as Markdown, plain text or a Word document, with the numbering and switches of the Outline tab.
 - **Essay** (menu): the essay as Markdown or a Word document, with the document's title and author and a heading for each part.
+- **Argdown** saves the whole map, with the parking area, as [Argdown](https://argdown.org) text that other Argdown tools can read. Images are left out. The mapping is described in [docs/argdown.md](docs/argdown.md).
 
 Exports show exactly what the map shows (layout, wrapped lines, colours, ratings, source icons and images) without the screen-only parts: the selection, the "+" button, comment badges, link glyphs, find highlights and the dot grid. In the outline and essay, the linking words ("because"/"omdat", "but"/"maar") and source names follow the document language (English or Dutch). Word files use the built-in Title and Heading styles, so they open in Word and LibreOffice and pick up their styles.
 

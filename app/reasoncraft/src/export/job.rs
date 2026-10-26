@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use reasoncraft_core::outline::{OutlineOptions, build_outline};
 use reasoncraft_core::outline_md::{outline_markdown, outline_plain_text_lang};
-use reasoncraft_core::{Assets, Document};
+use reasoncraft_core::{Assets, Document, to_argdown};
 use reasoncraft_core::{essay_markdown, essay_plain_text};
 
 use super::docx::{essay_docx, outline_docx};
@@ -135,6 +135,7 @@ impl ExportWork {
                     ExportFormat::EssayMarkdown => essay_markdown(doc, lang).into_bytes(),
                     ExportFormat::EssayText => essay_plain_text(doc, lang).into_bytes(),
                     ExportFormat::EssayDocx => essay_docx(doc, lang)?,
+                    ExportFormat::Argdown => to_argdown(doc).into_bytes(),
                     other => return Err(ExportError::Unsupported(other)),
                 }
             }

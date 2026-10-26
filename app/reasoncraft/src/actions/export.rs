@@ -136,6 +136,10 @@ fn export_to(app: &mut ReasonCraftApp, request: ExportRequest, path: PathBuf) {
         let only = scope_item(app, options.scope);
         scene_snapshot(app, only, tokens_for(app, options.theme))
     } else {
+        let doc = &app.active_tab().doc;
+        if format == ExportFormat::Argdown && doc.boxes.values().any(|b| b.image.is_some()) {
+            app.status_note = Some(t("export.argdown_no_images"));
+        }
         Snapshot::Doc {
             doc: Box::new(app.active_tab().doc.clone()),
             outline: app.settings.outline,

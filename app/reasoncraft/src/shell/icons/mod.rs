@@ -90,6 +90,8 @@ pub enum Icon {
     Outline,
     /// A page of paragraphs.
     Essay,
+    /// A bracketed statement with an argument arrow (Argdown text).
+    Argdown,
     /// A page and its margins.
     PageSetup,
     Print,
@@ -370,6 +372,7 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         | Icon::CopyImage
         | Icon::Outline
         | Icon::Essay
+        | Icon::Argdown
         | Icon::PageSetup
         | Icon::Print => export::paint(&pen, icon, fg, t),
         Icon::ZoomFitSelection | Icon::Minimap | Icon::Numbers => view::paint(&pen, icon, fg, t),

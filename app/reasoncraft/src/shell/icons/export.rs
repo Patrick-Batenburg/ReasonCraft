@@ -67,6 +67,14 @@ pub(super) fn paint(pen: &Pen, icon: Icon, fg: Color32, t: &Tokens) {
                 pen.line(&[(x + 0.14, y), (0.9, y)]);
             }
         }
+        // A bracketed statement and an argument arrow into it.
+        Icon::Argdown => {
+            pen.line(&[(0.3, 0.1), (0.14, 0.1), (0.14, 0.5), (0.3, 0.5)]);
+            pen.line(&[(0.7, 0.1), (0.86, 0.1), (0.86, 0.5), (0.7, 0.5)]);
+            pen.line_c(&[(0.3, 0.3), (0.7, 0.3)], accent);
+            pen.line_c(&[(0.5, 0.92), (0.5, 0.62)], accent);
+            pen.line_c(&[(0.38, 0.74), (0.5, 0.62), (0.62, 0.74)], accent);
+        }
         // A page and its margins.
         Icon::PageSetup => {
             pen.rect(0.16, 0.08, 0.84, 0.92, fg);

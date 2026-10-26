@@ -1,0 +1,197 @@
+# Argdown in ReasonCraft
+
+ReasonCraft saves a map as [Argdown](https://argdown.org) text (Export → **Argdown**) and reads Argdown files back (File → **Import Argdown…**). This page describes the part of Argdown that ReasonCraft uses and how a map is written as Argdown.
+
+The export is meant as an interchange file: it holds everything the map's structure and evaluation hold, so reading it back gives the same map. That is why it always includes the parking area, unlike the image exports. Other Argdown tools can open it too; they show the arguments and relations, and ReasonCraft's own details as data.
+
+## The Argdown syntax ReasonCraft reads and writes
+
+- **Frontmatter**: YAML between two `===` lines at the very start of the file.
+- **Headings**: lines starting with `#`.
+- **Statements**: `[Title]: text` defines a statement; `[Title]` alone refers to it.
+- **Arguments**: `<Title>: text` defines an argument; `<Title>` alone refers to it.
+- **Relations**: an indented line under an element relates it to the element above it.
+  - `+` supports, `-` attacks, `_` undercuts (attacks the inference of an argument), `><` contradicts.
+  - The direction comes first or last: `<+ X` means X supports the element above (the default direction, child to parent); `+> X` means the element above supports X. The same goes for `<-`/`->` and `<_`/`_>`.
+  - A line that is indented further hangs under the line above it. One tab counts as 4 spaces.
+- **Premise-conclusion structures** (PCS), under an argument title:
+  - numbered statements `(1) text` or `(1) [Title]: text`;
+  - an inference line of 4 or more hyphens (`----`), or `--` … `--` with an inference rule in between;
+  - the last statement after the inference line is the conclusion.
+  - Relations can hang under a PCS statement and under the inference line.
+- **Comments**: `// …` to the end of the line, `/* … */` and `<!-- … -->`.
+- **Data**: `{key: value, …}` after an element, in YAML flow style: strings, numbers, `true`/`false`, lists `[…]` and maps `{…}`.
+- **Escapes**: a backslash before a character makes it plain text, for example `\[` or `\#`.
+- Empty lines separate top-level blocks.
+
+## How a map is written
+
+### 1. Frontmatter
+
+```
+===
+title: "…"
+author: "…"
+language: "en"
+generator: "ReasonCraft"
+===
+```
+
+All four values are YAML double-quoted strings. `language` is `en` or `nl`.
+
+### 2. Titles
+
+- Every box written as a statement gets a title made from the first five words of its text.
+  - The characters `[ ] < > { } : # @`, the backslash and a `/` that would start a comment (`//`, `/*`) are left out.
+  - Whitespace is collapsed, and the title is cut at 40 characters.
+  - A title that is already taken gets " 2", " 3", … appended. A box without text gets `Statement N`, where N counts the statements in the order they are written.
+- Every card becomes an argument titled `R<n>` (a reason) or `O<n>` (an objection). Reasons and objections are counted separately, in the order of the Outline: the main tree first, then the parking area.
+
+### 3. The main tree
+
+The root is written first as `[Title]: text`. Under it, indented 4 spaces, is one line per item under the root, in the map's order:
+
+- `<+ <Rn>` for a reason and `<- <On>` for an objection;
+- `<+ [Title]: citation {source: …}` for a source (see 5);
+- `<+ [Title]: text {category: true}` for a category (see 6).
+
+### 4. Cards: arguments
+
+After the root come the arguments, one block per card in Outline order, separated by empty lines:
+
+```
+<R1> {strength: strong}
+
+(1) [Premise title]: premise text {acceptance: accept}
+    <- <O2>
+    <+ [Source title]: citation {source: publication, rating: solid}
+(2) [Co-premise title]: co-premise text
+----
+    <_ <O3>
+    <+ <R4>
+(3) [Target title]
+```
+
+- **Header**: the argument title, with `{strength: strong|weak|nil}` when the card is rated.
+- **Premises**: one numbered statement per premise, with its data. Under each premise, indented, one line per card that targets that premise (`<+ <Rm>` or `<- <Om>`) and one line per source.
+- **Inference line** `----`. Under it, one line per card that targets the whole card: `<_ <Om>` for an objection (an undercut), and `<+ <Rm>` for a reason. The second form is a ReasonCraft convention: Argdown has no relation for supporting an inference, so other Argdown tools show it as plain support of the argument.
+- **Conclusion**:
+  - A reason concludes its target: `(3) [Target title]`.
+  - An objection concludes `(3) Not: Target title`, followed by an indented `-> [Target title]` (the conclusion attacks the target).
+  - A card that targets a whole card concludes `(n) The inference in <Rk> holds.` (a reason) or `(n) The inference in <Rk> does not hold.` (an objection), without a relation line; the relation is the line under that card's inference line.
+  - A parked card, which targets nothing, has no conclusion.
+
+### 5. Statement data, sources and notes
+
+Data goes after the statement's text, as one `{…}` with these keys, in this order:
+
+| Key | On | Value |
+|---|---|---|
+| `category` | categories | `true` |
+| `source` | sources | the source type: `source`, `my_basis`, `assertion`, `by_definition`, `case_study`, `common_belief`, `data`, `event`, `example`, `expert_opinion`, `law`, `media`, `personal_experience`, `publication`, `quote`, `statistic` or `web`. A type from a newer ReasonCraft is written as it is. |
+| `note` | a parked note | `true` |
+| `acceptance` | claims and premises | `accept`, `unsure` or `reject` |
+| `rating` | sources | `solid`, `shaky` or `nil` |
+| `link` | any box | the link, as a quoted string |
+| `notes` | any box with notes under it | a list of quoted strings, the notes' texts |
+| `comments` | any box with comments | a list of `{author: "…", text: "…", verdict: positive\|needs_work\|problem}`; `verdict` is left out when the comment has none |
+
+- A key without a value is left out, and a statement without any data has no `{…}`.
+- Sources are statements on a relation line `<+ [Title]: citation {source: …}` under the box they belong to: the root, a premise, or (in the parking area) a parked claim.
+- Notes are not statements: their texts are the `notes` data of the box they sit under. Only a parked note, which has no box above it, is a statement of its own, marked `{note: true}`.
+- The root's sources, notes, comments, link and acceptance are written the same way as a premise's.
+- Quoted strings use YAML double quotes: `\"`, `\\`, `\n` (line break), `\r`, `\t` and `\uXXXX` (other control characters) are escapes, so data keeps line breaks.
+
+### 6. Grouping maps
+
+A grouping map is the root followed by its categories as a nested tree of relation lines, 4 more spaces per level:
+
+```
+[Ways to get around town]: Ways to get around town
+    <+ [Public transport]: Public transport {category: true, notes: ["Check the timetables."]}
+        <+ [Buses]: Buses {category: true}
+    <+ [Cycling]: Cycling {category: true}
+```
+
+The categories' notes and comments are data on their lines.
+
+### 7. The parking area
+
+The parking area follows the main tree's arguments under the heading `# Not connected` (`# Niet verbonden` in a Dutch map), and only when it holds anything. Each parked item follows as its own block, in the parking area's order:
+
+- a parked card is an argument block without a conclusion, followed by the argument blocks of the cards under it;
+- a parked box is a statement block: the statement with its data and the relation lines under it (cards, sources, categories), followed by the argument blocks of its cards.
+
+### 8. Text
+
+- Statement text is written on one line: line breaks in a box's text become spaces.
+- A backslash goes before each character that would otherwise mean something in Argdown: `\ [ ] < > { } # @ * _`, and a `/` that would start a comment. The text reads back exactly, and other Argdown tools show it without the backslashes.
+- Not exported: images (the export says "Images are not included in Argdown." when the map has any), box widths, comment dates, the links and comments of notes (a parked note keeps them), the layout direction, snippets and the essay.
+
+## Example: a map written as Argdown
+
+A claim with a rated reason (two premises and a source), an undercut of that reason, an objection with a rebuttal and a comment, and a parked note:
+
+```argdown
+===
+title: "Car-free centre"
+author: "Sam"
+language: "en"
+generator: "ReasonCraft"
+===
+
+[The town centre should be]: The town centre should be car-free. {acceptance: accept}
+    <+ <R1>
+    <- <O2>
+
+<R1> {strength: strong}
+
+(1) [Cars make the centre noisy]: Cars make the centre noisy and unsafe.
+    <+ [Traffic report 2024]: Traffic report 2024 {source: statistic, rating: solid}
+(2) [A quiet centre draws more]: A quiet centre draws more visitors.
+----
+    <_ <O1>
+(3) [The town centre should be]
+
+<O1>
+
+(1) [The report covers only one]: The report covers only one street.
+----
+(2) The inference in <R1> does not hold.
+
+<O2>
+
+(1) [Shops need delivery vans.]: Shops need delivery vans. {comments: [{author: "Sam", text: "Ask the shop owners.", verdict: needs_work}]}
+    <- <O3>
+----
+(2) Not: The town centre should be
+    -> [The town centre should be]
+
+<O3>
+
+(1) [Deliveries can be made before]: Deliveries can be made before 10 am.
+----
+(2) Not: Shops need delivery vans.
+    -> [Shops need delivery vans.]
+
+# Not connected
+
+[Check the bus routes.]: Check the bus routes. {note: true}
+```
+
+## Example: an undercut written by hand
+
+Argdown written elsewhere often looks like this. The argument `<Small sample>` undercuts `<Sample>`: it attacks the step from the survey to the claim, not the survey itself. ReasonCraft reads it as a reason card with the survey as its premise, and a whole-card objection on that card.
+
+```argdown
+[Car-free centre]: The town centre should be car-free.
+
+<Sample>: Residents want it.
+
+(1) [Survey]: Most residents in a survey want a car-free centre.
+----
+    <_ <Small sample>
+(2) [Car-free centre]
+
+<Small sample>: Only 40 of 12 000 residents answered the survey.
+```

@@ -1,5 +1,6 @@
 //! ReasonCraft core: document model, editing, layout and file format.
 
+pub mod argdown;
 pub mod checks;
 pub mod connector;
 pub mod edit;
@@ -22,6 +23,7 @@ pub mod rules;
 pub mod snippets;
 pub mod words;
 
+pub use argdown::to_argdown;
 pub use connector::ConnectorStyle;
 pub use edit::{EditError, NewLoose, RemoveMode};
 pub use essay::{EssayPlan, EssaySlot, essay_markdown, essay_order, essay_plain_text};

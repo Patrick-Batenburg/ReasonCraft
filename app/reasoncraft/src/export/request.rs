@@ -17,6 +17,8 @@ pub enum ExportFormat {
     EssayMarkdown,
     EssayText,
     EssayDocx,
+    /// The map as Argdown text (argdown.org).
+    Argdown,
 }
 
 impl ExportFormat {
@@ -29,6 +31,7 @@ impl ExportFormat {
             Self::OutlineMarkdown | Self::EssayMarkdown => "md",
             Self::OutlineText | Self::EssayText => "txt",
             Self::OutlineDocx | Self::EssayDocx => "docx",
+            Self::Argdown => "argdown",
         }
     }
 
@@ -49,6 +52,7 @@ impl ExportFormat {
             Self::EssayMarkdown => "export.format.essay_md",
             Self::EssayText => "export.format.essay_text",
             Self::EssayDocx => "export.format.essay_docx",
+            Self::Argdown => "export.format.argdown",
         }
     }
 }
