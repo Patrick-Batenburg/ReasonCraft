@@ -22,7 +22,7 @@ fn command_ids_unique() {
 #[test]
 fn every_label_and_group_is_translated() {
     for cmd in all() {
-        for key in [cmd.label, cmd.group] {
+        for key in [cmd.label, cmd.group, cmd.tab()] {
             assert_ne!(t(key), key, "`{}`: no text for `{key}`", cmd.id);
         }
     }
@@ -31,6 +31,15 @@ fn every_label_and_group_is_translated() {
 #[test]
 fn get_finds_by_id() {
     assert_eq!(get("view.zoom_100").action, Action::Zoom100);
+}
+
+/// The Home ribbon's Source ▾ menu looks these up when it opens.
+#[test]
+fn every_source_type_has_an_add_command() {
+    for st in reasoncraft_core::SourceType::ALL {
+        let cmd = get(&add_source_id(&st));
+        assert_eq!(cmd.action, Action::AddSource(st));
+    }
 }
 
 #[test]
@@ -48,6 +57,10 @@ fn search_ranks_prefix_first() {
     let ids: Vec<_> = search("add r", 50).iter().map(|c| c.id).collect();
     let pos = |id| ids.iter().position(|&i| i == id).unwrap();
     assert!(pos("home.add_reason") < pos("home.add_category"));
+    // The ribbon tab's name counts too.
+    assert_eq!(search("view zoom", 5)[0].id, "view.zoom_fit");
+    assert_eq!(search("home reason", 5)[0].id, "home.add_reason");
+    assert_eq!(search("export png", 5)[0].id, "export.png");
     // Every word must match.
     assert!(search("add zebra", 5).is_empty());
     assert!(search("   ", 5).is_empty());

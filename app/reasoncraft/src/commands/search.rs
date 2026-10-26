@@ -6,8 +6,8 @@ use unicode_normalization::char::is_combining_mark;
 use super::{Command, all};
 use crate::i18n::t;
 
-/// The commands whose translated label and group label contain every word
-/// of `query`, at most `limit` of them. Matching ignores case and
+/// The commands whose translated label, group label and ribbon tab label
+/// together contain every word of `query`, at most `limit` of them. Matching ignores case and
 /// diacritics ("cafe" finds "Café"). Commands with more words matched at
 /// the start of a word come first, then registry order. A blank query
 /// finds nothing.
@@ -19,7 +19,8 @@ pub fn search(query: &str, limit: usize) -> Vec<&'static Command> {
     let mut hits: Vec<(usize, &'static Command)> = all()
         .iter()
         .filter_map(|cmd| {
-            let text = fold(&format!("{} {}", t(cmd.label), t(cmd.group)));
+            let text = format!("{} {} {}", t(cmd.label), t(cmd.group), t(cmd.tab()));
+            let text = fold(&text);
             let mut prefix_hits = 0;
             for word in &words {
                 let mut found = text.match_indices(word.as_str()).peekable();

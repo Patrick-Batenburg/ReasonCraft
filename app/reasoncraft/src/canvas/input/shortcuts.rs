@@ -44,6 +44,8 @@ const CMD_SHIFT: Modifiers = Modifiers::COMMAND.plus(Modifiers::SHIFT);
 /// typing, keys while editing) are handled in [`super::key_to_action`].
 /// The first entry for an action is the one menus show.
 pub const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
+    // Display only: `key_to_action` takes Ctrl+Enter (with or without
+    // Shift, editing or not) among its context keys before the table.
     (Shortcut::new(Key::Enter, CMD), || Action::AddCoPremise),
     (Shortcut::new(Key::R, CMD_SHIFT), || {
         Action::TargetWholeCard(CardKind::Reason)

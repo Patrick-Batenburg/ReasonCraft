@@ -51,7 +51,7 @@ pub(super) fn build() -> Vec<Command> {
     for st in SourceType::ALL {
         let key = st.key();
         out.push(cmd(
-            leak(format!("home.add_source.{key}")),
+            leak(super::add_source_id(&st)),
             leak(format!("source.{key}")),
             "group.add_source",
             A::AddSource(st),

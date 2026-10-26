@@ -63,6 +63,35 @@ fn ctrl_s_in_snippet_field_records_the_session_and_saves() {
     assert!(h.ctx.text_edit_focused());
 }
 
+/// Alt+Q from a field opens Search commands; the "œ" macOS types with it
+/// (in the same frame) does not land in the field.
+#[test]
+fn alt_q_in_snippet_field_types_nothing() {
+    let fake = FakeDialogs::default();
+    let mut h = harness(doc_with_snippet(), &fake);
+    h.run();
+    let field = t("snippet.text");
+    h.get_by_label(&field).click();
+    h.run();
+    h.input_mut().events.extend([
+        egui::Event::Key {
+            key: Key::Q,
+            physical_key: Some(Key::Q),
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::ALT,
+        },
+        egui::Event::Text("œ".into()),
+    ]);
+    h.run();
+    assert_eq!(h.state().tabs[0].doc.snippets[0].text, "Robots");
+    assert!(
+        h.ctx
+            .memory(|m| m.has_focus(reasoncraft::shell::command_search::field_id())),
+        "the search box has the focus"
+    );
+}
+
 #[test]
 fn other_map_keys_stay_with_the_snippet_field() {
     let fake = FakeDialogs::default();

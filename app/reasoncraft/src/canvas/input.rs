@@ -41,6 +41,7 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
         (Key::Tab, false, false) => Some(A::AddReason),
         (Key::Tab, false, true) => Some(A::AddObjection),
         (Key::Escape, false, _) => Some(A::StopEditing),
+        // Also a (display-only) row of SHORTCUTS; Shift does not matter here.
         (Key::Enter, true, _) => Some(A::AddCoPremise),
         _ => None,
     };
@@ -169,16 +170,19 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
         return Vec::new();
     };
     let mut out = Vec::new();
+    // The text Alt+Q also types ("œ" on macOS) stays out of the field.
+    let mut alt_text = false;
     ctx.input_mut(|i| {
         i.events.retain(|e| {
-            let Event::Key {
-                key,
-                pressed: true,
-                modifiers,
-                ..
-            } = e
-            else {
-                return true;
+            let (key, modifiers) = match e {
+                Event::Key {
+                    key,
+                    pressed: true,
+                    modifiers,
+                    ..
+                } => (key, modifiers),
+                Event::Text(_) => return !std::mem::take(&mut alt_text),
+                _ => return true,
             };
             match key_to_action(*key, *modifiers, true) {
                 Some(
@@ -188,10 +192,14 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                     | Action::New
                     | Action::OpenCommandSearch),
                 ) => {
+                    alt_text = a == Action::OpenCommandSearch;
                     out.push(a);
                     false
                 }
-                _ => true,
+                _ => {
+                    alt_text = false;
+                    true
+                }
             }
         });
     });

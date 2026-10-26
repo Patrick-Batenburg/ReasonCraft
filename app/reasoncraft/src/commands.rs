@@ -29,6 +29,27 @@ pub struct Command {
     pub action: Action,
 }
 
+impl Command {
+    /// The i18n key of the ribbon tab the command sits on, from the first
+    /// part of its id (`view.zoom_100` is on View).
+    pub fn tab(&self) -> &'static str {
+        match self.id.split('.').next() {
+            Some("file") => "ribbon.tab.file",
+            Some("home") => "ribbon.tab.home",
+            Some("evaluate") => "ribbon.tab.evaluate",
+            Some("view") => "ribbon.tab.view",
+            Some("export") => "ribbon.tab.export",
+            _ => panic!("command `{}` names no ribbon tab", self.id),
+        }
+    }
+}
+
+/// The id of the command that adds a source of type `st`
+/// (`home.add_source.<key>`).
+pub fn add_source_id(st: &reasoncraft_core::SourceType) -> String {
+    format!("home.add_source.{}", st.key())
+}
+
 /// Every command, in ribbon order.
 pub fn all() -> &'static [Command] {
     static ALL: OnceLock<Vec<Command>> = OnceLock::new();

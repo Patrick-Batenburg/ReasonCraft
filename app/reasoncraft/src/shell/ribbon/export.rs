@@ -10,6 +10,14 @@ use crate::i18n::t;
 use crate::shell::icons::Icon;
 use crate::theme::Tokens;
 
+/// The Outline ▾ and Essay ▾ menus' commands.
+const OUTLINE: [&str; 3] = [
+    "export.outline_md",
+    "export.outline_txt",
+    "export.outline_docx",
+];
+const ESSAY: [&str; 3] = ["export.essay_md", "export.essay_txt", "export.essay_docx"];
+
 pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let mut out = Vec::new();
@@ -25,14 +33,8 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         }
     });
     group(ui, &tk, &t("group.text"), |ui| {
-        let outline = [
-            "export.outline_md",
-            "export.outline_txt",
-            "export.outline_docx",
-        ];
-        menu(ui, &tk, Icon::Outline, "export.outline", &outline, &mut out);
-        let essay = ["export.essay_md", "export.essay_txt", "export.essay_docx"];
-        menu(ui, &tk, Icon::Essay, "export.essay", &essay, &mut out);
+        menu(ui, &tk, Icon::Outline, "export.outline", &OUTLINE, &mut out);
+        menu(ui, &tk, Icon::Essay, "export.essay", &ESSAY, &mut out);
     });
     group(ui, &tk, &t("group.print"), |ui| {
         command(
@@ -60,4 +62,18 @@ fn menu(ui: &mut Ui, tk: &Tokens, icon: Icon, key: &str, ids: &[&str], out: &mut
             }
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The menus only open on a click, so the ribbon test never reaches
+    /// these ids.
+    #[test]
+    fn menu_ids_exist() {
+        for id in OUTLINE.into_iter().chain(ESSAY) {
+            commands::get(id);
+        }
+    }
 }

@@ -49,7 +49,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         let resp = large_menu(ui, &tk, Icon::Source, &label, is_enabled(tab, &generic));
         Popup::menu(&resp).show(|ui| {
             for st in SourceType::ALL {
-                let cmd = commands::get(&format!("home.add_source.{}", st.key()));
+                let cmd = commands::get(&commands::add_source_id(&st));
                 let on = is_enabled(tab, &cmd.action);
                 if ui.add_enabled(on, source_button(&st)).clicked() {
                     out.push(cmd.action.clone());
