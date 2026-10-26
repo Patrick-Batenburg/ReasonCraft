@@ -64,7 +64,7 @@
   - [x] Task 4: Axis-neutral compact tree layout
   - [x] Task 5: Layout directions
   - [x] Task 6: Connector styles (Curved, Elbow, Tapered)
-  - [ ] Task 7: Minimap, numbering on the map, fit selection
+  - [x] Task 7: Minimap, numbering on the map, fit selection
   - [ ] Task 8: Find and replace
   - [ ] Task 9: reasoncraft_spell crate
   - [ ] Task 10: Spellcheck in the app
