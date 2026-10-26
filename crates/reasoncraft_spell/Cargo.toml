@@ -1,0 +1,13 @@
+[package]
+name = "reasoncraft_spell"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+spellbook = "0.4"
+thiserror.workspace = true
+
+[lints]
+workspace = true
