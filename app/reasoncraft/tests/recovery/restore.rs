@@ -1,0 +1,231 @@
+//! The recovery prompt after a crash: restore, discard, decide later.
+
+use std::fs::File;
+use std::time::{Duration, SystemTime};
+
+use eframe::egui;
+use egui_kittest::kittest::Queryable;
+use reasoncraft::ReasonCraftApp;
+use reasoncraft::actions::{self, Action};
+use reasoncraft::file_ops::Modal;
+use reasoncraft::i18n::t;
+use reasoncraft::recovery::{self, RecoveryChoice};
+
+use super::*;
+
+#[test]
+fn restore_opens_dirty_tab_with_original_path() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    let path = docs.path().join("robots.rcraft");
+    crash_with_edited_file(rec.path(), &path);
+
+    let mut app = app_with_recovery(rec.path());
+    let docs_offered = offered(&app);
+    assert_eq!(docs_offered.len(), 1);
+    assert_eq!(
+        docs_offered[0].meta.original.as_deref(),
+        Some(path.as_path())
+    );
+    assert_eq!(docs_offered[0].meta.title, "robots");
+    let orphan = docs_offered[0].package.clone();
+
+    actions::apply(
+        &mut app,
+        Action::ResolveRecovery(RecoveryChoice::RestoreAll),
+    );
+    wait(&app);
+    assert!(app.modal.is_none());
+    assert_eq!(app.tabs.len(), 1, "the untouched start tab is reused");
+    let tab = app.active_tab();
+    assert_eq!(tab.path.as_deref(), Some(path.as_path()));
+    assert!(tab.is_dirty());
+    assert_eq!(tab.doc.boxes[&tab.doc.root].text, "Edited");
+    assert!(tab.recovered_from.is_some());
+    assert_eq!(tab.title(), "robots (recovered) •");
+    // The orphan is gone; the tab is autosaved under this session.
+    assert!(!orphan.exists());
+    assert!(
+        !orphan.parent().unwrap().exists(),
+        "empty orphan folder removed"
+    );
+    assert_eq!(root_text(&recovery_file(&app, 0)), "Edited");
+    // The file itself was never touched.
+    assert_eq!(root_text(&path), "Saved");
+}
+
+#[test]
+fn restored_doc_saves_without_asking_when_original_unchanged() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    let path = docs.path().join("robots.rcraft");
+    crash_with_edited_file(rec.path(), &path);
+    let mut app = app_with_recovery(rec.path());
+    actions::apply(
+        &mut app,
+        Action::ResolveRecovery(RecoveryChoice::RestoreAll),
+    );
+    actions::apply(&mut app, Action::Save);
+    assert!(app.modal.is_none());
+    assert_eq!(root_text(&path), "Edited");
+    let tab = app.active_tab();
+    assert!(tab.recovered_from.is_none());
+    assert_eq!(tab.title(), "robots");
+}
+
+#[test]
+fn restored_doc_save_asks_when_original_changed() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    let path = docs.path().join("robots.rcraft");
+    crash_with_edited_file(rec.path(), &path);
+    // Someone changed the file after the crash.
+    let later = SystemTime::now() + Duration::from_secs(60);
+    File::options()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_modified(later)
+        .unwrap();
+
+    let mut app = app_with_recovery(rec.path());
+    actions::apply(
+        &mut app,
+        Action::ResolveRecovery(RecoveryChoice::RestoreAll),
+    );
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1400.0, 900.0))
+        .with_max_steps(32)
+        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
+    h.run();
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::S);
+    h.run();
+    assert!(matches!(
+        h.state().modal,
+        Some(Modal::ConfirmReplace {
+            original_changed: true,
+            ..
+        })
+    ));
+    h.get_by_label(&t("recovery.original_changed"));
+    assert_eq!(root_text(&path), "Saved", "nothing written yet");
+    h.get_by_label(&t("replace.confirm")).click();
+    h.run();
+    assert!(h.state().modal.is_none());
+    assert_eq!(root_text(&path), "Edited");
+    assert!(!h.state().active_tab().is_dirty());
+}
+
+#[test]
+fn discard_all_removes_files() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let mut app = app_with_recovery(rec.path());
+    let orphan = offered(&app)[0].package.clone();
+    actions::apply(
+        &mut app,
+        Action::ResolveRecovery(RecoveryChoice::DiscardAll),
+    );
+    wait(&app);
+    assert!(app.modal.is_none());
+    assert_eq!(app.tabs.len(), 1);
+    assert!(!app.tabs[0].is_dirty());
+    assert!(!orphan.exists());
+    assert!(!orphan.parent().unwrap().exists());
+}
+
+#[test]
+fn decide_later_keeps_files_for_next_start() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let mut app = app_with_recovery(rec.path());
+    let orphan = offered(&app)[0].package.clone();
+    actions::apply(&mut app, Action::ResolveRecovery(RecoveryChoice::Later));
+    assert!(app.modal.is_none());
+    assert!(orphan.is_file());
+    // Still offered by the next start (this one exits normally).
+    actions::apply(&mut app, Action::CloseWindow);
+    assert!(app.close_confirmed());
+    let next = app_with_recovery(rec.path());
+    assert_eq!(offered(&next).len(), 1);
+}
+
+#[test]
+fn recovery_prompt_lists_documents_and_restores() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let mut h = harness(app_with_recovery(rec.path()));
+    h.run();
+    h.get_by_label(&t("recovery.title"));
+    // One label: the message, then a line per document.
+    let entry = format!(
+        "{}
+• robots (",
+        t("recovery.message")
+    );
+    h.get_by_label_contains(&entry);
+    h.get_by_label(&t("recovery.discard_all"));
+    h.get_by_label(&t("recovery.later"));
+    h.get_by_label(&t("recovery.restore_all")).click();
+    h.run();
+    assert!(h.state().modal.is_none());
+    assert_eq!(h.state().active_tab().title(), "robots (recovered) •");
+}
+
+/// Moves `path`'s modification time a minute ahead, as an edit by someone
+/// else would.
+fn touch_later(path: &Path) {
+    let later = SystemTime::now() + Duration::from_secs(60);
+    let file = File::options().write(true).open(path).unwrap();
+    file.set_modified(later).unwrap();
+}
+
+#[test]
+fn file_changed_before_first_autosave_still_asks() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    let path = docs.path().join("robots.rcraft");
+    file::save(&reasoncraft_core::Document::new("Saved"), &path).unwrap();
+    let mut app = app_with_recovery(rec.path());
+    reasoncraft::file_ops::open_into_app(&mut app, &path);
+    set_claim(&mut app, "Edited");
+    // The file changes after it was opened, before the autosave.
+    touch_later(&path);
+    autosave(&mut app, 0.0);
+    drop(app);
+
+    let mut app = app_with_recovery(rec.path());
+    actions::apply(
+        &mut app,
+        Action::ResolveRecovery(RecoveryChoice::RestoreAll),
+    );
+    actions::apply(&mut app, Action::Save);
+    assert!(matches!(
+        app.modal,
+        Some(Modal::ConfirmReplace {
+            original_changed: true,
+            ..
+        })
+    ));
+    assert_eq!(root_text(&path), "Saved");
+}
+
+#[test]
+fn command_line_error_does_not_swallow_recovery_prompt() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let bad = docs.path().join("bad.rcraft");
+    std::fs::write(&bad, b"not a map").unwrap();
+
+    // As at start: the app offers recovery, then opens the command line.
+    let mut app = app_with_recovery(rec.path());
+    reasoncraft::file_ops::open_paths(&mut app, [bad.into_os_string()]);
+    assert!(matches!(app.modal, Some(Modal::Error { .. })));
+    actions::apply(&mut app, Action::DismissModal);
+    recovery::tick(&mut app, 0.0);
+    assert_eq!(offered(&app).len(), 1);
+}

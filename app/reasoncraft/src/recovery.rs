@@ -2,12 +2,13 @@
 //! per-user recovery folder while the app runs, and a start after a crash
 //! offers to restore them.
 
+mod folder;
 mod prompt;
 mod session;
 mod store;
 
 pub use prompt::RecoveryChoice;
-pub(crate) use prompt::{offer, resolve};
+pub(crate) use prompt::{defer_offer, offer, resolve};
 pub use session::tick;
 pub(crate) use session::{due_in, forget, original_changed, shutdown};
 pub use store::{PackageSnapshot, RecoveredDoc, RecoveryMeta, RecoveryStore};

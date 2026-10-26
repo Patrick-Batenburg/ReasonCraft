@@ -75,6 +75,8 @@ pub struct ReasonCraftApp {
     /// When the last autosave ran (egui time), or `None` before the first
     /// tick.
     pub(crate) autosave_clock: Option<f64>,
+    /// The recovery prompt, waiting for another message to be closed first.
+    pub(crate) recovery_offer: Option<Vec<crate::recovery::RecoveredDoc>>,
     /// The export or page setup dialog, when open.
     pub export_dialog: Option<ExportDialog>,
     /// The egui context of the running frame: exports measure text with it.
@@ -119,6 +121,7 @@ impl ReasonCraftApp {
             notes_shown: None,
             recovery: None,
             autosave_clock: None,
+            recovery_offer: None,
             export_dialog: None,
             egui_ctx: None,
             applied: None,

@@ -134,6 +134,8 @@ pub fn open_paths(app: &mut ReasonCraftApp, args: impl IntoIterator<Item = OsStr
         }
     }
     if let Some((path, err)) = first_error {
+        // The recovery prompt of this start shows once the error is closed.
+        crate::recovery::defer_offer(app);
         show_error(app, FileOp::Open, &path, &err);
     }
 }
@@ -166,6 +168,7 @@ fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
     }
     let mut tab = DocTab::from_package(file::open_package(path)?);
     tab.path = Some(path.to_path_buf());
+    tab.disk_mtime = file_mtime(path);
     place_tab(app, tab);
     Ok(())
 }
@@ -237,10 +240,16 @@ fn write_tab(tab: &mut DocTab, path: PathBuf) -> Result<(), (PathBuf, FileError)
     let result = file::save_package(&pkg, &path);
     tab.other_entries = pkg.other_entries;
     result.map_err(|err| (path.clone(), err))?;
-    tab.path = Some(path);
     tab.history.mark_saved();
+    tab.disk_mtime = file_mtime(&path);
+    tab.path = Some(path);
     tab.recovered_from = None;
     Ok(())
+}
+
+/// When `path` was last modified, if it can be read.
+pub(crate) fn file_mtime(path: &Path) -> Option<std::time::SystemTime> {
+    std::fs::metadata(path).and_then(|m| m.modified()).ok()
 }
 
 /// Save tab `i`. On failure show why; when a file would be replaced, ask

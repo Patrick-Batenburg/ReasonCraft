@@ -19,7 +19,6 @@ uuid = { version = "1", features = ["v4", "serde"] }
 indexmap = { version = "2", features = ["serde"] }
 emath = "0.37"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
-directories = "6"
 eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "glow", "accesskit", "persistence", "wayland", "x11"] }
 
 [workspace.lints.clippy]

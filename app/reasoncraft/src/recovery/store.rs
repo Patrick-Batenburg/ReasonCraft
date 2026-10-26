@@ -122,8 +122,7 @@ impl RecoveryStore {
 
     /// The per-user recovery folder, if the platform has a data folder.
     pub fn default_dir() -> Option<PathBuf> {
-        directories::ProjectDirs::from("", "", "ReasonCraft")
-            .map(|dirs| dirs.data_local_dir().join("recovery"))
+        super::folder::default_dir()
     }
 
     /// This session's folder.

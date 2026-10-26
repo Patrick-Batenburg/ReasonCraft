@@ -5,7 +5,6 @@
 //! [`Settings::autosave_interval`]: crate::settings::Settings::autosave_interval
 
 use std::path::Path;
-use std::time::SystemTime;
 
 use chrono::Utc;
 use reasoncraft_core::Package;
@@ -13,12 +12,15 @@ use reasoncraft_core::Package;
 use super::{RecoveryMeta, RecoveryStore};
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
+use crate::file_ops::file_mtime;
 
-/// Run once per frame with the egui time `now` (seconds). Removes the copies
+/// Run once per frame with the egui time `now` (seconds). Shows a recovery
+/// prompt that waited for another message to close. Removes the copies
 /// of tabs that became clean; when the interval has passed since the last
 /// autosave, snapshots every tab whose unsaved work changed since its last
 /// copy and hands it to the worker. Never waits for the disk.
 pub fn tick(app: &mut ReasonCraftApp, now: f64) {
+    super::prompt::resume_offer(app);
     let Some(store) = &app.recovery else {
         return;
     };
@@ -63,7 +65,7 @@ fn needs_autosave(tab: &DocTab) -> bool {
 pub(super) fn autosave_tab(store: &RecoveryStore, tab: &mut DocTab) {
     let meta = RecoveryMeta {
         original: tab.path.clone(),
-        original_mtime: known_mtime(tab),
+        original_mtime: tab.disk_mtime,
         title: tab.name(),
         saved_at: Utc::now(),
     };
@@ -74,20 +76,6 @@ pub(super) fn autosave_tab(store: &RecoveryStore, tab: &mut DocTab) {
     };
     store.write(tab.recovery_key, pkg, meta);
     tab.autosaved_revision = tab.revision();
-}
-
-/// The modification time of the tab's file as the tab knows it: for a
-/// restored tab the one recorded before the crash, else the file's own.
-fn known_mtime(tab: &DocTab) -> Option<SystemTime> {
-    let path = tab.path.as_deref()?;
-    match &tab.recovered_from {
-        Some(meta) if meta.original.as_deref() == Some(path) => meta.original_mtime,
-        _ => mtime(path),
-    }
-}
-
-fn mtime(path: &Path) -> Option<SystemTime> {
-    std::fs::metadata(path).and_then(|m| m.modified()).ok()
 }
 
 /// A tab is closing (saved or discarded): its copy goes.
@@ -106,7 +94,9 @@ pub(crate) fn original_changed(tab: &DocTab, path: &Path) -> bool {
     let Some(meta) = &tab.recovered_from else {
         return false;
     };
-    meta.original.as_deref() == Some(path) && path.exists() && mtime(path) != meta.original_mtime
+    meta.original.as_deref() == Some(path)
+        && path.exists()
+        && file_mtime(path) != meta.original_mtime
 }
 
 /// The app exits normally: end the recovery session (its copies go).

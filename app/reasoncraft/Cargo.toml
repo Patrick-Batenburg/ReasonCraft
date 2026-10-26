@@ -27,8 +27,7 @@ docx-rs = { version = "0.4", default-features = false }
 # Patches the core properties of Word files (and reads zips in tests).
 zip.workspace = true
 unicode-normalization = "0.1.26"
-# Autosave: the per-user recovery folder, and its meta files.
-directories.workspace = true
+# Autosave: the recovery folder's meta files.
 chrono = { workspace = true, features = ["serde"] }
 serde_json.workspace = true
 

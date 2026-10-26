@@ -29,6 +29,22 @@ pub(crate) fn offer(app: &mut ReasonCraftApp) {
     }
 }
 
+/// Put a showing recovery prompt aside, so another message can show first.
+pub(crate) fn defer_offer(app: &mut ReasonCraftApp) {
+    if let Some(Modal::Recover(docs)) = app.modal.take() {
+        app.recovery_offer = Some(docs);
+    }
+}
+
+/// Show the recovery prompt put aside, once no other message is open.
+pub(crate) fn resume_offer(app: &mut ReasonCraftApp) {
+    if app.modal.is_none()
+        && let Some(docs) = app.recovery_offer.take()
+    {
+        app.modal = Some(Modal::Recover(docs));
+    }
+}
+
 /// The answer to the recovery prompt.
 pub(crate) fn resolve(app: &mut ReasonCraftApp, choice: RecoveryChoice) {
     let Some(Modal::Recover(docs)) = app.modal.take() else {
@@ -64,6 +80,7 @@ pub(crate) fn resolve(app: &mut ReasonCraftApp, choice: RecoveryChoice) {
 fn restore(app: &mut ReasonCraftApp, doc: &RecoveredDoc) -> Result<(), FileError> {
     let mut tab = DocTab::from_package(file::open_package(&doc.package)?);
     tab.path = doc.meta.original.clone();
+    tab.disk_mtime = doc.meta.original_mtime;
     tab.history.saved_marker = None;
     tab.recovered_from = Some(doc.meta.clone());
     let i = file_ops::place_tab(app, tab);
