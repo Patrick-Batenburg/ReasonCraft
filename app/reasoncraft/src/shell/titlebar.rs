@@ -1,8 +1,7 @@
 //! Custom title bar: quick access, document title, command search, window buttons.
 
 use eframe::egui::{
-    self, Align, Align2, FontId, Frame, Layout, Margin, Sense, Stroke, TextEdit, Vec2,
-    ViewportCommand,
+    self, Align, Align2, FontId, Frame, Layout, Margin, Sense, Vec2, ViewportCommand,
 };
 
 use super::icons::Icon;
@@ -10,7 +9,6 @@ use super::{hover_fill, icon_button};
 use crate::actions::{Action, is_enabled};
 use crate::app::ReasonCraftApp;
 use crate::i18n::t;
-use crate::theme::Tokens;
 
 const HEIGHT: f32 = 36.0;
 /// Room for the macOS traffic lights, which draw over our content.
@@ -77,27 +75,10 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                         window_buttons(ui, app, maximized);
                         ui.add_space(12.0);
                     }
-                    search_box(ui, &tk);
+                    super::command_search::show(ui, app);
                 });
             });
         });
-}
-
-/// Placeholder in step 1; the command search arrives in step 5.
-fn search_box(ui: &mut egui::Ui, tk: &Tokens) {
-    let mut query = String::new();
-    let field = Frame::new()
-        .fill(tk.panel)
-        .stroke(Stroke::new(1.0, tk.attachment_line.gamma_multiply(0.6)))
-        .corner_radius(6)
-        .inner_margin(Margin::symmetric(8, 4));
-    ui.add_enabled(
-        false,
-        TextEdit::singleline(&mut query)
-            .hint_text(t("titlebar.search"))
-            .frame(field)
-            .desired_width(260.0),
-    );
 }
 
 fn window_buttons(ui: &mut egui::Ui, app: &mut ReasonCraftApp, maximized: bool) {

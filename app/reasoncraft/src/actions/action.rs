@@ -255,6 +255,8 @@ pub enum Action {
     /// quits now (the running exports write nothing more), false keeps
     /// the window open.
     ResolveClosingExports(bool),
+    /// Put the keyboard focus in the title bar's Search commands box (Alt+Q).
+    OpenCommandSearch,
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,

@@ -7,8 +7,9 @@ use eframe::egui::{
 
 use super::icons::{self, Icon};
 use super::{hover_fill, selected_fill, tab_button};
-use crate::actions::{Action, Panel};
+use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
+use crate::commands;
 use crate::i18n::t;
 use crate::theme::{ThemeChoice, Tokens};
 
@@ -91,52 +92,47 @@ fn view(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let mut out = Vec::new();
     group(ui, &tk, &t("group.zoom"), |ui| {
-        if large(ui, &tk, Icon::ZoomFit, &t("action.zoom_fit"), true, false).clicked() {
-            out.push(Action::ZoomFit);
-        }
-        if large(ui, &tk, Icon::Zoom100, &t("action.zoom_100"), true, false).clicked() {
-            out.push(Action::Zoom100);
-        }
+        command(
+            ui,
+            &tk,
+            Icon::ZoomFit,
+            "view.zoom_fit",
+            true,
+            false,
+            &mut out,
+        );
+        command(
+            ui,
+            &tk,
+            Icon::Zoom100,
+            "view.zoom_100",
+            true,
+            false,
+            &mut out,
+        );
         ui.vertical(|ui| {
-            if small(ui, &tk, Icon::ZoomIn, &t("action.zoom_in"), true).clicked() {
-                out.push(Action::ZoomIn);
-            }
-            if small(ui, &tk, Icon::ZoomOut, &t("action.zoom_out"), true).clicked() {
-                out.push(Action::ZoomOut);
-            }
+            small_command(ui, &tk, Icon::ZoomIn, "view.zoom_in", true, &mut out);
+            small_command(ui, &tk, Icon::ZoomOut, "view.zoom_out", true, &mut out);
         });
     });
     group(ui, &tk, &t("group.theme"), |ui| {
         let themes = [
-            (Icon::ThemeSystem, "theme.system", ThemeChoice::System),
-            (Icon::ThemeLight, "theme.light", ThemeChoice::Light),
-            (Icon::ThemeDark, "theme.dark", ThemeChoice::Dark),
+            (Icon::ThemeSystem, "view.theme.system", ThemeChoice::System),
+            (Icon::ThemeLight, "view.theme.light", ThemeChoice::Light),
+            (Icon::ThemeDark, "view.theme.dark", ThemeChoice::Dark),
         ];
-        for (icon, key, choice) in themes {
-            if large(ui, &tk, icon, &t(key), true, app.settings.theme == choice).clicked() {
-                out.push(Action::SetTheme(choice));
-            }
+        for (icon, id, choice) in themes {
+            let on = app.settings.theme == choice;
+            command(ui, &tk, icon, id, true, on, &mut out);
         }
     });
     group(ui, &tk, &t("group.panels"), |ui| {
         let panels = [
-            (
-                Icon::PanelLeft,
-                "action.panel_left",
-                Panel::Left,
-                app.left_panel,
-            ),
-            (
-                Icon::PanelRight,
-                "action.panel_right",
-                Panel::Right,
-                app.right_panel,
-            ),
+            (Icon::PanelLeft, "view.panel_left", app.left_panel),
+            (Icon::PanelRight, "view.panel_right", app.right_panel),
         ];
-        for (icon, key, panel, on) in panels {
-            if large(ui, &tk, icon, &t(key), true, on).clicked() {
-                out.push(Action::TogglePanel(panel));
-            }
+        for (icon, id, on) in panels {
+            command(ui, &tk, icon, id, true, on, &mut out);
         }
     });
     group(ui, &tk, &t("group.evaluation"), |ui| {
@@ -144,15 +140,63 @@ fn view(ui: &mut Ui, app: &mut ReasonCraftApp) {
     });
     #[cfg(debug_assertions)]
     group(ui, &tk, &t("group.debug"), |ui| {
-        if large(ui, &tk, Icon::Open, &t("action.load_sample"), true, false).clicked() {
-            out.push(Action::LoadSampleMap);
-        }
-        let label = t("action.source_icons");
-        if large(ui, &tk, Icon::Source, &label, true, app.show_source_icons).clicked() {
-            out.push(Action::ToggleSourceIcons);
-        }
+        command(
+            ui,
+            &tk,
+            Icon::Open,
+            "view.load_sample",
+            true,
+            false,
+            &mut out,
+        );
+        let on = app.show_source_icons;
+        command(
+            ui,
+            &tk,
+            Icon::Source,
+            "view.source_icons",
+            true,
+            on,
+            &mut out,
+        );
     });
     app.pending.extend(out);
+}
+
+/// A large button for the registry command `id` (its label and action);
+/// a click queues the action.
+fn command(
+    ui: &mut Ui,
+    tk: &Tokens,
+    icon: Icon,
+    id: &str,
+    enabled: bool,
+    selected: bool,
+    out: &mut Vec<Action>,
+) -> Response {
+    let cmd = commands::get(id);
+    let resp = large(ui, tk, icon, &t(cmd.label), enabled, selected);
+    if resp.clicked() {
+        out.push(cmd.action.clone());
+    }
+    resp
+}
+
+/// Like [`command`], as a small button.
+fn small_command(
+    ui: &mut Ui,
+    tk: &Tokens,
+    icon: Icon,
+    id: &str,
+    enabled: bool,
+    out: &mut Vec<Action>,
+) -> Response {
+    let cmd = commands::get(id);
+    let resp = small(ui, tk, icon, &t(cmd.label), enabled);
+    if resp.clicked() {
+        out.push(cmd.action.clone());
+    }
+    resp
 }
 
 /// A labelled group: its controls, the label underneath and a separator after it.

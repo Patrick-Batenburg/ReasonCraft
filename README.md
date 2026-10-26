@@ -76,23 +76,28 @@ A debug build (`cargo run -p reasoncraft`) adds **View → Load sample map (debu
 
 ## Keyboard shortcuts
 
-Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
+Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box. Keys marked (context) only work where the table says: elsewhere, for example in a text field, they type or move the focus as usual.
+
+| Keys | Action |
+| --- | --- |
+| Alt+Q | Search commands, also while typing in a box or field: type part of a command's name, pick it with the arrow keys and press Enter (Esc closes the list) |
 
 ### While a box or card is selected
 
 | Keys | Action |
 | --- | --- |
-| Tab | Add a reason |
-| Shift+Tab | Add an objection |
+| Tab | Add a reason (context) |
+| Shift+Tab | Add an objection (context) |
 | Ctrl+Enter | Add a co-premise |
 | Ctrl+Shift+R | Add a reason for the whole card (of the selected card or premise) |
 | Ctrl+Shift+O | Add an objection to the whole card (of the selected card or premise) |
 | Ctrl+Shift+E | Add a source (under the selected claim or premise, or loose) |
-| Enter or F2 | Edit the selected box |
-| Esc | Stop editing |
+| F2 | Edit the selected box |
+| Enter | Edit the selected box (context) |
+| Esc | Stop editing (context) |
 | Delete | Delete (items under it move to the parking area) |
 | Shift+Delete | Delete with everything under it |
-| Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise) |
+| Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise) (context) |
 | Ctrl+Shift+P | Jump between the main map and the parking area |
 | Ctrl+Shift+M | Open the comments of the selected box (Esc closes them) |
 | Ctrl+Shift+K | Connect to…: pick where the selected parked item goes (see below) |
@@ -117,9 +122,9 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 
 | Keys | Action |
 | --- | --- |
-| Esc | Finish editing |
-| Tab | Finish and add a reason |
-| Shift+Tab | Finish and add an objection |
+| Esc | Finish editing (context) |
+| Tab | Finish and add a reason (context) |
+| Shift+Tab | Finish and add an objection (context) |
 | Ctrl+Enter | Finish and add a co-premise |
 | Ctrl+Shift+R | Finish and add a reason for the whole card |
 | Ctrl+Shift+O | Finish and add an objection to the whole card |
@@ -148,11 +153,11 @@ Connect to… works on an item at the top of the parking area (or a premise of a
 
 | Keys | Action |
 | --- | --- |
-| Click a box or card | Connect the parked item there (targets that refuse it show red and do nothing) |
-| Arrow keys | Move the selection in the map |
-| Enter or F2 | Connect the parked item to the selected box or card |
-| Ctrl+Shift+P, zoom keys | Work as usual |
-| Esc | Cancel |
+| Click a box or card | Connect the parked item there (targets that refuse it show red and do nothing) (context) |
+| Arrow keys | Move the selection in the map (context) |
+| Enter or F2 | Connect the parked item to the selected box or card (context) |
+| Ctrl+Shift+P, zoom keys | Work as usual (context) |
+| Esc | Cancel (context) |
 
 Other keys do nothing until you connect or cancel.
 

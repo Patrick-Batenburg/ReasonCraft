@@ -25,6 +25,7 @@ pdf-writer = "0.12"
 docx-rs = { version = "0.4", default-features = false }
 # Patches the core properties of Word files (and reads zips in tests).
 zip.workspace = true
+unicode-normalization = "0.1.26"
 
 [dev-dependencies]
 egui_kittest = "0.37"

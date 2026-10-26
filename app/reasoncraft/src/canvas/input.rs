@@ -2,92 +2,77 @@
 //! navigation.
 
 use eframe::egui::{self, Event, FocusDirection, Key, Modifiers, Popup};
-use reasoncraft_core::{CardKind, ClearScope, Document, Item, Parent, SourceType};
+use reasoncraft_core::{Document, Item, Parent, SourceType};
 
 use super::editor::editor_id;
-use crate::actions::{Action, Dir, Rate, is_enabled};
+use crate::actions::{Action, Dir, is_enabled};
 use crate::app::ReasonCraftApp;
 
-/// The command bound to `key` with `mods`, if any. `Modifiers::command` is
-/// Ctrl, or Cmd on macOS. While a box is being edited only Esc (finish),
-/// Tab / Shift+Tab (finish and add a reason / objection), Ctrl+Shift+R /
-/// Ctrl+Shift+O (finish and add a whole-card reason / objection),
-/// Ctrl+Shift+E (finish and add a source), Ctrl+Enter (finish and add a
-/// co-premise) and the file keys Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N
-/// (finish, then the command) are commands; every other key is text.
-/// Ctrl+Shift+Tab is not a command.
+mod shortcuts;
+#[cfg(test)]
+pub(crate) use shortcuts::format_shortcut;
+pub use shortcuts::{ActionCtor, SHORTCUTS, Shortcut, shortcut_for, shortcut_text};
+
+/// The command bound to `key` with `mods`, if any: an entry of
+/// [`SHORTCUTS`], or one of the context keys below. `Modifiers::command`
+/// is Ctrl, or Cmd on macOS.
 ///
-/// Ctrl+Shift+M opens the selected box's comments and Ctrl+Shift+K starts
-/// "Connect to…" (not while editing).
-///
-/// Alt+1/2/3/0 rate the selection, Alt+Shift+0 clears the whole map's
-/// evaluation and Alt+Left/Right move the selection one place among its
-/// siblings (not while editing); no other Alt combination is a command.
-/// Alt with Ctrl never is: AltGr reports Ctrl+Alt.
+/// - Tab / Shift+Tab add a reason / objection, Enter or F2 edits the
+///   selected box, Esc stops editing and the arrows move the selection.
+/// - While a box is being edited only Esc (finish), Tab / Shift+Tab (finish
+///   and add a reason / objection) and the table's whole-card, source,
+///   co-premise and file keys (finish, then the command) are commands;
+///   every other key is text.
+/// - Ctrl+Enter adds a co-premise with or without Shift, and Ctrl+Shift+=
+///   zooms in like Ctrl+=.
+/// - Alt+Q (Search commands) is the only Alt combination that is a
+///   command while editing. Alt with Ctrl never is: AltGr reports Ctrl+Alt.
 pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action> {
     use Action as A;
     if mods.alt {
-        if editing || mods.ctrl || mods.command || mods.mac_cmd {
+        if mods.ctrl || mods.command || mods.mac_cmd {
             return None;
         }
-        if mods.shift {
-            return (key == Key::Num0).then_some(A::ClearEvaluation(ClearScope::Map));
-        }
-        return Some(match key {
-            Key::ArrowLeft => A::Reorder(Dir::Left),
-            Key::ArrowRight => A::Reorder(Dir::Right),
-            Key::Num1 => A::Rate(Rate::High),
-            Key::Num2 => A::Rate(Rate::Mid),
-            Key::Num3 => A::Rate(Rate::Low),
-            Key::Num0 => A::Rate(Rate::Clear),
-            _ => return None,
-        });
+        let action = shortcuts::lookup(key, mods);
+        return action.filter(|a| !editing || *a == A::OpenCommandSearch);
     }
     let (cmd, shift) = (mods.command, mods.shift);
-    if editing {
-        return match (key, cmd) {
-            (Key::Escape, false) => Some(A::StopEditing),
-            (Key::Tab, false) => Some(if shift { A::AddObjection } else { A::AddReason }),
-            (Key::O, true) if shift => Some(A::TargetWholeCard(CardKind::Objection)),
-            (Key::R, true) if shift => Some(A::TargetWholeCard(CardKind::Reason)),
-            (Key::E, true) if shift => Some(A::AddSource(SourceType::Source)),
-            (Key::Enter, true) => Some(A::AddCoPremise),
-            (Key::S, true) => Some(if shift { A::SaveAs } else { A::Save }),
-            (Key::O, true) if !shift => Some(A::Open),
-            (Key::N, true) if !shift => Some(A::New),
-            _ => None,
-        };
+    let context = match (key, cmd, shift) {
+        (Key::Tab, false, false) => Some(A::AddReason),
+        (Key::Tab, false, true) => Some(A::AddObjection),
+        (Key::Escape, false, _) => Some(A::StopEditing),
+        (Key::Enter, true, _) => Some(A::AddCoPremise),
+        _ => None,
+    };
+    if context.is_some() {
+        return context;
     }
-    Some(match (key, cmd, shift) {
-        (Key::Tab, false, false) => A::AddReason,
-        (Key::Tab, false, true) => A::AddObjection,
-        (Key::O, true, true) => A::TargetWholeCard(CardKind::Objection),
-        (Key::R, true, true) => A::TargetWholeCard(CardKind::Reason),
-        (Key::E, true, true) => A::AddSource(SourceType::Source),
-        (Key::P, true, true) => A::JumpParking,
-        (Key::M, true, true) => A::CommentSelected,
-        (Key::K, true, true) => A::StartConnect,
-        (Key::Enter, true, _) => A::AddCoPremise,
-        (Key::Enter | Key::F2, false, false) => A::Edit,
-        (Key::Escape, false, _) => A::StopEditing,
-        (Key::Delete, false, false) => A::Delete,
-        (Key::Delete, false, true) => A::DeleteBranch,
-        (Key::ArrowUp, false, false) => A::Navigate(Dir::Up),
-        (Key::ArrowDown, false, false) => A::Navigate(Dir::Down),
-        (Key::ArrowLeft, false, false) => A::Navigate(Dir::Left),
-        (Key::ArrowRight, false, false) => A::Navigate(Dir::Right),
-        (Key::Z, true, false) => A::Undo,
-        (Key::Z, true, true) | (Key::Y, true, false) => A::Redo,
-        (Key::S, true, false) => A::Save,
-        (Key::S, true, true) => A::SaveAs,
-        (Key::O, true, false) => A::Open,
-        (Key::N, true, false) => A::New,
-        (Key::Num0, true, false) => A::Zoom100,
-        (Key::Num1, true, false) => A::ZoomFit,
-        (Key::Equals | Key::Plus, true, _) => A::ZoomIn,
-        (Key::Minus, true, false) => A::ZoomOut,
-        _ => return None,
-    })
+    if editing {
+        return shortcuts::lookup(key, mods).filter(works_while_editing);
+    }
+    let context = match (key, cmd, shift) {
+        (Key::Enter, false, false) => Some(A::Edit),
+        (Key::ArrowUp, false, false) => Some(A::Navigate(Dir::Up)),
+        (Key::ArrowDown, false, false) => Some(A::Navigate(Dir::Down)),
+        (Key::ArrowLeft, false, false) => Some(A::Navigate(Dir::Left)),
+        (Key::ArrowRight, false, false) => Some(A::Navigate(Dir::Right)),
+        (Key::Equals | Key::Plus, true, true) => Some(A::ZoomIn),
+        _ => None,
+    };
+    context.or_else(|| shortcuts::lookup(key, mods))
+}
+
+/// The table's commands that also end an inline edit.
+fn works_while_editing(action: &Action) -> bool {
+    matches!(
+        action,
+        Action::TargetWholeCard(_)
+            | Action::AddSource(SourceType::Source)
+            | Action::Save
+            | Action::SaveAs
+            | Action::Open
+            | Action::New
+    )
 }
 
 /// Take this frame's command keys out of the input before any widget sees
@@ -118,7 +103,8 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     }
     let can_type = editing.is_none() && matches!(tab.selection, Some(Item::Box(_)));
     let mut out = Vec::new();
-    // The text an Alt shortcut also produces ("1", or "¡" on macOS) is not typing.
+    // The text an Alt shortcut also produces ("1", or "¡" or
+    // "œ" on macOS) is not typing.
     let mut alt_text = false;
     ctx.input_mut(|i| {
         i.events.retain(|e| {
@@ -132,7 +118,14 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                 } => {
                     let action = shortcut_key(*key, *physical_key, *modifiers)
                         .and_then(|key| key_to_action(key, *modifiers, editing.is_some()));
-                    alt_text = matches!(action, Some(Action::Rate(_) | Action::ClearEvaluation(_)));
+                    alt_text = matches!(
+                        action,
+                        Some(
+                            Action::Rate(_)
+                                | Action::ClearEvaluation(_)
+                                | Action::OpenCommandSearch
+                        )
+                    );
                     action
                 }
                 Event::Text(_) if std::mem::take(&mut alt_text) => return false,
@@ -168,7 +161,7 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
 /// (a snippet's text, citation or link, the document title or author, an
 /// essay paragraph):
 /// Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N, the same subset that works
-/// while editing a box. They are taken out of the input; every other key
+/// while editing a box, and Alt+Q. They are taken out of the input; every other key
 /// stays with the field. Applying the action first ends the field's
 /// editing session, so its typing becomes a history step before the save.
 pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
@@ -188,7 +181,13 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                 return true;
             };
             match key_to_action(*key, *modifiers, true) {
-                Some(a @ (Action::Save | Action::SaveAs | Action::Open | Action::New)) => {
+                Some(
+                    a @ (Action::Save
+                    | Action::SaveAs
+                    | Action::Open
+                    | Action::New
+                    | Action::OpenCommandSearch),
+                ) => {
                     out.push(a);
                     false
                 }

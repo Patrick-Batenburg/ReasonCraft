@@ -3,6 +3,7 @@
 pub mod actions;
 pub mod app;
 pub mod canvas;
+pub mod commands;
 pub mod doc_tab;
 pub mod export;
 pub mod file_ops;

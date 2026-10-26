@@ -138,6 +138,13 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::OpenExportFolder
         | Action::ResolveExportReplace(_)
         | Action::ResolveClosingExports(_) => export::apply(app, action),
+        // A running inline edit was committed above, so the box editor
+        // lets go of the keyboard.
+        Action::OpenCommandSearch => {
+            if let Some(ctx) = &app.egui_ctx {
+                crate::shell::command_search::focus(ctx);
+            }
+        }
         #[cfg(debug_assertions)]
         Action::LoadSampleMap => {
             let doc = reasoncraft_core::fixtures::sample_iot_like(117);
@@ -183,6 +190,7 @@ fn keeps_notes(action: &Action) -> bool {
             | Action::OpenLink(_)
             | Action::OpenExportFolder
             | Action::DismissModal
+            | Action::OpenCommandSearch
     )
 }
 
@@ -302,7 +310,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::Print
         | Action::OpenExportFolder
         | Action::ResolveExportReplace(_)
-        | Action::ResolveClosingExports(_) => unreachable!("app-level action"),
+        | Action::ResolveClosingExports(_)
+        | Action::OpenCommandSearch => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

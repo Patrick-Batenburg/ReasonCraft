@@ -277,7 +277,8 @@ fn backstage_has_export_and_print() {
     // Print runs Print: a PDF in the print folder, opened in the viewer.
     h.get_by_label(&t("ribbon.tab.file")).click();
     h.run();
-    h.get_by_label(&t("backstage.print")).click();
+    h.get_by_label(&t(reasoncraft::commands::get("export.print").label))
+        .click();
     let start = std::time::Instant::now();
     while opener.opened.borrow().is_empty() {
         assert!(start.elapsed().as_secs() < 60, "print hangs");

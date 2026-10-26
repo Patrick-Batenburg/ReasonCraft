@@ -4,9 +4,10 @@
 use eframe::egui::Ui;
 use reasoncraft_core::{Acceptance, CardStrength, ClearScope, SourceRating};
 
-use super::{group, large};
+use super::{command, group, large};
 use crate::actions::{Action, Rated, is_enabled, rated};
 use crate::app::ReasonCraftApp;
+use crate::commands;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::shell::icons::Icon;
@@ -28,19 +29,19 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     use CardStrength as C;
     use SourceRating as S;
     let claim = [
-        (Icon::Accept, "eval.accept", A::Accept),
-        (Icon::Unsure, "eval.unsure", A::Unsure),
-        (Icon::Reject, "eval.reject", A::Reject),
+        (Icon::Accept, "evaluate.accept", A::Accept),
+        (Icon::Unsure, "evaluate.unsure", A::Unsure),
+        (Icon::Reject, "evaluate.reject", A::Reject),
     ];
     let card = [
-        (Icon::Strong, "eval.strong", C::Strong),
-        (Icon::Weak, "eval.weak", C::Weak),
-        (Icon::Nil, "eval.nil", C::Nil),
+        (Icon::Strong, "evaluate.strong", C::Strong),
+        (Icon::Weak, "evaluate.weak", C::Weak),
+        (Icon::Nil, "evaluate.card_nil", C::Nil),
     ];
     let src = [
-        (Icon::Strong, "eval.solid", S::Solid),
-        (Icon::Weak, "eval.shaky", S::Shaky),
-        (Icon::Nil, "eval.nil", S::Nil),
+        (Icon::Strong, "evaluate.solid", S::Solid),
+        (Icon::Weak, "evaluate.shaky", S::Shaky),
+        (Icon::Nil, "evaluate.source_nil", S::Nil),
     ];
     group(ui, &tk, &t("group.eval_claim"), |ui| {
         let tip = t("eval.tip.claim");
@@ -96,20 +97,10 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         {
             out.extend(selection);
         }
-        let map = Action::ClearEvaluation(ClearScope::Map);
-        if large(
-            ui,
-            &tk,
-            Icon::Clear,
-            &t("eval.clear_map"),
-            is_enabled(tab, &map),
-            false,
-        )
-        .on_hover_text(t("eval.tip.clear_map"))
-        .clicked()
-        {
-            out.push(map);
-        }
+        let id = "evaluate.clear_map";
+        let on = is_enabled(tab, &commands::get(id).action);
+        command(ui, &tk, Icon::Clear, id, on, false, &mut out)
+            .on_hover_text(t("eval.tip.clear_map"));
     });
     group(ui, &tk, &t("group.eval_view"), |ui| {
         display_toggles(ui, app, &mut out);
@@ -117,8 +108,9 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     app.pending.extend(out);
 }
 
-/// One rating scale: a button per value, "on" for the current value.
-/// Clicking the current value clears it. Returns the clicked button's action.
+/// One rating scale: a button per value (a registry command id), "on" for
+/// the current value. Clicking the current value clears it. Returns the
+/// clicked button's action.
 fn scale<T: Copy + PartialEq>(
     ui: &mut Ui,
     tk: &Tokens,
@@ -129,11 +121,12 @@ fn scale<T: Copy + PartialEq>(
     set: fn(Option<T>) -> Action,
 ) -> Option<Action> {
     let mut clicked = None;
-    for (icon, key, value) in values {
+    for (icon, id, value) in values {
         let on = current == Some(value);
-        let action = set(Some(value));
+        let cmd = commands::get(id);
+        let action = cmd.action.clone();
         let enabled = is_enabled(tab, &action);
-        if large(ui, tk, icon, &t(key), enabled, on)
+        if large(ui, tk, icon, &t(cmd.label), enabled, on)
             .on_hover_text(tip)
             .clicked()
         {
@@ -147,22 +140,10 @@ fn scale<T: Copy + PartialEq>(
 pub(super) fn display_toggles(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     let tk = app.tokens;
     let toggles = [
-        (
-            Icon::Markers,
-            "eval.show_markers",
-            app.settings.show_markers,
-            Action::ToggleMarkers,
-        ),
-        (
-            Icon::Shading,
-            "eval.shading",
-            app.settings.eval_shading,
-            Action::ToggleShading,
-        ),
+        (Icon::Markers, "evaluate.markers", app.settings.show_markers),
+        (Icon::Shading, "evaluate.shading", app.settings.eval_shading),
     ];
-    for (icon, key, on, action) in toggles {
-        if large(ui, &tk, icon, &t(key), true, on).clicked() {
-            out.push(action);
-        }
+    for (icon, id, on) in toggles {
+        command(ui, &tk, icon, id, true, on, out);
     }
 }

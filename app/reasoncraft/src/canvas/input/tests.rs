@@ -1,5 +1,5 @@
 use super::*;
-use reasoncraft_core::CardKind;
+use reasoncraft_core::{CardKind, ClearScope};
 
 #[test]
 fn tab_adds_reason() {

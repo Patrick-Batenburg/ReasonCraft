@@ -9,6 +9,7 @@ use super::hover_fill;
 use super::icons::{self, Icon};
 use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
+use crate::commands;
 use crate::i18n::t;
 use crate::shell::text_panel::check_key;
 use crate::theme::{ThemeChoice, Tokens};
@@ -68,34 +69,23 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
 fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>) {
     let tk = app.tokens;
     ui.spacing_mut().item_spacing.y = 4.0;
+    // File commands take their label and action from the registry.
+    let command = |icon, id| {
+        let cmd = commands::get(id);
+        (icon, cmd.label, Entry::Command(Some(cmd.action.clone())))
+    };
     let items = [
         (Icon::Back, "backstage.back", Entry::Command(None)),
-        (Icon::New, "action.new", Entry::Command(Some(Action::New))),
-        (
-            Icon::Open,
-            "action.open",
-            Entry::Command(Some(Action::Open)),
-        ),
-        (
-            Icon::Save,
-            "action.save",
-            Entry::Command(Some(Action::Save)),
-        ),
-        (
-            Icon::SaveAs,
-            "action.save_as",
-            Entry::Command(Some(Action::SaveAs)),
-        ),
+        command(Icon::New, "file.new"),
+        command(Icon::Open, "file.open"),
+        command(Icon::Save, "file.save"),
+        command(Icon::SaveAs, "file.save_as"),
         (
             Icon::ExportPng,
             "backstage.export",
             Entry::Ribbon(RibbonTab::Export),
         ),
-        (
-            Icon::Print,
-            "backstage.print",
-            Entry::Command(Some(Action::Print)),
-        ),
+        command(Icon::Print, "export.print"),
         (
             Icon::Note,
             "backstage.document",

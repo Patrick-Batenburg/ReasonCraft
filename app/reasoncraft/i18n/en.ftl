@@ -6,7 +6,7 @@ untitled = Untitled
 window-title = { $doc } — { $app }
 
 ## Title bar
-titlebar-search = Search commands
+titlebar-search = Search commands ({ $keys })
 window-minimize = Minimize
 window-maximize = Maximize
 window-restore = Restore
@@ -41,6 +41,7 @@ group-eval_clear = Clear
 group-eval_view = Display
 group-evaluation = Evaluation
 group-box = Box
+group-add_source = Add source
 
 ## Commands
 action-new = New
@@ -74,6 +75,19 @@ action-panel_left = Building panel
 action-panel_right = Text panel
 action-load_sample = Load sample map (debug)
 action-source_icons = Source icons (debug)
+
+## Search commands (commands that have no ribbon button of their own)
+command-disabled = Not available right now
+command-whole_card_reason = Reason for the whole card
+command-whole_card_objection = Objection to the whole card
+command-edit = Edit text
+command-jump_parking = Jump to the parking area and back
+command-move_left = Move left among siblings
+command-move_right = Move right among siblings
+command-rate_high = Rate high
+command-rate_mid = Rate mid
+command-rate_low = Rate low
+command-rate_clear = Clear the selection's rating
 
 ## Evaluation
 eval-accept = Accept
@@ -128,7 +142,6 @@ backstage-back = Back
 backstage-settings = Settings
 backstage-document = Document
 backstage-export = Export…
-backstage-print = Print
 settings-title = Settings
 settings-author = Your name
 settings-author_hint = Shown on the comments you add
