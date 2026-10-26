@@ -69,7 +69,7 @@
   - [x] Task 9: reasoncraft_spell crate
   - [x] Task 10: Spellcheck in the app
   - [x] Task 11: Autosave and crash recovery
-  - [ ] Task 12: Argdown export
+  - [x] Task 12: Argdown export
   - [ ] Task 13: Argdown import
   - [ ] Task 14: Check carry-overs
   - [ ] Task 15: Export and panel carry-overs
