@@ -11,11 +11,12 @@ use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::commands;
 use crate::i18n::t;
-use crate::theme::{ThemeChoice, Tokens};
+use crate::theme::Tokens;
 
 mod evaluate;
 mod export;
 mod home;
+mod view;
 
 const STRIP_H: f32 = 30.0;
 const BUTTON_H: f32 = 66.0;
@@ -49,7 +50,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
                     match app.ribbon_tab {
                         RibbonTab::Home => home::show(ui, app),
                         RibbonTab::Evaluate => evaluate::show(ui, app),
-                        RibbonTab::View => view(ui, app),
+                        RibbonTab::View => view::show(ui, app),
                         RibbonTab::Export => export::show(ui, app),
                         _ => {
                             ui.add_space(8.0);
@@ -86,81 +87,6 @@ fn tab_strip(ui: &mut Ui, app: &mut ReasonCraftApp) {
             }
         }
     });
-}
-
-fn view(ui: &mut Ui, app: &mut ReasonCraftApp) {
-    let tk = app.tokens;
-    let mut out = Vec::new();
-    group(ui, &tk, &t("group.zoom"), |ui| {
-        command(
-            ui,
-            &tk,
-            Icon::ZoomFit,
-            "view.zoom_fit",
-            true,
-            false,
-            &mut out,
-        );
-        command(
-            ui,
-            &tk,
-            Icon::Zoom100,
-            "view.zoom_100",
-            true,
-            false,
-            &mut out,
-        );
-        ui.vertical(|ui| {
-            small_command(ui, &tk, Icon::ZoomIn, "view.zoom_in", true, &mut out);
-            small_command(ui, &tk, Icon::ZoomOut, "view.zoom_out", true, &mut out);
-        });
-    });
-    group(ui, &tk, &t("group.theme"), |ui| {
-        let themes = [
-            (Icon::ThemeSystem, "view.theme.system", ThemeChoice::System),
-            (Icon::ThemeLight, "view.theme.light", ThemeChoice::Light),
-            (Icon::ThemeDark, "view.theme.dark", ThemeChoice::Dark),
-        ];
-        for (icon, id, choice) in themes {
-            let on = app.settings.theme == choice;
-            command(ui, &tk, icon, id, true, on, &mut out);
-        }
-    });
-    group(ui, &tk, &t("group.panels"), |ui| {
-        let panels = [
-            (Icon::PanelLeft, "view.panel_left", app.left_panel),
-            (Icon::PanelRight, "view.panel_right", app.right_panel),
-        ];
-        for (icon, id, on) in panels {
-            command(ui, &tk, icon, id, true, on, &mut out);
-        }
-    });
-    group(ui, &tk, &t("group.evaluation"), |ui| {
-        evaluate::display_toggles(ui, app, &mut out);
-    });
-    #[cfg(debug_assertions)]
-    group(ui, &tk, &t("group.debug"), |ui| {
-        command(
-            ui,
-            &tk,
-            Icon::Open,
-            "view.load_sample",
-            true,
-            false,
-            &mut out,
-        );
-        let on = app.show_source_icons;
-        command(
-            ui,
-            &tk,
-            Icon::Source,
-            "view.source_icons",
-            true,
-            on,
-            &mut out,
-        );
-    });
-    app.pending.extend(out);
 }
 
 /// A large button for the registry command `id` (its label and action);

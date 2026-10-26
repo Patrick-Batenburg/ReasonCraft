@@ -3,6 +3,7 @@
 use emath::Pos2;
 
 use crate::layout::ConnectorKind;
+use crate::model::LayoutDirection;
 
 /// Arrowhead size in screen px, independent of stroke width and zoom.
 pub const ARROW_PX: f32 = 9.0;
@@ -32,18 +33,21 @@ pub enum Strength {
     Weak,
 }
 
-/// Path from the child top `from` to the parent port `to`: an S-curve that
-/// ends `stub` px below `to`, followed by a straight vertical stub up to `to`.
-pub fn curved_path(from: Pos2, to: Pos2, stub: f32) -> Vec<Segment> {
-    let curve_end = Pos2::new(to.x, to.y + stub);
-    let mid = (from.y + curve_end.y) / 2.0;
+/// Path from the child's near edge `from` to the parent port `to`: an
+/// S-curve that ends `stub` px beyond `to` (away from the parent), followed
+/// by a straight stub along `dir.toward_parent()` to `to`.
+pub fn curved_path(from: Pos2, to: Pos2, stub: f32, dir: LayoutDirection) -> Vec<Segment> {
+    let curve_end = to - dir.toward_parent() * stub;
+    // The curve leaves and arrives along the main axis, turning halfway.
+    let (c1, c2) = if dir == LayoutDirection::LeftRight {
+        let mid = (from.x + curve_end.x) / 2.0;
+        (Pos2::new(mid, from.y), Pos2::new(mid, curve_end.y))
+    } else {
+        let mid = (from.y + curve_end.y) / 2.0;
+        (Pos2::new(from.x, mid), Pos2::new(curve_end.x, mid))
+    };
     vec![
-        Segment::Cubic([
-            from,
-            Pos2::new(from.x, mid),
-            Pos2::new(to.x, mid),
-            curve_end,
-        ]),
+        Segment::Cubic([from, c1, c2, curve_end]),
         Segment::Line([curve_end, to]),
     ]
 }
@@ -80,7 +84,12 @@ mod tests {
     #[test]
     fn curved_path_ends_with_vertical_stub() {
         let to = Pos2::new(100.0, 50.0);
-        let path = curved_path(Pos2::new(40.0, 200.0), to, STUB_PX);
+        let path = curved_path(
+            Pos2::new(40.0, 200.0),
+            to,
+            STUB_PX,
+            LayoutDirection::TopDown,
+        );
         assert_eq!(
             path.last(),
             Some(&Segment::Line([Pos2::new(100.0, 66.0), to]))
@@ -112,7 +121,35 @@ mod tests {
 
     #[test]
     fn path_valid_when_child_not_below_parent() {
-        let path = curved_path(Pos2::new(0.0, 10.0), Pos2::new(5.0, 20.0), STUB_PX);
+        let path = curved_path(
+            Pos2::new(0.0, 10.0),
+            Pos2::new(5.0, 20.0),
+            STUB_PX,
+            LayoutDirection::TopDown,
+        );
         assert_eq!(path.len(), 2);
+    }
+
+    #[test]
+    fn curved_path_ends_with_stub_along_direction() {
+        let to = Pos2::new(100.0, 50.0);
+        for dir in LayoutDirection::ALL {
+            let from = to - dir.toward_parent() * 150.0 + emath::vec2(30.0, 30.0);
+            let path = curved_path(from, to, STUB_PX, dir);
+            let Some(&Segment::Line([a, b])) = path.last() else {
+                panic!("{dir:?}: the path ends in a curve");
+            };
+            assert_eq!(b, to, "{dir:?}");
+            let along = (b - a).normalized();
+            assert!(
+                (along - dir.toward_parent()).length() < 1e-5,
+                "{dir:?}: {along:?}"
+            );
+            assert!(((b - a).length() - STUB_PX).abs() < 1e-4, "{dir:?}");
+            let Segment::Cubic(c) = path[0] else {
+                panic!("{dir:?}: the path starts with a line");
+            };
+            assert_eq!((c[0], c[3]), (from, a), "{dir:?}");
+        }
     }
 }

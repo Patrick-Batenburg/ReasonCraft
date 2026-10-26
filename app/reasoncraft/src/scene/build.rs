@@ -246,15 +246,16 @@ impl Builder<'_> {
         let strength = connector_strength(c.strength, self.opts.eval_shading);
         let zoom = self.opts.zoom;
         let stroke = (stroke_px(c.kind, strength, zoom) / zoom, colour);
-        // A full stub when there is room, otherwise half the drop.
+        // A full stub when there is room, otherwise half the drop (the
+        // distance from the port to the child along the main axis).
         let full = STUB_PX * self.px;
-        let drop = c.from.y - c.to.y;
+        let drop = -(c.from - c.to).dot(c.dir.toward_parent());
         let stub = if drop >= 2.0 * full {
             full
         } else {
             (drop / 2.0).max(0.0)
         };
-        for seg in curved_path(c.from, c.to, stub) {
+        for seg in curved_path(c.from, c.to, stub, c.dir) {
             match seg {
                 Segment::Cubic([a, b, c, d]) => self.shapes.push(Shape::Path {
                     points: vec![PathEl::MoveTo(a), PathEl::CubicTo(b, c, d)],
@@ -262,20 +263,24 @@ impl Builder<'_> {
                     fill: None,
                     dashed: false,
                 }),
-                Segment::Line([a, b]) => self.stub(a, b, stroke, end_marker(c.kind)),
+                Segment::Line([a, b]) => {
+                    let toward = c.dir.toward_parent();
+                    self.stub(a, b, toward, stroke, end_marker(c.kind));
+                }
             }
         }
     }
 
-    /// The straight end of a connector from `a` up to the port `b`, with its
-    /// marker oriented along it.
-    fn stub(&mut self, a: Pos2, b: Pos2, stroke: StrokeSpec, marker: EndMarker) {
+    /// The straight end of a connector from `a` to the port `b`, with its
+    /// marker oriented along it (along `toward`, toward the parent, when the
+    /// stub has no length).
+    fn stub(&mut self, a: Pos2, b: Pos2, toward: Vec2, stroke: StrokeSpec, marker: EndMarker) {
         let px = self.px;
         let d = b - a;
         let dir = if d.length() > 1e-3 * px {
             d.normalized()
         } else {
-            vec2(0.0, -1.0)
+            toward
         };
         let side = dir.rot90();
         match marker {

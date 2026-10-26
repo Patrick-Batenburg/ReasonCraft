@@ -297,3 +297,28 @@ fn drop_that_only_changes_hidden_order_is_no_change() {
     let t = drop_target(&d, &l, Item::Card(a), right_end, 1.0).unwrap();
     assert_eq!(t.index, Some(2));
 }
+
+/// Left-to-right, siblings follow each other downward: the pointer's y
+/// picks the place and the bar lies across the gap.
+#[test]
+fn drop_index_from_pointer_y_left_to_right() {
+    let (mut d, [a, b, c, _]) = three_cards();
+    d.layout_direction = reasoncraft_core::LayoutDirection::LeftRight;
+    let root = d.root;
+    let l = layout(&d, &FixedMeasure, &LayoutParams::default());
+    let (ra, rb, rc) = (l.cards[&a], l.cards[&b], l.cards[&c]);
+    assert!(ra.bottom() < rb.top(), "siblings stack downward");
+    let between_ab = egui::pos2(ra.center().x, (ra.bottom() + rb.top()) / 2.0);
+    let t = drop_target(&d, &l, Item::Card(c), between_ab, 1.0).unwrap();
+    assert_eq!((t.to, t.index), (Parent::Box(root), Some(1)));
+    let bar = t.bar.expect("insertion bar");
+    assert_eq!((bar.top(), bar.height()), (between_ab.y, 0.0));
+    assert!(bar.left() <= ra.left() && bar.right() >= ra.right());
+    let below_c = egui::pos2(rc.center().x, rc.bottom() + 4.0);
+    let t = drop_target(&d, &l, Item::Card(a), below_c, 1.0).unwrap();
+    assert_eq!(t.index, Some(2));
+    // A card's far edge is its right edge: whole-card target.
+    let edge = l.cards[&a].right_center();
+    let t = drop_target(&d, &l, Item::Card(c), edge, 1.0).unwrap();
+    assert_eq!(t.to, Parent::Card(a));
+}

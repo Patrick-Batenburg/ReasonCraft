@@ -97,7 +97,7 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Esc | Stop editing (context) |
 | Delete | Delete (items under it move to the parking area) |
 | Shift+Delete | Delete with everything under it |
-| Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise) (context) |
+| Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise). The arrows follow the layout direction: bottom-up, Down goes to the parent; left-to-right, Left goes to the parent and Up/Down move between siblings (context) |
 | Ctrl+Shift+P | Jump between the main map and the parking area |
 | Ctrl+Shift+M | Open the comments of the selected box (Esc closes them) |
 | Ctrl+Shift+K | Connect to…: pick where the selected parked item goes (see below) |

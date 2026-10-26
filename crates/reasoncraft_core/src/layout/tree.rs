@@ -13,9 +13,10 @@ use std::collections::HashSet;
 use std::mem;
 use std::ops::Range;
 
-use emath::{Pos2, Rect, Vec2};
+use emath::{Rect, Vec2};
 
 use super::axis::Frame;
+use super::card;
 use super::contour::Contour;
 use super::ports::{Pending, PortKey};
 use super::{BOX_TEXT_PAD, ConnectorKind, Layout, LayoutParams, Measure, image_height};
@@ -150,7 +151,7 @@ impl Tree {
                 let sizes = card.premises.iter().filter_map(|pid| doc.boxes.get(pid));
                 self.premise_sizes
                     .extend(sizes.map(|node| box_size(node, m, p)));
-                frame_size(&self.premise_sizes[start..], p)
+                card::frame_size(&self.premise_sizes[start..], p, self.frame)
             }
         };
         self.units.push(Unit {
@@ -209,25 +210,13 @@ impl Tree {
                 out.boxes.insert(id, rect);
             }
             Item::Card(id) => {
-                out.cards.insert(id, rect);
-                out.card_labels.insert(
-                    id,
-                    Pos2::new(
-                        rect.right() - p.card_pad,
-                        rect.top() + p.card_label_height * 0.5,
-                    ),
-                );
-                let mut x = rect.left() + p.card_pad;
-                let y = rect.top() + p.card_label_height;
                 let premises = doc.cards[&id]
                     .premises
                     .iter()
                     .filter(|pid| doc.boxes.contains_key(*pid));
-                for (pid, size) in premises.zip(&self.premise_sizes[u.premises.clone()]) {
-                    out.boxes
-                        .insert(*pid, Rect::from_min_size(Pos2::new(x, y), *size));
-                    x += size.x + p.premise_gap;
-                }
+                let sizes = &self.premise_sizes[u.premises.clone()];
+                let premises = premises.copied().zip(sizes.iter().copied());
+                card::place(id, rect, premises, p, self.frame, out);
             }
         }
     }
@@ -312,18 +301,6 @@ fn box_size(node: &BoxNode, m: &dyn Measure, p: &LayoutParams) -> Vec2 {
             .max(text_height + 2.0 * BOX_TEXT_PAD + image_height)
     };
     Vec2::new(width, height)
-}
-
-/// A card frame around premises of the given sizes, laid side by side.
-fn frame_size(premises: &[Vec2], p: &LayoutParams) -> Vec2 {
-    let n = premises.len();
-    let widths: f32 = premises.iter().map(|s| s.x).sum();
-    let gaps = n.saturating_sub(1) as f32 * p.premise_gap;
-    let tallest = premises.iter().map(|s| s.y).fold(0.0, f32::max);
-    Vec2::new(
-        widths + gaps + 2.0 * p.card_pad,
-        p.card_label_height + tallest + p.card_pad + 2.0,
-    )
 }
 
 /// How the connector from `child` to its parent is drawn.

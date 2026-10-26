@@ -107,6 +107,40 @@ fn typing_mode_only_intercepts_esc_tab_ctrl_enter_and_file_keys() {
     }
 }
 
+/// Every arrow maps to a distinct direction, top-down keeps them all, and
+/// the parent (`Up`) is on the screen side the parent is drawn on.
+#[test]
+fn nav_dir_maps_screen_arrows() {
+    use reasoncraft_core::LayoutDirection as L;
+    let all = [Dir::Up, Dir::Down, Dir::Left, Dir::Right];
+    for layout in L::ALL {
+        let mapped: Vec<Dir> = all.iter().map(|&d| nav_dir(d, layout)).collect();
+        for d in all {
+            assert!(mapped.contains(&d), "{layout:?} misses {d:?}");
+        }
+        let to_parent = all
+            .iter()
+            .find(|&&d| nav_dir(d, layout) == Dir::Up)
+            .unwrap();
+        let screen = match to_parent {
+            Dir::Up => eframe::egui::vec2(0.0, -1.0),
+            Dir::Down => eframe::egui::vec2(0.0, 1.0),
+            Dir::Left => eframe::egui::vec2(-1.0, 0.0),
+            Dir::Right => eframe::egui::vec2(1.0, 0.0),
+        };
+        assert_eq!(screen, layout.toward_parent(), "{layout:?}");
+    }
+    for d in all {
+        assert_eq!(nav_dir(d, L::TopDown), d);
+    }
+    assert_eq!(
+        nav_dir(Dir::Up, L::LeftRight),
+        Dir::Left,
+        "previous sibling"
+    );
+    assert_eq!(nav_dir(Dir::Down, L::LeftRight), Dir::Right, "next sibling");
+}
+
 /// root ← card A [a1, a2] ← card C [c1] under a1; root ← card B [b1].
 #[test]
 fn navigate_up_down_siblings() {

@@ -33,6 +33,7 @@ group-editing = Editing
 group-zoom = Zoom
 group-theme = Theme
 group-panels = Panels
+group-layout = Layout
 group-debug = Debug
 group-eval_claim = Claims and premises
 group-eval_card = Cards
@@ -165,6 +166,10 @@ lang-nl = Dutch
 theme-system = System
 theme-light = Light
 theme-dark = Dark
+action-layout_direction = Layout direction
+layout_direction-top_down = Top-down
+layout_direction-bottom_up = Bottom-up
+layout_direction-left_right = Left to right
 
 ## Side panels
 panel-building = Building

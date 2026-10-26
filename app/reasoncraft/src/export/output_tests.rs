@@ -227,3 +227,35 @@ fn a_job_that_dies_is_reported_as_stopped() {
         "export-error-unsupported"
     );
 }
+
+/// A chain of four cards exports wider than tall left-to-right, and
+/// taller than wide top-down: the SVG follows the document's direction.
+#[test]
+fn export_uses_direction() {
+    let mut doc = Document::new("Claim");
+    let mut at = doc.root;
+    for i in 0..4 {
+        let new = doc.add_card(Parent::Box(at), CardKind::Reason, &format!("Reason {i}"));
+        at = new.unwrap().1;
+    }
+    let size = |doc: &Document| {
+        let (scene, _) = scene_of(doc);
+        let svg = scene_to_svg(
+            &scene,
+            &Assets::default(),
+            &SvgOptions::new(&Tokens::dark()),
+            &bundled_font_family(),
+        );
+        let opt = resvg::usvg::Options {
+            fontdb: shared_fontdb(),
+            ..Default::default()
+        };
+        let tree = resvg::usvg::Tree::from_str(&svg, &opt).expect("valid SVG");
+        (tree.size().width(), tree.size().height())
+    };
+    let (w, h) = size(&doc);
+    assert!(h > w, "top-down {w} x {h}");
+    doc.layout_direction = reasoncraft_core::LayoutDirection::LeftRight;
+    let (w, h) = size(&doc);
+    assert!(w > h, "left-to-right {w} x {h}");
+}

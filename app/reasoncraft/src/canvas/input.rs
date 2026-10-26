@@ -2,7 +2,7 @@
 //! navigation.
 
 use eframe::egui::{self, Event, FocusDirection, Key, Modifiers, Popup};
-use reasoncraft_core::{Document, Item, Parent, SourceType};
+use reasoncraft_core::{Document, Item, LayoutDirection, Parent, SourceType};
 
 use super::editor::editor_id;
 use crate::actions::{Action, Dir, is_enabled};
@@ -236,7 +236,26 @@ pub fn is_alt_code_key(key: Key, physical: Option<Key>) -> bool {
     physical.is_some_and(|p| digit(p) && p != key)
 }
 
-/// The item one step from `from` in direction `dir`, or `None` at an edge.
+/// The direction [`navigate`] takes for an arrow key pointing `screen` in a
+/// map laid out in `layout`, so arrows keep their on-screen meaning:
+/// top-down it is `screen` itself; bottom-up the parent is reached with
+/// Down; left-to-right Left goes to the parent, Right to the first child
+/// and Up/Down move between siblings.
+pub fn nav_dir(screen: Dir, layout: LayoutDirection) -> Dir {
+    match (layout, screen) {
+        (LayoutDirection::TopDown, d) => d,
+        (LayoutDirection::BottomUp, Dir::Up) => Dir::Down,
+        (LayoutDirection::BottomUp, Dir::Down) => Dir::Up,
+        (LayoutDirection::BottomUp, d) => d,
+        (LayoutDirection::LeftRight, Dir::Left) => Dir::Up,
+        (LayoutDirection::LeftRight, Dir::Right) => Dir::Down,
+        (LayoutDirection::LeftRight, Dir::Up) => Dir::Left,
+        (LayoutDirection::LeftRight, Dir::Down) => Dir::Right,
+    }
+}
+
+/// The item one step from `from` in direction `dir` (top-down terms; see
+/// [`nav_dir`]), or `None` at an edge.
 ///
 /// - Up: the owner (a premise's card; a card's box, or the card it targets
 ///   as a whole; nothing for a parked item).

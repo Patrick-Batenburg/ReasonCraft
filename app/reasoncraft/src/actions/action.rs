@@ -3,8 +3,8 @@
 use reasoncraft_core::checks::CheckKind;
 use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::{
-    Acceptance, CardKind, CardStrength, ClearScope, Item, NewLoose, NodeId, Parent, SnippetSource,
-    SourceRating, SourceType, Uuid, Verdict,
+    Acceptance, CardKind, CardStrength, ClearScope, Item, LayoutDirection, NewLoose, NodeId,
+    Parent, SnippetSource, SourceRating, SourceType, Uuid, Verdict,
 };
 
 use super::{Insertable, Rate};
@@ -157,6 +157,8 @@ pub enum Action {
     /// Pan the selection into view on the next canvas frame (after a
     /// selection made outside the canvas, e.g. in the outline).
     RevealSelection,
+    /// Move the selection with an arrow key: `Dir` is the key's on-screen
+    /// direction, mapped through the document's layout direction.
     Navigate(Dir),
     /// Jump between the main tree's root and the first parked item.
     JumpParking,
@@ -167,6 +169,9 @@ pub enum Action {
     /// Set the zoom factor directly (status-bar slider), clamped to the zoom range.
     SetZoom(f32),
     SetTheme(ThemeChoice),
+    /// Lay the document out in this direction (one history step; none
+    /// when it already is).
+    SetLayoutDirection(LayoutDirection),
     /// Rate the selection, whatever its kind (Alt+1/2/3/0).
     Rate(Rate),
     /// Accept, doubt or reject the selected claim or premise (`None` clears).

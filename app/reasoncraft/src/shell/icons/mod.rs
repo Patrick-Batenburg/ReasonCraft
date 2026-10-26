@@ -7,9 +7,11 @@ use eframe::egui::{Color32, Painter, Pos2, Rect, Stroke};
 use crate::theme::Tokens;
 
 mod box_group;
+mod direction;
 mod evaluate;
 mod export;
 mod pen;
+pub use direction::{direction_atom, direction_shapes};
 pub(super) use pen::Pen;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,6 +87,8 @@ pub enum Icon {
     /// A page and its margins.
     PageSetup,
     Print,
+    /// A parent box and its children in a layout direction.
+    Direction(reasoncraft_core::LayoutDirection),
 }
 
 /// Draw `icon` in `rect` (a square). `fg` is the main colour, `bg` the
@@ -350,5 +354,6 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         | Icon::Essay
         | Icon::PageSetup
         | Icon::Print => export::paint(&pen, icon, fg, t),
+        Icon::Direction(dir) => direction::paint_direction(painter, rect, dir, fg),
     }
 }

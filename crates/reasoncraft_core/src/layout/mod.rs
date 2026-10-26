@@ -1,11 +1,14 @@
 //! Automatic compact tidy-tree layout of a [`Document`].
 //!
-//! [`layout`] places the main tree (from the root claim) with its top-left
-//! corner at the origin, then each parking item as its own mini-tree, in a
-//! column after the main tree along the cross axis. Subtrees are packed
-//! against each other's contours. Coordinates grow downward like the screen.
+//! [`layout`] places the main tree (from the root claim), then each parking
+//! item as its own mini-tree, in a column after the main tree along the
+//! cross axis (to the right top-down and bottom-up, below left-to-right).
+//! Subtrees are packed against each other's contours. The document's
+//! [`LayoutDirection`] picks the world axes; the main tree's top-left
+//! corner ends up at the origin. Coordinates grow downward like the screen.
 
 mod axis;
+mod card;
 mod contour;
 mod ports;
 mod tree;
@@ -17,7 +20,7 @@ use indexmap::IndexMap;
 
 use crate::connector::Strength;
 use crate::ids::{CardId, Item, NodeId};
-use crate::model::{BoxKind, CardStrength, Document, ImageRef, Role};
+use crate::model::{BoxKind, CardStrength, Document, ImageRef, LayoutDirection, Role};
 
 /// Horizontal and vertical padding between a box's edge and its text.
 /// A [`Measure`] is asked for the height of text wrapped at
@@ -100,7 +103,8 @@ pub enum TargetKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Connector {
     pub child: Item,
-    /// The child's top centre (a card's frame top centre).
+    /// The centre of the child's edge toward its parent (a card's frame
+    /// edge): its top centre top-down.
     pub from: Pos2,
     /// The parent port.
     pub to: Pos2,
@@ -110,11 +114,16 @@ pub struct Connector {
     pub strength: Strength,
     /// The card is rated nil (drawn weak, flagged for a distinct look).
     pub nil: bool,
+    /// The layout direction: the connector leaves its parent along
+    /// `-dir.toward_parent()`.
+    pub dir: LayoutDirection,
 }
 
 /// The result of [`layout`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct Layout {
+    /// The direction the layout was made in.
+    pub dir: LayoutDirection,
     /// Every box, premises included.
     pub boxes: IndexMap<NodeId, Rect>,
     /// Card frame rects.
@@ -131,10 +140,11 @@ pub struct Layout {
     pub bounds: Rect,
 }
 
-/// Lay out `doc` top-down, packed compactly. Iterative throughout, so very
+/// Lay out `doc` in its layout direction, packed compactly. Iterative throughout, so very
 /// deep maps are safe.
 pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
     let mut out = Layout {
+        dir: doc.layout_direction,
         boxes: IndexMap::with_capacity(doc.boxes.len()),
         cards: IndexMap::with_capacity(doc.cards.len()),
         card_labels: IndexMap::with_capacity(doc.cards.len()),
@@ -148,7 +158,7 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
     let mut pending = Vec::new();
     tree::card_roles(doc, &mut out);
 
-    let frame = axis::Frame::default();
+    let frame = axis::Frame::new(doc.layout_direction);
     let main = tree::Tree::build(doc, Item::Box(doc.root), m, p, frame);
     out.main_bounds = main.place(doc, (0.0, 0.0), p, &mut out, &mut pending);
     if out.main_bounds == Rect::NOTHING {
@@ -171,5 +181,30 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
     out.bounds = out
         .parking_bounds
         .map_or(out.main_bounds, |b| b.union(out.main_bounds));
+    // Bottom-up grows toward negative y.
+    out.translate(Pos2::ZERO - out.main_bounds.min);
     out
+}
+
+impl Layout {
+    /// Move everything by `d`.
+    fn translate(&mut self, d: Vec2) {
+        if d == Vec2::ZERO {
+            return;
+        }
+        let rects = self.boxes.values_mut().chain(self.cards.values_mut());
+        for r in rects.chain([&mut self.main_bounds, &mut self.bounds]) {
+            *r = r.translate(d);
+        }
+        if let Some(r) = &mut self.parking_bounds {
+            *r = r.translate(d);
+        }
+        for a in self.card_labels.values_mut() {
+            *a += d;
+        }
+        for c in &mut self.connectors {
+            c.from += d;
+            c.to += d;
+        }
+    }
 }

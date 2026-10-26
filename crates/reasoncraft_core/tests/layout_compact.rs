@@ -1,12 +1,29 @@
-//! Compact contour-packed layout (step 5, Task 4).
+//! Compact contour-packed layout (step 5, Tasks 4 and 5).
 
-use emath::Rect;
+use emath::{Pos2, Rect, pos2};
 use reasoncraft_core::fixtures::{FixedMeasure, sample_iot_like};
 use reasoncraft_core::layout::{Layout, LayoutParams, layout};
-use reasoncraft_core::{CardId, CardKind, Document, Item, NewLoose, Parent, owner_index};
+use reasoncraft_core::{
+    CardId, CardKind, Document, Item, LayoutDirection, NewLoose, Parent, owner_index,
+};
 
 fn run(doc: &Document) -> Layout {
     layout(doc, &FixedMeasure, &LayoutParams::default())
+}
+
+/// A world point in top-down terms: x along the cross axis, y along the
+/// main axis away from the parent.
+fn axes(dir: LayoutDirection, p: Pos2) -> Pos2 {
+    match dir {
+        LayoutDirection::TopDown => p,
+        LayoutDirection::BottomUp => pos2(p.x, -p.y),
+        LayoutDirection::LeftRight => pos2(p.y, p.x),
+    }
+}
+
+/// A world rect in top-down terms (see [`axes`]).
+fn axes_rect(dir: LayoutDirection, r: Rect) -> Rect {
+    Rect::from_two_pos(axes(dir, r.min), axes(dir, r.max))
 }
 
 /// True when `a` and `b` overlap by more than half a pixel on both axes.
@@ -49,8 +66,10 @@ fn connector_ends(doc: &Document, child: Item) -> Vec<Item> {
 
 /// No two boxes intersect, every card contains its premises, no box outside
 /// a card intersects it, no two card frames intersect and no connector span
-/// runs through a box or frame other than its own ends.
+/// runs through a box or frame other than its own ends. The connector
+/// check works on the main and cross axes of the document's direction.
 fn assert_no_overlaps(doc: &Document, l: &Layout) {
+    let dir = doc.layout_direction;
     assert_eq!(l.boxes.len(), doc.boxes.len(), "every box gets a rect");
     assert_eq!(l.cards.len(), doc.cards.len(), "every card gets a frame");
     let boxes: Vec<_> = l.boxes.iter().collect();
@@ -78,17 +97,18 @@ fn assert_no_overlaps(doc: &Document, l: &Layout) {
     }
     let rects: Vec<(Item, Rect)> = (l.boxes.iter().map(|(&id, &r)| (Item::Box(id), r)))
         .chain(l.cards.iter().map(|(&id, &r)| (Item::Card(id), r)))
+        .map(|(item, r)| (item, axes_rect(dir, r)))
         .collect();
     for c in &l.connectors {
+        let (from, to) = (axes(dir, c.from), axes(dir, c.to));
         let ends = connector_ends(doc, c.child);
         // Between a premise port and its frame's edge the line runs inside
         // the parent's own frame, so the span starts at the parent's far edge.
         let parent_edge = (rects.iter().filter(|(item, _)| ends.contains(item)))
             .map(|(_, r)| r.bottom())
-            .filter(|&b| b <= c.from.y)
-            .fold(c.to.y, f32::max);
-        let line = Rect::from_two_pos(emath::pos2(c.to.x, parent_edge), c.from)
-            .shrink2(emath::vec2(0.0, 0.5));
+            .filter(|&b| b <= from.y)
+            .fold(to.y, f32::max);
+        let line = Rect::from_two_pos(pos2(to.x, parent_edge), from).shrink2(emath::vec2(0.0, 0.5));
         for (item, r) in &rects {
             if !ends.contains(item) {
                 assert!(
@@ -212,8 +232,11 @@ fn tall_neighbour() -> Document {
 
 #[test]
 fn no_overlaps_in_any_direction() {
-    for doc in [sample_iot_like(300), parked_fragments(), tall_neighbour()] {
-        let l = run(&doc);
-        assert_no_overlaps(&doc, &l);
+    for mut doc in [sample_iot_like(300), parked_fragments(), tall_neighbour()] {
+        for dir in LayoutDirection::ALL {
+            doc.layout_direction = dir;
+            let l = run(&doc);
+            assert_no_overlaps(&doc, &l);
+        }
     }
 }

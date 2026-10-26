@@ -1,14 +1,14 @@
 //! View preferences: theme, rating display, panels, the Text panel tab,
-//! the outline's switches and which checks run; and moving around the
-//! map: zooming, keyboard navigation, revealing the selection. None of
-//! them change the document.
+//! the outline's switches and which checks run; moving around the map:
+//! zooming, keyboard navigation, revealing the selection; and the
+//! document's layout direction, the only one that changes the document.
 
 use reasoncraft_core::Item;
 use reasoncraft_core::meta::LANGUAGES;
 
 use super::{Action, Panel, ZOOM_MAX, ZOOM_MIN};
 use crate::app::ReasonCraftApp;
-use crate::canvas::input::{navigate, parking_jump};
+use crate::canvas::input::{nav_dir, navigate, parking_jump};
 use crate::doc_tab::DocTab;
 
 const ZOOM_STEP: f32 = 1.25;
@@ -35,11 +35,12 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
     }
 }
 
-/// Zoom, navigate and reveal in `tab`.
+/// Zoom, navigate, reveal and set the layout direction in `tab`.
 pub(super) fn apply_to_tab(tab: &mut DocTab, action: Action) {
     match action {
         Action::RevealSelection => tab.reveal_pending = true,
-        Action::Navigate(dir) => {
+        Action::Navigate(screen) => {
+            let dir = nav_dir(screen, tab.doc.layout_direction);
             tab.selection = match tab.selection {
                 Some(from) => navigate(&tab.doc, from, dir).or(Some(from)),
                 None => Some(Item::Box(tab.doc.root)),
@@ -58,7 +59,17 @@ pub(super) fn apply_to_tab(tab: &mut DocTab, action: Action) {
         Action::ZoomFit => tab.fit_pending = true,
         Action::Zoom100 => set_zoom(tab, 1.0),
         Action::SetZoom(z) => set_zoom(tab, z),
-        _ => unreachable!("not a zoom or navigation action"),
+        Action::SetLayoutDirection(d) => {
+            if tab.edit(|doc| doc.set_layout_direction(d)).is_some() {
+                // The map moves under the view: show the selection, or all of it.
+                if tab.selection.is_some() {
+                    tab.reveal_pending = true;
+                } else {
+                    tab.fit_pending = true;
+                }
+            }
+        }
+        _ => unreachable!("not a zoom, navigation or direction action"),
     }
 }
 

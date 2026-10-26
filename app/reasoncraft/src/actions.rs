@@ -248,7 +248,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::ZoomOut
         | Action::ZoomFit
         | Action::Zoom100
-        | Action::SetZoom(_) => view::apply_to_tab(tab, action),
+        | Action::SetZoom(_)
+        | Action::SetLayoutDirection(_) => view::apply_to_tab(tab, action),
         Action::Rate(_)
         | Action::SetAcceptance(_)
         | Action::SetStrength(_)

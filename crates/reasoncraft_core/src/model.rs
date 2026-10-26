@@ -11,6 +11,10 @@ use crate::snippets::Snippet;
 
 use crate::ids::{CardId, Item, NodeId, Parent};
 
+mod direction;
+pub use direction::LayoutDirection;
+use direction::is_default;
+
 /// The current time as an RFC 3339 string with second precision.
 pub fn now_rfc3339() -> String {
     Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)
@@ -312,6 +316,8 @@ pub struct Document {
     /// The essay written from the map.
     #[serde(default, skip_serializing_if = "EssayPlan::is_empty")]
     pub essay: EssayPlan,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub layout_direction: LayoutDirection,
     /// Unknown fields, kept so files roundtrip.
     #[serde(flatten)]
     pub extra: Map<String, Value>,
@@ -339,6 +345,7 @@ impl Document {
             parking: Vec::new(),
             snippets: Vec::new(),
             essay: EssayPlan::default(),
+            layout_direction: LayoutDirection::TopDown,
             extra: Map::new(),
         }
     }

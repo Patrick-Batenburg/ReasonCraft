@@ -10,6 +10,12 @@
 //! on the same cross position as that premise's ports, so they join the
 //! premise's group and are spread together; each port keeps its own main
 //! position (premise edge or frame edge).
+//!
+//! Bottom-up, a card's label band lies beyond its premises' far edges, so
+//! premise ports sit on the frame's far edge instead and lines stay clear
+//! of the label.
+
+use std::collections::HashMap;
 
 use emath::{Pos2, Rect};
 use indexmap::IndexMap;
@@ -19,7 +25,7 @@ use crate::connector::Strength;
 use super::axis::Frame;
 use super::{Connector, ConnectorKind, Layout, LayoutParams, TargetKind};
 use crate::ids::{CardId, Item, NodeId};
-use crate::model::Document;
+use crate::model::{Document, LayoutDirection};
 
 /// Where a child's connector attaches on its parent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -74,6 +80,19 @@ pub(super) fn assign(
             PortKey::Whole(id) => out.cards.get(&id),
         }
     };
+    let card_of: HashMap<NodeId, CardId> = if frame.dir == LayoutDirection::BottomUp {
+        let premises = doc
+            .cards
+            .values()
+            .flat_map(|c| c.premises.iter().map(|&p| (p, c.id)));
+        premises.collect()
+    } else {
+        HashMap::new()
+    };
+    let edge_of = |key: PortKey| match key {
+        PortKey::Box(id) => card_of.get(&id).map_or(key, |&c| PortKey::Whole(c)),
+        PortKey::Whole(_) => key,
+    };
     let mut ports: Vec<Option<Pos2>> = vec![None; pending.len()];
     for (key, mut members) in groups {
         let Some(parent) = rect_of(key) else {
@@ -84,7 +103,7 @@ pub(super) fn assign(
         let (lo, hi) = frame.cross_range(*parent);
         let spots = spread((lo + hi) * 0.5, hi - lo, members.len(), p);
         for (&i, at) in members.iter().zip(spots) {
-            let edge = rect_of(pending[i].port).map(|r| frame.main_range(*r).1);
+            let edge = rect_of(edge_of(pending[i].port)).map(|r| frame.main_range(*r).1);
             ports[i] = edge.map(|main| frame.point(at, main));
         }
     }
@@ -99,6 +118,7 @@ pub(super) fn assign(
                 kind: c.kind,
                 strength: c.strength,
                 nil: c.nil,
+                dir: frame.dir,
                 target: match c.port {
                     PortKey::Box(_) => TargetKind::Box,
                     PortKey::Whole(_) => TargetKind::WholeCard,

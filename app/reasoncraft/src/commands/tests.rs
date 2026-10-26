@@ -16,6 +16,11 @@ fn command_ids_unique() {
     let count = |prefix: &str| all().iter().filter(|c| c.id.starts_with(prefix)).count();
     assert_eq!(count("home.add_source."), 17);
     assert_eq!(count("view.theme."), 3);
+    assert_eq!(count("view.direction."), 3);
+    for d in reasoncraft_core::LayoutDirection::ALL {
+        let cmd = get(&format!("view.direction.{}", d.key()));
+        assert_eq!(cmd.action, Action::SetLayoutDirection(d));
+    }
     assert_eq!(count("export.outline_") + count("export.essay_"), 6);
 }
 

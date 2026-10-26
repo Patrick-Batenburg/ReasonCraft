@@ -29,7 +29,7 @@ pub use ids::{CardId, Item, NodeId, Parent};
 pub use layout::{Connector, ConnectorKind, Layout, LayoutParams, Measure, TargetKind, layout};
 pub use model::{
     Acceptance, BoxKind, BoxNode, Card, CardKind, CardStrength, Comment, DocMeta, Document,
-    ImageRef, MapKind, Role, SCHEMA_VERSION, SourceRating, SourceType, Verdict,
+    ImageRef, LayoutDirection, MapKind, Role, SCHEMA_VERSION, SourceRating, SourceType, Verdict,
 };
 pub use package::{Assets, Package};
 pub use roles::{card_roles, owner_index, role_of};

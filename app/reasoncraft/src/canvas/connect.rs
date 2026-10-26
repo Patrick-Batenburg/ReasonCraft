@@ -28,7 +28,7 @@ pub fn click_target(layout: &Layout, item: Item, world: Pos2, zoom: f32) -> Opti
     let hit = hit_test(layout, world, zoom)?;
     let to = match hit {
         Hit::Box(b) => Parent::Box(b),
-        Hit::CardFrame(c) | Hit::CardBottomEdge(c) => Parent::Card(c),
+        Hit::CardFrame(c) | Hit::CardFarEdge(c) => Parent::Card(c),
     };
     Some(Action::Move {
         item,
@@ -107,7 +107,7 @@ pub(super) fn update(
     let allowed = is_enabled(tab, &action);
     let highlight = match hit_test(layout, world, cam.zoom) {
         Some(Hit::Box(b)) => layout.boxes.get(&b),
-        Some(Hit::CardFrame(c) | Hit::CardBottomEdge(c)) => layout.cards.get(&c),
+        Some(Hit::CardFrame(c) | Hit::CardFarEdge(c)) => layout.cards.get(&c),
         None => None,
     };
     if let Some(&rect) = highlight {

@@ -1,6 +1,8 @@
 //! The list of commands, in ribbon order.
 
-use reasoncraft_core::{Acceptance, CardKind, CardStrength, ClearScope, SourceRating, SourceType};
+use reasoncraft_core::{
+    Acceptance, CardKind, CardStrength, ClearScope, LayoutDirection, SourceRating, SourceType,
+};
 
 use super::Command;
 use crate::actions::{Action, Dir, Panel, Rate};
@@ -247,6 +249,14 @@ fn view() -> Vec<Command> {
         action,
     };
     let (zoom, theme, panels) = ("group.zoom", "group.theme", "group.panels");
+    let direction = |id, d: LayoutDirection| {
+        let label = match d {
+            LayoutDirection::TopDown => "layout_direction.top_down",
+            LayoutDirection::BottomUp => "layout_direction.bottom_up",
+            LayoutDirection::LeftRight => "layout_direction.left_right",
+        };
+        cmd(id, label, "group.layout", A::SetLayoutDirection(d))
+    };
     #[allow(unused_mut)] // Debug builds add their commands.
     let mut out = vec![
         cmd("view.zoom_fit", "action.zoom_fit", zoom, A::ZoomFit),
@@ -283,6 +293,9 @@ fn view() -> Vec<Command> {
             panels,
             A::TogglePanel(Panel::Right),
         ),
+        direction("view.direction.top_down", LayoutDirection::TopDown),
+        direction("view.direction.bottom_up", LayoutDirection::BottomUp),
+        direction("view.direction.left_right", LayoutDirection::LeftRight),
     ];
     #[cfg(debug_assertions)]
     out.extend([

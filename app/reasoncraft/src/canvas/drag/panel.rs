@@ -3,7 +3,7 @@
 use eframe::egui::{self, DragAndDrop, Pos2, Response};
 use reasoncraft_core::{Document, Item, Layout, NodeId, Parent};
 
-use super::{DropTarget, bottom_band, paint_target};
+use super::{DropTarget, far_edge_band, paint_target};
 use crate::actions::{Action, Insertable, target_allowed};
 use crate::canvas::hit::{Hit, hit_test};
 use crate::canvas::paint::parking_frame;
@@ -30,12 +30,13 @@ pub fn panel_drop_target(
             }
             _ => DropTarget::new(Parent::Box(b), layout.boxes.get(&b).copied()),
         },
-        Some(Hit::CardFrame(c) | Hit::CardBottomEdge(c)) if *what == Insertable::CoPremise => {
+        Some(Hit::CardFrame(c) | Hit::CardFarEdge(c)) if *what == Insertable::CoPremise => {
             DropTarget::new(Parent::Box(*doc.cards.get(&c)?.premises.first()?), card(c))
         }
-        Some(Hit::CardBottomEdge(c)) => {
-            DropTarget::new(Parent::Card(c), card(c).map(|r| bottom_band(r, zoom)))
-        }
+        Some(Hit::CardFarEdge(c)) => DropTarget::new(
+            Parent::Card(c),
+            card(c).map(|r| far_edge_band(r, layout.dir, zoom)),
+        ),
         Some(Hit::CardFrame(c)) => DropTarget::new(Parent::Card(c), card(c)),
         None => DropTarget::new(Parent::Parking, parking_frame(layout)),
     };

@@ -179,7 +179,7 @@ fn premise_and_whole_card_ports_do_not_coincide() {
             w.to.x
         );
         // The premise connector's stub must not run through the whole-card end.
-        let path = curved_path(a.from, a.to, STUB_PX);
+        let path = curved_path(a.from, a.to, STUB_PX, a.dir);
         let Some(Segment::Line([s0, s1])) = path.last().copied() else {
             panic!("path ends in a stub");
         };

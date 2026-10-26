@@ -31,7 +31,7 @@ impl From<Hit> for Item {
     fn from(hit: Hit) -> Self {
         match hit {
             Hit::Box(b) => Item::Box(b),
-            Hit::CardFrame(c) | Hit::CardBottomEdge(c) => Item::Card(c),
+            Hit::CardFrame(c) | Hit::CardFarEdge(c) => Item::Card(c),
         }
     }
 }
