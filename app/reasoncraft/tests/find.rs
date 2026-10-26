@@ -8,6 +8,7 @@ use eframe::egui::{self, Key, Modifiers};
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, apply};
+use reasoncraft::canvas::editor::MAX_BOX_CHARS;
 use reasoncraft::doc_tab::DocTab;
 use reasoncraft::export::{ExportFormat, ExportOptions, ExportRequest, PageSetup};
 use reasoncraft::file_ops::FakeDialogs;
@@ -227,4 +228,99 @@ fn find_highlight_not_in_exports() {
         let hex = format!("#{r:02x}{g:02x}{b:02x}");
         assert!(!found.contains(&hex), "{hex} in the export");
     }
+}
+
+/// A replacement never makes a box longer than the inline editor allows:
+/// the box is cut in the same step, with the "text was cut" note.
+#[test]
+fn replace_is_capped_at_the_box_limit() {
+    let full = format!("x{}", "a".repeat(MAX_BOX_CHARS - 1));
+    let mut d = Document::new(&full);
+    let root = d.root;
+    let (_, p) = d
+        .add_card(Parent::Box(root), CardKind::Reason, &full)
+        .unwrap();
+    let mut h = harness(d, FakeDialogs::default());
+    let app = h.state_mut();
+    apply(app, Action::OpenFind { replace: true });
+    apply(app, Action::SetFindQuery("x".into()));
+    apply(app, Action::SetReplaceText("yyy".into()));
+    apply(app, Action::ReplaceCurrent);
+    let root_text = app.tabs[0].doc.boxes[&root].text.clone();
+    assert_eq!(root_text.chars().count(), MAX_BOX_CHARS);
+    assert!(root_text.starts_with("yyya"));
+    assert_eq!(app.tabs[0].history.undo.len(), 1);
+    assert_eq!(
+        app.status_note.as_deref(),
+        Some(t("status.text_cut").as_str())
+    );
+
+    apply(app, Action::Undo);
+    apply(app, Action::ReplaceAll);
+    for node in [root, p] {
+        let text = &app.tabs[0].doc.boxes[&node].text;
+        assert_eq!(text.chars().count(), MAX_BOX_CHARS);
+        assert!(text.starts_with("yyya"));
+    }
+    assert_eq!(app.tabs[0].history.undo.len(), 1, "one step");
+    assert_eq!(
+        app.status_note.as_deref(),
+        Some(t("status.text_cut").as_str())
+    );
+    apply(app, Action::Undo);
+    assert_eq!(app.tabs[0].doc.boxes[&p].text, full);
+    h.run();
+}
+
+/// Replace all during an inline edit: the edit is committed first as its
+/// own step, then the replacement covers the typed text too.
+#[test]
+fn replace_all_while_editing() {
+    let (d, _) = doc("Claim");
+    let root = d.root;
+    let mut h = harness(d, FakeDialogs::default());
+    let app = h.state_mut();
+    apply(app, Action::OpenFind { replace: true });
+    apply(app, Action::SetFindQuery("claim".into()));
+    apply(app, Action::SetReplaceText("Thesis".into()));
+    apply(app, Action::Select(Some(Item::Box(root))));
+    apply(app, Action::TypeText(" typed claim".into()));
+    assert_eq!(app.tabs[0].editing(), Some(root));
+    apply(app, Action::ReplaceAll);
+    let tab = &app.tabs[0];
+    assert_eq!(tab.editing(), None);
+    assert_eq!(tab.doc.boxes[&root].text, "Thesis typed Thesis");
+    assert_eq!(tab.history.undo.len(), 2, "the typing, then the replace");
+    apply(app, Action::Undo);
+    assert_eq!(app.tabs[0].doc.boxes[&root].text, "Claim typed claim");
+    h.run();
+}
+
+/// When the current hit's box text changes, F3 and Shift+F3 go on from
+/// where that hit was, not from the first hit.
+#[test]
+fn stale_hit_resumes_from_its_place() {
+    let (d, [one, _, two]) = doc("Claim");
+    let mut h = harness(d, FakeDialogs::default());
+    let app = h.state_mut();
+    apply(app, Action::OpenFind { replace: false });
+    apply(app, Action::SetFindQuery("cat".into()));
+    apply(app, Action::FindNext);
+    assert_eq!(app.tabs[0].find.current.as_ref().unwrap().node, two);
+    let stale = |app: &mut ReasonCraftApp, text: &str| {
+        app.tabs[0].edit(|d| d.set_text(two, text));
+        assert_eq!(app.tabs[0].find_position(), None, "stale");
+    };
+
+    stale(app, "the black cat");
+    apply(app, Action::FindNext);
+    let hit = app.tabs[0].find.current.clone().unwrap();
+    assert_eq!((hit.node, hit.range), (two, 10..13), "not back to hit 1");
+    assert_eq!(app.tabs[0].selection, Some(Item::Box(two)));
+
+    stale(app, "a very black cat");
+    apply(app, Action::FindPrev);
+    let hit = app.tabs[0].find.current.clone().unwrap();
+    assert_eq!((hit.node, hit.range), (one, 0..3), "the hit before it");
+    h.run();
 }

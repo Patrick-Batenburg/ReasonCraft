@@ -4,6 +4,11 @@
 //! Boxes are searched in [`search_order`]: the main tree in outline order,
 //! then the parking area. Hits are byte ranges in the box's own text, in
 //! text order, and never overlap.
+//!
+//! Matching goes one `char` at a time, not by grapheme: an accent typed
+//! as a separate combining mark ("e" + U+0301) is its own character, so
+//! it neither matches nor is matched by the precomposed "é", and a query
+//! "e" finds the base letter of the decomposed form.
 
 use std::ops::Range;
 
@@ -133,6 +138,10 @@ impl Document {
     /// Replace every hit of `query` with `with`; returns how many were
     /// replaced. Each box's hits are found first and replaced right to
     /// left, so text just put in is never searched again.
+    ///
+    /// Every hit counts, also one whose text already equals `with`. The
+    /// app's Replace all reports only the hits that changed, so its count
+    /// can be lower.
     pub fn replace_all(&mut self, query: &str, with: &str, opts: FindOptions) -> usize {
         let mut count = 0;
         for node in search_order(self) {
