@@ -62,7 +62,7 @@
   - [x] Task 2: Spec-alignment items from the step 4 review
   - [x] Task 3: Command registry and Search commands
   - [x] Task 4: Axis-neutral compact tree layout
-  - [ ] Task 5: Layout directions
+  - [x] Task 5: Layout directions
   - [ ] Task 6: Connector styles (Curved, Elbow, Tapered)
   - [ ] Task 7: Minimap, numbering on the map, fit selection
   - [ ] Task 8: Find and replace
