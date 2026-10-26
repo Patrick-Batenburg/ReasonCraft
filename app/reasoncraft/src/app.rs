@@ -1,5 +1,6 @@
 //! The application: open tabs, settings and the per-frame loop.
 
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -68,6 +69,12 @@ pub struct ReasonCraftApp {
     /// The status note and export notice on show, and since when (egui
     /// time), so they can expire.
     pub(crate) notes_shown: Option<(f64, Option<String>, Option<crate::export::Notice>)>,
+    /// The recovery folder session autosave writes to; `None` when autosave
+    /// is unavailable (and in tests, unless asked for).
+    pub recovery: Option<crate::recovery::RecoveryStore>,
+    /// When the last autosave ran (egui time), or `None` before the first
+    /// tick.
+    pub(crate) autosave_clock: Option<f64>,
     /// The export or page setup dialog, when open.
     pub export_dialog: Option<ExportDialog>,
     /// The egui context of the running frame: exports measure text with it.
@@ -110,6 +117,8 @@ impl ReasonCraftApp {
             image_jobs: ImageJobs::default(),
             status_note: None,
             notes_shown: None,
+            recovery: None,
+            autosave_clock: None,
             export_dialog: None,
             egui_ctx: None,
             applied: None,
@@ -121,8 +130,9 @@ impl ReasonCraftApp {
         }
     }
 
-    /// Build the app, restoring settings from eframe storage.
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    /// Build the app, restoring settings from eframe storage, with autosave
+    /// to `recovery_dir` (see [`crate::recovery`]).
+    pub fn new(cc: &eframe::CreationContext<'_>, recovery_dir: Option<PathBuf>) -> Self {
         let settings = cc
             .storage
             .and_then(|s| eframe::get_value::<Settings>(s, SETTINGS_KEY))
@@ -130,12 +140,27 @@ impl ReasonCraftApp {
         // Print files from earlier runs; off the UI thread, as the temp
         // folder can be large.
         std::thread::spawn(crate::export::clean_old_print_files);
-        Self::with_settings(
+        let mut app = Self::with_settings(
             settings,
             Box::new(RfdDialogs),
             Box::new(SystemOpener),
             Arc::new(Mutex::new(SystemClipboard::default())),
-        )
+        );
+        app.start_recovery(recovery_dir);
+        app
+    }
+
+    /// Start autosaving to `dir` and offer what crashed sessions left
+    /// there. Without a usable folder the app runs without autosave and
+    /// says so in the status bar.
+    fn start_recovery(&mut self, dir: Option<PathBuf>) {
+        match dir.map(crate::recovery::RecoveryStore::open) {
+            Some(Ok(store)) => {
+                self.recovery = Some(store);
+                crate::recovery::offer(self);
+            }
+            _ => self.status_note = Some(crate::i18n::t("recovery.unavailable")),
+        }
     }
 
     /// Build the app with default settings, no storage, file dialogs that
@@ -154,14 +179,24 @@ impl ReasonCraftApp {
         )
     }
 
+    /// Like [`Self::new_for_test`], with autosave to the recovery folder
+    /// `dir` (a temp folder: never the user's).
+    pub fn new_for_test_with_recovery(dir: PathBuf) -> Self {
+        let mut app = Self::new_for_test();
+        app.start_recovery(Some(dir));
+        app
+    }
+
     /// True once the user has answered every unsaved-changes question of a
     /// window close; the window then closes.
     pub fn close_confirmed(&self) -> bool {
         self.close_confirmed
     }
 
-    /// Let the window close (at the end of this frame).
+    /// Let the window close (at the end of this frame). This is a normal
+    /// exit: the recovery session ends with it.
     pub(crate) fn confirm_close(&mut self) {
+        crate::recovery::shutdown(self);
         self.close_confirmed = true;
         self.close_now = true;
     }
@@ -228,6 +263,11 @@ impl ReasonCraftApp {
                 actions::apply(self, action);
             }
             ctx.request_repaint();
+        }
+        let now = ctx.input(|i| i.time);
+        crate::recovery::tick(self, now);
+        if let Some(secs) = crate::recovery::due_in(self, now) {
+            ctx.request_repaint_after(Duration::from_secs_f64(secs));
         }
         if self.export.busy() || self.image_jobs.busy() || self.spell.busy() {
             // Look for the result again soon, without spinning.

@@ -114,7 +114,9 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::SetOutlineOption(..)
         | Action::SetCheckEnabled(..)
         | Action::SetDefaultDocLanguage(_)
-        | Action::SetSpellcheck(_) => view::apply(app, action),
+        | Action::SetSpellcheck(_)
+        | Action::SetAutosaveSecs(_) => view::apply(app, action),
+        Action::ResolveRecovery(choice) => crate::recovery::resolve(app, choice),
         Action::AddComment { .. }
         | Action::RemoveComment { .. }
         | Action::OpenComments(_)
@@ -370,7 +372,9 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SpellIgnore
         | Action::SpellIgnoreAll(_)
         | Action::SpellAddWord(_)
-        | Action::SetSpellcheck(_) => unreachable!("app-level action"),
+        | Action::SetSpellcheck(_)
+        | Action::SetAutosaveSecs(_)
+        | Action::ResolveRecovery(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

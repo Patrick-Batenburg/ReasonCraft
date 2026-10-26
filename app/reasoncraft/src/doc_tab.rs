@@ -99,6 +99,13 @@ pub struct DocTab {
     pub find: FindState,
     /// The spelling pass (F7), while its panel is open.
     pub spelling: Option<crate::spell::SpellPass>,
+    /// Names this tab's copy in the recovery folder.
+    pub recovery_key: Uuid,
+    /// The [`Self::revision`] last autosaved to the recovery folder; 0
+    /// when the folder holds no copy of this tab.
+    pub autosaved_revision: u64,
+    /// Where this tab was restored from after a crash, until it is saved.
+    pub recovered_from: Option<crate::recovery::RecoveryMeta>,
     /// Unique to this tab, so its text fields' widget state (cursor, undo
     /// history) is never shared with another tab (see [`Self::widget_id`]).
     ui_key: u64,
@@ -170,6 +177,9 @@ impl DocTab {
             pending_images: HashMap::new(),
             find: FindState::default(),
             spelling: None,
+            recovery_key: Uuid::new_v4(),
+            autosaved_revision: 0,
+            recovered_from: None,
             ui_key: NEXT_UI_KEY.fetch_add(1, Ordering::Relaxed),
         }
     }
@@ -247,9 +257,15 @@ impl DocTab {
             .map_or_else(|| t("untitled"), |s| s.to_string_lossy().into_owned())
     }
 
-    /// [`Self::name`], followed by " •" when there are unsaved changes.
+    /// [`Self::name`], marked when restored after a crash (until saved),
+    /// followed by " •" when there are unsaved changes.
     pub fn title(&self) -> String {
-        let name = self.name();
+        let mut name = self.name();
+        if self.recovered_from.is_some() {
+            let mut args = crate::i18n::FluentArgs::new();
+            args.set("name", name);
+            name = crate::i18n::t_args("recovery.tab_title", &args);
+        }
         if self.is_dirty() {
             format!("{name} •")
         } else {

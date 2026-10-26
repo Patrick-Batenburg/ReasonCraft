@@ -34,7 +34,8 @@ fn main() -> eframe::Result {
         "ReasonCraft",
         options,
         Box::new(|cc| {
-            let mut app = ReasonCraftApp::new(cc);
+            let recovery_dir = reasoncraft::recovery::RecoveryStore::default_dir();
+            let mut app = ReasonCraftApp::new(cc, recovery_dir);
             // Files given on the command line (this is also how a
             // double-clicked `.rcraft` file arrives on Windows and Linux).
             reasoncraft::file_ops::open_paths(&mut app, std::env::args_os().skip(1));

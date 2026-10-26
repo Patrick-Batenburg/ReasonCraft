@@ -12,6 +12,7 @@ use super::{Insertable, Rate};
 use crate::canvas::images::ImageResult;
 use crate::export::{ExportFormat, ExportRequest, PageSetup};
 use crate::jobs::JobId;
+use crate::recovery::RecoveryChoice;
 use crate::settings::{MinimapMode, OutlineToggle, TextTab};
 use crate::theme::ThemeChoice;
 
@@ -320,6 +321,10 @@ pub enum Action {
     SpellAddWord(String),
     /// Turn spellcheck (underlines and the spelling pass) on or off.
     SetSpellcheck(bool),
+    /// Set the seconds between autosaves (0: off), clamped to the allowed range.
+    SetAutosaveSecs(u32),
+    /// The answer to the recovery prompt shown after a crash.
+    ResolveRecovery(RecoveryChoice),
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,

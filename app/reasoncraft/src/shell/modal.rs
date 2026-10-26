@@ -1,5 +1,6 @@
-//! The window-wide modal: a file error, "save changes before closing?" or
-//! "replace the existing file?" (for a save or an export).
+//! The window-wide modal: a file error, "save changes before closing?",
+//! "replace the existing file?" (for a save or an export) or "restore the
+//! documents a crash left behind?".
 
 use eframe::egui::{self, Role, WidgetInfo};
 
@@ -8,6 +9,7 @@ use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
 use crate::file_ops::Modal;
 use crate::i18n::{FluentArgs, t, t_args};
+use crate::recovery::{RecoveredDoc, RecoveryChoice};
 
 /// A modal button: visible text key, accessible name key, action.
 type Button = (&'static str, &'static str, Action);
@@ -84,9 +86,41 @@ fn texts(app: &ReasonCraftApp, modal: &Modal) -> (String, String) {
             let mut args = FluentArgs::new();
             let file = path.file_name().unwrap_or(path.as_os_str());
             args.set("file", file.to_string_lossy().into_owned());
-            (t_args("replace.title", &args), t("replace.message"))
+            let message = match modal {
+                Modal::ConfirmReplace {
+                    original_changed: true,
+                    ..
+                } => "recovery.original_changed",
+                _ => "replace.message",
+            };
+            (t_args("replace.title", &args), t(message))
         }
+        Modal::Recover(docs) => (t("recovery.title"), recover_body(docs)),
     }
+}
+
+/// The recovery prompt's text: one line per document with its name, file
+/// and when it was autosaved.
+fn recover_body(docs: &[RecoveredDoc]) -> String {
+    let mut body = t("recovery.message");
+    for doc in docs {
+        let mut args = FluentArgs::new();
+        args.set("title", doc.meta.title.clone());
+        let file = doc
+            .meta
+            .original
+            .as_ref()
+            .map_or_else(|| t("recovery.never_saved"), |p| p.display().to_string());
+        args.set("file", file);
+        let time = doc.meta.saved_at.with_timezone(&chrono::Local);
+        args.set("time", time.format("%Y-%m-%d %H:%M").to_string());
+        body.push_str(
+            "
+• ",
+        );
+        body.push_str(&t_args("recovery.entry", &args));
+    }
+    body
 }
 
 /// The buttons of `modal`, and the action for Esc or a click outside it.
@@ -150,6 +184,29 @@ fn buttons(modal: &Modal) -> (Vec<Button>, Action) {
             ],
             Action::ResolveClosingExports(false),
         ),
+        Modal::Recover(_) => {
+            let answer = Action::ResolveRecovery;
+            (
+                vec![
+                    (
+                        "recovery.later",
+                        "recovery.later",
+                        answer(RecoveryChoice::Later),
+                    ),
+                    (
+                        "recovery.discard_all",
+                        "recovery.discard_all",
+                        answer(RecoveryChoice::DiscardAll),
+                    ),
+                    (
+                        "recovery.restore_all",
+                        "recovery.restore_all",
+                        answer(RecoveryChoice::RestoreAll),
+                    ),
+                ],
+                answer(RecoveryChoice::Later),
+            )
+        }
         Modal::ConfirmExportReplace { .. } => (
             vec![
                 (

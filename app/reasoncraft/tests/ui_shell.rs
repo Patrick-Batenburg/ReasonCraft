@@ -221,6 +221,7 @@ fn settings_from_old_storage_fill_defaults() {
         },
         spellcheck: false,
         spell_words: vec!["Reasoncraftish".to_owned()],
+        autosave_secs: 120,
     };
     eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
     assert_eq!(

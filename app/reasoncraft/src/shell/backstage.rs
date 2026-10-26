@@ -11,6 +11,7 @@ use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::commands;
 use crate::i18n::t;
+use crate::settings::{AUTOSAVE_DEFAULT, AUTOSAVE_MAX, AUTOSAVE_MIN};
 use crate::shell::text_panel::check_key;
 use crate::theme::{ThemeChoice, Tokens};
 use reasoncraft_core::checks::CheckKind;
@@ -133,7 +134,8 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
     }
 }
 
-/// The author name, the theme, the default language and which checks run.
+/// The author name, the theme, the default language, spellcheck, autosave
+/// and which checks run.
 fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -179,7 +181,34 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         app.push(Action::SetSpellcheck(spellcheck));
     }
     ui.add_space(8.0);
+    autosave(ui, app, &tk);
+    ui.add_space(8.0);
     checks(ui, app, &tk);
+}
+
+/// Autosave on or off, and its interval in seconds.
+fn autosave(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
+    let secs = app.settings.autosave_interval();
+    let mut on = secs.is_some();
+    ui.horizontal(|ui| {
+        if ui.checkbox(&mut on, t("settings.autosave")).changed() {
+            let secs = if on { AUTOSAVE_DEFAULT } else { 0 };
+            app.push(Action::SetAutosaveSecs(secs));
+        }
+        if let Some(mut secs) = secs {
+            let field = egui::DragValue::new(&mut secs)
+                .range(AUTOSAVE_MIN..=AUTOSAVE_MAX)
+                .suffix(t("settings.autosave_unit"));
+            let resp = ui.add(field);
+            resp.widget_info(|| {
+                WidgetInfo::labeled(Role::SpinButton, true, t("settings.autosave_interval"))
+            });
+            if resp.changed() {
+                app.push(Action::SetAutosaveSecs(secs));
+            }
+        }
+    });
+    ui.label(RichText::new(t("settings.autosave_hint")).color(tk.text_muted));
 }
 
 /// One checkbox per course-rule check, its rule as the tooltip.

@@ -50,7 +50,16 @@ pub struct Settings {
     pub spellcheck: bool,
     /// The personal dictionary: words accepted in every language.
     pub spell_words: Vec<String>,
+    /// Seconds between autosaves to the recovery folder; 0 turns autosave
+    /// off. Used clamped to [`AUTOSAVE_MIN`]..=[`AUTOSAVE_MAX`].
+    pub autosave_secs: u32,
 }
+
+/// The default seconds between autosaves.
+pub const AUTOSAVE_DEFAULT: u32 = 45;
+/// The shortest and longest autosave intervals, in seconds.
+pub const AUTOSAVE_MIN: u32 = 30;
+pub const AUTOSAVE_MAX: u32 = 600;
 
 /// When the overview minimap shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,6 +96,20 @@ pub enum OutlineToggle {
 }
 
 impl Settings {
+    /// `secs` as an autosave setting: 0 (off) or within the allowed range.
+    pub fn clamp_autosave(secs: u32) -> u32 {
+        if secs == 0 {
+            0
+        } else {
+            secs.clamp(AUTOSAVE_MIN, AUTOSAVE_MAX)
+        }
+    }
+
+    /// Seconds between autosaves, or `None` when autosave is off.
+    pub fn autosave_interval(&self) -> Option<u32> {
+        (self.autosave_secs != 0).then(|| Self::clamp_autosave(self.autosave_secs))
+    }
+
     /// The layout parameters these settings ask for: boxes get an
     /// indicator row for the marks they show (numbers included, numbered
     /// like the Outline with its current Notes switch).
@@ -164,6 +187,7 @@ impl Default for Settings {
             export: ExportOptions::default(),
             spellcheck: true,
             spell_words: Vec::new(),
+            autosave_secs: AUTOSAVE_DEFAULT,
         }
     }
 }

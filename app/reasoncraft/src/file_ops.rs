@@ -13,10 +13,12 @@ use reasoncraft_core::file::{self, FileError};
 use crate::actions::UnsavedChoice;
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
-use crate::i18n::{FluentArgs, t_args};
 
 mod dialogs;
+mod errors;
 pub use dialogs::{FakeDialogs, FileDialogs, RfdDialogs};
+pub(crate) use errors::show_error;
+pub use errors::{error_key, error_text};
 
 /// The file extension of ReasonCraft maps.
 pub const EXTENSION: &str = "rcraft";
@@ -38,11 +40,13 @@ pub enum Modal {
         waiting: bool,
     },
     /// Saving tab `tab` to `path` would replace an existing file that the
-    /// save dialog never checked (`.rcraft` was appended to the chosen name).
+    /// save dialog never checked (`.rcraft` was appended to the chosen name),
+    /// or, `original_changed`, a restored tab's original that changed since.
     ConfirmReplace {
         tab: usize,
         path: PathBuf,
         then: AfterSave,
+        original_changed: bool,
     },
     /// The window is closing, every tab is saved or discarded, and exports
     /// are still running: it closes once they finish (or on Quit anyway).
@@ -53,6 +57,8 @@ pub enum Modal {
         path: PathBuf,
         request: crate::export::ExportRequest,
     },
+    /// A crashed session left these documents behind: restore them?
+    Recover(Vec<crate::recovery::RecoveredDoc>),
 }
 
 /// What a save was part of, so it can carry on once the file is written.
@@ -74,6 +80,9 @@ pub enum SaveOutcome {
     /// Nothing was written yet: `.rcraft` was appended to the chosen name
     /// and that file exists, so the user must confirm replacing it.
     NeedsReplaceConfirm(PathBuf),
+    /// Nothing was written yet: the tab was restored after a crash and its
+    /// original file changed since, so the user must confirm replacing it.
+    OriginalChanged(PathBuf),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -99,50 +108,6 @@ pub fn with_extension(path: PathBuf, ext: &str) -> PathBuf {
     name.push(".");
     name.push(ext);
     PathBuf::from(name)
-}
-
-/// The i18n key that explains `err`.
-pub fn error_key(op: FileOp, err: &FileError) -> &'static str {
-    match (op, err) {
-        (FileOp::Open, FileError::Io(_)) => "error.open.io",
-        (FileOp::Open, FileError::NotAReasonCraftFile) => "error.open.not_a_file",
-        (FileOp::Open, FileError::MissingDocument) => "error.open.missing_document",
-        (FileOp::Open, FileError::Malformed(_)) => "error.open.malformed",
-        (FileOp::Open, FileError::NewerVersion { .. }) => "error.open.newer_version",
-        (FileOp::Save, FileError::Io(_)) => "error.save.io",
-        (FileOp::Save, _) => "error.save.other",
-    }
-}
-
-/// The user-facing explanation of `err`.
-pub fn error_text(op: FileOp, err: &FileError) -> String {
-    let mut args = FluentArgs::new();
-    match err {
-        FileError::NewerVersion { found, supported } => {
-            args.set("found", *found);
-            args.set("supported", *supported);
-        }
-        FileError::Io(e) => args.set("detail", e.to_string()),
-        FileError::Malformed(detail) => args.set("detail", detail.clone()),
-        FileError::NotAReasonCraftFile | FileError::MissingDocument => {
-            args.set("detail", err.to_string());
-        }
-    }
-    t_args(error_key(op, err), &args)
-}
-
-fn show_error(app: &mut ReasonCraftApp, op: FileOp, path: &Path, err: &FileError) {
-    let mut args = FluentArgs::new();
-    let file = path.file_name().unwrap_or(path.as_os_str());
-    args.set("file", file.to_string_lossy().into_owned());
-    let title_key = match op {
-        FileOp::Open => "error.open.title",
-        FileOp::Save => "error.save.title",
-    };
-    app.modal = Some(Modal::Error {
-        title: t_args(title_key, &args),
-        message: error_text(op, err),
-    });
 }
 
 /// Ask for a file and open it.
@@ -201,6 +166,13 @@ fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
     }
     let mut tab = DocTab::from_package(file::open_package(path)?);
     tab.path = Some(path.to_path_buf());
+    place_tab(app, tab);
+    Ok(())
+}
+
+/// Show a loaded `tab` in the active tab when that one is untouched, else
+/// in a new tab; it becomes active. Returns its index.
+pub(crate) fn place_tab(app: &mut ReasonCraftApp, mut tab: DocTab) -> usize {
     let reused = app.tabs.get(app.active).filter(|t| is_untouched(t));
     tab.mark_loaded(reused.map_or(0, DocTab::revision));
     if reused.is_some() {
@@ -209,7 +181,7 @@ fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
         app.tabs.push(tab);
         app.active = app.tabs.len() - 1;
     }
-    Ok(())
+    app.active
 }
 
 /// Save `tab` to its path, asking for one when it has none or `save_as` is
@@ -231,6 +203,9 @@ fn save_tab_at(
 ) -> Result<SaveOutcome, (PathBuf, FileError)> {
     tab.commit_session();
     let path = match (&tab.path, save_as) {
+        (Some(path), false) if crate::recovery::original_changed(tab, path) => {
+            return Ok(SaveOutcome::OriginalChanged(path.clone()));
+        }
         (Some(path), false) => path.clone(),
         _ => {
             let suggested = format!("{}.{EXTENSION}", tab.name());
@@ -264,6 +239,7 @@ fn write_tab(tab: &mut DocTab, path: PathBuf) -> Result<(), (PathBuf, FileError)
     result.map_err(|err| (path.clone(), err))?;
     tab.path = Some(path);
     tab.history.mark_saved();
+    tab.recovered_from = None;
     Ok(())
 }
 
@@ -277,15 +253,30 @@ fn save_and_report(app: &mut ReasonCraftApp, i: usize, save_as: bool, then: Afte
     match save_tab_at(tab, &*app.dialogs, save_as) {
         Ok(SaveOutcome::Saved) => true,
         Ok(SaveOutcome::Cancelled) => false,
-        Ok(SaveOutcome::NeedsReplaceConfirm(path)) => {
-            app.modal = Some(Modal::ConfirmReplace { tab: i, path, then });
-            false
-        }
+        Ok(SaveOutcome::NeedsReplaceConfirm(path)) => ask_replace(app, i, path, then, false),
+        Ok(SaveOutcome::OriginalChanged(path)) => ask_replace(app, i, path, then, true),
         Err((path, err)) => {
             show_error(app, FileOp::Save, &path, &err);
             false
         }
     }
+}
+
+/// Ask before tab `tab`'s save replaces `path`; false (nothing saved yet).
+fn ask_replace(
+    app: &mut ReasonCraftApp,
+    tab: usize,
+    path: PathBuf,
+    then: AfterSave,
+    original_changed: bool,
+) -> bool {
+    app.modal = Some(Modal::ConfirmReplace {
+        tab,
+        path,
+        then,
+        original_changed,
+    });
+    false
 }
 
 /// Save the active tab (Save / Save As).
@@ -296,7 +287,10 @@ pub fn save_active(app: &mut ReasonCraftApp, save_as: bool) {
 /// The answer to "replace the existing file?". Cancel ends the save and
 /// whatever it was part of (a tab or window close).
 pub fn resolve_replace(app: &mut ReasonCraftApp, replace: bool) {
-    let Some(Modal::ConfirmReplace { tab, path, then }) = app.modal.take() else {
+    let Some(Modal::ConfirmReplace {
+        tab, path, then, ..
+    }) = app.modal.take()
+    else {
         return;
     };
     let Some(doc_tab) = app.tabs.get_mut(tab).filter(|_| replace) else {
@@ -341,7 +335,8 @@ pub fn remove_tab(app: &mut ReasonCraftApp, i: usize) {
     if i >= app.tabs.len() {
         return;
     }
-    app.tabs.remove(i);
+    let tab = app.tabs.remove(i);
+    crate::recovery::forget(app, &tab);
     if app.tabs.is_empty() {
         app.tabs.push(DocTab::new());
     }

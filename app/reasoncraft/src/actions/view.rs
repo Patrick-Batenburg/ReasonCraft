@@ -11,6 +11,7 @@ use super::{Action, Panel};
 use crate::app::ReasonCraftApp;
 use crate::canvas::input::{nav_dir, navigate, parking_jump};
 use crate::doc_tab::DocTab;
+use crate::settings::Settings;
 
 const ZOOM_STEP: f32 = 1.25;
 
@@ -43,6 +44,7 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
                 }
             }
         }
+        Action::SetAutosaveSecs(secs) => s.autosave_secs = Settings::clamp_autosave(secs),
         _ => unreachable!("not a view action"),
     }
 }

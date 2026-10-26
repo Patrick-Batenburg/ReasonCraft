@@ -9,6 +9,7 @@ pub mod export;
 pub mod file_ops;
 pub mod i18n;
 pub mod jobs;
+pub mod recovery;
 pub mod scene;
 pub mod settings;
 pub mod shell;

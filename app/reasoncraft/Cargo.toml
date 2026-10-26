@@ -27,12 +27,15 @@ docx-rs = { version = "0.4", default-features = false }
 # Patches the core properties of Word files (and reads zips in tests).
 zip.workspace = true
 unicode-normalization = "0.1.26"
+# Autosave: the per-user recovery folder, and its meta files.
+directories.workspace = true
+chrono = { workspace = true, features = ["serde"] }
+serde_json.workspace = true
 
 [dev-dependencies]
 egui_kittest = "0.37"
 reasoncraft_core = { path = "../../crates/reasoncraft_core", features = ["test-fixtures"] }
 tempfile.workspace = true
-serde_json.workspace = true
 miniz_oxide = "0.8"
 roxmltree = "0.20"
 

@@ -198,6 +198,22 @@ settings-default_language = Language of new documents
 settings-default_language_hint = Used by the language-aware checks. Change it for one document on the Document page.
 settings-spellcheck = Check spelling in the document language
 settings-spellcheck_hint = Underlines misspelled words while you type and enables Spelling (F7).
+settings-autosave = Autosave every
+settings-autosave_unit = { " " }seconds
+settings-autosave_interval = Seconds between autosaves
+settings-autosave_hint = Keeps a copy of unsaved work, so it can be restored after a crash. Your files are only written when you save.
+
+## Recovery
+recovery-title = Restore unsaved work?
+recovery-message = ReasonCraft did not close normally last time. These documents had unsaved changes:
+recovery-entry = { $title } ({ $file }), autosaved { $time }
+recovery-never_saved = never saved
+recovery-restore_all = Restore all
+recovery-discard_all = Discard all
+recovery-later = Decide later
+recovery-tab_title = { $name } (recovered)
+recovery-original_changed = The file changed after this copy was autosaved. Replacing it overwrites those changes.
+recovery-unavailable = Autosave is off: the recovery folder cannot be used.
 
 ## Document page
 document-title = Document
