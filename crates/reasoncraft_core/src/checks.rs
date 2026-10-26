@@ -5,7 +5,7 @@
 
 pub(crate) mod stopwords;
 mod tokens;
-mod walk;
+pub(crate) mod walk;
 
 use serde::{Deserialize, Serialize};
 

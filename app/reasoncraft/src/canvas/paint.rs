@@ -1,8 +1,9 @@
 //! Painting of a laid-out map (spec §5): the dot grid, the document's
 //! [`crate::scene`] drawn through the [`Camera`], and the screen-only
-//! overlays on top: selection ring, comment badges and link glyphs.
+//! overlays on top: find-hit outlines, selection ring, comment badges and
+//! link glyphs.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use eframe::egui::{Color32, FontId, Painter, Rect, Shape, Stroke, StrokeKind, pos2, vec2};
 use reasoncraft_core::{ConnectorStyle, Document, Item, Layout, NodeId, Role};
@@ -16,6 +17,8 @@ use crate::theme::Tokens;
 pub const FRAME_RADIUS: f32 = 10.0;
 const SELECT_OFFSET: f32 = 2.0;
 const SELECT_WIDTH: f32 = 2.0;
+/// The find-hit outline sits right on the box edge, inside the selection ring.
+const FIND_HIT_WIDTH: f32 = 2.0;
 const DOT_SPACING: f32 = 24.0;
 /// Dots closer than this many screen px are thinned out.
 const MIN_DOT_SPACING: f32 = 14.0;
@@ -69,9 +72,10 @@ pub struct PaintOptions {
 }
 
 /// Paint the map: the dot grid, the scene of the document, then the
-/// screen-only overlays (selection ring, comment badges, link glyphs) on
-/// top, so the selection ring never hides them. `fonts` is the measure the
-/// layout used; `leads` moves glyphs and badges past box numbers.
+/// screen-only overlays (outlines of the boxes in `find_hits`, selection
+/// ring, comment badges, link glyphs) on top, so the selection ring never
+/// hides them. `fonts` is the measure the layout used; `leads` moves
+/// glyphs and badges past box numbers.
 #[allow(clippy::too_many_arguments)]
 pub fn paint(
     painter: &Painter,
@@ -85,6 +89,7 @@ pub fn paint(
     images: &ImageCache,
     fonts: &dyn TextRows,
     leads: &HashMap<NodeId, f32>,
+    find_hits: &HashSet<NodeId>,
 ) {
     let p = Pass {
         painter,
@@ -112,6 +117,12 @@ pub fn paint(
     };
     let scene = build_scene(doc, layout, &scene_opts, fonts);
     paint_scene(painter, &scene, cam, images, tokens);
+
+    for id in find_hits {
+        if let (Some(&rect), Some(node)) = (layout.boxes.get(id), doc.boxes.get(id)) {
+            p.find_hit(rect, box_radius(&node.kind));
+        }
+    }
 
     let selected = match selection {
         Some(Item::Box(b)) => layout.boxes.get(&b).map(|&r| {
@@ -176,6 +187,18 @@ impl Pass<'_> {
             y += step;
         }
         self.painter.extend(shapes);
+    }
+
+    fn find_hit(&self, world: Rect, radius: f32) {
+        let r = self.screen(world);
+        if self.visible(r) {
+            self.painter.rect_stroke(
+                r,
+                radius * self.cam.zoom,
+                Stroke::new(FIND_HIT_WIDTH, self.t.find_hit),
+                StrokeKind::Outside,
+            );
+        }
     }
 
     fn selection(&self, world: Rect, radius: f32) {

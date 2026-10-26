@@ -18,10 +18,12 @@ use crate::i18n::t;
 use crate::jobs::JobId;
 
 mod essay_edit;
+mod find_state;
 mod meta_edit;
 mod session;
 mod snippet_edit;
 pub use essay_edit::EssayView;
+pub use find_state::FindState;
 pub use session::EditSession;
 pub use snippet_edit::{cap_snippet, tidy_source};
 
@@ -93,6 +95,8 @@ pub struct DocTab {
     /// preparing it; a newer insert for the same box replaces the entry,
     /// so the older result is dropped when it arrives.
     pub pending_images: HashMap<NodeId, JobId>,
+    /// The find bar: its query, options, current hit and cached hits.
+    pub find: FindState,
     /// Unique to this tab, so its text fields' widget state (cursor, undo
     /// history) is never shared with another tab (see [`Self::widget_id`]).
     ui_key: u64,
@@ -162,6 +166,7 @@ impl DocTab {
             issue_cache: None,
             essay_cache: None,
             pending_images: HashMap::new(),
+            find: FindState::default(),
             ui_key: NEXT_UI_KEY.fetch_add(1, Ordering::Relaxed),
         }
     }

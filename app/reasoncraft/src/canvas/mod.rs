@@ -105,6 +105,11 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
 
     let leads = marks_leads(&layout, &measure, tab.camera.zoom);
+    let find_hits = if tab.find.open {
+        tab.find_hits().iter().map(|h| h.node).collect()
+    } else {
+        Default::default()
+    };
     let painter = ui.painter_at(rect);
     paint::paint(
         &painter,
@@ -123,6 +128,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         images,
         &measure,
         &leads,
+        &find_hits,
     );
     comments::badges(ui, tab, &layout, &leads, pending);
     links::glyphs(ui, tab, &layout, &leads, pending);

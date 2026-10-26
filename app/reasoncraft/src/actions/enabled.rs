@@ -3,7 +3,7 @@
 use reasoncraft_core::{CardKind, Item, NewItem, Parent, can_attach};
 
 use super::{
-    Action, box_group, comments, connect, evaluate, images, insert, selected_card, sources,
+    Action, box_group, comments, connect, evaluate, find, images, insert, selected_card, sources,
     structure,
 };
 use crate::canvas::input::parking_jump;
@@ -21,6 +21,7 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
         .or_else(|| connect::is_enabled(tab, action))
         .or_else(|| box_group::is_enabled(tab, action))
         .or_else(|| images::is_enabled(tab, action))
+        .or_else(|| find::is_enabled(tab, action))
     {
         return enabled;
     }

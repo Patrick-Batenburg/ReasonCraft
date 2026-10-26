@@ -12,6 +12,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Comment.** Add your own comments or one of twelve presets (positive, needs work, problem) to any box. A badge shows the count, and Ctrl+Shift+M opens them. Set the name shown on your comments in File → Settings.
 - **Write from the Text panel.** View → Text panel opens the panel on the right, with four tabs (see [The Text panel](#the-text-panel)): an **Outline** of the map, an **Essay** written along the map (see [The Essay tab](#the-essay-tab)), a **Check** tab with course-rule hints, and **Snippets** of source text to build the map from.
 - **Set the document language.** File → Document holds the title, author and language (English or Dutch) of the open map. The language drives the "and"/"or" and key-term checks; File → Settings sets the language new documents start with.
+- **Find and replace.** Ctrl+F (or Find… in the Home ribbon) opens a find bar above the map that searches the text of every box: claims, premises, categories, sources and notes, the main map first, then the parking area. Match case and whole word are switches in the bar; the counter shows which hit you are on, the hit's box is selected and brought into view, and every box with a hit gets an outline. Ctrl+H (Replace…) adds Replace and Replace all; Replace all is one undo step.
 - **Change types.** Turn a reason into an objection or back again (its strength is kept), and change a source's type.
 - **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
 - **Add images.** Put a PNG, JPEG or WebP image in a box. The image is prepared in the background, so a large photo never freezes the window: the box shows "Preparing image…" until it is ready. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.
@@ -53,7 +54,7 @@ Everything is on the **Export** tab of the ribbon. Exports run in the background
 - **Outline** (menu): the outline as Markdown, plain text or a Word document, with the numbering and switches of the Outline tab.
 - **Essay** (menu): the essay as Markdown or a Word document, with the document's title and author and a heading for each part.
 
-Exports show exactly what the map shows (layout, wrapped lines, colours, ratings, source icons and images) without the screen-only parts: the selection, the "+" button, comment badges, link glyphs and the dot grid. In the outline and essay, the linking words ("because"/"omdat", "but"/"maar") and source names follow the document language (English or Dutch). Word files use the built-in Title and Heading styles, so they open in Word and LibreOffice and pick up their styles.
+Exports show exactly what the map shows (layout, wrapped lines, colours, ratings, source icons and images) without the screen-only parts: the selection, the "+" button, comment badges, link glyphs, find highlights and the dot grid. In the outline and essay, the linking words ("because"/"omdat", "but"/"maar") and source names follow the document language (English or Dutch). Word files use the built-in Title and Heading styles, so they open in Word and LibreOffice and pick up their styles.
 
 ## Build and run
 
@@ -81,6 +82,9 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Keys | Action |
 | --- | --- |
 | Alt+Q | Search commands, also while typing in a box or field: type part of a command's name, pick it with the arrow keys and press Enter (Esc closes the list) |
+| Ctrl+F | Find in box text, sources and notes, also while typing in a box or field: the find bar opens above the map (in its field Enter / Shift+Enter go to the next / previous hit, Esc closes it) |
+| Ctrl+H | Find and replace (on macOS Cmd+H hides the app: use Replace in the Home ribbon or Search commands instead) |
+| F3 / Shift+F3 | Go to the next / previous hit |
 
 ### While a box or card is selected
 

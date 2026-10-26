@@ -97,6 +97,16 @@ pub const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     (Shortcut::new(Key::Plus, CMD), || Action::ZoomIn),
     (Shortcut::new(Key::Minus, CMD), || Action::ZoomOut),
     (Shortcut::new(Key::Q, ALT), || Action::OpenCommandSearch),
+    (Shortcut::new(Key::F, CMD), || Action::OpenFind {
+        replace: false,
+    }),
+    // Cmd+H hides the app on macOS: there Replace is on the ribbon and in
+    // Search commands.
+    (Shortcut::new(Key::H, CMD), || Action::OpenFind {
+        replace: true,
+    }),
+    (Shortcut::new(Key::F3, NONE), || Action::FindNext),
+    (Shortcut::new(Key::F3, SHIFT), || Action::FindPrev),
 ];
 
 /// The action of the table entry `key` with `mods` presses, if any.

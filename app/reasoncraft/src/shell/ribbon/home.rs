@@ -82,6 +82,11 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
                 small_command(ui, &tk, icon, id, enabled(id), &mut out);
             }
         });
+        ui.vertical(|ui| {
+            for (icon, id) in [(Icon::Find, "home.find"), (Icon::Replace, "home.replace")] {
+                small_command(ui, &tk, icon, id, true, &mut out);
+            }
+        });
     });
     box_group(ui, app, &mut out);
     app.pending.extend(out);

@@ -69,6 +69,8 @@ action-image = Image
 action-remove_image = Remove image
 action-delete = Delete
 action-delete_branch = Delete branch
+action-find = Find…
+action-replace = Replace…
 action-zoom_fit = Fit
 action-zoom_fit_selection = Fit selection
 action-zoom_100 = 100%
@@ -97,6 +99,24 @@ command-rate_high = Rate high
 command-rate_mid = Rate mid
 command-rate_low = Rate low
 command-rate_clear = Clear the selection's rating
+command-find_next = Find next
+command-find_prev = Find previous
+
+## Find bar
+find-query = Find in boxes, sources and notes
+find-replacement = Replace with
+find-match_case = Aa
+find-match_case-tip = Match case
+find-whole_word = W
+find-whole_word-tip = Whole word
+find-count = { $current } of { $total }
+find-none = No results
+find-prev = Previous
+find-next = Next
+find-replace = Replace
+find-replace_all = Replace all
+find-close = Close find
+find-replaced = Replaced { $count }
 
 ## Evaluation
 eval-accept = Accept

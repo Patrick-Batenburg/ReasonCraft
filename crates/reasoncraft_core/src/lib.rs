@@ -6,6 +6,7 @@ pub mod edit;
 pub mod essay;
 pub mod evaluate;
 pub mod file;
+pub mod find;
 #[cfg(feature = "test-fixtures")]
 pub mod fixtures;
 pub mod history;
@@ -25,6 +26,7 @@ pub use connector::ConnectorStyle;
 pub use edit::{EditError, NewLoose, RemoveMode};
 pub use essay::{EssayPlan, EssaySlot, essay_markdown, essay_order, essay_plain_text};
 pub use evaluate::ClearScope;
+pub use find::{FindHit, FindOptions, find_all};
 pub use history::History;
 pub use ids::{CardId, Item, NodeId, Parent};
 pub use layout::{Connector, ConnectorKind, Layout, LayoutParams, Measure, TargetKind, layout};

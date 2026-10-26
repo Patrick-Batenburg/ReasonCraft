@@ -11,6 +11,7 @@ mod connector;
 mod direction;
 mod evaluate;
 mod export;
+mod find;
 mod pen;
 mod view;
 pub use connector::connector_atom;
@@ -100,6 +101,10 @@ pub enum Icon {
     Minimap,
     /// Numbered rows (numbering on the map).
     Numbers,
+    /// A magnifying glass (find).
+    Find,
+    /// A line of text, an arrow and its replacement.
+    Replace,
 }
 
 /// Draw `icon` in `rect` (a square). `fg` is the main colour, `bg` the
@@ -366,6 +371,7 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         | Icon::PageSetup
         | Icon::Print => export::paint(&pen, icon, fg, t),
         Icon::ZoomFitSelection | Icon::Minimap | Icon::Numbers => view::paint(&pen, icon, fg, t),
+        Icon::Find | Icon::Replace => find::paint(&pen, icon, fg, t),
         Icon::Direction(dir) => direction::paint_direction(painter, rect, dir, fg),
         Icon::Connector(style) => connector::paint_connector(painter, rect, style, fg),
     }

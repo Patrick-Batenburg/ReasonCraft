@@ -21,7 +21,7 @@ pub use shortcuts::{ActionCtor, SHORTCUTS, Shortcut, shortcut_for, shortcut_text
 ///   selected box, Esc stops editing and the arrows move the selection.
 /// - While a box is being edited only Esc (finish), Tab / Shift+Tab (finish
 ///   and add a reason / objection) and the table's whole-card, source,
-///   co-premise and file keys (finish, then the command) are commands;
+///   co-premise, file and find keys (finish, then the command) are commands;
 ///   every other key is text.
 /// - Ctrl+Enter adds a co-premise with or without Shift, and Ctrl+Shift+=
 ///   zooms in like Ctrl+=.
@@ -73,6 +73,9 @@ fn works_while_editing(action: &Action) -> bool {
             | Action::SaveAs
             | Action::Open
             | Action::New
+            | Action::OpenFind { .. }
+            | Action::FindNext
+            | Action::FindPrev
     )
 }
 
@@ -143,11 +146,19 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     }
     if let Some(item) = tab.connect_mode {
         super::connect::map_keys(item, tab.selection, &mut out);
-    } else if tab.comments_open.is_some() && editing.is_none() {
-        // Esc closes the comment popover before it stops anything else.
+    } else if editing.is_none() {
+        // Esc closes the comment popover, then the find bar, before it
+        // stops anything else.
+        let close = if tab.comments_open.is_some() {
+            Some(Action::CloseComments)
+        } else {
+            tab.find.open.then_some(Action::CloseFind)
+        };
         for a in &mut out {
-            if *a == Action::StopEditing {
-                *a = Action::CloseComments;
+            if *a == Action::StopEditing
+                && let Some(close) = &close
+            {
+                *a = close.clone();
             }
         }
     }
@@ -160,9 +171,10 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
 
 /// The file keys while a text field other than the box editor has focus
 /// (a snippet's text, citation or link, the document title or author, an
-/// essay paragraph):
-/// Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N, the same subset that works
-/// while editing a box, and Alt+Q. They are taken out of the input; every other key
+/// essay paragraph, the find bar):
+/// Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N, the find keys (Ctrl+F,
+/// Ctrl+H, F3, Shift+F3), the same subset that works while editing a box,
+/// and Alt+Q. They are taken out of the input; every other key
 /// stays with the field. Applying the action first ends the field's
 /// editing session, so its typing becomes a history step before the save.
 pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
@@ -190,7 +202,10 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                     | Action::SaveAs
                     | Action::Open
                     | Action::New
-                    | Action::OpenCommandSearch),
+                    | Action::OpenCommandSearch
+                    | Action::OpenFind { .. }
+                    | Action::FindNext
+                    | Action::FindPrev),
                 ) => {
                     alt_text = a == Action::OpenCommandSearch;
                     out.push(a);

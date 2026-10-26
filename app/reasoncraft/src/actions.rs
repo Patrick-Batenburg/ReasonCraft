@@ -18,6 +18,7 @@ mod editing;
 mod essay;
 mod evaluate;
 mod export;
+mod find;
 pub(crate) use export::close_after_exports;
 pub use export::poll_exports;
 mod images;
@@ -123,6 +124,15 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             box_group::apply(app, action)
         }
         Action::InsertImage | Action::RemoveImage => images::apply(app, action),
+        Action::OpenFind { .. }
+        | Action::CloseFind
+        | Action::FindNext
+        | Action::FindPrev
+        | Action::ReplaceCurrent
+        | Action::ReplaceAll
+        | Action::SetFindQuery(_)
+        | Action::SetReplaceText(_)
+        | Action::SetFindOptions(_) => find::apply(app, action),
         // Editing a box: text past the limit is cut, with a note.
         Action::Edit | Action::StopEditing | Action::EditText { .. } | Action::TypeText(_) => {
             if let Some(tab) = app.tabs.get_mut(app.active)
@@ -198,6 +208,13 @@ fn keeps_notes(action: &Action) -> bool {
             | Action::OpenExportFolder
             | Action::DismissModal
             | Action::OpenCommandSearch
+            | Action::OpenFind { .. }
+            | Action::CloseFind
+            | Action::FindNext
+            | Action::FindPrev
+            | Action::SetFindQuery(_)
+            | Action::SetReplaceText(_)
+            | Action::SetFindOptions(_)
     )
 }
 
@@ -323,7 +340,16 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::OpenExportFolder
         | Action::ResolveExportReplace(_)
         | Action::ResolveClosingExports(_)
-        | Action::OpenCommandSearch => unreachable!("app-level action"),
+        | Action::OpenCommandSearch
+        | Action::OpenFind { .. }
+        | Action::CloseFind
+        | Action::FindNext
+        | Action::FindPrev
+        | Action::ReplaceCurrent
+        | Action::ReplaceAll
+        | Action::SetFindQuery(_)
+        | Action::SetReplaceText(_)
+        | Action::SetFindOptions(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

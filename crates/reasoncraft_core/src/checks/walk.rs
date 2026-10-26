@@ -7,7 +7,7 @@ use crate::layout::display_children;
 use crate::model::{BoxKind, Document};
 
 /// One item in check order, with where it hangs.
-pub(super) struct Visit {
+pub(crate) struct Visit {
     pub item: Item,
     pub parent: Option<Parent>,
     /// The item sits inside a top-level parking fragment.
@@ -18,7 +18,7 @@ pub(super) struct Visit {
 /// display order of the canvas and the outline), then the parking area.
 /// Each item is listed once, even in a damaged, cyclic structure; an item
 /// reachable from the root is never treated as parked.
-pub(super) fn visit_order(doc: &Document) -> Vec<Visit> {
+pub(crate) fn visit_order(doc: &Document) -> Vec<Visit> {
     let mut out = Vec::with_capacity(doc.boxes.len() + doc.cards.len());
     let mut seen = HashSet::with_capacity(doc.boxes.len() + doc.cards.len());
     let tops = std::iter::once((Item::Box(doc.root), None, false)).chain(

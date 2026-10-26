@@ -4,6 +4,7 @@ pub mod backstage;
 pub mod building;
 pub mod command_search;
 pub mod export_dialog;
+pub mod find_bar;
 pub mod icons;
 pub mod link_modal;
 pub mod modal;
@@ -124,12 +125,14 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     app.pending.extend(out);
 }
 
-/// The backstage when the File tab is open, otherwise the map area.
+/// The backstage when the File tab is open, otherwise the map area with
+/// the find bar above it.
 pub fn show_central(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     if app.ribbon_tab == RibbonTab::File {
         backstage::show(ui, app);
         return;
     }
+    find_bar::show(ui, app);
     let tk = app.tokens;
     egui::CentralPanel::default()
         .frame(Frame::new().fill(tk.canvas))

@@ -39,6 +39,8 @@ pub struct Tokens {
     /// Sticky-note fill and its text.
     pub note: Color32,
     pub note_text: Color32,
+    /// The screen-only outline around boxes with a find hit.
+    pub find_hit: Color32,
 }
 
 const fn hex(rgb: u32) -> Color32 {
@@ -66,6 +68,7 @@ impl Tokens {
             attachment_line: hex(0x5C5C66),
             note: hex(0xD6C267),
             note_text: hex(0x26220F),
+            find_hit: hex(0xE879F9),
         }
     }
 
@@ -89,6 +92,7 @@ impl Tokens {
             attachment_line: hex(0x9A9AA4),
             note: hex(0xFFF1A6),
             note_text: hex(0x3A3412),
+            find_hit: hex(0xA21CAF),
         }
     }
 }
@@ -168,6 +172,11 @@ mod tests {
                 "note (dark = {})",
                 t.dark
             );
+        }
+        // The find-hit outline must stand out on the canvas.
+        for t in [Tokens::dark(), Tokens::light()] {
+            let c = contrast(t.find_hit, t.canvas);
+            assert!(c >= 4.5, "find_hit: {c:.2} (dark = {})", t.dark);
         }
         // Light-theme role colours are also used for label text.
         let t = Tokens::light();

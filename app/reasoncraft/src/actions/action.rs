@@ -3,8 +3,9 @@
 use reasoncraft_core::checks::CheckKind;
 use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::{
-    Acceptance, CardKind, CardStrength, ClearScope, ConnectorStyle, Item, LayoutDirection,
-    NewLoose, NodeId, Parent, SnippetSource, SourceRating, SourceType, Uuid, Verdict,
+    Acceptance, CardKind, CardStrength, ClearScope, ConnectorStyle, FindOptions, Item,
+    LayoutDirection, NewLoose, NodeId, Parent, SnippetSource, SourceRating, SourceType, Uuid,
+    Verdict,
 };
 
 use super::{Insertable, Rate};
@@ -272,6 +273,27 @@ pub enum Action {
     ResolveClosingExports(bool),
     /// Put the keyboard focus in the title bar's Search commands box (Alt+Q).
     OpenCommandSearch,
+    /// Show the find bar (with the replacement field when `replace`) and
+    /// put the keyboard focus in its query field.
+    OpenFind {
+        replace: bool,
+    },
+    /// Hide the find bar; the map has the keys again.
+    CloseFind,
+    /// Select the next (previous) hit's box and reveal it, wrapping
+    /// around. With the bar closed it opens first.
+    FindNext,
+    FindPrev,
+    /// Replace the current hit (one history step) and go to the next;
+    /// with no current hit, go to the first.
+    ReplaceCurrent,
+    /// Replace every hit as one history step, with a status note.
+    ReplaceAll,
+    /// The query changed: go to its first hit.
+    SetFindQuery(String),
+    SetReplaceText(String),
+    /// Match case and whole word changed: go to the first hit.
+    SetFindOptions(FindOptions),
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,

@@ -108,6 +108,20 @@ pub(super) fn build() -> Vec<Command> {
         ),
         cmd("home.undo", "action.undo", editing, A::Undo),
         cmd("home.redo", "action.redo", editing, A::Redo),
+        cmd(
+            "home.find",
+            "action.find",
+            editing,
+            A::OpenFind { replace: false },
+        ),
+        cmd(
+            "home.replace",
+            "action.replace",
+            editing,
+            A::OpenFind { replace: true },
+        ),
+        cmd("home.find_next", "command.find_next", editing, A::FindNext),
+        cmd("home.find_prev", "command.find_prev", editing, A::FindPrev),
     ]);
 
     let bx = "group.box";
