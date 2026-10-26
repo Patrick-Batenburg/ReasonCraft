@@ -60,7 +60,7 @@
 - [ ] Step 5 — Interchange & polish ([plan](plans/2026-10-25-step5-interchange-polish.md))
   - [x] Task 1: Split core files; stronger validate()
   - [x] Task 2: Spec-alignment items from the step 4 review
-  - [ ] Task 3: Command registry and Search commands
+  - [x] Task 3: Command registry and Search commands
   - [ ] Task 4: Axis-neutral compact tree layout
   - [ ] Task 5: Layout directions
   - [ ] Task 6: Connector styles (Curved, Elbow, Tapered)
