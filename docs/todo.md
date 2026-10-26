@@ -67,7 +67,7 @@
   - [x] Task 7: Minimap, numbering on the map, fit selection
   - [x] Task 8: Find and replace
   - [x] Task 9: reasoncraft_spell crate
-  - [ ] Task 10: Spellcheck in the app
+  - [x] Task 10: Spellcheck in the app
   - [ ] Task 11: Autosave and crash recovery
   - [ ] Task 12: Argdown export
   - [ ] Task 13: Argdown import
