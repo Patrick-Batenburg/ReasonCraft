@@ -11,6 +11,7 @@ mod axis;
 mod card;
 mod contour;
 mod ports;
+mod row;
 mod tree;
 
 pub(crate) use tree::display_children;

@@ -45,8 +45,14 @@ impl Camera {
     /// Multiply the zoom by `factor` (clamped to the zoom range), keeping the
     /// world point under `screen_pt` where it is.
     pub fn zoom_at(&mut self, screen_pt: Pos2, factor: f32) {
+        self.zoom_to(screen_pt, self.zoom * factor);
+    }
+
+    /// Set the zoom to exactly `zoom` (clamped), keeping the world point
+    /// under `screen_pt` in place.
+    pub fn zoom_to(&mut self, screen_pt: Pos2, zoom: f32) {
         let world = self.screen_to_world(screen_pt);
-        self.zoom = (self.zoom * factor).clamp(ZOOM_MIN, ZOOM_MAX);
+        self.zoom = zoom.clamp(ZOOM_MIN, ZOOM_MAX);
         self.offset = screen_pt.to_vec2() - world.to_vec2() * self.zoom;
     }
 

@@ -27,6 +27,26 @@ pub(super) fn frame_size(premises: &[Vec2], p: &LayoutParams, frame: Frame) -> V
     )
 }
 
+/// Each premise's cross centre relative to the frame's cross centre, for
+/// premises of the given sizes.
+pub(super) fn premise_offsets(premises: &[Vec2], p: &LayoutParams, frame: Frame) -> Vec<f32> {
+    let size = frame_size(premises, p, frame);
+    let (mut at, centre) = if frame.cross_is_y() {
+        (p.card_label_height, size.y / 2.0)
+    } else {
+        (p.card_pad, size.x / 2.0)
+    };
+    premises
+        .iter()
+        .map(|s| {
+            let along = frame.ext(*s).cross;
+            let offset = at + along / 2.0 - centre;
+            at += along + p.premise_gap;
+            offset
+        })
+        .collect()
+}
+
 /// Record card `id`'s frame `rect`, its label anchor and its premises'
 /// rects (each id with its size, in order) in `out`.
 pub(super) fn place(

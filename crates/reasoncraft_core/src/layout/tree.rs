@@ -19,6 +19,7 @@ use super::axis::Frame;
 use super::card;
 use super::contour::Contour;
 use super::ports::{Pending, PortKey};
+use super::row;
 use super::{BOX_TEXT_PAD, ConnectorKind, Layout, LayoutParams, Measure, image_height};
 use crate::connector::Strength;
 use crate::ids::{Item, NodeId};
@@ -39,6 +40,9 @@ struct Unit {
     premises: Range<usize>,
     /// Where the connector to the parent attaches; `None` for a tree root.
     port: Option<PortKey>,
+    /// For a premise's source or note: the premise's cross offset from its
+    /// card's centre, which the premise's group of these centres on.
+    anchor: Option<f32>,
 }
 
 /// One mini-tree: the main map from the root, or a parking item.
@@ -77,6 +81,7 @@ impl Tree {
                 tree.push_unit(doc, child, Some(port), m, p, &mut seen);
             }
             tree.units[i].children = start..tree.units.len();
+            tree.anchor_attachments(doc, i, p);
             let child_main = tree.units[i].main + frame.ext(tree.units[i].size).main + p.v_gap;
             for u in &mut tree.units[start..] {
                 u.main = child_main;
@@ -91,9 +96,9 @@ impl Tree {
         tree
     }
 
-    /// Pack unit `i`'s children (whose contours are in `contours`), centre
-    /// the unit over its first to last child and return the contour of its
-    /// whole subtree, centred on the unit.
+    /// Pack unit `i`'s children (whose contours are in `contours`) in a row
+    /// under it (see [`row::pack`]) and return the contour of its whole
+    /// subtree, centred on the unit.
     fn pack(&mut self, i: usize, contours: &mut [Contour], p: &LayoutParams) -> Contour {
         let ext = self.frame.ext(self.units[i].size);
         let half = ext.cross * 0.5;
@@ -104,25 +109,39 @@ impl Tree {
         if kids.is_empty() {
             return contour;
         }
-        let mut kid_contours = contours[kids.clone()].iter_mut().map(mem::take);
-        let mut acc = kid_contours.next().unwrap_or_default();
-        for (u, next) in self.units[kids.start + 1..kids.end]
-            .iter_mut()
-            .zip(kid_contours)
-        {
-            u.offset = Contour::separation(&acc, &next).max(0.0) + p.h_gap;
-            acc.merge(&next, u.offset);
-        }
-        let half_span = self.units[kids.end - 1].offset * 0.5;
-        for u in &mut self.units[kids] {
-            u.offset -= half_span;
+        let anchors: Vec<Option<f32>> = self.units[kids.clone()].iter().map(|u| u.anchor).collect();
+        let kid_contours = contours[kids.clone()].iter_mut().map(mem::take).collect();
+        let row = row::pack(&anchors, kid_contours, p.h_gap);
+        for (u, o) in self.units[kids].iter_mut().zip(row.offsets) {
+            u.offset = o;
         }
         // Keep the band the connectors cross clear of neighbouring subtrees.
-        let reach = half.max(half_span);
-        let band = Contour::rect(main_hi, main_hi + p.v_gap, -reach, reach);
+        let (lo, hi) = (row.span.0.min(-half), row.span.1.max(half));
+        let band = Contour::rect(main_hi, main_hi + p.v_gap, lo, hi);
         contour.merge(&band, 0.0);
-        contour.merge(&acc, -half_span);
+        contour.merge(&row.contour, 0.0);
         contour
+    }
+
+    /// Anchor the sources and notes of card unit `i`'s premises on their
+    /// premises.
+    fn anchor_attachments(&mut self, doc: &Document, i: usize, p: &LayoutParams) {
+        let Item::Card(id) = self.units[i].item else {
+            return;
+        };
+        let sizes = &self.premise_sizes[self.units[i].premises.clone()];
+        let offsets = card::premise_offsets(sizes, p, self.frame);
+        let premises: Vec<NodeId> = (doc.cards[&id].premises.iter())
+            .filter(|pid| doc.boxes.contains_key(*pid))
+            .copied()
+            .collect();
+        for k in self.units[i].children.clone() {
+            let u = &mut self.units[k];
+            if let (Item::Box(_), Some(PortKey::Box(pid))) = (u.item, u.port) {
+                let at = premises.iter().position(|&q| q == pid);
+                u.anchor = at.map(|at| offsets[at]);
+            }
+        }
     }
 
     /// Add a unit for `item` unless it is missing or already placed.
@@ -162,6 +181,7 @@ impl Tree {
             children: 0..0,
             premises: start..self.premise_sizes.len(),
             port,
+            anchor: None,
         });
     }
 

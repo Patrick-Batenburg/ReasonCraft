@@ -6,7 +6,7 @@
 use reasoncraft_core::Item;
 use reasoncraft_core::meta::LANGUAGES;
 
-use super::{Action, Panel, ZOOM_MAX, ZOOM_MIN};
+use super::{Action, Panel};
 use crate::app::ReasonCraftApp;
 use crate::canvas::input::{nav_dir, navigate, parking_jump};
 use crate::doc_tab::DocTab;
@@ -79,6 +79,5 @@ fn set_zoom(tab: &mut DocTab, zoom: f32) {
     let centre = tab
         .viewport
         .map_or(eframe::egui::Pos2::ZERO, |v| v.center());
-    let factor = zoom.clamp(ZOOM_MIN, ZOOM_MAX) / tab.camera.zoom;
-    tab.camera.zoom_at(centre, factor);
+    tab.camera.zoom_to(centre, zoom);
 }
