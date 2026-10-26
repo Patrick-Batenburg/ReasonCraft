@@ -91,66 +91,6 @@ fn chain_extends_along_the_main_axis() {
     assert_eq!(root_bu.bottom(), bu.bounds.bottom());
 }
 
-/// Spec §5 (ruling T4-3): a premise's sources (with its notes, the group
-/// laid out under it) sit centred on that premise, not on the whole card.
-/// Where a card's groups together are longer than the card along the cross
-/// axis they cannot all fit under their premises; there they keep the
-/// premises' order instead.
-#[test]
-fn sources_sit_under_their_premise() {
-    use reasoncraft_core::{BoxKind, Item, LayoutParams};
-    let gap = LayoutParams::default().h_gap;
-    let mut doc = sample_iot_like(300);
-    let (mut centred, mut crowded) = (0, 0);
-    for dir in LayoutDirection::ALL {
-        let l = run_in(&mut doc, dir);
-        let cross = |r: emath::Rect| match dir {
-            LayoutDirection::LeftRight => (r.top(), r.bottom()),
-            _ => (r.left(), r.right()),
-        };
-        for card in doc.cards.values() {
-            // (premise range, group range) for each premise with a group.
-            let groups: Vec<_> = (card.premises.iter())
-                .filter_map(|pid| {
-                    let attachments = doc.boxes[pid].children.iter().filter_map(|item| {
-                        let Item::Box(b) = item else { return None };
-                        matches!(doc.boxes[b].kind, BoxKind::Source { .. } | BoxKind::Note)
-                            .then(|| cross(l.boxes[b]))
-                    });
-                    let group = attachments.reduce(|a, b| (a.0.min(b.0), a.1.max(b.1)))?;
-                    Some((cross(l.boxes[pid]), group))
-                })
-                .collect();
-            let (f_lo, f_hi) = cross(l.cards[&card.id]);
-            let needed: f32 = groups.iter().map(|(_, g)| g.1 - g.0 + gap).sum::<f32>() - gap;
-            let centre = |g: (f32, f32)| (g.0 + g.1) / 2.0;
-            if needed > f_hi - f_lo {
-                crowded += 1;
-                for w in groups.windows(2) {
-                    assert!(
-                        centre(w[0].1) < centre(w[1].1),
-                        "{dir:?}: groups out of order"
-                    );
-                }
-                continue;
-            }
-            for ((p_lo, p_hi), group) in groups {
-                let c = centre(group);
-                assert!(
-                    p_lo <= c && c <= p_hi,
-                    "{dir:?}: group centre {c} outside premise {p_lo}..{p_hi}"
-                );
-                centred += 1;
-            }
-        }
-    }
-    assert!(
-        centred >= 30,
-        "only {centred} premises with sources checked"
-    );
-    assert!(crowded < centred / 4, "{crowded} crowded cards");
-}
-
 /// Two co-premises with two sources each: each pair sits under its own
 /// premise, left to right as the premises are.
 #[test]

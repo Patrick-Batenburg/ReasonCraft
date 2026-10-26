@@ -147,8 +147,10 @@ pub enum Action {
         to: Parent,
         index: Option<usize>,
     },
-    /// Move the selection (a premise within its card) one place left or
-    /// right among its siblings (Alt+Left/Right).
+    /// Move the selection (a premise within its card) one place among its
+    /// siblings (Alt+arrow). `Dir` is the arrow's on-screen direction, mapped
+    /// like [`Action::Navigate`]: Left/Right top-down and bottom-up, Up/Down
+    /// left-to-right, where siblings stack vertically.
     Reorder(Dir),
     /// Pick a target for the selected parking item ("Connect to…").
     StartConnect,

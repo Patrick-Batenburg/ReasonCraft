@@ -166,6 +166,8 @@ lang-nl = Dutch
 theme-system = System
 theme-light = Light
 theme-dark = Dark
+
+## Layout directions (View ribbon, Layout direction menu)
 action-layout_direction = Layout direction
 layout_direction-top_down = Top-down
 layout_direction-bottom_up = Bottom-up

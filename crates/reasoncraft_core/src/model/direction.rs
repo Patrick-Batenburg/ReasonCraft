@@ -42,11 +42,6 @@ impl LayoutDirection {
     }
 }
 
-/// Whether `v` is its type's default (such fields are left out of the file).
-pub(crate) fn is_default<T: Default + PartialEq>(v: &T) -> bool {
-    *v == T::default()
-}
-
 impl Document {
     /// Lay the map out in direction `d`. Setting the current direction is
     /// refused with [`EditError::NotAllowed`], so it records no history.

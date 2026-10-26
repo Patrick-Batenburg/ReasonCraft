@@ -14,12 +14,17 @@ use crate::ids::{CardId, Item, NodeId, Parent};
 mod direction;
 mod source_type;
 pub use direction::LayoutDirection;
-use direction::is_default;
 pub use source_type::SourceType;
 
 /// The current time as an RFC 3339 string with second precision.
 pub fn now_rfc3339() -> String {
     Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)
+}
+
+/// Whether `v` is its type's default, for fields left out of the file
+/// while they have it (`skip_serializing_if = "is_default"`).
+pub(crate) fn is_default<T: Default + PartialEq>(v: &T) -> bool {
+    *v == T::default()
 }
 
 /// Current file schema version.
@@ -217,6 +222,9 @@ pub struct Document {
     /// The essay written from the map.
     #[serde(default, skip_serializing_if = "EssayPlan::is_empty")]
     pub essay: EssayPlan,
+    /// Which way the map grows from its root (spec §5). Top-down, the
+    /// default, is left out of the file, so older builds keep any other
+    /// direction in `extra`.
     #[serde(default, skip_serializing_if = "is_default")]
     pub layout_direction: LayoutDirection,
     /// Unknown fields, kept so files roundtrip.

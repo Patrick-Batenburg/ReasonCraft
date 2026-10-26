@@ -1,9 +1,10 @@
 //! Adding cards, premises, categories and notes, deleting items, and
-//! moving them (drag and drop, "Connect to…", Alt+Left/Right reordering).
+//! moving them (drag and drop, "Connect to…", Alt+arrow reordering).
 
 use reasoncraft_core::{BoxKind, CardId, CardKind, Document, Item, NewLoose, Parent, RemoveMode};
 
 use super::{Action, Dir};
+use crate::canvas::input::nav_dir;
 use crate::doc_tab::DocTab;
 
 /// Moves and reorders.
@@ -15,8 +16,9 @@ pub(super) fn apply(tab: &mut DocTab, action: Action) {
                 tab.fix_selection();
             }
         }
-        Action::Reorder(dir) => {
+        Action::Reorder(screen) => {
             // At an edge nothing moves and no history is recorded.
+            let dir = nav_dir(screen, tab.doc.layout_direction);
             if let Some((item, to, index)) =
                 tab.selection.and_then(|s| reorder_target(&tab.doc, s, dir))
             {
@@ -35,9 +37,11 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
             !moves_nowhere(doc, *item, *to, *index)
                 && doc.clone().move_item(*item, *to, *index).is_ok()
         }
-        Action::Reorder(dir) => tab
-            .selection
-            .is_some_and(|s| reorder_target(&tab.doc, s, *dir).is_some()),
+        Action::Reorder(screen) => {
+            let dir = nav_dir(*screen, tab.doc.layout_direction);
+            tab.selection
+                .is_some_and(|s| reorder_target(&tab.doc, s, dir).is_some())
+        }
         _ => return None,
     })
 }

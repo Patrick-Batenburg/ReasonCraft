@@ -5,7 +5,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 ## What you can do
 
 - **Build the argument.** Add reasons, objections, rebuttals and co-premises by keyboard or from the ribbon, attack a whole card, and group items under categories and notes. Items you have not connected yet wait in the parking area until you drag them into the map or use **Connect to…**.
-- **Reorder.** Drag an item between its siblings, or press Alt+Left / Alt+Right.
+- **Reorder.** Drag an item between its siblings, or press Alt+Left / Alt+Right (Alt+Up / Alt+Down in a left-to-right map).
 - **Back claims with sources.** Seventeen source types (expert opinion, statistic, publication, web, quote, personal experience and more), each with its own icon. Add a source from the Home ribbon, the "+" menu, Ctrl+Shift+E or the building panel, and change its type later.
 - **Use the building panel.** View → Building panel lists boxes, sources and preset comments. Click an entry to insert it at the selection, or drag it onto the map. Targets that cannot take it show red, and the drop does nothing.
 - **Evaluate.** On the Evaluate tab (or with Alt+1/2/3/0, and Alt+Shift+0 to clear the whole map), accept, doubt or reject claims and premises, rate cards strong, weak or nil, and rate sources solid, shaky or nil. Ratings tint boxes, colour borders, label cards and set connector weight. Markers and shading can be switched off, and you can clear one rating or all of them.
@@ -101,7 +101,7 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Ctrl+Shift+P | Jump between the main map and the parking area |
 | Ctrl+Shift+M | Open the comments of the selected box (Esc closes them) |
 | Ctrl+Shift+K | Connect to…: pick where the selected parked item goes (see below) |
-| Alt+Left / Alt+Right | Move the selection one place left / right among its siblings (a premise within its card) |
+| Alt+Left / Alt+Right / Alt+Up / Alt+Down | Move the selection one place among its siblings (a premise within its card): Alt+Left / Alt+Right in top-down and bottom-up maps, Alt+Up / Alt+Down in left-to-right maps, where siblings stack vertically |
 | Alt+1 | Rate the selection high: accept a claim or premise, strong card, solid source |
 | Alt+2 | Rate the selection mid: unsure, weak card, shaky source |
 | Alt+3 | Rate the selection low: reject a claim or premise, nil card or source |

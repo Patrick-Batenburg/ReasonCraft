@@ -357,7 +357,14 @@ fn alt_arrows_reorder_and_ctrl_shift_k_connects() {
     ] {
         assert_eq!(key_to_action(key, alt, true), None, "not while editing");
     }
-    assert_eq!(key_to_action(Key::ArrowUp, alt, false), None);
+    assert_eq!(
+        key_to_action(Key::ArrowUp, alt, false),
+        Some(Action::Reorder(Dir::Up))
+    );
+    assert_eq!(
+        key_to_action(Key::ArrowDown, alt, false),
+        Some(Action::Reorder(Dir::Down))
+    );
     assert_eq!(
         key_to_action(Key::ArrowLeft, alt | Modifiers::SHIFT, false),
         None

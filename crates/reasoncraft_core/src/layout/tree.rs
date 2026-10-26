@@ -40,9 +40,8 @@ struct Unit {
     premises: Range<usize>,
     /// Where the connector to the parent attaches; `None` for a tree root.
     port: Option<PortKey>,
-    /// For a premise's source or note: the premise's cross offset from its
-    /// card's centre, which the premise's group of these centres on.
-    anchor: Option<f32>,
+    /// What the unit is in its parent's row (see [`row::pack`]).
+    kid: row::Kid,
 }
 
 /// One mini-tree: the main map from the root, or a parking item.
@@ -81,7 +80,7 @@ impl Tree {
                 tree.push_unit(doc, child, Some(port), m, p, &mut seen);
             }
             tree.units[i].children = start..tree.units.len();
-            tree.anchor_attachments(doc, i, p);
+            tree.mark_premise_children(doc, i, p);
             let child_main = tree.units[i].main + frame.ext(tree.units[i].size).main + p.v_gap;
             for u in &mut tree.units[start..] {
                 u.main = child_main;
@@ -109,9 +108,9 @@ impl Tree {
         if kids.is_empty() {
             return contour;
         }
-        let anchors: Vec<Option<f32>> = self.units[kids.clone()].iter().map(|u| u.anchor).collect();
+        let what: Vec<row::Kid> = self.units[kids.clone()].iter().map(|u| u.kid).collect();
         let kid_contours = contours[kids.clone()].iter_mut().map(mem::take).collect();
-        let row = row::pack(&anchors, kid_contours, p.h_gap);
+        let row = row::pack(&what, kid_contours, p.h_gap);
         for (u, o) in self.units[kids].iter_mut().zip(row.offsets) {
             u.offset = o;
         }
@@ -123,9 +122,9 @@ impl Tree {
         contour
     }
 
-    /// Anchor the sources and notes of card unit `i`'s premises on their
-    /// premises.
-    fn anchor_attachments(&mut self, doc: &Document, i: usize, p: &LayoutParams) {
+    /// Tell card unit `i`'s children that hang from a premise (sources,
+    /// notes, attacking cards) where that premise is.
+    fn mark_premise_children(&mut self, doc: &Document, i: usize, p: &LayoutParams) {
         let Item::Card(id) = self.units[i].item else {
             return;
         };
@@ -137,9 +136,13 @@ impl Tree {
             .collect();
         for k in self.units[i].children.clone() {
             let u = &mut self.units[k];
-            if let (Item::Box(_), Some(PortKey::Box(pid))) = (u.item, u.port) {
-                let at = premises.iter().position(|&q| q == pid);
-                u.anchor = at.map(|at| offsets[at]);
+            if let Some(PortKey::Box(pid)) = u.port
+                && let Some(at) = premises.iter().position(|&q| q == pid)
+            {
+                u.kid = match u.item {
+                    Item::Box(_) => row::Kid::Attached(offsets[at]),
+                    Item::Card(_) => row::Kid::Targets(offsets[at]),
+                };
             }
         }
     }
@@ -181,7 +184,7 @@ impl Tree {
             children: 0..0,
             premises: start..self.premise_sizes.len(),
             port,
-            anchor: None,
+            kid: row::Kid::Free,
         });
     }
 

@@ -68,6 +68,12 @@ pub const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     (Shortcut::new(Key::ArrowRight, ALT), || {
         Action::Reorder(Dir::Right)
     }),
+    (Shortcut::new(Key::ArrowUp, ALT), || {
+        Action::Reorder(Dir::Up)
+    }),
+    (Shortcut::new(Key::ArrowDown, ALT), || {
+        Action::Reorder(Dir::Down)
+    }),
     (Shortcut::new(Key::Num1, ALT), || Action::Rate(Rate::High)),
     (Shortcut::new(Key::Num2, ALT), || Action::Rate(Rate::Mid)),
     (Shortcut::new(Key::Num3, ALT), || Action::Rate(Rate::Low)),

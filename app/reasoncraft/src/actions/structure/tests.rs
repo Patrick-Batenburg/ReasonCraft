@@ -57,6 +57,26 @@ fn reorder_with_alt_arrows() {
     assert!(!is_enabled(tab(&a), &Action::Reorder(Dir::Left)));
 }
 
+/// Left-to-right, siblings stack vertically: Alt+Down / Alt+Up reorder and
+/// Alt+Left / Alt+Right do nothing.
+#[test]
+fn reorder_follows_layout_direction() {
+    let (mut d, [ca, cb, cc]) = three_cards();
+    d.layout_direction = reasoncraft_core::LayoutDirection::LeftRight;
+    let mut a = app_with(d);
+    let card = Item::Card;
+    a.tabs[0].selection = Some(card(ca));
+    assert!(!is_enabled(tab(&a), &Action::Reorder(Dir::Right)));
+    apply(&mut a, Action::Reorder(Dir::Right));
+    assert_eq!(root_cards(&a), vec![card(ca), card(cb), card(cc)]);
+    assert!(is_enabled(tab(&a), &Action::Reorder(Dir::Down)));
+    apply(&mut a, Action::Reorder(Dir::Down));
+    assert_eq!(root_cards(&a), vec![card(cb), card(ca), card(cc)]);
+    apply(&mut a, Action::Reorder(Dir::Up));
+    assert_eq!(root_cards(&a), vec![card(ca), card(cb), card(cc)]);
+    assert_eq!(tab(&a).history.undo.len(), 2);
+}
+
 /// A card's only premise moves its card; a co-premise moves within its card.
 #[test]
 fn reorder_premises_and_sole_premise_cards() {
