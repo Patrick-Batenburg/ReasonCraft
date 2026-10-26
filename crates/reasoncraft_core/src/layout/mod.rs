@@ -148,6 +148,9 @@ pub struct Layout {
     /// The height of the indicator row at the top of each box that has
     /// one; its image and text sit below it.
     pub indicator_rows: IndexMap<NodeId, f32>,
+    /// The outline number of each numbered box when numbers are shown
+    /// (see [`IndicatorOptions::numbers`]); empty otherwise.
+    pub numbers: IndexMap<NodeId, String>,
     pub connectors: Vec<Connector>,
     pub main_bounds: Rect,
     pub parking_bounds: Option<Rect>,
@@ -165,6 +168,7 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
         card_roles: IndexMap::with_capacity(doc.cards.len()),
         card_strength: IndexMap::with_capacity(doc.cards.len()),
         indicator_rows: IndexMap::new(),
+        numbers: IndexMap::new(),
         connectors: Vec::new(),
         main_bounds: Rect::NOTHING,
         parking_bounds: None,
@@ -197,7 +201,12 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
     out.indicator_rows = out
         .boxes
         .keys()
-        .filter_map(|id| Some((*id, *sizer.rows.get(id)?)))
+        .filter_map(|id| Some((*id, *sizer.marks.rows.get(id)?)))
+        .collect();
+    out.numbers = out
+        .boxes
+        .keys()
+        .filter_map(|id| Some((*id, sizer.marks.numbers.get(id)?.clone())))
         .collect();
     out.bounds = out
         .parking_bounds

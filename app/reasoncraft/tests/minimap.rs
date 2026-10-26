@@ -155,7 +155,7 @@ fn numbers_reach_exports() {
     apply(h.state_mut(), Action::ToggleNumbers);
     h.run();
     let on = export_svg(&mut h, &dialogs, dir.path().join("on.svg"));
-    let numbers = reasoncraft_core::outline::box_numbers(&h.state().tabs[0].doc);
+    let numbers = reasoncraft_core::outline::box_numbers(&h.state().tabs[0].doc, false);
     // Parked items are not exported.
     let main: Vec<_> = numbers
         .iter()
@@ -238,4 +238,21 @@ fn fit_selection_shows_the_selected_card() {
         "{shown:?} in {view:?}"
     );
     assert!((shown.center() - view.center()).length() < 1.0);
+}
+
+/// The minimap never covers the inline editor: it hides while a box is
+/// being edited and comes back afterwards.
+#[test]
+fn minimap_hides_while_editing() {
+    let mut h = zoomed_in_sample(FakeDialogs::default());
+    assert!(minimap_shown(&h));
+    let root = h.state().tabs[0].doc.root;
+    h.state_mut().tabs[0].selection = Some(Item::Box(root));
+    apply(h.state_mut(), Action::Edit);
+    h.run();
+    assert_eq!(h.state().tabs[0].editing(), Some(root));
+    assert!(!minimap_shown(&h), "hidden while editing");
+    apply(h.state_mut(), Action::StopEditing);
+    h.run();
+    assert!(minimap_shown(&h));
 }

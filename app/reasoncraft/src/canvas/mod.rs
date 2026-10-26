@@ -19,8 +19,6 @@ pub mod plus_menu;
 pub mod rating;
 
 use eframe::egui::{self, Key, PointerButton, Rect, Response, Role, Sense, WidgetInfo};
-use std::collections::HashMap;
-
 use reasoncraft_core::{Document, Item, Layout, layout};
 
 pub use camera::Camera;
@@ -106,11 +104,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         pending.push(Action::Select(hit.map(Item::from)));
     }
 
-    let leads = if settings.show_numbers {
-        marks_leads(&tab.doc, &layout, &measure, tab.camera.zoom)
-    } else {
-        HashMap::new()
-    };
+    let leads = marks_leads(&layout, &measure, tab.camera.zoom);
     let painter = ui.painter_at(rect);
     paint::paint(
         &painter,
@@ -136,11 +130,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     connect::update(ui, &response, &layout, tab, &tokens, pending, panning);
     drag::update(ui, &response, &layout, tab, &tokens, pending, panning);
     drag::panel_drop(ui, &response, &layout, tab, &tokens, pending);
-    editor::show(ui, tab, &layout, &tokens, pending);
-    if !response.dragged() {
-        plus_menu::show(ui, tab, &layout, &tokens, pending);
-    }
-    comments::show(ui, tab, &layout, &tokens, pending);
+    // Under the inline editor and the "+" button, which take its clicks.
     minimap::show(
         ui,
         tab,
@@ -149,6 +139,11 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         settings.minimap,
         params.indicators,
     );
+    editor::show(ui, tab, &layout, &tokens, pending);
+    if !response.dragged() {
+        plus_menu::show(ui, tab, &layout, &tokens, pending);
+    }
+    comments::show(ui, tab, &layout, &tokens, pending);
 }
 
 /// The world rect of `item` in `layout`: a box's own rect, or a card's

@@ -84,12 +84,14 @@ pub enum OutlineToggle {
 
 impl Settings {
     /// The layout parameters these settings ask for: boxes get an
-    /// indicator row for the marks they show (numbers included).
+    /// indicator row for the marks they show (numbers included, numbered
+    /// like the Outline with its current Notes switch).
     pub fn layout_params(&self) -> LayoutParams {
         LayoutParams {
             indicators: IndicatorOptions {
                 markers: self.show_markers,
                 numbers: self.show_numbers,
+                numbers_notes: self.outline.notes,
             },
             ..LayoutParams::default()
         }

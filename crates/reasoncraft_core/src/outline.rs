@@ -277,10 +277,16 @@ pub fn build_outline(doc: &Document, opts: &OutlineOptions) -> Vec<OutlineLine> 
 }
 
 /// The outline number of every numbered box ("1", "1.2a", "P1"), exactly
-/// as [`build_outline`] numbers it with the default options. The claim,
-/// sources and notes have none.
-pub fn box_numbers(doc: &Document) -> HashMap<NodeId, String> {
-    build_outline(doc, &OutlineOptions::default())
+/// as [`build_outline`] numbers it with notes shown or not (`notes`, the
+/// Outline's Notes switch: a parked note takes a "P" number only when
+/// notes are shown). The claim, sources and other notes have none.
+pub fn box_numbers(doc: &Document, notes: bool) -> HashMap<NodeId, String> {
+    let opts = OutlineOptions {
+        numbering: true,
+        notes,
+        ..OutlineOptions::default()
+    };
+    build_outline(doc, &opts)
         .into_iter()
         .filter_map(|line| match line.item {
             Item::Box(id) if !line.number.is_empty() => Some((id, line.number)),

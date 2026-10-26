@@ -259,48 +259,57 @@ fn number_texts(scene: &Scene, tk: &Tokens) -> Vec<(String, eframe::egui::Pos2)>
         .collect()
 }
 
+/// The map's numbers are the Outline's, with the settings' Outline
+/// options: a parked note before a parked card shifts the "P" numbers
+/// only while the Outline shows notes.
 #[test]
 fn numbers_match_outline() {
+    use crate::settings::Settings;
     use reasoncraft_core::fixtures::sample_iot_like;
-    use reasoncraft_core::outline::{OutlineOptions, build_outline};
-    let doc = sample_iot_like(40);
-    let labels = number_labels(&doc);
-    let outline = build_outline(
-        &doc,
-        &OutlineOptions {
-            numbering: true,
-            ..OutlineOptions::default()
-        },
-    );
-    let numbered: Vec<_> = outline
-        .iter()
-        .filter(|l| !l.number.is_empty() && matches!(l.item, Item::Box(_)))
-        .collect();
-    assert!(numbered.len() > 20, "a well-numbered sample");
-    assert_eq!(labels.len(), numbered.len());
-    assert!(labels.keys().all(|i| matches!(i, Item::Box(_))), "no cards");
-    // The map draws each number in its own box.
-    let layout = layout(&doc, &Fake, &numbered_params());
-    let mut o = opts();
-    o.numbers = true;
-    o.include_parking = true;
-    let drawn = number_texts(&build_scene(&doc, &layout, &o, &Fake), &o.tokens);
-    for line in numbered {
-        assert_eq!(labels[&line.item], line.number);
-        let Item::Box(id) = line.item else { continue };
-        let world = layout.boxes[&id];
-        assert!(
-            drawn
-                .iter()
-                .any(|(n, at)| *n == line.number && world.contains(*at)),
-            "{} not drawn in its box",
-            line.number
-        );
+    use reasoncraft_core::outline::build_outline;
+    let mut doc = sample_iot_like(40);
+    let parked = doc.add_loose(NewLoose::Note, "Parked first");
+    doc.parking.retain(|i| *i != parked);
+    doc.parking.insert(0, parked);
+    let Item::Box(note) = parked else {
+        panic!("a note is a box")
+    };
+    for notes in [false, true] {
+        let mut settings = Settings {
+            show_numbers: true,
+            ..Settings::default()
+        };
+        settings.outline.notes = notes;
+        let numbered: Vec<_> = build_outline(&doc, &settings.outline)
+            .into_iter()
+            .filter(|l| !l.number.is_empty() && matches!(l.item, Item::Box(_)))
+            .collect();
+        assert!(numbered.len() > 20, "a well-numbered sample");
+        let layout = layout(&doc, &Fake, &settings.layout_params());
+        assert_eq!(layout.numbers.len(), numbered.len(), "notes {notes}");
+        assert_eq!(layout.indicator_row(note) > 0.0, notes);
+        // The map draws each number in its own box.
+        let mut o = opts();
+        o.numbers = true;
+        o.include_parking = true;
+        let drawn = number_texts(&build_scene(&doc, &layout, &o, &Fake), &o.tokens);
+        for line in &numbered {
+            let Item::Box(id) = line.item else { continue };
+            assert_eq!(layout.numbers[&id], line.number, "notes {notes}");
+            let world = layout.boxes[&id];
+            assert!(
+                drawn
+                    .iter()
+                    .any(|(n, at)| *n == line.number && world.contains(*at)),
+                "{} not drawn in its box",
+                line.number
+            );
+        }
+        // Numbers off: none drawn.
+        o.numbers = false;
+        let off = build_scene(&doc, &layout, &o, &Fake);
+        assert!(number_texts(&off, &o.tokens).is_empty());
     }
-    // Numbers off: none drawn.
-    o.numbers = false;
-    let off = build_scene(&doc, &layout, &o, &Fake);
-    assert!(number_texts(&off, &o.tokens).is_empty());
 }
 
 #[test]
@@ -347,7 +356,7 @@ fn numbers_never_overlap_text() {
     assert!(world.contains_rect(number));
     assert!(!number.intersects(first_row), "{number:?} {first_row:?}");
     // The link glyph moves right of the number.
-    let leads = marks_leads(&doc, &layout, &Fake, 1.0);
+    let leads = marks_leads(&layout, &Fake, 1.0);
     let glyph = link_rect(world, row, leads[&premise]);
     assert!(glyph.left() > number.right());
     assert!(!glyph.intersects(first_row));

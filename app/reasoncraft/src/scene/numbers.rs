@@ -1,12 +1,12 @@
-//! The map's numbering: each numbered box shows its outline number at the
-//! left of its indicator row, and its link glyph and comment badge move
+//! The map's numbering: each numbered box shows its outline number (from
+//! [`Layout::numbers`], numbered like the Outline) at the left of its
+//! indicator row, and its link glyph and comment badge move
 //! right to make room for it.
 
 use std::collections::HashMap;
 
 use eframe::egui::{Align, Rect, pos2, vec2};
-use reasoncraft_core::outline::box_numbers;
-use reasoncraft_core::{Document, Item, Layout, NodeId};
+use reasoncraft_core::{Layout, NodeId};
 
 use super::build::Builder;
 use super::{Shape, TextRows};
@@ -16,15 +16,6 @@ use crate::canvas::rating::{CORNER_INSET, indicator_centre};
 
 /// The numbers' text size: 0.8 × the box text size.
 pub const NUMBER_SIZE: f32 = 0.8 * BOX_FONT_SIZE;
-
-/// The number each numbered item shows: boxes get their outline number
-/// (premises carry their card's, e.g. "1a"); cards get none.
-pub fn number_labels(doc: &Document) -> HashMap<Item, String> {
-    box_numbers(doc)
-        .into_iter()
-        .map(|(id, number)| (Item::Box(id), number))
-        .collect()
-}
 
 /// Where `number` goes in the box at `world` (world units) whose indicator
 /// row is `row` high, drawn at `zoom`: at the row's left end,
@@ -39,20 +30,23 @@ pub fn number_rect(world: Rect, row: f32, number: &str, fonts: &dyn TextRows, zo
 }
 
 /// How far right the link glyph and comment badge of each numbered box in
-/// `layout` move to clear its number (its width and a gap), at `zoom`.
-pub fn marks_leads(
-    doc: &Document,
-    layout: &Layout,
-    fonts: &dyn TextRows,
-    zoom: f32,
-) -> HashMap<NodeId, f32> {
-    box_numbers(doc)
-        .into_iter()
-        .filter_map(|(id, number)| {
+/// `layout` move to clear its number (its width and a gap), at `zoom`:
+/// only where the number is drawn (see [`Builder::number`]).
+pub fn marks_leads(layout: &Layout, fonts: &dyn TextRows, zoom: f32) -> HashMap<NodeId, f32> {
+    if screen_font(NUMBER_SIZE, zoom).is_none() {
+        return HashMap::new();
+    }
+    layout
+        .numbers
+        .iter()
+        .filter_map(|(&id, number)| {
             let world = *layout.boxes.get(&id)?;
             let row = layout.indicator_row(id);
-            let lead = number_rect(world, row, &number, fonts, zoom).width() + CORNER_INSET;
-            (row > 0.0).then_some((id, lead))
+            if row <= 0.0 {
+                return None;
+            }
+            let rect = number_rect(world, row, number, fonts, zoom);
+            Some((id, rect.width() + CORNER_INSET))
         })
         .collect()
 }

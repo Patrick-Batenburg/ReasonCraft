@@ -16,6 +16,9 @@ pub struct IndicatorOptions {
     pub markers: bool,
     /// The outline number ("1.2a") on each numbered box.
     pub numbers: bool,
+    /// Number boxes as the Outline does with its Notes switch on (parked
+    /// notes get a "P" number), so map and Outline numbers agree.
+    pub numbers_notes: bool,
 }
 
 impl Default for IndicatorOptions {
@@ -23,6 +26,7 @@ impl Default for IndicatorOptions {
         Self {
             markers: true,
             numbers: false,
+            numbers_notes: false,
         }
     }
 }
@@ -38,18 +42,29 @@ pub fn needs_indicator_row(node: &BoxNode, numbered: bool, opts: &IndicatorOptio
         || !node.comments.is_empty()
 }
 
-/// The indicator row height (`row`) of each box of `doc` that needs one.
-pub(super) fn rows(doc: &Document, opts: &IndicatorOptions, row: f32) -> HashMap<NodeId, f32> {
-    let numbered = if opts.numbers {
-        box_numbers(doc)
-    } else {
-        HashMap::new()
-    };
-    doc.boxes
-        .iter()
-        .filter(|(id, node)| needs_indicator_row(node, numbered.contains_key(id), opts))
-        .map(|(&id, _)| (id, row))
-        .collect()
+/// The marks of a layout: the indicator row height (`row`) of each box of
+/// `doc` that needs one, and the number of each numbered box (none when
+/// numbers are off).
+pub(super) struct Marks {
+    pub rows: HashMap<NodeId, f32>,
+    pub numbers: HashMap<NodeId, String>,
+}
+
+impl Marks {
+    pub(super) fn new(doc: &Document, opts: &IndicatorOptions, row: f32) -> Self {
+        let numbers = if opts.numbers {
+            box_numbers(doc, opts.numbers_notes)
+        } else {
+            HashMap::new()
+        };
+        let rows = doc
+            .boxes
+            .iter()
+            .filter(|(id, node)| needs_indicator_row(node, numbers.contains_key(id), opts))
+            .map(|(&id, _)| (id, row))
+            .collect();
+        Self { rows, numbers }
+    }
 }
 
 #[cfg(test)]
@@ -86,7 +101,7 @@ mod tests {
         let hidden = LayoutParams {
             indicators: IndicatorOptions {
                 markers: false,
-                numbers: false,
+                ..IndicatorOptions::default()
             },
             ..LayoutParams::default()
         };
@@ -99,7 +114,7 @@ mod tests {
         let on = IndicatorOptions::default();
         let off = IndicatorOptions {
             markers: false,
-            numbers: false,
+            ..IndicatorOptions::default()
         };
         let mut b = BoxNode::new(NodeId::new(), BoxKind::Premise, "p");
         assert!(!needs_indicator_row(&b, false, &on));
@@ -125,19 +140,59 @@ mod tests {
         let opts = IndicatorOptions {
             markers: false,
             numbers: true,
+            numbers_notes: false,
         };
-        let numbers = box_numbers(&doc);
+        let numbers = box_numbers(&doc, false);
         assert!(numbers.len() > 20, "a well-numbered sample");
         let with_marks = |id: &NodeId| needs_indicator_row(&doc.boxes[id], false, &opts);
-        let on = rows(&doc, &opts, 16.0);
+        let on = Marks::new(&doc, &opts, 16.0);
+        assert_eq!(on.numbers, numbers);
         for id in doc.boxes.keys() {
             let expect = numbers.contains_key(id) || with_marks(id);
-            assert_eq!(on.contains_key(id), expect, "{id:?}");
+            assert_eq!(on.rows.contains_key(id), expect, "{id:?}");
         }
         let off = IndicatorOptions {
             numbers: false,
             ..opts
         };
-        assert!(rows(&doc, &off, 16.0).len() < on.len());
+        let off = Marks::new(&doc, &off, 16.0);
+        assert!(off.rows.len() < on.rows.len() && off.numbers.is_empty());
+    }
+
+    /// With the Outline's Notes switch on, a parked note takes a "P" number
+    /// and a row, and the parked items after it are numbered past it.
+    #[test]
+    fn numbers_follow_the_outline_notes_switch() {
+        use crate::outline::{OutlineOptions, build_outline};
+        use crate::{CardKind, NewLoose};
+        let mut doc = Document::new("Claim");
+        let note = match doc.add_loose(NewLoose::Note, "Parked note") {
+            crate::Item::Box(b) => b,
+            other => panic!("{other:?}"),
+        };
+        doc.add_loose(NewLoose::Card(CardKind::Reason), "Parked reason");
+        assert_eq!(doc.parking[0], crate::Item::Box(note), "note first");
+        for notes in [false, true] {
+            let opts = IndicatorOptions {
+                markers: false,
+                numbers: true,
+                numbers_notes: notes,
+            };
+            let marks = Marks::new(&doc, &opts, 16.0);
+            let outline = OutlineOptions {
+                notes,
+                ..OutlineOptions::default()
+            };
+            let expected: HashMap<NodeId, String> = build_outline(&doc, &outline)
+                .into_iter()
+                .filter_map(|l| match l.item {
+                    crate::Item::Box(id) if !l.number.is_empty() => Some((id, l.number)),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(marks.numbers, expected, "notes {notes}");
+            assert_eq!(marks.rows.contains_key(&note), notes, "notes {notes}");
+            assert_eq!(marks.numbers.contains_key(&note), notes);
+        }
     }
 }

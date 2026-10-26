@@ -22,7 +22,7 @@ use reasoncraft_core::{BoxKind, ConnectorStyle, Item, Measure, NodeId};
 pub use boxes::{BOX_RADIUS, SOURCE_HEADER, box_radius};
 pub use build::build_scene;
 pub use egui_paint::{paint_scene, paint_shapes};
-pub use numbers::{NUMBER_SIZE, marks_leads, number_labels, number_rect};
+pub use numbers::{NUMBER_SIZE, marks_leads, number_rect};
 pub(crate) use pen::ShapePen;
 
 use crate::theme::Tokens;
@@ -135,8 +135,8 @@ pub struct SceneOptions {
     pub tokens: Tokens,
     /// Draw ✓ / ? / × markers on rated boxes.
     pub show_markers: bool,
-    /// Draw each numbered box's outline number (in the indicator row the
-    /// layout gave it).
+    /// Draw each numbered box's outline number ([`reasoncraft_core::Layout::numbers`], in
+    /// the indicator row the layout gave it).
     pub numbers: bool,
     /// Tint and weight cards and connectors by their rating.
     pub eval_shading: bool,

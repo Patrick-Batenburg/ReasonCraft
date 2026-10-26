@@ -1,19 +1,16 @@
 //! Box sizes: measured text, image and indicator row.
 
-use std::collections::HashMap;
-
 use emath::Vec2;
 
 use super::{BOX_TEXT_PAD, LayoutParams, Measure, image_height, indicators};
-use crate::ids::NodeId;
 use crate::model::{BoxKind, BoxNode, Document};
 
 /// Sizes the boxes of one layout.
 pub(super) struct Sizer<'a> {
     m: &'a dyn Measure,
     p: &'a LayoutParams,
-    /// The indicator row height of each box that has one.
-    pub rows: HashMap<NodeId, f32>,
+    /// Each box's indicator row and number.
+    pub marks: indicators::Marks,
 }
 
 impl<'a> Sizer<'a> {
@@ -21,7 +18,7 @@ impl<'a> Sizer<'a> {
         Self {
             m,
             p,
-            rows: indicators::rows(doc, &p.indicators, p.indicator_row),
+            marks: indicators::Marks::new(doc, &p.indicators, p.indicator_row),
         }
     }
 
@@ -49,7 +46,7 @@ impl<'a> Sizer<'a> {
             p.min_box_height
                 .max(text_height + 2.0 * BOX_TEXT_PAD + image_height)
         };
-        let row = self.rows.get(&node.id).copied().unwrap_or(0.0);
+        let row = self.marks.rows.get(&node.id).copied().unwrap_or(0.0);
         Vec2::new(width, height + row)
     }
 }

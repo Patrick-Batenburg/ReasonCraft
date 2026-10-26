@@ -163,7 +163,8 @@ impl Mapping {
 }
 
 /// Draw the minimap over the canvas `viewport` when `mode` asks for it,
-/// and centre the view on the point pressed or dragged over in it.
+/// and centre the view on the point pressed or dragged over in it. It
+/// hides while a box is being edited, so it never covers the editor.
 pub(super) fn show(
     ui: &Ui,
     tab: &mut DocTab,
@@ -173,6 +174,9 @@ pub(super) fn show(
     marks: IndicatorOptions,
 ) {
     let viewport = ui.max_rect();
+    if tab.editing().is_some() {
+        return;
+    }
     if !shown(mode, content_bounds(layout), tab.camera.zoom, viewport) {
         return;
     }
