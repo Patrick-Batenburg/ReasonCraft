@@ -28,20 +28,40 @@ pub fn elbow_path(
     radius: f32,
     dir: LayoutDirection,
 ) -> Vec<Segment> {
+    let main = |p: Pos2| p.to_vec2().dot(dir.toward_parent().abs());
+    let stub_start = to - dir.toward_parent() * stub;
+    let mid = (main(from) + main(stub_start)) / 2.0;
+    elbow_path_at(from, to, stub, radius, mid, dir)
+}
+
+/// Like [`elbow_path`], but the run across goes at main coordinate `turn`
+/// (world y top-down and bottom-up, x left-to-right), which should lie
+/// between `from` and the stub start (see [`elbow_turns`](super::elbow_turns)).
+pub fn elbow_path_at(
+    from: Pos2,
+    to: Pos2,
+    stub: f32,
+    radius: f32,
+    turn: f32,
+    dir: LayoutDirection,
+) -> Vec<Segment> {
     let toward = dir.toward_parent();
     let stub_start = to - toward * stub;
-    // The cross axis: perpendicular to the main axis, with unit length.
+    // The main and cross axes, with unit length and positive.
+    let main_axis = toward.abs();
     let cross = toward.rot90().abs();
-    let along = |p: Pos2| p.to_vec2().dot(toward.abs());
+    let along = |p: Pos2| p.to_vec2().dot(main_axis);
     let offset = (stub_start - from).dot(cross);
     if offset.abs() < STRAIGHT_BELOW {
         return vec![Segment::Line([from, to])];
     }
-    let half = (along(stub_start) - along(from)) / 2.0;
-    let turn_a = from + toward.abs() * half;
+    let first = turn - along(from);
+    let last = along(stub_start) - turn;
+    let turn_a = from + main_axis * first;
     let turn_b = turn_a + cross * offset;
     let r = radius
-        .min(half.abs() / 2.0)
+        .min(first.abs() / 2.0)
+        .min(last.abs() / 2.0)
         .min(offset.abs() / 2.0)
         .max(0.0);
     let mut out = Vec::with_capacity(6);

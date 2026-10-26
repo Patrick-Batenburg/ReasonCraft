@@ -9,6 +9,7 @@ mod pdf;
 mod raster;
 mod request;
 mod svg;
+mod svg_attr;
 
 use std::sync::{Arc, LazyLock};
 

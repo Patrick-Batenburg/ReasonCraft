@@ -4,8 +4,8 @@
 
 use eframe::egui::{Color32, Pos2, Rect, Vec2};
 use reasoncraft_core::connector::{
-    ARROW_PX, ELBOW_RADIUS, EndMarker, STUB_PX, Segment, curved_path, elbow_path, end_marker,
-    line_width, tapered_band, tapered_widths,
+    ARROW_PX, ELBOW_RADIUS, EndMarker, STUB_PX, Segment, curved_path, elbow_path_at, elbow_turns,
+    end_marker, line_width, tapered_band, tapered_widths,
 };
 use reasoncraft_core::{Connector, ConnectorKind, ConnectorStyle};
 
@@ -29,7 +29,25 @@ fn connector_colour(t: &Tokens, kind: ConnectorKind) -> Color32 {
 }
 
 impl Builder<'_> {
-    pub(super) fn connector(&mut self, c: &Connector) {
+    /// Where each of `connectors` turns when drawn as an elbow (staggered
+    /// so runs into one parent never overlap); empty in the other styles.
+    pub(super) fn elbow_turns(&self, connectors: &[Connector]) -> Vec<f32> {
+        let Some(first) = connectors.first() else {
+            return Vec::new();
+        };
+        if self.opts.connector_style != ConnectorStyle::Elbow {
+            return Vec::new();
+        }
+        let ends: Vec<_> = connectors
+            .iter()
+            .map(|c| (c.from, c.to, self.stub_len(c)))
+            .collect();
+        elbow_turns(&ends, first.dir)
+    }
+
+    /// Connector `c`; an elbow turns at main coordinate `turn` (see
+    /// [`Self::elbow_turns`]).
+    pub(super) fn connector(&mut self, c: &Connector, turn: Option<f32>) {
         if !self.visible(Rect::from_two_pos(c.from, c.to)) {
             return;
         }
@@ -61,7 +79,12 @@ impl Builder<'_> {
         }
         let stroke = (line_width(c.kind, strength, zoom), colour);
         let mut path = match style {
-            ConnectorStyle::Elbow => elbow_path(c.from, c.to, stub, ELBOW_RADIUS, c.dir),
+            ConnectorStyle::Elbow => {
+                let mid = |p: Pos2| p.to_vec2().dot(toward.abs());
+                let start = c.to - toward * stub;
+                let turn = turn.unwrap_or((mid(c.from) + mid(start)) / 2.0);
+                elbow_path_at(c.from, c.to, stub, ELBOW_RADIUS, turn, c.dir)
+            }
             _ => curved_path(c.from, c.to, stub, c.dir),
         };
         // Every path ends in its stub (a straight elbow is all stub).

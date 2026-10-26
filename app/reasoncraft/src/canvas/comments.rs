@@ -8,7 +8,7 @@ use reasoncraft_core::{Comment, Layout, Verdict};
 
 use super::links::LINK_GLYPH;
 use super::paint::{Pass, screen_font};
-use super::rating::{CORNER_INSET, MARKER_MIN_ZOOM};
+use super::rating::{CORNER_INSET, MARKER_MIN_ZOOM, indicator_centre};
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t_args};
@@ -79,14 +79,15 @@ fn badge_text(count: usize) -> String {
 }
 
 /// The body of the badge of a box at `world` with `count` comments, in
-/// world units. It sits inside the box's top-left corner, below the link
-/// glyph's place, [`CORNER_INSET`] from the edges and the glyph, and grows
-/// to the right: it never reaches into a neighbouring box.
-pub fn badge_rect(world: Rect, count: usize) -> Rect {
+/// world units, given the height `row` of the box's indicator row. It sits
+/// in that row after the link glyph's place, [`CORNER_INSET`] from it, and
+/// grows to the right: inside the box and above its text.
+pub fn badge_rect(world: Rect, row: f32, count: usize) -> Rect {
     let chars = badge_text(count).len().clamp(1, 3);
     let w = BADGE_W[chars - 1];
-    let top = world.top() + CORNER_INSET + LINK_GLYPH + CORNER_INSET;
-    Rect::from_min_size(pos2(world.left() + CORNER_INSET, top), vec2(w, BADGE_H))
+    let left = world.left() + CORNER_INSET + LINK_GLYPH + CORNER_INSET;
+    let top = indicator_centre(world, row) - BADGE_H / 2.0;
+    Rect::from_min_size(pos2(left, top), vec2(w, BADGE_H))
 }
 
 /// The badge's accessible name and tooltip, e.g. "3 comments".
@@ -98,12 +99,12 @@ pub fn badge_label(count: usize) -> String {
 
 impl Pass<'_> {
     /// The speech-bubble badge with the comment count of the box at `world`.
-    pub(super) fn comment_badge(&self, world: Rect, comments: &[Comment]) {
+    pub(super) fn comment_badge(&self, world: Rect, row: f32, comments: &[Comment]) {
         let z = self.cam.zoom;
         if comments.is_empty() || z < MARKER_MIN_ZOOM {
             return;
         }
-        let body = self.screen(badge_rect(world, comments.len()));
+        let body = self.screen(badge_rect(world, row, comments.len()));
         if !self.visible(body) {
             return;
         }
@@ -153,7 +154,11 @@ pub(super) fn badges(ui: &Ui, tab: &DocTab, layout: &Layout, pending: &mut Vec<A
         }
         let rect = tab
             .camera
-            .world_rect_to_screen(badge_rect(world, node.comments.len()))
+            .world_rect_to_screen(badge_rect(
+                world,
+                layout.indicator_row(id),
+                node.comments.len(),
+            ))
             .expand(2.0);
         if !clip.intersects(rect) {
             continue;
@@ -177,6 +182,7 @@ mod tests {
     use super::*;
     use crate::i18n::t;
     use reasoncraft_core::Uuid;
+    use reasoncraft_core::layout::BOX_TEXT_PAD;
 
     fn comment(verdict: Option<Verdict>) -> Comment {
         Comment {
@@ -208,18 +214,16 @@ mod tests {
     }
 
     #[test]
-    fn badge_sits_in_the_box_below_the_link_glyph() {
+    fn badge_sits_after_the_link_glyph_in_the_indicator_row() {
         let world = Rect::from_min_size(pos2(100.0, 50.0), vec2(156.0, 40.0));
-        let glyph = super::super::links::link_rect(world);
+        let glyph = super::super::links::link_rect(world, 16.0);
         for count in [1, 12, 100, 5000] {
-            let badge = badge_rect(world, count);
-            // The tail hangs 3.5 px below the body.
-            assert!(
-                world.contains_rect(badge.expand2(vec2(0.0, 3.5))),
-                "{count}"
-            );
-            assert_eq!(badge.left(), world.left() + CORNER_INSET);
-            assert_eq!(badge.top(), glyph.bottom() + CORNER_INSET);
+            let badge = badge_rect(world, 16.0, count);
+            // The tail hangs 3.5 px below the body, still above the text.
+            let tail = badge.bottom() + 3.5;
+            assert!(world.contains_rect(badge) && tail <= world.top() + 16.0 + BOX_TEXT_PAD);
+            assert_eq!(badge.left(), glyph.right() + CORNER_INSET);
+            assert_eq!(badge.center().y, glyph.center().y);
         }
         assert_eq!(badge_text(7), "7");
         assert_eq!(badge_text(100), "99+");

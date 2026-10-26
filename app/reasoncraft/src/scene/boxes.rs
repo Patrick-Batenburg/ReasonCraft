@@ -35,11 +35,13 @@ pub fn box_radius(kind: &BoxKind) -> f32 {
 }
 
 impl Builder<'_> {
-    /// A box of any kind: its image on top, then its content. `border` is
-    /// the colour of the card a premise sits in.
+    /// A box of any kind: its indicator row (`row` high, its marks drawn
+    /// elsewhere) on top, then its image, then its content. `border` is the
+    /// colour of the card a premise sits in.
     pub(super) fn box_(
         &mut self,
         world: Rect,
+        row: f32,
         node: &BoxNode,
         border: Option<Color32>,
         is_root: bool,
@@ -70,16 +72,18 @@ impl Builder<'_> {
         });
 
         let text_width = world.width() - 2.0 * BOX_TEXT_PAD;
+        let mut body = world;
+        body.min.y += row;
         if let Some(img) = &node.image {
             self.shapes.push(Shape::Image {
-                rect: image_rect(world, img),
+                rect: image_rect(body, img),
                 asset: img.asset.clone(),
             });
         }
         // The inline editor shows the text of the box being edited.
         let text = (self.opts.editing != Some(node.id)).then_some(node.text.as_str());
         // Header and text go below the image, as the layout measured them.
-        let content = content_rect(world, node);
+        let content = content_rect(body, node);
         match kind {
             BoxKind::Source { source_type } => {
                 self.source_header(content, source_type);

@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 
 use eframe::egui;
-use reasoncraft_core::{Item, LayoutParams, layout};
+use reasoncraft_core::{Item, layout};
 
 use super::Action;
 use crate::app::ReasonCraftApp;
@@ -196,6 +196,7 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
         ..
     } = app;
     let tab = &tabs[*active];
+    let params = settings.layout_params();
     let opts = SceneOptions {
         show_markers: settings.show_markers,
         eval_shading: settings.eval_shading,
@@ -205,7 +206,7 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
     };
     let build = |ctx: &egui::Context, cache: &mut MeasureCache| -> Scene {
         let measure = EguiMeasure::new(ctx, cache);
-        let lay = layout(&tab.doc, &measure, &LayoutParams::default());
+        let lay = layout(&tab.doc, &measure, &params);
         build_scene(&tab.doc, &lay, &opts, &measure)
     };
     let scene = match egui_ctx {

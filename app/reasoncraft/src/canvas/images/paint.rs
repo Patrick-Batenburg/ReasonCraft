@@ -96,7 +96,7 @@ pub fn preparing(ui: &egui::Ui, tab: &DocTab, layout: &Layout, tk: &Tokens) {
     let painter = ui.painter_at(ui.max_rect());
     let zoom = tab.camera.zoom;
     for &node in tab.pending_images.keys() {
-        let Some(&world) = layout.boxes.get(&node) else {
+        let Some(world) = layout.body(node) else {
             continue;
         };
         let band = Rect::from_min_size(

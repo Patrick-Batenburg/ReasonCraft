@@ -16,11 +16,11 @@ use std::ops::Range;
 use emath::{Rect, Vec2};
 
 use super::axis::Frame;
-use super::card;
 use super::contour::Contour;
 use super::ports::{Pending, PortKey};
 use super::row;
 use super::{BOX_TEXT_PAD, ConnectorKind, Layout, LayoutParams, Measure, image_height};
+use super::{card, indicators};
 use crate::connector::Strength;
 use crate::ids::{Item, NodeId};
 use crate::model::{BoxKind, BoxNode, Card, CardStrength, Document, Role};
@@ -323,7 +323,10 @@ fn box_size(node: &BoxNode, m: &dyn Measure, p: &LayoutParams) -> Vec2 {
         p.min_box_height
             .max(text_height + 2.0 * BOX_TEXT_PAD + image_height)
     };
-    Vec2::new(width, height)
+    Vec2::new(
+        width,
+        height + indicators::row_height(node, &p.indicators, p.indicator_row),
+    )
 }
 
 /// How the connector from `child` to its parent is drawn.

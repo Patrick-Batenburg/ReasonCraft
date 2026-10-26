@@ -123,9 +123,10 @@ pub fn paint(
     }
     for (id, &rect) in &layout.boxes {
         if let Some(node) = doc.boxes.get(id) {
-            p.comment_badge(rect, &node.comments);
+            let row = layout.indicator_row(*id);
+            p.comment_badge(rect, row, &node.comments);
             if let Some(link) = &node.link {
-                p.link_glyph(rect, safe_link(link).is_some());
+                p.link_glyph(rect, row, safe_link(link).is_some());
             }
         }
     }

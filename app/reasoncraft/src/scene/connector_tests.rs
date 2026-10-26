@@ -210,7 +210,7 @@ fn link_glyph_clear_of_arrowheads() {
         doc.boxes.get_mut(&root).unwrap().link = Some("https://example.org".into());
         for style in ConnectorStyle::ALL {
             let (lay, scene) = scene_in(&doc, style);
-            let glyph = link_rect(lay.boxes[&root]);
+            let glyph = link_rect(lay.boxes[&root], lay.indicator_row(root));
             let arrowheads: Vec<Rect> = scene
                 .shapes
                 .iter()
@@ -234,6 +234,22 @@ fn link_glyph_clear_of_arrowheads() {
     }
 }
 
+/// The origin and row count of each text shape that starts inside `world`.
+fn text_rows(scene: &Scene, world: Rect) -> Vec<(Pos2, usize)> {
+    let rows: Vec<(Pos2, usize)> = scene
+        .shapes
+        .iter()
+        .filter_map(|s| match s {
+            Shape::Text { origin, rows, .. } if world.contains(*origin) => {
+                Some((*origin, rows.len()))
+            }
+            _ => None,
+        })
+        .collect();
+    assert!(!rows.is_empty(), "text in {world:?}");
+    rows
+}
+
 #[test]
 fn marker_and_badge_inside_box() {
     for dir in LayoutDirection::ALL {
@@ -243,7 +259,7 @@ fn marker_and_badge_inside_box() {
             .add_card(Parent::Box(doc.root), CardKind::Reason, "A")
             .unwrap();
         let mut premises = vec![first];
-        for text in ["B", "C"] {
+        for text in ["B|two rows", "C|three|rows"] {
             premises.push(doc.add_premise(card, None, text).unwrap());
         }
         for &p in &premises {
@@ -263,10 +279,12 @@ fn marker_and_badge_inside_box() {
         let (lay, scene) = scene_in(&doc, ConnectorStyle::Curved);
         for &p in &premises {
             let world = lay.boxes[&p];
-            let (c, r) = marker_circle(world);
+            let row = lay.indicator_row(p);
+            assert!(row > 0.0, "{dir:?}: an indicator row");
+            let (c, r) = marker_circle(world, row);
             let marker = Rect::from_center_size(c, vec2(2.0 * r, 2.0 * r));
-            let badge = badge_rect(world, 100);
-            let glyph = link_rect(world);
+            let badge = badge_rect(world, row, 100);
+            let glyph = link_rect(world, row);
             for (name, rect) in [("marker", marker), ("badge", badge), ("glyph", glyph)] {
                 assert!(
                     world.contains_rect(rect),
@@ -284,15 +302,93 @@ fn marker_and_badge_inside_box() {
                 "{dir:?}"
             );
             assert!(
-                badge.top() >= glyph.bottom(),
-                "{dir:?}: badge below the glyph"
+                badge.left() >= glyph.right(),
+                "{dir:?}: badge after the glyph"
             );
+            // No mark covers a row of the box's text (taken as wide as the
+            // box, since rows are centred).
+            for (origin, rows) in text_rows(&scene, world) {
+                for i in 0..rows {
+                    let top = origin.y + i as f32 * LINE;
+                    let text = Rect::from_x_y_ranges(world.x_range(), top..=top + LINE);
+                    for mark in [marker, badge.expand2(vec2(0.0, 1.75)), glyph] {
+                        assert!(!mark.intersects(text), "{dir:?}: {mark:?} on {text:?}");
+                    }
+                }
+            }
             // The scene draws the marker where `marker_circle` says.
             let drawn = scene
                 .shapes
                 .iter()
                 .any(|s| matches!(s, Shape::Circle { center, .. } if *center == c));
             assert!(drawn, "{dir:?}: marker in the scene");
+        }
+    }
+}
+
+/// The axis-parallel straight pieces of each elbow body (a stroked path
+/// with corners; stubs and their markers are drawn apart) of `scene`:
+/// (axis, fixed coordinate, range start, range end); axis 0 runs along x.
+fn straight_pieces(scene: &Scene) -> Vec<Vec<(usize, f32, f32, f32)>> {
+    let mut out = Vec::new();
+    for s in &scene.shapes {
+        let Shape::Path {
+            points,
+            stroke: Some(_),
+            fill: None,
+            ..
+        } = s
+        else {
+            continue;
+        };
+        if !points.iter().any(|p| matches!(p, PathEl::CubicTo(..))) {
+            continue;
+        }
+        let mut pieces = Vec::new();
+        let mut at = Pos2::ZERO;
+        for el in points {
+            match *el {
+                PathEl::MoveTo(p) => at = p,
+                PathEl::LineTo(p) => {
+                    let d = p - at;
+                    if d.length() > 1e-3 && d.y.abs() < 1e-4 {
+                        pieces.push((0, at.y, at.x.min(p.x), at.x.max(p.x)));
+                    } else if d.length() > 1e-3 && d.x.abs() < 1e-4 {
+                        pieces.push((1, at.x, at.y.min(p.y), at.y.max(p.y)));
+                    }
+                    at = p;
+                }
+                PathEl::CubicTo(_, _, p) => at = p,
+                PathEl::Close => {}
+            }
+        }
+        out.push(pieces);
+    }
+    out
+}
+
+#[test]
+fn elbow_connectors_never_run_on_top_of_each_other() {
+    for dir in LayoutDirection::ALL {
+        let mut doc = reasoncraft_core::fixtures::sample_iot_like(40);
+        doc.layout_direction = dir;
+        let (_, scene) = scene_in(&doc, ConnectorStyle::Elbow);
+        let paths = straight_pieces(&scene);
+        for (i, a) in paths.iter().enumerate() {
+            for b in &paths[i + 1..] {
+                for &(axis, at, lo, hi) in a {
+                    for &(axis2, at2, lo2, hi2) in b {
+                        let collinear = axis == axis2 && (at - at2).abs() < 1e-3;
+                        let overlap = hi.min(hi2) - lo.max(lo2);
+                        assert!(
+                            !collinear || overlap <= 1e-3,
+                            "{dir:?}: {:?} on {:?}",
+                            (axis, at, lo, hi),
+                            (axis2, at2, lo2, hi2)
+                        );
+                    }
+                }
+            }
         }
     }
 }

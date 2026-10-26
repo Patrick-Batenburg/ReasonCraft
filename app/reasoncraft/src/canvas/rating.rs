@@ -5,6 +5,8 @@ use eframe::egui::{Color32, Painter, Pos2, Rect, vec2};
 use reasoncraft_core::connector::Strength;
 use reasoncraft_core::{Acceptance, BoxNode, CardStrength, Role, SourceRating};
 
+use reasoncraft_core::layout::BOX_TEXT_PAD;
+
 use super::paint::role_colour;
 use crate::i18n::t;
 use crate::scene::{PathEl, Shape, paint_shapes};
@@ -18,8 +20,15 @@ pub const STRONG_ALPHA: f32 = 0.22;
 /// Marker diameter in world px; hidden below [`MARKER_MIN_ZOOM`].
 const MARKER_SIZE: f32 = 16.0;
 /// How far the marks on a box (rating marker, link glyph, comment badge)
-/// sit inside its edges, and apart from each other, in world px.
+/// sit inside its side edges, and apart from each other, in world px.
 pub const CORNER_INSET: f32 = 4.0;
+
+/// The y the marks of a box at `world` are centred on, given the height
+/// `row` of its indicator row: halfway down the space above its text (the
+/// row plus the text padding), so they never cover text.
+pub fn indicator_centre(world: Rect, row: f32) -> f32 {
+    world.top() + (row + BOX_TEXT_PAD) / 2.0
+}
 pub const MARKER_MIN_ZOOM: f32 = 0.35;
 
 /// Fill alpha of a card frame.
@@ -111,15 +120,14 @@ pub fn mark_for(node: &BoxNode) -> Option<Mark> {
 
 /// Centre and radius (world units) of the marker of a box at `world`.
 ///
-/// The circle sits inside the box's top-right corner, [`CORNER_INSET`] from
-/// both edges, so it never reaches into a neighbouring box or onto a
-/// connector's arrowhead (which end outside the box).
-pub fn marker_circle(world: Rect) -> (Pos2, f32) {
+/// The circle sits at the right end of the box's indicator row (`row`
+/// high), [`CORNER_INSET`] from the right edge: inside the box, so it never
+/// reaches into a neighbouring box or onto a connector's arrowhead (which
+/// end outside the box), and above the text.
+pub fn marker_circle(world: Rect, row: f32) -> (Pos2, f32) {
     let r = MARKER_SIZE / 2.0;
-    (
-        world.right_top() + vec2(-CORNER_INSET - r, CORNER_INSET + r),
-        r,
-    )
+    let x = world.right() - CORNER_INSET - r;
+    (Pos2::new(x, indicator_centre(world, row)), r)
 }
 
 /// A ✓ / ? / × marker: a circle of radius `r` (screen px) centred on `c`,
@@ -260,11 +268,13 @@ mod tests {
     }
 
     #[test]
-    fn marker_sits_inside_the_top_right_corner() {
+    fn marker_sits_at_the_right_of_the_indicator_row() {
         let world = Rect::from_min_size(pos2(100.0, 50.0), vec2(156.0, 40.0));
-        let (c, r) = marker_circle(world);
+        let (c, r) = marker_circle(world, 16.0);
         assert_eq!(c.x + r, world.right() - CORNER_INSET);
-        assert_eq!(c.y - r, world.top() + CORNER_INSET);
+        assert_eq!(c.y, world.top() + 11.0);
+        // Above the text, which starts below the row and its padding.
+        assert!(c.y + r <= world.top() + 16.0 + BOX_TEXT_PAD);
     }
 
     #[test]

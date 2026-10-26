@@ -96,8 +96,9 @@ fn scene_has_no_overlays_for_export() {
     let tk = o.tokens;
 
     let world = layout.boxes[&premise];
-    let badge = badge_rect(world, 1);
-    let glyph = link_rect(world);
+    let row = layout.indicator_row(premise);
+    let badge = badge_rect(world, row, 1);
+    let glyph = link_rect(world, row);
     for s in &scene.shapes {
         let b = s.bounds();
         assert!(!badge.contains_rect(b), "badge shape: {s:?}");

@@ -1,8 +1,9 @@
 //! Personal preferences that survive restarts.
 
-use reasoncraft_core::ConnectorStyle;
 use reasoncraft_core::checks::{CheckKind, CheckSet};
+use reasoncraft_core::layout::IndicatorOptions;
 use reasoncraft_core::outline::OutlineOptions;
+use reasoncraft_core::{ConnectorStyle, LayoutParams};
 use serde::{Deserialize, Serialize};
 
 use crate::export::{ExportOptions, PageSetup};
@@ -54,6 +55,17 @@ pub enum OutlineToggle {
 }
 
 impl Settings {
+    /// The layout parameters these settings ask for: boxes get an
+    /// indicator row for the marks they show.
+    pub fn layout_params(&self) -> LayoutParams {
+        LayoutParams {
+            indicators: IndicatorOptions {
+                markers: self.show_markers,
+            },
+            ..LayoutParams::default()
+        }
+    }
+
     /// Whether the outline switch `toggle` is on.
     pub fn outline_toggle(&self, toggle: OutlineToggle) -> bool {
         match toggle {

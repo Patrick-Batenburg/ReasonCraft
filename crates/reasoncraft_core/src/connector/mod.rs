@@ -8,10 +8,12 @@ use crate::layout::ConnectorKind;
 
 mod curved;
 mod elbow;
+mod stagger;
 mod tapered;
 
 pub use curved::curved_path;
-pub use elbow::{ELBOW_RADIUS, elbow_path};
+pub use elbow::{ELBOW_RADIUS, elbow_path, elbow_path_at};
+pub use stagger::{ELBOW_SPACING, elbow_turns};
 pub use tapered::{tapered_band, tapered_widths};
 
 /// Arrowhead size in screen px, independent of stroke width and zoom.

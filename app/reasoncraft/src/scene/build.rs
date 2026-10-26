@@ -47,9 +47,10 @@ pub fn build_scene(
     {
         b.parking(frame);
     }
-    for c in &layout.connectors {
+    let turns = b.elbow_turns(&layout.connectors);
+    for (i, c) in layout.connectors.iter().enumerate() {
         if keep.item(c.child) && Some(c.child) != opts.only {
-            b.connector(c);
+            b.connector(c, turns.get(i).copied());
         }
     }
     let rating = |id| {
@@ -84,9 +85,11 @@ pub fn build_scene(
         if !keep.item(Item::Box(*id)) {
             continue;
         }
-        b.box_(rect, node, premise_colour.get(id).copied(), *id == doc.root);
+        let row = layout.indicator_row(*id);
+        let border = premise_colour.get(id).copied();
+        b.box_(rect, row, node, border, *id == doc.root);
         if markers && let Some(mark) = mark_for(node) {
-            b.marker(rect, mark);
+            b.marker(rect, row, mark);
         }
     }
     for (&id, &anchor) in &layout.card_labels {
@@ -271,9 +274,10 @@ impl Builder<'_> {
         }
     }
 
-    /// A ✓ / ? / × marker in a small circle on the box at `world`.
-    fn marker(&mut self, world: Rect, mark: Mark) {
-        let (centre, radius) = marker_circle(world);
+    /// A ✓ / ? / × marker in a small circle in the indicator row (`row`
+    /// high) of the box at `world`.
+    fn marker(&mut self, world: Rect, row: f32, mark: Mark) {
+        let (centre, radius) = marker_circle(world, row);
         if !self.visible(Rect::from_center_size(centre, Vec2::splat(2.0 * radius))) {
             return;
         }

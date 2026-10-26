@@ -54,6 +54,59 @@ fn path_data(svg: &str) -> Vec<&str> {
         .collect()
 }
 
+/// Exports lay boxes out like the screen: a rated claim gets its indicator
+/// row only while markers are shown, in the canvas and in the export.
+#[test]
+fn export_boxes_match_the_screen_layout() {
+    use reasoncraft::canvas::measure::{EguiMeasure, MeasureCache};
+    let dir = tempfile::tempdir().unwrap();
+    let dialogs = FakeDialogs::default();
+    let mut h = harness(dialogs.clone());
+    let root = h.state().tabs[0].doc.root;
+    h.state_mut().tabs[0]
+        .doc
+        .boxes
+        .get_mut(&root)
+        .unwrap()
+        .acceptance = Some(reasoncraft_core::Acceptance::Accept);
+    for markers in [true, false] {
+        h.state_mut().settings.show_markers = markers;
+        let path = dir.path().join(format!("{markers}.svg"));
+        dialogs.set_export(path.clone());
+        let options = ExportOptions {
+            svg_outlines: false,
+            ..ExportOptions::default()
+        };
+        reasoncraft::actions::apply(
+            h.state_mut(),
+            Action::RunExport(ExportRequest {
+                format: ExportFormat::Svg,
+                options,
+                page: PageSetup::default(),
+            }),
+        );
+        let start = Instant::now();
+        while h.state().export.busy() {
+            assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
+            h.step();
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let svg = std::fs::read_to_string(path).unwrap();
+        // The layout the canvas draws with these settings.
+        let mut cache = MeasureCache::default();
+        let params = h.state().settings.layout_params();
+        let lay = reasoncraft_core::layout(
+            &h.state().tabs[0].doc,
+            &EguiMeasure::new(&h.ctx, &mut cache),
+            &params,
+        );
+        let claim = lay.boxes[&root];
+        assert_eq!(lay.indicator_row(root) > 0.0, markers);
+        let rect = format!("width=\"{}\" height=\"{}\"", claim.width(), claim.height());
+        assert!(svg.contains(&rect), "{markers}: no {rect} in the export");
+    }
+}
+
 #[test]
 fn svg_export_draws_the_connector_style() {
     let dir = tempfile::tempdir().unwrap();

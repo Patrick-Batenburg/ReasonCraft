@@ -10,10 +10,12 @@
 mod axis;
 mod card;
 mod contour;
+mod indicators;
 mod ports;
 mod row;
 mod tree;
 
+pub use indicators::{IndicatorOptions, needs_indicator_row};
 pub(crate) use tree::display_children;
 
 use emath::{Pos2, Rect, Vec2};
@@ -59,6 +61,11 @@ pub struct LayoutParams {
     pub port_spacing: f32,
     pub port_margin: f32,
     pub parking_gap: f32,
+    /// Height of the indicator row a box with marks gets above its
+    /// content (see [`needs_indicator_row`]).
+    pub indicator_row: f32,
+    /// Which marks boxes show.
+    pub indicators: IndicatorOptions,
 }
 
 impl Default for LayoutParams {
@@ -75,6 +82,8 @@ impl Default for LayoutParams {
             port_spacing: 16.0,
             port_margin: 15.0,
             parking_gap: 120.0,
+            indicator_row: 16.0,
+            indicators: IndicatorOptions::default(),
         }
     }
 }
@@ -135,6 +144,9 @@ pub struct Layout {
     pub card_roles: IndexMap<CardId, Role>,
     /// Rating of every card (`None` when unrated).
     pub card_strength: IndexMap<CardId, Option<CardStrength>>,
+    /// The height of the indicator row at the top of each box that has
+    /// one; its image and text sit below it.
+    pub indicator_rows: IndexMap<NodeId, f32>,
     pub connectors: Vec<Connector>,
     pub main_bounds: Rect,
     pub parking_bounds: Option<Rect>,
@@ -151,6 +163,7 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
         card_labels: IndexMap::with_capacity(doc.cards.len()),
         card_roles: IndexMap::with_capacity(doc.cards.len()),
         card_strength: IndexMap::with_capacity(doc.cards.len()),
+        indicator_rows: IndexMap::new(),
         connectors: Vec::new(),
         main_bounds: Rect::NOTHING,
         parking_bounds: None,
@@ -179,6 +192,14 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
     }
 
     out.connectors = ports::assign(doc, pending, &out, p, frame);
+    out.indicator_rows = out
+        .boxes
+        .keys()
+        .filter_map(|id| {
+            let h = indicators::row_height(doc.boxes.get(id)?, &p.indicators, p.indicator_row);
+            (h > 0.0).then_some((*id, h))
+        })
+        .collect();
     out.bounds = out
         .parking_bounds
         .map_or(out.main_bounds, |b| b.union(out.main_bounds));
@@ -188,6 +209,18 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
 }
 
 impl Layout {
+    /// The height of box `id`'s indicator row (0 without one).
+    pub fn indicator_row(&self, id: NodeId) -> f32 {
+        self.indicator_rows.get(&id).copied().unwrap_or(0.0)
+    }
+
+    /// Box `id`'s rect below its indicator row: where its image and text go.
+    pub fn body(&self, id: NodeId) -> Option<Rect> {
+        let mut r = *self.boxes.get(&id)?;
+        r.min.y += self.indicator_row(id);
+        Some(r)
+    }
+
     /// Move everything by `d`.
     fn translate(&mut self, d: Vec2) {
         if d == Vec2::ZERO {

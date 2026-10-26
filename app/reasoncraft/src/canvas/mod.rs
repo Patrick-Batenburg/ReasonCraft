@@ -17,7 +17,7 @@ pub mod plus_menu;
 pub mod rating;
 
 use eframe::egui::{self, Key, PointerButton, Rect, Response, Role, Sense, WidgetInfo};
-use reasoncraft_core::{Item, LayoutParams, layout};
+use reasoncraft_core::{Item, layout};
 
 pub use camera::Camera;
 use hit::{Hit, hit_test};
@@ -67,7 +67,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     // Recomputed every frame: about 0.3 ms for 500 boxes, and never stale.
     let measure = EguiMeasure::new(&ctx, measure_cache);
-    let layout = layout(&tab.doc, &measure, &LayoutParams::default());
+    let layout = layout(&tab.doc, &measure, &settings.layout_params());
 
     tab.viewport = Some(rect);
     if tab.fit_pending {

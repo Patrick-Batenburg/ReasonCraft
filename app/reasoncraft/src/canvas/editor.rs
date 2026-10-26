@@ -37,11 +37,11 @@ pub(super) fn show(
     pending: &mut Vec<Action>,
 ) {
     let Some(b) = tab.editing() else { return };
-    let (Some(&world), Some(node)) = (layout.boxes.get(&b), tab.doc.boxes.get(&b)) else {
+    let (Some(body), Some(node)) = (layout.body(b), tab.doc.boxes.get(&b)) else {
         return;
     };
-    // The text sits below the box's image, if it has one.
-    let world = content_rect(world, node);
+    // The text sits below the box's indicator row and image, if it has them.
+    let world = content_rect(body, node);
     let mut area = world.shrink(BOX_TEXT_PAD);
     let hint = match &node.kind {
         BoxKind::Source { source_type } => {
