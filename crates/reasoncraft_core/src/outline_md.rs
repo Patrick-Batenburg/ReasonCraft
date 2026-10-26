@@ -6,17 +6,25 @@ use crate::words::{linking_words, not_connected_heading, source_word};
 
 /// Escape Markdown specials in `s` (including `|` for tables, `&` for
 /// entities and `~` for strikethrough). At the start of a line, a leading
-/// `-`, `+` or `1.` would begin a list, so those are escaped too.
+/// `-`, `+` or `1.` would begin a list and a leading `=` could underline
+/// the line above as a heading, so those are escaped too; leading spaces
+/// and tabs (four would begin a code block) become `&#32;` and `&#9;`.
 pub(crate) fn escape(s: &str, line_start: bool) -> String {
     let mut out = String::with_capacity(s.len() + 4);
     let mut rest = s;
     if line_start {
+        let indent = s.len() - s.trim_start_matches([' ', '\t']).len();
+        for c in s[..indent].chars() {
+            out.push_str(if c == '\t' { "&#9;" } else { "&#32;" });
+        }
+        let s = &s[indent..];
+        rest = s;
         let digits = s.bytes().take_while(u8::is_ascii_digit).count();
         if digits > 0 && s[digits..].starts_with(['.', ')']) {
             out.push_str(&s[..digits]);
             out.push('\\');
             rest = &s[digits..];
-        } else if s.starts_with(['-', '+']) {
+        } else if s.starts_with(['-', '+', '=']) {
             out.push('\\');
         }
     }

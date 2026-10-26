@@ -65,3 +65,17 @@ fn refused_edit_records_no_history() {
     assert!(tab.history.undo.is_empty());
     assert!(!tab.is_dirty());
 }
+
+#[test]
+fn undo_dropping_inline_edit_clears_edit_focus() {
+    let mut tab = DocTab::new();
+    let root = tab.doc.root;
+    let (_, b) = tab
+        .edit(|d| d.add_card(Parent::Box(root), CardKind::Reason, ""))
+        .unwrap();
+    tab.begin_edit(b, true);
+    assert!(tab.edit_focus);
+    tab.undo();
+    assert_eq!(tab.editing(), None);
+    assert!(!tab.edit_focus);
+}

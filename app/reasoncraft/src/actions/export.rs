@@ -60,7 +60,8 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
         }
         Action::CopyAsImage => {
             let tokens = tokens_for(app, app.settings.export.theme);
-            let snapshot = scene_snapshot(app, None, tokens);
+            let only = scope_item(app, app.settings.export.scope);
+            let snapshot = scene_snapshot(app, only, tokens);
             let target = Target::Clipboard(app.export.clipboard.clone());
             let options = ExportOptions {
                 png_scale: 2,
@@ -131,16 +132,12 @@ fn export_to(app: &mut ReasonCraftApp, request: ExportRequest, path: PathBuf) {
         options,
         page,
     } = request;
-    let tab = &app.tabs[app.active];
     let snapshot = if format.is_image() {
-        let only = match options.scope {
-            ExportScope::Map => None,
-            ExportScope::Selection => tab.selection,
-        };
+        let only = scope_item(app, options.scope);
         scene_snapshot(app, only, tokens_for(app, options.theme))
     } else {
         Snapshot::Doc {
-            doc: Box::new(tab.doc.clone()),
+            doc: Box::new(app.active_tab().doc.clone()),
             outline: app.settings.outline,
         }
     };
@@ -168,6 +165,15 @@ fn start(
         snapshot,
         target,
     });
+}
+
+/// The item an image export in `scope` shows with what is under it:
+/// `None` (the whole map) for the map scope or when nothing is selected.
+fn scope_item(app: &ReasonCraftApp, scope: ExportScope) -> Option<Item> {
+    match scope {
+        ExportScope::Map => None,
+        ExportScope::Selection => app.active_tab().selection,
+    }
 }
 
 /// The colours an export in `theme` uses.

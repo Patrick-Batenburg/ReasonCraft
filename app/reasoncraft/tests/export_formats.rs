@@ -149,6 +149,30 @@ fn word_and_essay_exports_run_from_the_ribbon() {
     }
 }
 
+#[test]
+fn essay_text_export_writes_plain_text() {
+    use reasoncraft_core::EssaySlot;
+
+    let dir = tempfile::tempdir().unwrap();
+    let (mut h, fakes, _) = harness(dir.path());
+    h.state_mut().tabs[0]
+        .doc
+        .set_essay_text(EssaySlot::Intro, "Written introduction")
+        .unwrap();
+    let file = dir.path().join("essay.txt");
+    fakes.dialogs.set_export(file.clone());
+    open_export_tab(&mut h);
+    click_button(&mut h, "export.essay");
+    h.get_by_label(&t("export.format.essay_text")).click();
+    h.run_steps(2);
+    wait(&mut h);
+    assert!(h.state().modal.is_none());
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert!(text.contains("Introduction"), "{text}");
+    assert!(text.contains("Written introduction"), "{text}");
+    assert!(!text.contains('#'), "{text}");
+}
+
 /// With `RC_EXPORT_OUT=<dir>` set, writes `task-10-outline.docx` and
 /// `task-10-essay.docx` (a Dutch sample with written paragraphs), for
 /// looking at by eye.

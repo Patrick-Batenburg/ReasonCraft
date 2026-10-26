@@ -127,6 +127,8 @@ error-save-other = The map could not be saved: { $detail }. Your changes are sti
 backstage-back = Back
 backstage-settings = Settings
 backstage-document = Document
+backstage-export = Export…
+backstage-print = Print
 settings-title = Settings
 settings-author = Your name
 settings-author_hint = Shown on the comments you add
@@ -408,6 +410,7 @@ export-format-outline_md = Markdown
 export-format-outline_txt = Plain text
 export-format-outline_docx = Word
 export-format-essay_md = Markdown
+export-format-essay_text = Plain text
 export-format-essay_docx = Word
 export-dialog-title = Export as { $format }
 export-dialog-export = Export
@@ -440,6 +443,7 @@ export-open_folder = Open folder
 export-copied = Copied to the clipboard.
 status-exporting = Exporting…
 status-preparing_image = Preparing image…
+status-text_cut = Text was cut to 50 000 characters.
 status-jobs-exports = { $count ->
     [one] One export running
    *[other] { $count } exports running

@@ -255,3 +255,36 @@ fn backstage_settings_set_author() {
         reasoncraft::theme::ThemeChoice::Light
     );
 }
+
+#[test]
+fn backstage_has_export_and_print() {
+    use reasoncraft::actions::FakeOpener;
+    use reasoncraft::app::RibbonTab;
+
+    let dir = tempfile::tempdir().unwrap();
+    let opener = FakeOpener::default();
+    let mut h = harness();
+    h.state_mut().link_opener = Box::new(opener.clone());
+    h.state_mut().export.print_dir = dir.path().to_owned();
+    h.run();
+    // Export… opens the Export ribbon tab and closes the backstage.
+    h.get_by_label(&t("ribbon.tab.file")).click();
+    h.run();
+    h.get_by_label(&t("backstage.export")).click();
+    h.run();
+    assert_eq!(h.state().ribbon_tab, RibbonTab::Export);
+    assert!(h.query_by_label(&t("backstage.export")).is_none());
+    // Print runs Print: a PDF in the print folder, opened in the viewer.
+    h.get_by_label(&t("ribbon.tab.file")).click();
+    h.run();
+    h.get_by_label(&t("backstage.print")).click();
+    let start = std::time::Instant::now();
+    while opener.opened.borrow().is_empty() {
+        assert!(start.elapsed().as_secs() < 60, "print hangs");
+        h.step();
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    assert_eq!(h.state().ribbon_tab, RibbonTab::Home);
+    let printed = std::path::PathBuf::from(&opener.opened.borrow()[0]);
+    assert_eq!(printed.parent().unwrap(), dir.path());
+}

@@ -354,3 +354,26 @@ fn docx_sets_a_default_body_font() {
     assert_eq!(fonts.attribute((W, "ascii")), Some("Calibri"));
     assert_eq!(fonts.attribute((W, "hAnsi")), Some("Calibri"));
 }
+
+#[test]
+fn docx_sets_document_language() {
+    let (doc, _) = sample();
+    let lines = build_outline(&doc, &OutlineOptions::default());
+    let opts = OutlineOptions::default();
+    for (lang, tag) in [("nl", "nl-NL"), ("en", "en-GB")] {
+        for bytes in [
+            essay_docx(&doc, lang).unwrap(),
+            outline_docx(&lines, &opts, lang, "Ann").unwrap(),
+        ] {
+            let styles = part(&bytes, "word/styles.xml");
+            let tree = roxmltree::Document::parse(&styles).unwrap();
+            let lang_el = tree
+                .descendants()
+                .find(|n| n.has_tag_name((W, "rPrDefault")))
+                .and_then(|d| d.descendants().find(|n| n.has_tag_name((W, "lang"))))
+                .expect("the default run properties have a language");
+            assert_eq!(lang_el.attribute((W, "val")), Some(tag));
+            assert!(styles.contains(&format!("w:lang w:val=\"{tag}\"")));
+        }
+    }
+}

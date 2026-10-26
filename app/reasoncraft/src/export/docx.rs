@@ -17,7 +17,7 @@ use reasoncraft_core::words::{
 use reasoncraft_core::{Document, EssaySlot};
 
 use super::ExportError;
-use super::docx_props::{now_w3cdtf, set_author};
+use super::docx_props::{finish_package, now_w3cdtf};
 use crate::theme::Tokens;
 
 /// Left indent per outline level: 0.6 cm in twentieths of a point.
@@ -62,13 +62,26 @@ fn base() -> Docx {
         .add_style(heading)
 }
 
-/// The finished package, with `author` as its creator.
-fn pack(docx: Docx, author: &str) -> Result<Vec<u8>, ExportError> {
+/// The finished package, with `author` as its creator and its text in
+/// document language `lang`.
+fn pack(docx: Docx, author: &str, lang: &str) -> Result<Vec<u8>, ExportError> {
     let mut out = Cursor::new(Vec::new());
     docx.build()
         .pack(&mut out)
         .map_err(|e| ExportError::Render(e.to_string()))?;
-    set_author(out.into_inner(), &one_line(author))
+    finish_package(out.into_inner(), &one_line(author), language_tag(lang))
+}
+
+/// Word's language tag for document language `lang`: Dutch for `nl`
+/// (`nl-NL`, `nl_BE`, ...), British English otherwise, matching the
+/// headings and linking words, which fall back to English.
+fn language_tag(lang: &str) -> &'static str {
+    let primary = lang.split(['-', '_']).next().unwrap_or_default();
+    if primary.eq_ignore_ascii_case("nl") {
+        "nl-NL"
+    } else {
+        "en-GB"
+    }
 }
 
 /// `s` without the characters XML 1.0 cannot hold (control characters,
@@ -163,7 +176,7 @@ pub fn outline_docx(
         p = p.add_run(text_run(&content_lines(&line.text)));
         docx = docx.add_paragraph(p);
     }
-    pack(docx, author)
+    pack(docx, author, lang)
 }
 
 /// `RRGGBB` for the muted text of the light theme.
@@ -240,5 +253,5 @@ pub fn essay_docx(doc: &Document, lang: &str) -> Result<Vec<u8>, ExportError> {
     }
     docx = docx.add_paragraph(heading(essay_heading(lang, EssayHeading::Conclusion)));
     docx = slot(docx, doc, EssaySlot::Conclusion, claim);
-    pack(docx, &doc.meta.author)
+    pack(docx, &doc.meta.author, lang)
 }

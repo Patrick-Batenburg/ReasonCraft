@@ -29,6 +29,8 @@ enum Page {
 enum Entry {
     /// Back to the map, running the action (if any).
     Command(Option<Action>),
+    /// Back to the map, on this ribbon tab.
+    Ribbon(RibbonTab),
     /// Show (or hide) a page.
     Page(Page),
 }
@@ -85,6 +87,16 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
             Entry::Command(Some(Action::SaveAs)),
         ),
         (
+            Icon::ExportPng,
+            "backstage.export",
+            Entry::Ribbon(RibbonTab::Export),
+        ),
+        (
+            Icon::Print,
+            "backstage.print",
+            Entry::Command(Some(Action::Print)),
+        ),
+        (
             Icon::Note,
             "backstage.document",
             Entry::Page(Page::Document),
@@ -124,6 +136,7 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
                         app.push(action);
                     }
                 }
+                Entry::Ribbon(tab) => app.ribbon_tab = tab,
             }
             ui.ctx().request_repaint();
         }

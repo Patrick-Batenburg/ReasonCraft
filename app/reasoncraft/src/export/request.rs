@@ -15,6 +15,7 @@ pub enum ExportFormat {
     OutlineText,
     OutlineDocx,
     EssayMarkdown,
+    EssayText,
     EssayDocx,
 }
 
@@ -26,7 +27,7 @@ impl ExportFormat {
             Self::Svg => "svg",
             Self::Pdf => "pdf",
             Self::OutlineMarkdown | Self::EssayMarkdown => "md",
-            Self::OutlineText => "txt",
+            Self::OutlineText | Self::EssayText => "txt",
             Self::OutlineDocx | Self::EssayDocx => "docx",
         }
     }
@@ -46,6 +47,7 @@ impl ExportFormat {
             Self::OutlineText => "export.format.outline_txt",
             Self::OutlineDocx => "export.format.outline_docx",
             Self::EssayMarkdown => "export.format.essay_md",
+            Self::EssayText => "export.format.essay_text",
             Self::EssayDocx => "export.format.essay_docx",
         }
     }

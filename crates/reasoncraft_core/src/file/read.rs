@@ -11,6 +11,8 @@ use super::{
     DOCUMENT_ENTRY, FileError, IMAGES_DIR, MAX_ASSET_BYTES, MAX_DOCUMENT_BYTES, MAX_TOTAL_BYTES,
     zip_to_io,
 };
+use crate::essay::EssaySlot;
+use crate::ids::Item;
 use crate::model::{Document, SCHEMA_VERSION};
 use crate::package::{Assets, Package, asset_key};
 
@@ -99,6 +101,12 @@ pub(super) fn open_package_with_limits(
     let mut doc: Document =
         serde_json::from_str(&text).map_err(|e| FileError::Malformed(e.to_string()))?;
     doc.validate().map_err(FileError::Malformed)?;
+    let (boxes, cards) = (&doc.boxes, &doc.cards);
+    doc.essay.salvage_orphans(|slot| match slot {
+        EssaySlot::Item(Item::Box(b)) => boxes.contains_key(b),
+        EssaySlot::Item(Item::Card(c)) => cards.contains_key(c),
+        EssaySlot::Intro | EssaySlot::Conclusion => true,
+    });
     doc.cap_snippet_texts();
     doc.cap_essay_texts();
 

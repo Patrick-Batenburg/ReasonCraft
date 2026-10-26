@@ -5,6 +5,7 @@ use reasoncraft_core::{BoxKind, CardKind, Item, NewLoose, Parent, RemoveMode};
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::{DocTab, EditSession};
 use crate::file_ops;
+use crate::i18n::t;
 
 mod action;
 mod box_group;
@@ -119,6 +120,14 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             box_group::apply(app, action)
         }
         Action::InsertImage | Action::RemoveImage => images::apply(app, action),
+        // Editing a box: text past the limit is cut, with a note.
+        Action::Edit | Action::StopEditing | Action::EditText { .. } | Action::TypeText(_) => {
+            if let Some(tab) = app.tabs.get_mut(app.active)
+                && editing::apply(tab, action)
+            {
+                app.status_note = Some(t("status.text_cut"));
+            }
+        }
         Action::OpenExport(_)
         | Action::RunExport(_)
         | Action::CloseExportDialog
@@ -221,9 +230,6 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         }
         Action::Delete => delete(tab, RemoveMode::KeepChildren),
         Action::DeleteBranch => delete(tab, RemoveMode::Branch),
-        Action::Edit | Action::StopEditing | Action::EditText { .. } | Action::TypeText(_) => {
-            editing::apply(tab, action)
-        }
         Action::Move { .. } | Action::Reorder(_) => structure::apply(tab, action),
         Action::StartConnect | Action::CancelConnect => connect::apply(tab, action),
         Action::Select(item) => tab.selection = item.filter(|i| tab.contains(*i)),
@@ -251,6 +257,10 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::MoveSnippet { .. } => snippets::apply(tab, action),
         Action::EditEssayText { .. } | Action::RemoveUnplaced(_) => essay::apply(tab, action),
         Action::New
+        | Action::Edit
+        | Action::StopEditing
+        | Action::EditText { .. }
+        | Action::TypeText(_)
         | Action::Open
         | Action::Save
         | Action::SaveAs

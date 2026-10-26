@@ -229,6 +229,41 @@ fn copy_as_image_puts_image_on_clipboard() {
 }
 
 #[test]
+fn copy_as_image_uses_selection_when_scope_selection() {
+    let dir = tempfile::tempdir().unwrap();
+    let (mut h, fakes, alpha) = harness(dir.path());
+    let copy = |h: &mut H| {
+        h.state_mut().push(Action::CopyAsImage);
+        h.run_steps(2);
+        wait(h);
+        let images = fakes.clipboard.images.lock().unwrap();
+        let (w, hgt, _) = images.last().unwrap();
+        (*w, *hgt)
+    };
+    let whole = copy(&mut h);
+    h.state_mut().settings.export.scope = ExportScope::Selection;
+    // Nothing selected: the whole map.
+    h.state_mut().tabs[0].selection = None;
+    assert_eq!(copy(&mut h), whole);
+    // Alpha selected: the same size as a PNG of Alpha's subtree at 2x.
+    h.state_mut().tabs[0].selection = Some(Item::Box(alpha));
+    let part = copy(&mut h);
+    assert!(part.0 < whole.0, "{part:?} is smaller than {whole:?}");
+    let file = dir.path().join("part.png");
+    fakes.dialogs.set_export(file.clone());
+    let options = ExportOptions {
+        scope: ExportScope::Selection,
+        png_scale: 2,
+        ..ExportOptions::default()
+    };
+    h.state_mut().push(request(ExportFormat::Png, options));
+    h.run_steps(2);
+    wait(&mut h);
+    let (w, hgt, _) = png_to_rgba(&std::fs::read(&file).unwrap()).unwrap();
+    assert_eq!(part, (w, hgt));
+}
+
+#[test]
 fn print_writes_pdf_and_opens_it() {
     let dir = tempfile::tempdir().unwrap();
     let (mut h, fakes, _) = harness(dir.path());

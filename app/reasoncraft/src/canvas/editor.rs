@@ -18,6 +18,10 @@ use crate::i18n::t;
 use crate::scene::SOURCE_HEADER;
 use crate::theme::Tokens;
 
+/// The most characters a box keeps from the editor: a longer paste is cut
+/// (with a note in the status bar).
+pub const MAX_BOX_CHARS: usize = 50_000;
+
 /// The widget id of `tab`'s inline editor for box `b`.
 pub fn editor_id(tab: &DocTab, b: NodeId) -> Id {
     tab.widget_id(("inline_editor", b))

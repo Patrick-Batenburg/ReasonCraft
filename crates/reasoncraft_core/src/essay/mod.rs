@@ -1,10 +1,11 @@
 //! The essay plan: text written for the parts of the map.
 //!
-//! Paragraphs are stored by slot key (see [`EssaySlot::key`]). A key whose
-//! item no longer exists (for example from a hand-edited file) is harmless:
-//! it stays in the file and is ignored by [`essay_order`] and the exports.
-//! When an edit removes an item that has a paragraph, the paragraph moves
-//! to [`EssayPlan::unplaced`] instead of being lost.
+//! Paragraphs are stored by slot key (see [`EssaySlot::key`]). When an
+//! edit removes an item that has a paragraph, the paragraph moves to
+//! [`EssayPlan::unplaced`] instead of being lost; a file whose paragraphs
+//! name missing items (for example a hand-edited one) has them moved there
+//! on open (see [`EssayPlan::salvage_orphans`]). A key this build does not
+//! know stays in the file and is ignored.
 
 mod order;
 mod text;
@@ -105,6 +106,26 @@ impl EssayPlan {
     /// The paragraph written for `slot`, if any.
     pub fn text(&self, slot: EssaySlot) -> Option<&str> {
         self.paragraphs.get(&slot.key()).map(String::as_str)
+    }
+
+    /// Move the paragraphs of item slots for which `doc_items` is false
+    /// (their box or card is missing) to the unplaced notes, with an empty
+    /// label: there is no item left to name them by. Keys this build does
+    /// not know stay. Called once when a file is opened.
+    pub fn salvage_orphans(&mut self, doc_items: impl Fn(&EssaySlot) -> bool) {
+        let orphan = |key: &str| {
+            EssaySlot::from_key(key)
+                .is_some_and(|slot| matches!(slot, EssaySlot::Item(_)) && !doc_items(&slot))
+        };
+        if !self.paragraphs.keys().any(|k| orphan(k)) {
+            return;
+        }
+        let (gone, kept) = std::mem::take(&mut self.paragraphs)
+            .into_iter()
+            .partition::<IndexMap<_, _>, _>(|(k, _)| orphan(k));
+        self.paragraphs = kept;
+        self.unplaced
+            .extend(gone.into_values().map(|text| (String::new(), text)));
     }
 }
 

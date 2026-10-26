@@ -7,6 +7,7 @@ use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::{Document, Item, NodeId, Uuid};
 
 use super::{DocTab, essay_edit, meta_edit, snippet_edit};
+use crate::canvas::editor::MAX_BOX_CHARS;
 
 /// What the running edit session edits.
 #[derive(Clone, Debug, PartialEq)]
@@ -57,13 +58,17 @@ impl DocTab {
     }
 
     /// Forget the session without recording it when `gone` says its
-    /// target no longer exists (after undo, redo or removal).
+    /// target no longer exists (after undo, redo or removal). A dropped
+    /// inline edit no longer asks for the editor's focus.
     pub(super) fn drop_session_if(&mut self, gone: impl FnOnce(&Document, &EditSession) -> bool) {
         if self
             .session
             .as_ref()
             .is_some_and(|(s, _)| gone(&self.doc, s))
         {
+            if matches!(self.session, Some((EditSession::Box { .. }, _))) {
+                self.edit_focus = false;
+            }
             self.session = None;
         }
     }
@@ -129,12 +134,18 @@ impl DocTab {
     }
 
     /// Show the editor's text for box `b` live in the document, without a
-    /// history step. Text for a box that is no longer being edited (a late
-    /// update after the edit ended) is dropped.
-    pub fn set_edit_text(&mut self, b: NodeId, text: String) {
+    /// history step, cut to [`MAX_BOX_CHARS`] characters. Text for a box
+    /// that is no longer being edited (a late update after the edit ended)
+    /// is dropped. Returns whether the text was cut.
+    pub fn set_edit_text(&mut self, b: NodeId, mut text: String) -> bool {
         if self.editing() != Some(b) {
-            return;
+            return false;
         }
+        let end = text.char_indices().nth(MAX_BOX_CHARS).map(|(i, _)| i);
+        if let Some(end) = end {
+            text.truncate(end);
+        }
+        let cut = end.is_some();
         let changed = self.doc.boxes.get(&b).is_some_and(|n| n.text != text);
         if self.doc.set_text(b, &text).is_ok() {
             self.edit_text = text;
@@ -142,6 +153,7 @@ impl DocTab {
                 self.bump_revision();
             }
         }
+        cut
     }
 }
 

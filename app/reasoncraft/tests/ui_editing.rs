@@ -386,3 +386,17 @@ fn typed_comment_takes_the_picked_verdict_and_blank_is_refused() {
     assert!(tab.doc.boxes[&root].comments.is_empty());
     assert_eq!(tab.history.undo.len(), 2);
 }
+
+#[test]
+fn long_paste_is_cut_with_notice() {
+    let doc = reasoncraft_core::Document::new("");
+    let root = doc.root;
+    let mut h = harness_with(doc);
+    h.state_mut().tabs[0].begin_edit(root, false);
+    h.run();
+    h.event(egui::Event::Paste("word ".repeat(12_000)));
+    h.run();
+    let text = &h.state().tabs[0].doc.boxes[&root].text;
+    assert_eq!(text.chars().count(), 50_000);
+    assert_eq!(h.state().status_note, Some(t("status.text_cut")));
+}

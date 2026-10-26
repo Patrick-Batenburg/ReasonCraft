@@ -36,7 +36,11 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             ExportFormat::OutlineDocx,
         ];
         menu(ui, &tk, Icon::Outline, "export.outline", &outline, &mut out);
-        let essay = [ExportFormat::EssayMarkdown, ExportFormat::EssayDocx];
+        let essay = [
+            ExportFormat::EssayMarkdown,
+            ExportFormat::EssayText,
+            ExportFormat::EssayDocx,
+        ];
         menu(ui, &tk, Icon::Essay, "export.essay", &essay, &mut out);
     });
     group(ui, &tk, &t("group.print"), |ui| {

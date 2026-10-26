@@ -1,6 +1,8 @@
-//! The core properties of a Word file (`docProps/core.xml`): who wrote it
-//! and when. The writer only knows a fixed placeholder for the author, so
-//! the finished package is patched.
+//! What the writer cannot set in a Word file, patched into the finished
+//! package: the author in the core properties (`docProps/core.xml`; the
+//! writer only knows a fixed placeholder) and the document language in the
+//! default run properties of `word/styles.xml` (the writer has no language
+//! setting), so spelling and hyphenation use the document's language.
 
 use std::io::{Cursor, Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -11,6 +13,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 use super::ExportError;
 
 const CORE: &str = "docProps/core.xml";
+const STYLES: &str = "word/styles.xml";
 /// What the writer puts where the author goes.
 const PLACEHOLDER: &str = "unknown";
 
@@ -72,31 +75,55 @@ fn with_author(core: &str, author: &str) -> String {
     out
 }
 
+/// `styles` with `tag` (`nl-NL`) as the language of the default run
+/// properties (which [`super::docx`] always fills with the font and
+/// size); unchanged when they cannot be found.
+fn with_language(styles: &str, tag: &str) -> String {
+    let close = styles.find("<w:rPrDefault>").and_then(|start| {
+        let end = start + styles[start..].find("</w:rPrDefault>")?;
+        Some(start + styles[start..end].rfind("</w:rPr>")?)
+    });
+    let Some(close) = close else {
+        return styles.to_owned();
+    };
+    // `lang` comes late in a run's properties: after the fonts and size.
+    let lang = format!("<w:lang w:val=\"{}\" />", escape(tag));
+    [&styles[..close], &lang, &styles[close..]].concat()
+}
+
 fn zip_error(e: impl std::fmt::Display) -> ExportError {
     ExportError::Render(e.to_string())
 }
 
 /// The package `docx` with `author` (already on one line, control
-/// characters removed) as its creator and last editor; unchanged when
-/// `author` is empty. Every other entry is copied as it is.
-pub(super) fn set_author(docx: Vec<u8>, author: &str) -> Result<Vec<u8>, ExportError> {
-    if author.is_empty() {
-        return Ok(docx);
-    }
+/// characters removed) as its creator and last editor, unless it is
+/// empty, and `lang_tag` (`en-GB`) as the language of its text. Every
+/// other entry is copied as it is.
+pub(super) fn finish_package(
+    docx: Vec<u8>,
+    author: &str,
+    lang_tag: &str,
+) -> Result<Vec<u8>, ExportError> {
     let mut src = ZipArchive::new(Cursor::new(docx)).map_err(zip_error)?;
     let mut out = ZipWriter::new(Cursor::new(Vec::new()));
     for i in 0..src.len() {
         let mut file = src.by_index(i).map_err(zip_error)?;
-        if file.name().map_err(zip_error)? != CORE {
+        let name = file.name().map_err(zip_error)?.into_owned();
+        if !(name == STYLES || name == CORE && !author.is_empty()) {
             out.raw_copy_file(file).map_err(zip_error)?;
             continue;
         }
-        let mut core = String::new();
-        file.read_to_string(&mut core)?;
+        let mut xml = String::new();
+        file.read_to_string(&mut xml)?;
         drop(file);
+        let xml = if name == STYLES {
+            with_language(&xml, lang_tag)
+        } else {
+            with_author(&xml, author)
+        };
         let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
-        out.start_file(CORE, options).map_err(zip_error)?;
-        out.write_all(with_author(&core, author).as_bytes())?;
+        out.start_file(name.as_str(), options).map_err(zip_error)?;
+        out.write_all(xml.as_bytes())?;
     }
     Ok(out.finish().map_err(zip_error)?.into_inner())
 }

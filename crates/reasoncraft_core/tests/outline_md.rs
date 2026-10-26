@@ -88,3 +88,21 @@ fn markdown_escapes_tables_entities_strike_and_trims_blank_lines() {
         "{out}"
     );
 }
+
+/// A `===` line under text would make a heading of it, and four leading
+/// spaces a code block: the `=` is escaped, and leading spaces (and tabs)
+/// are written as character references (`&#32;`, `&#9;`), which keep the
+/// text literal.
+#[test]
+fn markdown_escapes_setext_and_indented_code() {
+    let bare = OutlineOptions {
+        numbering: false,
+        labels: false,
+        notes: false,
+    };
+    let out = md(&sample("Claim", "Title\n==="), &bare, "en");
+    assert!(out.contains("\n- Title\n  \\===\n"), "{out}");
+    let out = md(&sample("Claim", "    code\n    more\n\tx"), &bare, "en");
+    let expected = "\n- &#32;&#32;&#32;&#32;code\n  &#32;&#32;&#32;&#32;more\n  &#9;x\n";
+    assert!(out.contains(expected), "{out}");
+}
