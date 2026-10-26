@@ -1,6 +1,7 @@
 //! The map canvas: camera, text measurement, painting, hit testing and
 //! editing interactions (selection, inline text, keyboard, "+" menu, drag,
-//! drops from the building panel, comments, link glyphs, box images).
+//! drops from the building panel, comments, link glyphs, box images) and
+//! the overview minimap.
 
 pub mod camera;
 pub mod comments;
@@ -12,12 +13,15 @@ pub mod images;
 pub mod input;
 pub mod links;
 pub mod measure;
+pub mod minimap;
 pub mod paint;
 pub mod plus_menu;
 pub mod rating;
 
 use eframe::egui::{self, Key, PointerButton, Rect, Response, Role, Sense, WidgetInfo};
-use reasoncraft_core::{Item, layout};
+use std::collections::HashMap;
+
+use reasoncraft_core::{Document, Item, Layout, layout};
 
 pub use camera::Camera;
 use hit::{Hit, hit_test};
@@ -26,6 +30,7 @@ use measure::EguiMeasure;
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::i18n::t;
+use crate::scene::marks_leads;
 
 impl From<Hit> for Item {
     fn from(hit: Hit) -> Self {
@@ -67,7 +72,8 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     // Recomputed every frame: about 0.3 ms for 500 boxes, and never stale.
     let measure = EguiMeasure::new(&ctx, measure_cache);
-    let layout = layout(&tab.doc, &measure, &settings.layout_params());
+    let params = settings.layout_params();
+    let layout = layout(&tab.doc, &measure, &params);
 
     tab.viewport = Some(rect);
     if tab.fit_pending {
@@ -82,6 +88,13 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     {
         tab.camera.reveal(*target, rect, camera::REVEAL_MARGIN);
     }
+    if std::mem::take(&mut tab.fit_selection_pending)
+        && let Some(target) = tab
+            .selection
+            .and_then(|i| item_bounds(&tab.doc, &layout, i))
+    {
+        tab.camera.fit_selection(target, rect);
+    }
     let panning = navigate(ui, &response, &mut tab.camera, rect);
 
     if tab.connect_mode.is_none()
@@ -93,6 +106,11 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         pending.push(Action::Select(hit.map(Item::from)));
     }
 
+    let leads = if settings.show_numbers {
+        marks_leads(&tab.doc, &layout, &measure, tab.camera.zoom)
+    } else {
+        HashMap::new()
+    };
     let painter = ui.painter_at(rect);
     paint::paint(
         &painter,
@@ -106,12 +124,14 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             show_markers: settings.show_markers,
             eval_shading: settings.eval_shading,
             connector_style: settings.connector_style,
+            numbers: settings.show_numbers,
         },
         images,
         &measure,
+        &leads,
     );
-    comments::badges(ui, tab, &layout, pending);
-    links::glyphs(ui, tab, &layout, pending);
+    comments::badges(ui, tab, &layout, &leads, pending);
+    links::glyphs(ui, tab, &layout, &leads, pending);
     images::preparing(ui, tab, &layout, &tokens);
     connect::update(ui, &response, &layout, tab, &tokens, pending, panning);
     drag::update(ui, &response, &layout, tab, &tokens, pending, panning);
@@ -121,6 +141,32 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         plus_menu::show(ui, tab, &layout, &tokens, pending);
     }
     comments::show(ui, tab, &layout, &tokens, pending);
+    minimap::show(
+        ui,
+        tab,
+        &layout,
+        &tokens,
+        settings.minimap,
+        params.indicators,
+    );
+}
+
+/// The world rect of `item` in `layout`: a box's own rect, or a card's
+/// frame with everything under it.
+pub fn item_bounds(doc: &Document, layout: &Layout, item: Item) -> Option<Rect> {
+    let rect = |i: Item| match i {
+        Item::Box(b) => layout.boxes.get(&b).copied(),
+        Item::Card(c) => layout.cards.get(&c).copied(),
+    };
+    let own = rect(item)?;
+    Some(match item {
+        Item::Box(_) => own,
+        Item::Card(_) => doc
+            .descendants(item)
+            .into_iter()
+            .filter_map(rect)
+            .fold(own, Rect::union),
+    })
 }
 
 /// Pan with middle or right drag, or space + left drag; Ctrl+wheel and pinch

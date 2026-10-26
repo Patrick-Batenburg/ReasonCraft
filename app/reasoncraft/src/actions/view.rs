@@ -1,4 +1,5 @@
-//! View preferences: theme, connector style, rating display, panels, the Text panel tab,
+//! View preferences: theme, connector style, rating display, minimap,
+//! numbering, panels, the Text panel tab,
 //! the outline's switches and which checks run; moving around the map:
 //! zooming, keyboard navigation, revealing the selection; and the
 //! document's layout direction, the only one that changes the document.
@@ -19,6 +20,8 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
         Action::SetTheme(choice) => s.theme = choice,
         Action::SetConnectorStyle(style) => s.connector_style = style,
         Action::ToggleMarkers => s.show_markers = !s.show_markers,
+        Action::SetMinimap(mode) => s.minimap = mode,
+        Action::ToggleNumbers => s.show_numbers = !s.show_numbers,
         Action::ToggleShading => s.eval_shading = !s.eval_shading,
         Action::TogglePanel(Panel::Left) => app.left_panel = !app.left_panel,
         Action::TogglePanel(Panel::Right) => app.right_panel = !app.right_panel,
@@ -58,6 +61,7 @@ pub(super) fn apply_to_tab(tab: &mut DocTab, action: Action) {
         Action::ZoomOut => set_zoom(tab, tab.camera.zoom / ZOOM_STEP),
         // The canvas fits on its next frame, with the layout of that frame.
         Action::ZoomFit => tab.fit_pending = true,
+        Action::ZoomFitSelection => tab.fit_selection_pending = tab.selection.is_some(),
         Action::Zoom100 => set_zoom(tab, 1.0),
         Action::SetZoom(z) => set_zoom(tab, z),
         Action::SetLayoutDirection(d) => {

@@ -90,6 +90,9 @@ pub const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     (Shortcut::new(Key::N, CMD), || Action::New),
     (Shortcut::new(Key::Num0, CMD), || Action::Zoom100),
     (Shortcut::new(Key::Num1, CMD), || Action::ZoomFit),
+    (Shortcut::new(Key::Num1, CMD_SHIFT), || {
+        Action::ZoomFitSelection
+    }),
     (Shortcut::new(Key::Equals, CMD), || Action::ZoomIn),
     (Shortcut::new(Key::Plus, CMD), || Action::ZoomIn),
     (Shortcut::new(Key::Minus, CMD), || Action::ZoomOut),

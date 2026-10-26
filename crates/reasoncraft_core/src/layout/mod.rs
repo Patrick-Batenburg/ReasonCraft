@@ -13,6 +13,7 @@ mod contour;
 mod indicators;
 mod ports;
 mod row;
+mod size;
 mod tree;
 
 pub use indicators::{IndicatorOptions, needs_indicator_row};
@@ -173,7 +174,8 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
     tree::card_roles(doc, &mut out);
 
     let frame = axis::Frame::new(doc.layout_direction);
-    let main = tree::Tree::build(doc, Item::Box(doc.root), m, p, frame);
+    let sizer = size::Sizer::new(doc, m, p);
+    let main = tree::Tree::build(doc, Item::Box(doc.root), &sizer, p, frame);
     out.main_bounds = main.place(doc, (0.0, 0.0), p, &mut out, &mut pending);
     if out.main_bounds == Rect::NOTHING {
         // Only possible for a document whose root box is missing.
@@ -183,7 +185,7 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
     let cross = frame.cross_range(out.main_bounds).1 + p.parking_gap;
     let mut main_at = frame.main_range(out.main_bounds).0;
     for &item in &doc.parking {
-        let t = tree::Tree::build(doc, item, m, p, frame);
+        let t = tree::Tree::build(doc, item, &sizer, p, frame);
         let r = t.place(doc, (cross, main_at), p, &mut out, &mut pending);
         if r != Rect::NOTHING {
             main_at = frame.main_range(r).1 + p.v_gap;
@@ -195,10 +197,7 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
     out.indicator_rows = out
         .boxes
         .keys()
-        .filter_map(|id| {
-            let h = indicators::row_height(doc.boxes.get(id)?, &p.indicators, p.indicator_row);
-            (h > 0.0).then_some((*id, h))
-        })
+        .filter_map(|id| Some((*id, *sizer.rows.get(id)?)))
         .collect();
     out.bounds = out
         .parking_bounds

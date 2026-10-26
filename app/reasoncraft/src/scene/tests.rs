@@ -97,8 +97,8 @@ fn scene_has_no_overlays_for_export() {
 
     let world = layout.boxes[&premise];
     let row = layout.indicator_row(premise);
-    let badge = badge_rect(world, row, 1);
-    let glyph = link_rect(world, row);
+    let badge = badge_rect(world, row, 0.0, 1);
+    let glyph = link_rect(world, row, 0.0);
     for s in &scene.shapes {
         let b = s.bounds();
         assert!(!badge.contains_rect(b), "badge shape: {s:?}");
@@ -231,4 +231,124 @@ fn view_culls_offscreen_boxes() {
     let scene = build_scene(&doc, &layout, &o, &Fake);
     assert_eq!(rects_at(&scene, layout.boxes[&root]), 1);
     assert_eq!(rects_at(&scene, layout.boxes[&p]), 0);
+}
+
+/// Layout parameters with the numbers on, as the settings make them.
+fn numbered_params() -> LayoutParams {
+    let mut p = LayoutParams::default();
+    p.indicators.numbers = true;
+    p
+}
+
+/// The muted one-row texts of `scene` (the numbers), with their origins.
+fn number_texts(scene: &Scene, tk: &Tokens) -> Vec<(String, eframe::egui::Pos2)> {
+    scene
+        .shapes
+        .iter()
+        .filter_map(|s| match s {
+            Shape::Text {
+                origin,
+                rows,
+                color,
+                align: Align::Min,
+                size,
+                ..
+            } if *color == tk.text_muted && *size == NUMBER_SIZE => Some((rows.join("|"), *origin)),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn numbers_match_outline() {
+    use reasoncraft_core::fixtures::sample_iot_like;
+    use reasoncraft_core::outline::{OutlineOptions, build_outline};
+    let doc = sample_iot_like(40);
+    let labels = number_labels(&doc);
+    let outline = build_outline(
+        &doc,
+        &OutlineOptions {
+            numbering: true,
+            ..OutlineOptions::default()
+        },
+    );
+    let numbered: Vec<_> = outline
+        .iter()
+        .filter(|l| !l.number.is_empty() && matches!(l.item, Item::Box(_)))
+        .collect();
+    assert!(numbered.len() > 20, "a well-numbered sample");
+    assert_eq!(labels.len(), numbered.len());
+    assert!(labels.keys().all(|i| matches!(i, Item::Box(_))), "no cards");
+    // The map draws each number in its own box.
+    let layout = layout(&doc, &Fake, &numbered_params());
+    let mut o = opts();
+    o.numbers = true;
+    o.include_parking = true;
+    let drawn = number_texts(&build_scene(&doc, &layout, &o, &Fake), &o.tokens);
+    for line in numbered {
+        assert_eq!(labels[&line.item], line.number);
+        let Item::Box(id) = line.item else { continue };
+        let world = layout.boxes[&id];
+        assert!(
+            drawn
+                .iter()
+                .any(|(n, at)| *n == line.number && world.contains(*at)),
+            "{} not drawn in its box",
+            line.number
+        );
+    }
+    // Numbers off: none drawn.
+    o.numbers = false;
+    let off = build_scene(&doc, &layout, &o, &Fake);
+    assert!(number_texts(&off, &o.tokens).is_empty());
+}
+
+#[test]
+fn numbers_never_overlap_text() {
+    let mut doc = Document::new("Claim");
+    let root = doc.root;
+    let (_, premise) = doc
+        .add_card(Parent::Box(root), CardKind::Reason, "Premise text")
+        .unwrap();
+    let plain = layout(&doc, &Fake, &LayoutParams::default());
+    let numbered = layout(&doc, &Fake, &numbered_params());
+    assert_eq!(plain.indicator_row(premise), 0.0);
+    assert!(
+        numbered.indicator_row(premise) > 0.0,
+        "a numbered box gets the row"
+    );
+    let node = doc.boxes.get_mut(&premise).unwrap();
+    node.link = Some("https://example.org".into());
+    let layout = layout(&doc, &Fake, &numbered_params());
+    let row = layout.indicator_row(premise);
+    let mut o = opts();
+    o.numbers = true;
+    let scene = build_scene(&doc, &layout, &o, &Fake);
+    let world = layout.boxes[&premise];
+    let number = number_rect(world, row, "1", &Fake, 1.0);
+    let drawn = number_texts(&scene, &o.tokens);
+    assert_eq!(drawn, [("1".to_owned(), number.min)]);
+    let first_row = scene
+        .shapes
+        .iter()
+        .find_map(|s| match s {
+            Shape::Text {
+                origin, rows, size, ..
+            } if rows[0] == "Premise text" => {
+                let w = Fake.text_width(&rows[0], *size);
+                Some(Rect::from_min_size(
+                    *origin - eframe::egui::vec2(w / 2.0, 0.0),
+                    eframe::egui::vec2(w, LINE),
+                ))
+            }
+            _ => None,
+        })
+        .expect("premise text");
+    assert!(world.contains_rect(number));
+    assert!(!number.intersects(first_row), "{number:?} {first_row:?}");
+    // The link glyph moves right of the number.
+    let leads = marks_leads(&doc, &layout, &Fake, 1.0);
+    let glyph = link_rect(world, row, leads[&premise]);
+    assert!(glyph.left() > number.right());
+    assert!(!glyph.intersects(first_row));
 }

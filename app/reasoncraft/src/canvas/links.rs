@@ -7,7 +7,9 @@
 //! may hold `file:` paths or UNC shares) is struck through and never opened.
 
 use eframe::egui::{self, Rect, Role, Sense, Stroke, Ui, WidgetInfo, pos2, vec2};
-use reasoncraft_core::Layout;
+use std::collections::HashMap;
+
+use reasoncraft_core::{Layout, NodeId};
 
 use super::paint::Pass;
 use super::rating::{CORNER_INSET, MARKER_MIN_ZOOM, indicator_centre};
@@ -20,13 +22,20 @@ use crate::shell::link_modal::{safe_link, visible_link};
 /// The glyph's size, in world px.
 pub const LINK_GLYPH: f32 = 12.0;
 /// The glyph of the box at `world` (world units) whose indicator row is
-/// `row` high: at the row's left end, [`CORNER_INSET`] from the left edge.
-pub fn link_rect(world: Rect, row: f32) -> Rect {
+/// `row` high: at the row's left end, [`CORNER_INSET`] from the left edge,
+/// or `lead` further right, after the box's number (see
+/// [`crate::scene::marks_leads`]).
+pub fn link_rect(world: Rect, row: f32, lead: f32) -> Rect {
     let centre = pos2(
-        world.left() + CORNER_INSET + LINK_GLYPH / 2.0,
+        world.left() + CORNER_INSET + lead + LINK_GLYPH / 2.0,
         indicator_centre(world, row),
     );
     Rect::from_center_size(centre, vec2(LINK_GLYPH, LINK_GLYPH))
+}
+
+/// The lead of box `id` in `leads` (0 without a number).
+pub(super) fn lead_of(leads: &HashMap<NodeId, f32>, id: NodeId) -> f32 {
+    leads.get(&id).copied().unwrap_or(0.0)
 }
 
 /// The glyph's accessible name for stored link `url`, e.g. "Open link:
@@ -46,11 +55,11 @@ pub fn link_label(url: &str) -> String {
 impl Pass<'_> {
     /// The chain glyph of a box at `world` that has a link. A link that
     /// will not be opened (`safe`: false) is greyed out and struck through.
-    pub(super) fn link_glyph(&self, world: Rect, row: f32, safe: bool) {
+    pub(super) fn link_glyph(&self, world: Rect, row: f32, lead: f32, safe: bool) {
         if self.cam.zoom < MARKER_MIN_ZOOM {
             return;
         }
-        let r = self.screen(link_rect(world, row));
+        let r = self.screen(link_rect(world, row, lead));
         if !self.visible(r) {
             return;
         }
@@ -69,8 +78,14 @@ impl Pass<'_> {
 
 /// Make each visible glyph a button that opens its box's link. They sit
 /// above the canvas and take drags too, so a press on a glyph never
-/// selects, drags the box or pans.
-pub(super) fn glyphs(ui: &Ui, tab: &DocTab, layout: &Layout, pending: &mut Vec<Action>) {
+/// selects, drags the box or pans. `leads` moves glyphs past box numbers.
+pub(super) fn glyphs(
+    ui: &Ui,
+    tab: &DocTab,
+    layout: &Layout,
+    leads: &HashMap<NodeId, f32>,
+    pending: &mut Vec<Action>,
+) {
     let zoom = tab.camera.zoom;
     if zoom < MARKER_MIN_ZOOM {
         return;
@@ -82,7 +97,11 @@ pub(super) fn glyphs(ui: &Ui, tab: &DocTab, layout: &Layout, pending: &mut Vec<A
         };
         let rect = tab
             .camera
-            .world_rect_to_screen(link_rect(world, layout.indicator_row(id)))
+            .world_rect_to_screen(link_rect(
+                world,
+                layout.indicator_row(id),
+                lead_of(leads, id),
+            ))
             .expand(2.0);
         if !clip.intersects(rect) {
             continue;
@@ -111,9 +130,11 @@ mod tests {
     #[test]
     fn glyph_sits_left_in_the_indicator_row_clear_of_plus_button() {
         let world = Rect::from_min_size(pos2(100.0, 50.0), vec2(156.0, 40.0));
-        let glyph = link_rect(world, 16.0);
+        let glyph = link_rect(world, 16.0, 0.0);
         assert_eq!(glyph.size(), vec2(LINK_GLYPH, LINK_GLYPH));
         assert_eq!(glyph.left(), world.left() + CORNER_INSET);
+        let after_number = link_rect(world, 16.0, 20.0);
+        assert_eq!(after_number.left(), glyph.left() + 20.0);
         assert_eq!(glyph.center().y, world.top() + 11.0);
         for zoom in [MARKER_MIN_ZOOM, 0.5, 1.0, 2.0, 4.0] {
             // The "+" button is BUTTON_PX screen px, centred on the corner.

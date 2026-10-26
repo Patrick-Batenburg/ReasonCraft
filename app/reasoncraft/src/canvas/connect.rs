@@ -59,6 +59,7 @@ pub fn map_keys(item: Item, selection: Option<Item>, out: &mut Vec<Action>) {
             | Action::ZoomIn
             | Action::ZoomOut
             | Action::ZoomFit
+            | Action::ZoomFitSelection
             | Action::Zoom100 => {}
             _ => return false,
         }

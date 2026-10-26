@@ -1,7 +1,7 @@
 //! Turning a laid-out document into a [`Scene`] (spec §5, style D).
 //!
 //! Draw order: parking area, connectors, card frames, boxes (each with its
-//! rating marker), card labels. Sizes the screen keeps constant in px
+//! rating marker and number), card labels. Sizes the screen keeps constant in px
 //! (strokes, arrowheads, bars) are multiplied by `px`, the world size of a
 //! screen px at the zoom the scene is built for.
 
@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 use eframe::egui::{Align, Color32, Pos2, Rect, Vec2, pos2, vec2};
 use reasoncraft_core::{CardStrength, Document, Item, Layout, NodeId, Role};
 
-use super::{PathEl, Scene, SceneOptions, Shape, StrokeSpec, TextRows};
+use super::{PathEl, Scene, SceneOptions, Shape, StrokeSpec, TextRows, number_labels};
 use crate::canvas::paint::{FRAME_RADIUS, parking_frame, screen_font};
 use crate::canvas::rating::{
     MARKER_MIN_ZOOM, Mark, card_colour, frame_alpha, frame_border, mark_for, mark_shapes,
@@ -78,6 +78,11 @@ pub fn build_scene(
         })
         .collect();
     let markers = opts.show_markers && opts.zoom >= MARKER_MIN_ZOOM;
+    let numbers = if opts.numbers {
+        number_labels(doc)
+    } else {
+        HashMap::new()
+    };
     for (id, &rect) in &layout.boxes {
         let Some(node) = doc.boxes.get(id) else {
             continue;
@@ -90,6 +95,11 @@ pub fn build_scene(
         b.box_(rect, row, node, border, *id == doc.root);
         if markers && let Some(mark) = mark_for(node) {
             b.marker(rect, row, mark);
+        }
+        if row > 0.0
+            && let Some(number) = numbers.get(&Item::Box(*id))
+        {
+            b.number(rect, row, number);
         }
     }
     for (&id, &anchor) in &layout.card_labels {

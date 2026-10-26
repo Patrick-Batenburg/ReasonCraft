@@ -1,5 +1,6 @@
 //! The View ribbon tab: zoom, theme, panels, the layout direction and
-//! connector style, evaluation display and (debug builds) the sample map.
+//! connector style, the minimap and numbering, evaluation display and
+//! (debug builds) the sample map.
 
 use eframe::egui::{Button, Popup, Ui};
 use reasoncraft_core::{ConnectorStyle, LayoutDirection};
@@ -9,6 +10,7 @@ use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::commands;
 use crate::i18n::t;
+use crate::settings::MinimapMode;
 use crate::shell::icons::{Icon, connector_atom, direction_atom};
 use crate::theme::ThemeChoice;
 
@@ -31,6 +33,15 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             Icon::Zoom100,
             "view.zoom_100",
             true,
+            false,
+            &mut out,
+        );
+        command(
+            ui,
+            &tk,
+            Icon::ZoomFitSelection,
+            "view.zoom_fit_selection",
+            app.active_tab().selection.is_some(),
             false,
             &mut out,
         );
@@ -60,6 +71,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         }
     });
     layout_group(ui, app, &mut out);
+    overview_group(ui, app, &mut out);
     group(ui, &tk, &t("group.evaluation"), |ui| {
         evaluate::display_toggles(ui, app, &mut out);
     });
@@ -118,5 +130,27 @@ fn layout_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
                 }
             }
         });
+    });
+}
+
+/// "Minimap ▾" (automatic, always or never) and the "Numbers" toggle.
+fn overview_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
+    let tk = app.tokens;
+    let current = app.settings.minimap;
+    group(ui, &tk, &t("group.overview"), |ui| {
+        let resp = large_menu(ui, &tk, Icon::Minimap, &t("action.minimap"), true);
+        Popup::menu(&resp).show(|ui| {
+            for m in MinimapMode::ALL {
+                let cmd = commands::get(&format!("view.minimap.{}", m.key()));
+                if ui
+                    .add(Button::new(t(cmd.label)).selected(m == current))
+                    .clicked()
+                {
+                    out.push(cmd.action.clone());
+                }
+            }
+        });
+        let on = app.settings.show_numbers;
+        command(ui, &tk, Icon::Numbers, "view.numbers", true, on, out);
     });
 }

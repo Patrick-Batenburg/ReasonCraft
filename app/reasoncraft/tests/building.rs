@@ -166,7 +166,10 @@ fn dragging_a_comment_badge_moves_nothing() {
     doc.add_comment(p, "Ann", "Hm.", None).unwrap();
     let mut h = harness_with(doc);
     let l = layout_of(&h);
-    let badge = screen(&h, badge_rect(l.boxes[&p], l.indicator_row(p), 1).center());
+    let badge = screen(
+        &h,
+        badge_rect(l.boxes[&p], l.indicator_row(p), 0.0, 1).center(),
+    );
     let offset = h.state().tabs[0].camera.offset;
     let view = h.state().tabs[0].viewport.unwrap();
     drag(&mut h, badge, view.left_bottom() + egui::vec2(40.0, -40.0));
@@ -261,7 +264,7 @@ fn panel_drop_onto_a_comment_badge() {
     let mut h = harness_with(doc);
     let l = layout_of(&h);
     // On the badge, which sits inside the box.
-    let badge = badge_rect(l.boxes[&p], l.indicator_row(p), 1);
+    let badge = badge_rect(l.boxes[&p], l.indicator_row(p), 0.0, 1);
     let world = badge.center();
     assert!(l.boxes[&p].contains(world));
 

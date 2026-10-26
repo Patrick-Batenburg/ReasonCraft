@@ -4,6 +4,8 @@
 //! pre-order, using the same child order as the canvas, so numbers match what
 //! users see. It uses an explicit stack, so chains of any depth are safe.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::ids::{CardId, Item, NodeId};
@@ -272,6 +274,19 @@ pub fn build_outline(doc: &Document, opts: &OutlineOptions) -> Vec<OutlineLine> 
         }
     }
     lines
+}
+
+/// The outline number of every numbered box ("1", "1.2a", "P1"), exactly
+/// as [`build_outline`] numbers it with the default options. The claim,
+/// sources and notes have none.
+pub fn box_numbers(doc: &Document) -> HashMap<NodeId, String> {
+    build_outline(doc, &OutlineOptions::default())
+        .into_iter()
+        .filter_map(|line| match line.item {
+            Item::Box(id) if !line.number.is_empty() => Some((id, line.number)),
+            _ => None,
+        })
+        .collect()
 }
 
 /// The outline as indented plain text, two spaces per depth. Further lines

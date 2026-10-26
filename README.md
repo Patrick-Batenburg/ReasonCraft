@@ -115,6 +115,7 @@ Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box.
 | Ctrl+N | New map |
 | Ctrl+0 | Zoom to 100% |
 | Ctrl+1 | Zoom to fit |
+| Ctrl+Shift+1 | Zoom to fit the selection (a card with everything under it) |
 | Ctrl+= or Ctrl++ | Zoom in |
 | Ctrl+- | Zoom out |
 

@@ -26,6 +26,10 @@ pub struct Settings {
     pub eval_shading: bool,
     /// How connectors are drawn, on screen and in exports.
     pub connector_style: ConnectorStyle,
+    /// When the overview minimap shows in the canvas corner.
+    pub minimap: MinimapMode,
+    /// Show each box's outline number on the map (and in exports).
+    pub show_numbers: bool,
     /// The tab the Text panel shows.
     pub text_tab: TextTab,
     /// What the outline shows: numbers, linking words, notes.
@@ -44,6 +48,30 @@ pub struct Settings {
     pub export: ExportOptions,
 }
 
+/// When the overview minimap shows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MinimapMode {
+    /// Only while the map does not fit in the view.
+    #[default]
+    Auto,
+    On,
+    Off,
+}
+
+impl MinimapMode {
+    pub const ALL: [MinimapMode; 3] = [MinimapMode::Auto, MinimapMode::On, MinimapMode::Off];
+
+    /// The key used in command ids and translations.
+    pub fn key(self) -> &'static str {
+        match self {
+            MinimapMode::Auto => "auto",
+            MinimapMode::On => "on",
+            MinimapMode::Off => "off",
+        }
+    }
+}
+
 /// One of the Outline tab's toolbar switches.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutlineToggle {
@@ -56,11 +84,12 @@ pub enum OutlineToggle {
 
 impl Settings {
     /// The layout parameters these settings ask for: boxes get an
-    /// indicator row for the marks they show.
+    /// indicator row for the marks they show (numbers included).
     pub fn layout_params(&self) -> LayoutParams {
         LayoutParams {
             indicators: IndicatorOptions {
                 markers: self.show_markers,
+                numbers: self.show_numbers,
             },
             ..LayoutParams::default()
         }
@@ -117,6 +146,8 @@ impl Default for Settings {
             show_markers: true,
             eval_shading: true,
             connector_style: ConnectorStyle::default(),
+            minimap: MinimapMode::default(),
+            show_numbers: false,
             text_tab: TextTab::default(),
             outline: OutlineOptions::default(),
             outline_indent: true,

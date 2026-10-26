@@ -4,7 +4,7 @@
 //! [`paint_scene`] draws it with egui.
 //!
 //! Screen-only overlays (selection ring, "+" button, comment badges, link
-//! glyphs, dot grid) are never part of a scene: the canvas paints them on
+//! glyphs, dot grid, minimap) are never part of a scene: the canvas paints them on
 //! top. A scene for the screen differs from one for export only in what is
 //! culled, the zoom it is built for (sizes given in screen px), the hint in
 //! an empty claim and the text of the box being edited.
@@ -13,6 +13,7 @@ mod boxes;
 mod build;
 mod connectors;
 mod egui_paint;
+mod numbers;
 mod pen;
 
 use eframe::egui::{Align, Color32, Pos2, Rect};
@@ -21,6 +22,7 @@ use reasoncraft_core::{BoxKind, ConnectorStyle, Item, Measure, NodeId};
 pub use boxes::{BOX_RADIUS, SOURCE_HEADER, box_radius};
 pub use build::build_scene;
 pub use egui_paint::{paint_scene, paint_shapes};
+pub use numbers::{NUMBER_SIZE, marks_leads, number_labels, number_rect};
 pub(crate) use pen::ShapePen;
 
 use crate::theme::Tokens;
@@ -133,6 +135,9 @@ pub struct SceneOptions {
     pub tokens: Tokens,
     /// Draw ✓ / ? / × markers on rated boxes.
     pub show_markers: bool,
+    /// Draw each numbered box's outline number (in the indicator row the
+    /// layout gave it).
+    pub numbers: bool,
     /// Tint and weight cards and connectors by their rating.
     pub eval_shading: bool,
     /// For a file or the clipboard: no screen hints.
@@ -160,6 +165,7 @@ impl SceneOptions {
         Self {
             tokens,
             show_markers: true,
+            numbers: false,
             eval_shading: true,
             for_export: true,
             include_parking: false,

@@ -16,14 +16,15 @@ use std::ops::Range;
 use emath::{Rect, Vec2};
 
 use super::axis::Frame;
+use super::card;
 use super::contour::Contour;
 use super::ports::{Pending, PortKey};
 use super::row;
-use super::{BOX_TEXT_PAD, ConnectorKind, Layout, LayoutParams, Measure, image_height};
-use super::{card, indicators};
+use super::size::Sizer;
+use super::{ConnectorKind, Layout, LayoutParams};
 use crate::connector::Strength;
 use crate::ids::{Item, NodeId};
-use crate::model::{BoxKind, BoxNode, Card, CardStrength, Document, Role};
+use crate::model::{BoxKind, Card, CardStrength, Document, Role};
 
 /// A card, a box outside cards, or the root.
 struct Unit {
@@ -58,7 +59,7 @@ impl Tree {
     pub(super) fn build(
         doc: &Document,
         root: Item,
-        m: &dyn Measure,
+        sz: &Sizer,
         p: &LayoutParams,
         frame: Frame,
     ) -> Self {
@@ -69,7 +70,7 @@ impl Tree {
             lead: 0.0,
         };
         let mut seen = HashSet::new();
-        tree.push_unit(doc, root, None, m, p, &mut seen);
+        tree.push_unit(doc, root, None, sz, p, &mut seen);
         let mut kids = Vec::new();
         let mut i = 0;
         while i < tree.units.len() {
@@ -77,7 +78,7 @@ impl Tree {
             child_items(doc, tree.units[i].item, &mut kids);
             let start = tree.units.len();
             for &(child, port) in &kids {
-                tree.push_unit(doc, child, Some(port), m, p, &mut seen);
+                tree.push_unit(doc, child, Some(port), sz, p, &mut seen);
             }
             tree.units[i].children = start..tree.units.len();
             tree.mark_premise_children(doc, i, p);
@@ -153,7 +154,7 @@ impl Tree {
         doc: &Document,
         item: Item,
         port: Option<PortKey>,
-        m: &dyn Measure,
+        sz: &Sizer,
         p: &LayoutParams,
         seen: &mut HashSet<Item>,
     ) {
@@ -163,7 +164,7 @@ impl Tree {
         let start = self.premise_sizes.len();
         let size = match item {
             Item::Box(id) => match doc.boxes.get(&id) {
-                Some(node) => box_size(node, m, p),
+                Some(node) => sz.box_size(node),
                 None => return,
             },
             Item::Card(id) => {
@@ -172,7 +173,7 @@ impl Tree {
                 };
                 let sizes = card.premises.iter().filter_map(|pid| doc.boxes.get(pid));
                 self.premise_sizes
-                    .extend(sizes.map(|node| box_size(node, m, p)));
+                    .extend(sizes.map(|node| sz.box_size(node)));
                 card::frame_size(&self.premise_sizes[start..], p, self.frame)
             }
         };
@@ -300,33 +301,6 @@ pub(crate) fn display_children(doc: &Document, id: NodeId) -> Vec<Item> {
 fn box_children(doc: &Document, id: NodeId, out: &mut Vec<(Item, PortKey)>) {
     let port = PortKey::Box(id);
     out.extend(display_children(doc, id).into_iter().map(|i| (i, port)));
-}
-
-/// Size of a box from its measured text.
-fn box_size(node: &BoxNode, m: &dyn Measure, p: &LayoutParams) -> Vec2 {
-    let is_source = matches!(node.kind, BoxKind::Source { .. });
-    let default_width = if is_source {
-        p.source_width
-    } else {
-        p.box_width
-    };
-    let width = node.width.unwrap_or(default_width);
-    let text_height = m.text_height(&node.text, width - 2.0 * BOX_TEXT_PAD, &node.kind);
-    let image_height = node
-        .image
-        .as_ref()
-        .map_or(0.0, |img| image_height(width, img));
-    let height = if is_source {
-        // Room for the icon and the source type line.
-        text_height + 30.0 + image_height
-    } else {
-        p.min_box_height
-            .max(text_height + 2.0 * BOX_TEXT_PAD + image_height)
-    };
-    Vec2::new(
-        width,
-        height + indicators::row_height(node, &p.indicators, p.indicator_row),
-    )
 }
 
 /// How the connector from `child` to its parent is drawn.

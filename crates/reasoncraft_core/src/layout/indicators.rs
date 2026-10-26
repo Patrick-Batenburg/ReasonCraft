@@ -1,38 +1,55 @@
 //! The indicator row: a band at the top of a box, above its image and
-//! text, that holds the box's small marks (rating marker, link glyph,
-//! comment badge; later the map numbering). A box only gets the row when
-//! it shows one of them, so the marks never cover text and plain boxes
-//! keep their size.
+//! text, that holds the box's small marks (map number, rating marker, link
+//! glyph, comment badge). A box only gets the row when it shows one of
+//! them, so the marks never cover text and plain boxes keep their size.
 
-use crate::model::BoxNode;
+use std::collections::HashMap;
+
+use crate::ids::NodeId;
+use crate::model::{BoxNode, Document};
+use crate::outline::box_numbers;
 
 /// Which marks the boxes show (what the app's settings turn on).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IndicatorOptions {
     /// Rating markers (✓ / ? / ×) on rated boxes.
     pub markers: bool,
+    /// The outline number ("1.2a") on each numbered box.
+    pub numbers: bool,
 }
 
 impl Default for IndicatorOptions {
     fn default() -> Self {
-        Self { markers: true }
+        Self {
+            markers: true,
+            numbers: false,
+        }
     }
 }
 
-/// Whether `node` shows a mark and so needs an indicator row: a rating
-/// marker (when markers are on), a link or comments.
-pub fn needs_indicator_row(node: &BoxNode, opts: &IndicatorOptions) -> bool {
+/// Whether `node` shows a mark and so needs an indicator row: its number
+/// (when numbers are on and it is `numbered`), a rating marker (when
+/// markers are on), a link or comments.
+pub fn needs_indicator_row(node: &BoxNode, numbered: bool, opts: &IndicatorOptions) -> bool {
     let rated = node.acceptance.is_some() || node.source_rating.is_some();
-    (opts.markers && rated) || node.link.is_some() || !node.comments.is_empty()
+    (opts.numbers && numbered)
+        || (opts.markers && rated)
+        || node.link.is_some()
+        || !node.comments.is_empty()
 }
 
-/// The height of `node`'s indicator row: `row` when it needs one, else 0.
-pub(super) fn row_height(node: &BoxNode, opts: &IndicatorOptions, row: f32) -> f32 {
-    if needs_indicator_row(node, opts) {
-        row
+/// The indicator row height (`row`) of each box of `doc` that needs one.
+pub(super) fn rows(doc: &Document, opts: &IndicatorOptions, row: f32) -> HashMap<NodeId, f32> {
+    let numbered = if opts.numbers {
+        box_numbers(doc)
     } else {
-        0.0
-    }
+        HashMap::new()
+    };
+    doc.boxes
+        .iter()
+        .filter(|(id, node)| needs_indicator_row(node, numbered.contains_key(id), opts))
+        .map(|(&id, _)| (id, row))
+        .collect()
 }
 
 #[cfg(test)]
@@ -67,7 +84,10 @@ mod tests {
         assert_eq!(body.height(), h(&before, a));
         // With markers hidden, a rating alone needs no row.
         let hidden = LayoutParams {
-            indicators: IndicatorOptions { markers: false },
+            indicators: IndicatorOptions {
+                markers: false,
+                numbers: false,
+            },
             ..LayoutParams::default()
         };
         let off = layout(&doc, &FixedMeasure, &hidden);
@@ -77,14 +97,47 @@ mod tests {
     #[test]
     fn row_only_for_boxes_with_marks() {
         let on = IndicatorOptions::default();
-        let off = IndicatorOptions { markers: false };
+        let off = IndicatorOptions {
+            markers: false,
+            numbers: false,
+        };
         let mut b = BoxNode::new(NodeId::new(), BoxKind::Premise, "p");
-        assert!(!needs_indicator_row(&b, &on));
+        assert!(!needs_indicator_row(&b, false, &on));
+        assert!(!needs_indicator_row(&b, true, &on), "numbers hidden");
+        let numbers = IndicatorOptions {
+            numbers: true,
+            ..off
+        };
+        assert!(needs_indicator_row(&b, true, &numbers));
+        assert!(!needs_indicator_row(&b, false, &numbers), "not numbered");
         b.acceptance = Some(Acceptance::Accept);
-        assert!(needs_indicator_row(&b, &on));
-        assert!(!needs_indicator_row(&b, &off), "markers hidden");
+        assert!(needs_indicator_row(&b, false, &on));
+        assert!(!needs_indicator_row(&b, false, &off), "markers hidden");
         b.link = Some("https://example.org".into());
-        assert!(needs_indicator_row(&b, &off));
-        assert_eq!(row_height(&b, &off, 16.0), 16.0);
+        assert!(needs_indicator_row(&b, false, &off));
+    }
+
+    /// With numbers on, exactly the boxes the outline numbers get a row.
+    #[test]
+    fn numbered_boxes_get_the_row() {
+        use crate::fixtures::sample_iot_like;
+        let doc = sample_iot_like(40);
+        let opts = IndicatorOptions {
+            markers: false,
+            numbers: true,
+        };
+        let numbers = box_numbers(&doc);
+        assert!(numbers.len() > 20, "a well-numbered sample");
+        let with_marks = |id: &NodeId| needs_indicator_row(&doc.boxes[id], false, &opts);
+        let on = rows(&doc, &opts, 16.0);
+        for id in doc.boxes.keys() {
+            let expect = numbers.contains_key(id) || with_marks(id);
+            assert_eq!(on.contains_key(id), expect, "{id:?}");
+        }
+        let off = IndicatorOptions {
+            numbers: false,
+            ..opts
+        };
+        assert!(rows(&doc, &off, 16.0).len() < on.len());
     }
 }

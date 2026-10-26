@@ -2,6 +2,8 @@
 //! [`crate::scene`] drawn through the [`Camera`], and the screen-only
 //! overlays on top: selection ring, comment badges and link glyphs.
 
+use std::collections::HashMap;
+
 use eframe::egui::{Color32, FontId, Painter, Rect, Shape, Stroke, StrokeKind, pos2, vec2};
 use reasoncraft_core::{ConnectorStyle, Document, Item, Layout, NodeId, Role};
 
@@ -62,12 +64,14 @@ pub struct PaintOptions {
     pub eval_shading: bool,
     /// How connectors are drawn.
     pub connector_style: ConnectorStyle,
+    /// Show each numbered box's outline number.
+    pub numbers: bool,
 }
 
 /// Paint the map: the dot grid, the scene of the document, then the
 /// screen-only overlays (selection ring, comment badges, link glyphs) on
 /// top, so the selection ring never hides them. `fonts` is the measure the
-/// layout used.
+/// layout used; `leads` moves glyphs and badges past box numbers.
 #[allow(clippy::too_many_arguments)]
 pub fn paint(
     painter: &Painter,
@@ -80,6 +84,7 @@ pub fn paint(
     opts: PaintOptions,
     images: &ImageCache,
     fonts: &dyn TextRows,
+    leads: &HashMap<NodeId, f32>,
 ) {
     let p = Pass {
         painter,
@@ -95,6 +100,7 @@ pub fn paint(
     let scene_opts = SceneOptions {
         tokens: *tokens,
         show_markers: opts.show_markers,
+        numbers: opts.numbers,
         eval_shading: opts.eval_shading,
         for_export: false,
         include_parking: true,
@@ -124,9 +130,10 @@ pub fn paint(
     for (id, &rect) in &layout.boxes {
         if let Some(node) = doc.boxes.get(id) {
             let row = layout.indicator_row(*id);
-            p.comment_badge(rect, row, &node.comments);
+            let lead = leads.get(id).copied().unwrap_or(0.0);
+            p.comment_badge(rect, row, lead, &node.comments);
             if let Some(link) = &node.link {
-                p.link_glyph(rect, row, safe_link(link).is_some());
+                p.link_glyph(rect, row, lead, safe_link(link).is_some());
             }
         }
     }

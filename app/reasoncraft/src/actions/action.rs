@@ -11,7 +11,7 @@ use super::{Insertable, Rate};
 use crate::canvas::images::ImageResult;
 use crate::export::{ExportFormat, ExportRequest, PageSetup};
 use crate::jobs::JobId;
-use crate::settings::{OutlineToggle, TextTab};
+use crate::settings::{MinimapMode, OutlineToggle, TextTab};
 use crate::theme::ThemeChoice;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -167,6 +167,8 @@ pub enum Action {
     ZoomIn,
     ZoomOut,
     ZoomFit,
+    /// Fit the selected item (a card with everything under it) to the view.
+    ZoomFitSelection,
     Zoom100,
     /// Set the zoom factor directly (status-bar slider), clamped to the zoom range.
     SetZoom(f32),
@@ -188,6 +190,10 @@ pub enum Action {
     ClearEvaluation(ClearScope),
     /// Show or hide rating markers.
     ToggleMarkers,
+    /// When the overview minimap shows (a personal setting).
+    SetMinimap(MinimapMode),
+    /// Show or hide the outline numbers on the map.
+    ToggleNumbers,
     /// Turn evaluation shading on or off.
     ToggleShading,
     /// Comment on box `node` as the author in the settings. Blank text is refused.

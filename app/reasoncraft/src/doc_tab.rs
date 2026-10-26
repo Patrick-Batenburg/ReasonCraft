@@ -59,6 +59,12 @@ pub struct DocTab {
     /// Fit the map to the view on the next canvas frame (set for new
     /// documents and by Zoom Fit, so the fit uses the fresh layout).
     pub fit_pending: bool,
+    /// Fit the selection to the view on the next canvas frame (Fit
+    /// selection), with that frame's layout.
+    pub fit_selection_pending: bool,
+    /// The overview minimap's shapes, kept until the document, theme or
+    /// layout settings change.
+    pub minimap: crate::canvas::minimap::Cache,
     /// Pan the selection into view on the next canvas frame (set by
     /// keyboard navigation and adds, so it uses the fresh layout).
     pub reveal_pending: bool,
@@ -144,6 +150,8 @@ impl DocTab {
             camera: Camera::default(),
             viewport: None,
             fit_pending: true,
+            fit_selection_pending: false,
+            minimap: Default::default(),
             reveal_pending: false,
             comments_open: None,
             connect_mode: None,

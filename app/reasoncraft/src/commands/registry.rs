@@ -8,6 +8,7 @@ use reasoncraft_core::{
 use super::Command;
 use crate::actions::{Action, Dir, Panel, Rate};
 use crate::export::ExportFormat;
+use crate::settings::MinimapMode;
 use crate::theme::ThemeChoice;
 
 pub(super) fn build() -> Vec<Command> {
@@ -266,10 +267,25 @@ fn view() -> Vec<Command> {
         };
         cmd(id, label, "group.layout", A::SetConnectorStyle(s))
     };
+    let overview = "group.overview";
+    let minimap = |id, m: MinimapMode| {
+        let label = match m {
+            MinimapMode::Auto => "minimap.auto",
+            MinimapMode::On => "minimap.on",
+            MinimapMode::Off => "minimap.off",
+        };
+        cmd(id, label, overview, A::SetMinimap(m))
+    };
     #[allow(unused_mut)] // Debug builds add their commands.
     let mut out = vec![
         cmd("view.zoom_fit", "action.zoom_fit", zoom, A::ZoomFit),
         cmd("view.zoom_100", "action.zoom_100", zoom, A::Zoom100),
+        cmd(
+            "view.zoom_fit_selection",
+            "action.zoom_fit_selection",
+            zoom,
+            A::ZoomFitSelection,
+        ),
         cmd("view.zoom_in", "action.zoom_in", zoom, A::ZoomIn),
         cmd("view.zoom_out", "action.zoom_out", zoom, A::ZoomOut),
         cmd(
@@ -308,6 +324,10 @@ fn view() -> Vec<Command> {
         connector("view.connector.curved", ConnectorStyle::Curved),
         connector("view.connector.elbow", ConnectorStyle::Elbow),
         connector("view.connector.tapered", ConnectorStyle::Tapered),
+        minimap("view.minimap.auto", MinimapMode::Auto),
+        minimap("view.minimap.on", MinimapMode::On),
+        minimap("view.minimap.off", MinimapMode::Off),
+        cmd("view.numbers", "action.numbers", overview, A::ToggleNumbers),
     ];
     #[cfg(debug_assertions)]
     out.extend([

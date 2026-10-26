@@ -1,12 +1,14 @@
 //! Comments on boxes: the preset texts, the speech-bubble badge with the
 //! comment count, and the popover that lists, adds and removes comments.
 
+use std::collections::HashMap;
+
 use eframe::egui::{
     self, Align2, Color32, Rect, Role, Sense, Shape, Stroke, Ui, WidgetInfo, pos2, vec2,
 };
-use reasoncraft_core::{Comment, Layout, Verdict};
+use reasoncraft_core::{Comment, Layout, NodeId, Verdict};
 
-use super::links::LINK_GLYPH;
+use super::links::{LINK_GLYPH, lead_of};
 use super::paint::{Pass, screen_font};
 use super::rating::{CORNER_INSET, MARKER_MIN_ZOOM, indicator_centre};
 use crate::actions::Action;
@@ -81,11 +83,12 @@ fn badge_text(count: usize) -> String {
 /// The body of the badge of a box at `world` with `count` comments, in
 /// world units, given the height `row` of the box's indicator row. It sits
 /// in that row after the link glyph's place, [`CORNER_INSET`] from it, and
-/// grows to the right: inside the box and above its text.
-pub fn badge_rect(world: Rect, row: f32, count: usize) -> Rect {
+/// grows to the right: inside the box and above its text. `lead` moves it
+/// right past the box's number, like the glyph.
+pub fn badge_rect(world: Rect, row: f32, lead: f32, count: usize) -> Rect {
     let chars = badge_text(count).len().clamp(1, 3);
     let w = BADGE_W[chars - 1];
-    let left = world.left() + CORNER_INSET + LINK_GLYPH + CORNER_INSET;
+    let left = world.left() + CORNER_INSET + lead + LINK_GLYPH + CORNER_INSET;
     let top = indicator_centre(world, row) - BADGE_H / 2.0;
     Rect::from_min_size(pos2(left, top), vec2(w, BADGE_H))
 }
@@ -99,12 +102,12 @@ pub fn badge_label(count: usize) -> String {
 
 impl Pass<'_> {
     /// The speech-bubble badge with the comment count of the box at `world`.
-    pub(super) fn comment_badge(&self, world: Rect, row: f32, comments: &[Comment]) {
+    pub(super) fn comment_badge(&self, world: Rect, row: f32, lead: f32, comments: &[Comment]) {
         let z = self.cam.zoom;
         if comments.is_empty() || z < MARKER_MIN_ZOOM {
             return;
         }
-        let body = self.screen(badge_rect(world, row, comments.len()));
+        let body = self.screen(badge_rect(world, row, lead, comments.len()));
         if !self.visible(body) {
             return;
         }
@@ -139,8 +142,14 @@ impl Pass<'_> {
 
 /// Make each visible badge a button that opens its box's comments. They
 /// sit above the canvas and take drags too, so a press on a badge never
-/// selects, drags the box or pans.
-pub(super) fn badges(ui: &Ui, tab: &DocTab, layout: &Layout, pending: &mut Vec<Action>) {
+/// selects, drags the box or pans. `leads` moves badges past box numbers.
+pub(super) fn badges(
+    ui: &Ui,
+    tab: &DocTab,
+    layout: &Layout,
+    leads: &HashMap<NodeId, f32>,
+    pending: &mut Vec<Action>,
+) {
     if tab.camera.zoom < MARKER_MIN_ZOOM {
         return;
     }
@@ -157,6 +166,7 @@ pub(super) fn badges(ui: &Ui, tab: &DocTab, layout: &Layout, pending: &mut Vec<A
             .world_rect_to_screen(badge_rect(
                 world,
                 layout.indicator_row(id),
+                lead_of(leads, id),
                 node.comments.len(),
             ))
             .expand(2.0);
@@ -216,9 +226,14 @@ mod tests {
     #[test]
     fn badge_sits_after_the_link_glyph_in_the_indicator_row() {
         let world = Rect::from_min_size(pos2(100.0, 50.0), vec2(156.0, 40.0));
-        let glyph = super::super::links::link_rect(world, 16.0);
+        let glyph = super::super::links::link_rect(world, 16.0, 0.0);
+        let after_number = badge_rect(world, 16.0, 20.0, 1);
+        assert_eq!(
+            after_number.left(),
+            badge_rect(world, 16.0, 0.0, 1).left() + 20.0
+        );
         for count in [1, 12, 100, 5000] {
-            let badge = badge_rect(world, 16.0, count);
+            let badge = badge_rect(world, 16.0, 0.0, count);
             // The tail hangs 3.5 px below the body, still above the text.
             let tail = badge.bottom() + 3.5;
             assert!(world.contains_rect(badge) && tail <= world.top() + 16.0 + BOX_TEXT_PAD);

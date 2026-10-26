@@ -199,6 +199,7 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
     let params = settings.layout_params();
     let opts = SceneOptions {
         show_markers: settings.show_markers,
+        numbers: settings.show_numbers,
         eval_shading: settings.eval_shading,
         connector_style: settings.connector_style,
         only,

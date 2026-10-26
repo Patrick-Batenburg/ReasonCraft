@@ -210,7 +210,7 @@ fn link_glyph_clear_of_arrowheads() {
         doc.boxes.get_mut(&root).unwrap().link = Some("https://example.org".into());
         for style in ConnectorStyle::ALL {
             let (lay, scene) = scene_in(&doc, style);
-            let glyph = link_rect(lay.boxes[&root], lay.indicator_row(root));
+            let glyph = link_rect(lay.boxes[&root], lay.indicator_row(root), 0.0);
             let arrowheads: Vec<Rect> = scene
                 .shapes
                 .iter()
@@ -283,8 +283,8 @@ fn marker_and_badge_inside_box() {
             assert!(row > 0.0, "{dir:?}: an indicator row");
             let (c, r) = marker_circle(world, row);
             let marker = Rect::from_center_size(c, vec2(2.0 * r, 2.0 * r));
-            let badge = badge_rect(world, row, 100);
-            let glyph = link_rect(world, row);
+            let badge = badge_rect(world, row, 0.0, 100);
+            let glyph = link_rect(world, row, 0.0);
             for (name, rect) in [("marker", marker), ("badge", badge), ("glyph", glyph)] {
                 assert!(
                     world.contains_rect(rect),

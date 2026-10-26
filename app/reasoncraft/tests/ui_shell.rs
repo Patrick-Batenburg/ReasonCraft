@@ -192,6 +192,8 @@ fn settings_from_old_storage_fill_defaults() {
         show_markers: false,
         eval_shading: true,
         connector_style: reasoncraft_core::ConnectorStyle::Elbow,
+        minimap: reasoncraft::settings::MinimapMode::On,
+        show_numbers: true,
         text_tab: reasoncraft::settings::TextTab::Check,
         outline: reasoncraft_core::outline::OutlineOptions {
             numbering: false,

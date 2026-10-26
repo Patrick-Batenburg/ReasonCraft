@@ -11,6 +11,8 @@ pub const ZOOM_MAX: f32 = 4.0;
 const FIT_MARGIN: f32 = 0.1;
 /// Screen px kept between a revealed item and the edge of the view.
 pub const REVEAL_MARGIN: f32 = 24.0;
+/// The most Fit selection zooms in.
+pub const FIT_SELECTION_MAX: f32 = 2.0;
 
 /// Where the map view looks. A world point `p` is drawn at
 /// `p * zoom + offset` in screen points (1.0 zoom = 100%).
@@ -64,6 +66,17 @@ impl Camera {
         let zoom = (room.x / size.x).min(room.y / size.y);
         self.zoom = zoom.clamp(ZOOM_MIN, 1.0);
         self.offset = viewport.center().to_vec2() - bounds.center().to_vec2() * self.zoom;
+    }
+
+    /// Show all of world rect `item` centred in `viewport`, with
+    /// [`REVEAL_MARGIN`] screen px around it, zooming in up to
+    /// [`FIT_SELECTION_MAX`].
+    pub fn fit_selection(&mut self, item: Rect, viewport: Rect) {
+        let room = (viewport.size() - Vec2::splat(2.0 * REVEAL_MARGIN)).max(Vec2::splat(1.0));
+        let size = item.size().max(Vec2::splat(1.0));
+        let zoom = (room.x / size.x).min(room.y / size.y);
+        self.zoom = zoom.clamp(ZOOM_MIN, FIT_SELECTION_MAX);
+        self.offset = viewport.center().to_vec2() - item.center().to_vec2() * self.zoom;
     }
 
     /// Pan by the smallest amount that brings world rect `item`, with
@@ -193,6 +206,24 @@ mod tests {
         cam.fit(l.bounds, viewport);
         assert!(cam.zoom > ZOOM_MIN, "fit is not clamped: {}", cam.zoom);
         assert!(viewport.contains_rect(cam.world_rect_to_screen(l.bounds)));
+    }
+
+    #[test]
+    fn fit_selection_zooms_to_item() {
+        let viewport = Rect::from_min_size(pos2(100.0, 50.0), vec2(1000.0, 600.0));
+        // A small box is enlarged, but not past 200%.
+        let mut cam = Camera::default();
+        let small = Rect::from_min_size(pos2(500.0, 300.0), vec2(156.0, 40.0));
+        cam.fit_selection(small, viewport);
+        assert_eq!(cam.zoom, FIT_SELECTION_MAX);
+        assert!((cam.world_to_screen(small.center()) - viewport.center()).length() < 1e-3);
+        // A big subtree fits, tight along one axis with the 24 px margin.
+        let big = Rect::from_min_size(pos2(-800.0, 40.0), vec2(4000.0, 900.0));
+        cam.fit_selection(big, viewport);
+        let shown = cam.world_rect_to_screen(big);
+        assert!(viewport.shrink(REVEAL_MARGIN - 0.01).contains_rect(shown));
+        assert!((shown.width() - (1000.0 - 2.0 * REVEAL_MARGIN)).abs() < 1e-2);
+        assert!((shown.center() - viewport.center()).length() < 1e-3);
     }
 
     #[test]

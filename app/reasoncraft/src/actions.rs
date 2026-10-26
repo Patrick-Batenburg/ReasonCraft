@@ -103,6 +103,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         Action::SetTheme(_)
         | Action::SetConnectorStyle(_)
         | Action::ToggleMarkers
+        | Action::SetMinimap(_)
+        | Action::ToggleNumbers
         | Action::ToggleShading
         | Action::TogglePanel(_)
         | Action::ShowPanel(_)
@@ -176,6 +178,7 @@ fn keeps_notes(action: &Action) -> bool {
             | Action::ZoomIn
             | Action::ZoomOut
             | Action::ZoomFit
+            | Action::ZoomFitSelection
             | Action::Zoom100
             | Action::SetZoom(_)
             | Action::ActivateTab(_)
@@ -185,6 +188,8 @@ fn keeps_notes(action: &Action) -> bool {
             | Action::SetTheme(_)
             | Action::SetConnectorStyle(_)
             | Action::ToggleMarkers
+            | Action::SetMinimap(_)
+            | Action::ToggleNumbers
             | Action::ToggleShading
             | Action::SetOutlineOption(..)
             | Action::OpenComments(_)
@@ -249,6 +254,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::ZoomIn
         | Action::ZoomOut
         | Action::ZoomFit
+        | Action::ZoomFitSelection
         | Action::Zoom100
         | Action::SetZoom(_)
         | Action::SetLayoutDirection(_) => view::apply_to_tab(tab, action),
@@ -284,6 +290,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetTheme(_)
         | Action::SetConnectorStyle(_)
         | Action::ToggleMarkers
+        | Action::SetMinimap(_)
+        | Action::ToggleNumbers
         | Action::ToggleShading
         | Action::AddComment { .. }
         | Action::RemoveComment { .. }

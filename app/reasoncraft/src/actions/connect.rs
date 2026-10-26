@@ -63,6 +63,7 @@ pub(super) fn end_unless_kept(tab: &mut DocTab, action: &Action) {
             | Action::ZoomIn
             | Action::ZoomOut
             | Action::ZoomFit
+            | Action::ZoomFitSelection
             | Action::Zoom100
             | Action::SetZoom(_)
             | Action::StartConnect
@@ -72,6 +73,8 @@ pub(super) fn end_unless_kept(tab: &mut DocTab, action: &Action) {
             | Action::TogglePanel(_)
             | Action::ShowPanel(_)
             | Action::ToggleMarkers
+            | Action::SetMinimap(_)
+            | Action::ToggleNumbers
             | Action::ToggleShading
             | Action::SetTextTab(_)
             | Action::SetOutlineOption(..)
