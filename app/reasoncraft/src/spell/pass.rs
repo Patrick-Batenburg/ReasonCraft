@@ -16,14 +16,23 @@ pub const MAX_SUGGESTIONS: usize = 6;
 /// How many characters of context show on each side of the word.
 pub const CONTEXT_CHARS: usize = 30;
 
+/// Where a pass looks next: a box (`None`: the start of the walk), its
+/// place in the walk when last seen (used if the box is gone) and a byte
+/// offset in its text.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct Place {
+    node: Option<NodeId>,
+    index: usize,
+    offset: usize,
+}
+
 /// One tab's spelling pass.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct SpellPass {
     /// The box the pass started at.
     start: Option<NodeId>,
-    /// Where to look next: the box's place in the walk from `start`, and a
-    /// byte offset in its text.
-    at: (usize, usize),
+    /// Where to look next.
+    at: Place,
     /// The misspelling on show (its box is selected), and its word.
     pub current: Option<FindHit>,
     pub word: String,
@@ -48,10 +57,18 @@ impl SpellPass {
         }
     }
 
-    /// Whether the pass waits for its first (or next) misspelling: the
-    /// dictionary is still loading.
-    pub fn waiting(&self) -> bool {
-        self.current.is_none() && !self.done
+    /// Whether the pass must look (again) for its misspelling: it waits
+    /// for the dictionary, or the document changed under the current one
+    /// (its box no longer holds the word there).
+    pub fn needs_advance(&self, doc: &Document) -> bool {
+        !self.done && self.current_word(doc).is_none()
+    }
+
+    /// The word on show, while its box still holds it at the hit.
+    pub fn current_word(&self, doc: &Document) -> Option<&str> {
+        let hit = self.current.as_ref()?;
+        let text = &doc.boxes.get(&hit.node)?.text;
+        (text.get(hit.range.clone()) == Some(self.word.as_str())).then_some(self.word.as_str())
     }
 }
 
@@ -74,7 +91,16 @@ pub(super) fn advance(tab: &mut DocTab, service: &mut SpellService) {
     let lang = tab.doc.meta.language.clone();
     let order = walk(&tab.doc, pass.start);
     pass.current = None;
-    let (mut i, mut from) = pass.at;
+    let found = pass
+        .at
+        .node
+        .and_then(|n| order.iter().position(|&o| o == n));
+    let (mut i, mut from) = match (pass.at.node, found) {
+        (None, _) => (0, pass.at.offset),
+        (Some(_), Some(i)) => (i, pass.at.offset),
+        // The box is gone: go on from where it was.
+        (Some(_), None) => (pass.at.index.min(order.len()), 0),
+    };
     while i < order.len() {
         let node = order[i];
         let Some(text) = tab.doc.boxes.get(&node).map(|b| &b.text) else {
@@ -85,15 +111,20 @@ pub(super) fn advance(tab: &mut DocTab, service: &mut SpellService) {
             tab.spelling = Some(pass);
             return;
         };
-        if let Some(r) = ranges.iter().find(|r| r.start >= from) {
-            pass.at = (i, r.start);
-            pass.word = text[r.clone()].to_owned();
+        let hit = ranges
+            .iter()
+            .filter(|r| r.start >= from)
+            .find_map(|r| Some((r.clone(), text.get(r.clone())?)));
+        if let Some((r, word)) = hit {
+            pass.at = Place {
+                node: Some(node),
+                index: i,
+                offset: r.start,
+            };
+            pass.word = word.to_owned();
             pass.suggestions = service.suggest(&lang, &pass.word, MAX_SUGGESTIONS);
             pass.replacement = pass.suggestions.first().unwrap_or(&pass.word).clone();
-            pass.current = Some(FindHit {
-                node,
-                range: r.clone(),
-            });
+            pass.current = Some(FindHit { node, range: r });
             tab.selection = Some(Item::Box(node));
             tab.reveal_pending = true;
             tab.spelling = Some(pass);
@@ -101,24 +132,29 @@ pub(super) fn advance(tab: &mut DocTab, service: &mut SpellService) {
         }
         (i, from) = (i + 1, 0);
     }
-    pass.at = (order.len(), 0);
+    pass.at = Place {
+        node: None,
+        index: order.len(),
+        offset: 0,
+    };
     pass.done = true;
     tab.spelling = Some(pass);
 }
 
-/// The current misspelling, if `hit` still is it and its box still holds
-/// the word there.
-fn current(tab: &DocTab, hit: &FindHit) -> Option<String> {
+/// The current misspelling and its word, while its box still holds the
+/// word there and `word` (when given) is that word.
+fn current(tab: &DocTab, word: Option<&str>) -> Option<(FindHit, String)> {
     let pass = tab.spelling.as_ref()?;
-    let text = &tab.doc.boxes.get(&hit.node)?.text;
-    (pass.current.as_ref() == Some(hit) && text.get(hit.range.clone()) == Some(pass.word.as_str()))
-        .then(|| pass.word.clone())
+    let found = pass.current_word(&tab.doc)?;
+    let hit = pass.current.clone()?;
+    word.is_none_or(|w| w == found)
+        .then(|| (hit, found.to_owned()))
 }
 
 /// Look on from byte `offset` of the current box.
 fn resume_at(tab: &mut DocTab, service: &mut SpellService, offset: usize) {
     if let Some(pass) = &mut tab.spelling {
-        pass.at.1 = offset;
+        pass.at.offset = offset;
     }
     advance(tab, service);
 }
@@ -137,11 +173,6 @@ pub(crate) fn apply(app: &mut ReasonCraftApp, action: Action) {
     let Some(tab) = tabs.get_mut(*active) else {
         return;
     };
-    let end = tab
-        .spelling
-        .as_ref()
-        .and_then(|p| p.current.as_ref())
-        .map(|h| h.range.end);
     match action {
         Action::OpenSpelling => {
             if settings.spellcheck {
@@ -151,28 +182,35 @@ pub(crate) fn apply(app: &mut ReasonCraftApp, action: Action) {
             }
         }
         Action::CloseSpelling => tab.spelling = None,
-        Action::SpellIgnore => {
-            if let Some(end) = end {
-                resume_at(tab, spell, end);
+        // The rest act on the current misspelling: when the document
+        // changed under it (or the action names another word), the pass
+        // looks again from where it is instead.
+        Action::SpellIgnore => match current(tab, None) {
+            Some((hit, _)) => resume_at(tab, spell, hit.range.end),
+            None => advance(tab, spell),
+        },
+        Action::SpellIgnoreAll(word) => match current(tab, Some(&word)) {
+            Some((hit, word)) => {
+                spell.ignore_all(&word);
+                resume_at(tab, spell, hit.range.end);
             }
-        }
-        Action::SpellIgnoreAll(word) => {
-            spell.ignore_all(&word);
-            resume_at(tab, spell, end.unwrap_or(0));
-        }
-        Action::SpellAddWord(word) => {
-            if spell.add_word(&word) {
-                let word = word.trim().to_owned();
-                if !settings.spell_words.contains(&word) {
-                    settings.spell_words.push(word);
+            None => advance(tab, spell),
+        },
+        Action::SpellAddWord(word) => match current(tab, Some(&word)) {
+            Some((hit, word)) => {
+                match spell.add_word(&word) {
+                    Some(word) if !settings.spell_words.contains(&word) => {
+                        settings.spell_words.push(word);
+                    }
+                    Some(_) => {}
+                    None => *status_note = Some(t("spell.add_refused")),
                 }
-            } else {
-                *status_note = Some(t("spell.add_refused"));
+                resume_at(tab, spell, hit.range.end);
             }
-            resume_at(tab, spell, end.unwrap_or(0));
-        }
+            None => advance(tab, spell),
+        },
         Action::SpellChange { hit, with } => {
-            let Some(word) = current(tab, &hit) else {
+            let Some((_, word)) = current(tab, None).filter(|(h, _)| *h == hit) else {
                 return advance(tab, spell);
             };
             if word != with {
@@ -187,8 +225,8 @@ pub(crate) fn apply(app: &mut ReasonCraftApp, action: Action) {
             resume_at(tab, spell, hit.range.start + with.len());
         }
         Action::SpellChangeAll { word, with } => {
-            let Some(hit) = tab.spelling.as_ref().and_then(|p| p.current.clone()) else {
-                return;
+            let Some((hit, word)) = current(tab, Some(&word)) else {
+                return advance(tab, spell);
             };
             let opts = FindOptions {
                 match_case: true,

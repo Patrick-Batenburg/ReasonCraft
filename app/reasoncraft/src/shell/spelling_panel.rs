@@ -28,11 +28,11 @@ pub fn show(
     let Some(pass) = &tab.spelling else {
         return;
     };
-    // The context, read before the pass is borrowed for its field.
-    let shown = pass.current.as_ref().and_then(|h| {
-        let text = &tab.doc.boxes.get(&h.node)?.text;
-        text.get(h.range.clone())?;
-        Some(context(text, h.range.clone()))
+    // The context, read before the pass is borrowed for its field; only
+    // while the box still holds the word at the hit.
+    let shown = pass.current_word(&tab.doc).and_then(|_| {
+        let h = pass.current.as_ref()?;
+        Some(context(&tab.doc.boxes.get(&h.node)?.text, h.range.clone()))
     });
     let field_id = tab.widget_id("spelling_replacement");
     let Some(pass) = &mut tab.spelling else {
@@ -61,9 +61,9 @@ pub fn show(
                 details(ui, pass, shown, field_id, tk);
             }
             ui.horizontal_wrapped(|ui| {
-                if let (Some((_, word, _)), Some(hit)) = (shown, pass.current.clone()) {
+                if let (Some(_), Some(hit)) = (&shown, pass.current.clone()) {
                     let with = pass.replacement.clone();
-                    buttons(ui, hit, word, with, out);
+                    buttons(ui, hit, pass.word.clone(), with, out);
                 }
                 if ui.button(t("spell.close")).clicked() {
                     out.push(Action::CloseSpelling);

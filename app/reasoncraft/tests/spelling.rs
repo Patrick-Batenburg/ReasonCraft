@@ -231,10 +231,9 @@ fn add_to_dictionary_persists_in_settings() {
             .unwrap()
             .is_empty()
     );
-    // A word the dictionary would misread is refused, with a note.
-    apply(h.state_mut(), Action::SpellAddWord("bad/word".into()));
-    assert_eq!(h.state().settings.spell_words, ["Reasoncraftish"]);
-    assert_eq!(h.state().status_note, Some(t("spell.add_refused")));
+    // A word the dictionary would misread is refused.
+    assert!(h.state_mut().spell.add_word("bad/word").is_none());
+    assert!(reasoncraft_spell::personal_word("bad/word").is_none());
 }
 
 #[test]
@@ -254,4 +253,61 @@ fn box_editor_and_snippet_underline_but_map_does_not() {
     apply(h.state_mut(), Action::SetTextTab(TextTab::Snippets));
     h.run();
     assert_eq!(underlined(&h), ["mistaek"], "snippet text");
+}
+
+#[test]
+fn pass_looks_again_after_the_document_changes() {
+    let (d, ids) = map("Cats are fine", &["I recieve teh mail"]);
+    let mut h = harness_with(d, |_| {});
+    apply(h.state_mut(), Action::Select(Some(Item::Box(ids[1]))));
+    open_pass(&mut h);
+    h.state_mut().tabs[0].spelling.as_mut().unwrap().replacement = "get".into();
+    h.run();
+    h.get_by_label(&t("spell.change")).click();
+    h.run();
+    assert_eq!(text(&h, ids[1]), "I get teh mail");
+    assert_eq!(current_word(&h).as_deref(), Some("teh"));
+    // Undo puts the longer word back: the old range of "teh" now reads "iev".
+    h.key_press_modifiers(egui::Modifiers::COMMAND, Key::Z);
+    h.run();
+    assert_eq!(text(&h, ids[1]), "I recieve teh mail");
+    let pass = h.state().tabs[0].spelling.clone().unwrap();
+    assert_eq!(pass.word, "teh", "found again");
+    assert_eq!(pass.current.unwrap().range, 10..13);
+    // An action naming another word than the one on show does nothing.
+    apply(h.state_mut(), Action::SpellAddWord("iev".into()));
+    assert!(h.state().settings.spell_words.is_empty());
+    h.get_by_label(&t("spell.add")).click();
+    h.run();
+    assert_eq!(h.state().settings.spell_words, ["teh"]);
+    // A change made before the panel's next frame: the action is refused
+    // and the pass looks again instead.
+    apply(h.state_mut(), Action::CloseSpelling);
+    apply(h.state_mut(), Action::OpenSpelling);
+    assert_eq!(current_word(&h).as_deref(), Some("recieve"));
+    let tab = &mut h.state_mut().tabs[0];
+    tab.doc.set_text(ids[1], "Now recieve").unwrap();
+    apply(h.state_mut(), Action::SpellAddWord("recieve".into()));
+    assert_eq!(h.state().settings.spell_words, ["teh"], "nothing added");
+    let pass = h.state().tabs[0].spelling.clone().unwrap();
+    assert_eq!(pass.word, "recieve");
+    assert_eq!(pass.current.unwrap().range, 4..11, "found where it is now");
+}
+
+#[test]
+fn change_to_the_same_word_adds_no_history() {
+    let (d, ids) = map("teh cat", &["teh dog"]);
+    let mut h = harness_with(d, |_| {});
+    open_pass(&mut h);
+    let hit = h.state().tabs[0].spelling.clone().unwrap().current.unwrap();
+    let before = undo_len(&h);
+    let with = "teh".to_owned();
+    apply(h.state_mut(), Action::SpellChange { hit, with });
+    assert_eq!(undo_len(&h), before, "Change to the same word");
+    assert_eq!(text(&h, ids[0]), "teh cat");
+    assert_eq!(current_word(&h).as_deref(), Some("teh"), "on to the reason");
+    let (word, with) = ("teh".to_owned(), "teh".to_owned());
+    apply(h.state_mut(), Action::SpellChangeAll { word, with });
+    assert_eq!(undo_len(&h), before, "Change all to the same word");
+    assert!(h.state().tabs[0].spelling.as_ref().unwrap().done);
 }

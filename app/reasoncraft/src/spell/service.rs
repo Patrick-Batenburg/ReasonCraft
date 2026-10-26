@@ -198,31 +198,32 @@ impl SpellService {
         self.cache.clear();
     }
 
-    /// Add `word` to the personal dictionary of every language. False,
-    /// adding nothing, for a word no dictionary can hold (blank, or with
-    /// a `/`).
-    pub fn add_word(&mut self, word: &str) -> bool {
-        let word = word.trim();
-        if word.is_empty() || word.contains('/') {
-            return false;
-        }
+    /// Add `word` to the personal dictionary of every language and return
+    /// it as kept (trimmed); `None`, adding nothing, for a word no
+    /// dictionary can hold (see [`reasoncraft_spell::personal_word`]).
+    pub fn add_word(&mut self, word: &str) -> Option<String> {
+        let word = reasoncraft_spell::personal_word(word)?.to_owned();
+        let mut taken = true;
         for dict in self.dicts.values_mut() {
             if let Dict::Ready(s) = dict {
                 match Arc::get_mut(s) {
-                    Some(s) => {
-                        s.add_word(word);
-                    }
+                    Some(s) => taken &= s.add_word(&word),
                     // Only the service keeps a dictionary between frames,
                     // so this does not happen; still accept the word.
                     None => {
-                        self.ignored.insert(word.to_owned());
+                        self.ignored.insert(word.clone());
                     }
                 }
             }
         }
-        self.personal.push(word.to_owned());
+        if !taken {
+            return None;
+        }
+        if !self.personal.contains(&word) {
+            self.personal.push(word.clone());
+        }
         self.cache.clear();
-        true
+        Some(word)
     }
 
     /// How many texts were checked against a dictionary so far (each
@@ -281,9 +282,11 @@ pub(crate) mod tests {
         assert!(s.misspelled("en", "Reasoncraftish").unwrap().is_empty());
         assert_eq!(s.misspelled("en", "teh blorb").unwrap().len(), 2);
         s.ignore_all("teh");
-        assert!(s.add_word("blorb"));
+        assert_eq!(s.add_word(" blorb ").as_deref(), Some("blorb"));
+        assert_eq!(s.add_word("blorb").as_deref(), Some("blorb"));
+        assert_eq!(s.personal, ["Reasoncraftish", "blorb"], "kept once");
         assert!(s.misspelled("en", "teh blorb").unwrap().is_empty());
-        assert!(!s.add_word("a/b") && !s.add_word(" "));
+        assert!(s.add_word("a/b").is_none() && s.add_word(" ").is_none());
     }
 
     #[test]

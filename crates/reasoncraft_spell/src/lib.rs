@@ -8,6 +8,14 @@ use std::ops::Range;
 
 pub use tokens::words;
 
+/// `word` as a personal dictionary keeps it (trimmed), or `None` for a
+/// word no dictionary can hold: a blank one, or one holding `/` (the
+/// dictionary would read what follows as affix flags).
+pub fn personal_word(word: &str) -> Option<&str> {
+    let word = word.trim();
+    (!word.is_empty() && !word.contains('/')).then_some(word)
+}
+
 /// Supported dictionary languages.
 pub const LANGUAGES: [&str; 2] = ["en", "nl"];
 
@@ -71,13 +79,11 @@ impl Speller {
     }
 
     /// Adds a word to the personal dictionary for this session. Returns
-    /// false, adding nothing, for a blank word or one holding `/` (the
-    /// dictionary would read what follows as affix flags).
+    /// false, adding nothing, for a word [`personal_word`] refuses.
     pub fn add_word(&mut self, word: &str) -> bool {
-        let word = word.trim();
-        if word.is_empty() || word.contains('/') {
+        let Some(word) = personal_word(word) else {
             return false;
-        }
+        };
         self.dict.add(&word.replace('’', "'")).is_ok()
     }
 }
