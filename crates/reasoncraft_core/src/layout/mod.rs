@@ -1,9 +1,12 @@
-//! Automatic top-down tidy-tree layout of a [`Document`].
+//! Automatic compact tidy-tree layout of a [`Document`].
 //!
 //! [`layout`] places the main tree (from the root claim) with its top-left
-//! slot at the origin, then each parking item as its own mini-tree, stacked
-//! to the right of the main tree. Coordinates grow downward like the screen.
+//! corner at the origin, then each parking item as its own mini-tree, in a
+//! column after the main tree along the cross axis. Subtrees are packed
+//! against each other's contours. Coordinates grow downward like the screen.
 
+mod axis;
+mod contour;
 mod ports;
 mod tree;
 
@@ -128,7 +131,8 @@ pub struct Layout {
     pub bounds: Rect,
 }
 
-/// Lay out `doc` top-down. Iterative throughout, so very deep maps are safe.
+/// Lay out `doc` top-down, packed compactly. Iterative throughout, so very
+/// deep maps are safe.
 pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
     let mut out = Layout {
         boxes: IndexMap::with_capacity(doc.boxes.len()),
@@ -144,25 +148,26 @@ pub fn layout(doc: &Document, m: &dyn Measure, p: &LayoutParams) -> Layout {
     let mut pending = Vec::new();
     tree::card_roles(doc, &mut out);
 
-    let main = tree::Tree::build(doc, Item::Box(doc.root), m, p);
-    out.main_bounds = main.place(doc, Pos2::ZERO, p, &mut out, &mut pending);
+    let frame = axis::Frame::default();
+    let main = tree::Tree::build(doc, Item::Box(doc.root), m, p, frame);
+    out.main_bounds = main.place(doc, (0.0, 0.0), p, &mut out, &mut pending);
     if out.main_bounds == Rect::NOTHING {
         // Only possible for a document whose root box is missing.
         out.main_bounds = Rect::from_min_size(Pos2::ZERO, Vec2::ZERO);
     }
 
-    let left = out.main_bounds.right() + p.parking_gap;
-    let mut top = out.main_bounds.top();
+    let cross = frame.cross_range(out.main_bounds).1 + p.parking_gap;
+    let mut main_at = frame.main_range(out.main_bounds).0;
     for &item in &doc.parking {
-        let t = tree::Tree::build(doc, item, m, p);
-        let r = t.place(doc, Pos2::new(left, top), p, &mut out, &mut pending);
+        let t = tree::Tree::build(doc, item, m, p, frame);
+        let r = t.place(doc, (cross, main_at), p, &mut out, &mut pending);
         if r != Rect::NOTHING {
-            top = r.bottom() + p.v_gap;
+            main_at = frame.main_range(r).1 + p.v_gap;
             out.parking_bounds = Some(out.parking_bounds.map_or(r, |b| b.union(r)));
         }
     }
 
-    out.connectors = ports::assign(doc, pending, &out, p);
+    out.connectors = ports::assign(doc, pending, &out, p, frame);
     out.bounds = out
         .parking_bounds
         .map_or(out.main_bounds, |b| b.union(out.main_bounds));

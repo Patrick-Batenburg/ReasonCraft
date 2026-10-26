@@ -1,15 +1,22 @@
-//! Layout units, subtree widths and top-down placement.
+//! Layout units, compact packing and placement.
 //!
 //! Units are collected breadth-first, so each unit's children are a
 //! contiguous range and every child comes after its parent. Walking the list
-//! backwards is then a post-order (subtree widths); walking it forwards is a
-//! pre-order (placement). No recursion, so chains of any depth are safe.
+//! backwards is then a post-order (packing); walking it forwards is a
+//! pre-order (main positions and placement). No recursion, so chains of any
+//! depth are safe.
+//!
+//! Packing uses main and cross axes ([`Frame`]), never world x and y:
+//! siblings pack in order against the [`Contour`] of those before them.
 
 use std::collections::HashSet;
+use std::mem;
 use std::ops::Range;
 
 use emath::{Pos2, Rect, Vec2};
 
+use super::axis::Frame;
+use super::contour::Contour;
 use super::ports::{Pending, PortKey};
 use super::{BOX_TEXT_PAD, ConnectorKind, Layout, LayoutParams, Measure, image_height};
 use crate::connector::Strength;
@@ -19,10 +26,12 @@ use crate::model::{BoxKind, BoxNode, Card, CardStrength, Document, Role};
 /// A card, a box outside cards, or the root.
 struct Unit {
     item: Item,
-    /// Own size (a card's frame size).
+    /// Own world size (a card's frame size).
     size: Vec2,
-    /// Width of the whole subtree below and including this unit.
-    subtree_width: f32,
+    /// Main coordinate of the unit's near edge, relative to the tree root's.
+    main: f32,
+    /// Cross offset of the unit's centre from its parent's centre.
+    offset: f32,
     /// Indices of the child units.
     children: Range<usize>,
     /// For a card: its premises' sizes, as a range into `Tree::premise_sizes`.
@@ -35,14 +44,25 @@ struct Unit {
 pub(super) struct Tree {
     units: Vec<Unit>,
     premise_sizes: Vec<Vec2>,
+    frame: Frame,
+    /// Cross distance from the tree's lowest cross extent to the root centre.
+    lead: f32,
 }
 
 impl Tree {
-    /// Collect the units under `root` and measure their subtree widths.
-    pub(super) fn build(doc: &Document, root: Item, m: &dyn Measure, p: &LayoutParams) -> Self {
+    /// Collect the units under `root` and pack them.
+    pub(super) fn build(
+        doc: &Document,
+        root: Item,
+        m: &dyn Measure,
+        p: &LayoutParams,
+        frame: Frame,
+    ) -> Self {
         let mut tree = Tree {
             units: Vec::new(),
             premise_sizes: Vec::new(),
+            frame,
+            lead: 0.0,
         };
         let mut seen = HashSet::new();
         tree.push_unit(doc, root, None, m, p, &mut seen);
@@ -56,13 +76,52 @@ impl Tree {
                 tree.push_unit(doc, child, Some(port), m, p, &mut seen);
             }
             tree.units[i].children = start..tree.units.len();
+            let child_main = tree.units[i].main + frame.ext(tree.units[i].size).main + p.v_gap;
+            for u in &mut tree.units[start..] {
+                u.main = child_main;
+            }
             i += 1;
         }
+        let mut contours = vec![Contour::default(); tree.units.len()];
         for i in (0..tree.units.len()).rev() {
-            let row = row_width(&tree.units, tree.units[i].children.clone(), p.h_gap);
-            tree.units[i].subtree_width = tree.units[i].size.x.max(row);
+            contours[i] = tree.pack(i, &mut contours, p);
         }
+        tree.lead = contours.first().map_or(0.0, |c| -c.cross_lo());
         tree
+    }
+
+    /// Pack unit `i`'s children (whose contours are in `contours`), centre
+    /// the unit over its first to last child and return the contour of its
+    /// whole subtree, centred on the unit.
+    fn pack(&mut self, i: usize, contours: &mut [Contour], p: &LayoutParams) -> Contour {
+        let ext = self.frame.ext(self.units[i].size);
+        let half = ext.cross * 0.5;
+        let main_lo = self.units[i].main;
+        let main_hi = main_lo + ext.main;
+        let mut contour = Contour::rect(main_lo, main_hi, -half, half);
+        let kids = self.units[i].children.clone();
+        if kids.is_empty() {
+            return contour;
+        }
+        let mut kid_contours = contours[kids.clone()].iter_mut().map(mem::take);
+        let mut acc = kid_contours.next().unwrap_or_default();
+        for (u, next) in self.units[kids.start + 1..kids.end]
+            .iter_mut()
+            .zip(kid_contours)
+        {
+            u.offset = Contour::separation(&acc, &next).max(0.0) + p.h_gap;
+            acc.merge(&next, u.offset);
+        }
+        let centre = self.units[kids.end - 1].offset * 0.5;
+        for u in &mut self.units[kids] {
+            u.offset -= centre;
+        }
+        // Keep the band the connectors cross clear of neighbouring subtrees.
+        let reach = half.max(centre);
+        let band = Contour::rect(main_hi, main_hi + p.v_gap, -reach, reach);
+        contour.merge(&band, 0.0);
+        contour.merge(&acc, -centre);
+        contour
     }
 
     /// Add a unit for `item` unless it is missing or already placed.
@@ -97,50 +156,47 @@ impl Tree {
         self.units.push(Unit {
             item,
             size,
-            subtree_width: size.x,
+            main: 0.0,
+            offset: 0.0,
             children: 0..0,
             premises: start..self.premise_sizes.len(),
             port,
         });
     }
 
-    /// Place the tree with its root slot's top-left at `origin`. Writes
-    /// rects into `out`, queues connectors in `pending` and returns the
-    /// bounds of everything placed (`Rect::NOTHING` for an empty tree).
+    /// Place the tree with its lowest cross extent at `cross` and its root's
+    /// near edge at `main`. Writes rects into `out`, queues connectors in
+    /// `pending` and returns the world bounds of everything placed
+    /// (`Rect::NOTHING` for an empty tree).
     pub(super) fn place(
         &self,
         doc: &Document,
-        origin: Pos2,
+        (cross, main): (f32, f32),
         p: &LayoutParams,
         out: &mut Layout,
         pending: &mut Vec<Pending>,
     ) -> Rect {
-        let n = self.units.len();
-        let mut slot_left = vec![origin.x; n];
-        let mut top = vec![origin.y; n];
+        let mut centre = vec![cross + self.lead; self.units.len()];
         let mut bounds = Rect::NOTHING;
         for (i, u) in self.units.iter().enumerate() {
-            let centre_x = slot_left[i] + u.subtree_width * 0.5;
-            let rect = Rect::from_min_size(Pos2::new(centre_x - u.size.x * 0.5, top[i]), u.size);
+            let ext = self.frame.ext(u.size);
+            let near = main + u.main;
+            let rect = self.frame.to_world(centre[i] - ext.cross * 0.5, near, ext);
             bounds = bounds.union(rect);
             self.emit(doc, u, rect, p, out);
             if let Some(port) = u.port {
                 let (strength, nil) = connector_strength(out, u.item);
                 pending.push(Pending {
                     child: u.item,
-                    from: rect.center_top(),
+                    from: self.frame.point(centre[i], near),
                     port,
                     kind: connector_kind(doc, out, u.item),
                     strength,
                     nil,
                 });
             }
-            let mut x = centre_x - row_width(&self.units, u.children.clone(), p.h_gap) * 0.5;
-            let child_top = rect.bottom() + p.v_gap;
             for k in u.children.clone() {
-                slot_left[k] = x;
-                top[k] = child_top;
-                x += self.units[k].subtree_width + p.h_gap;
+                centre[k] = centre[i] + self.units[k].offset;
             }
         }
         bounds
@@ -175,15 +231,6 @@ impl Tree {
             }
         }
     }
-}
-
-/// Total width of a row of sibling subtrees, including the gaps between them.
-fn row_width(units: &[Unit], row: Range<usize>, h_gap: f32) -> f32 {
-    let n = row.len();
-    if n == 0 {
-        return 0.0;
-    }
-    units[row].iter().map(|u| u.subtree_width).sum::<f32>() + (n - 1) as f32 * h_gap
 }
 
 /// The child items of a unit, in display order, with their attach points.

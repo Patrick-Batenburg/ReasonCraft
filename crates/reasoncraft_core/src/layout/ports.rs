@@ -1,20 +1,22 @@
 //! Attach points and port spreading.
 //!
-//! Connectors that share an attach point are spread `port_spacing` apart,
-//! ordered by child centre x, within the parent width minus
-//! `2 * port_margin`.
+//! Ports sit on the parent's far edge along the main axis (the bottom edge
+//! top-down). Connectors that share an attach point are spread
+//! `port_spacing` apart along the cross axis, ordered by the child's cross
+//! position, within the parent's cross extent minus `2 * port_margin`.
 //!
-//! A card frame's bottom centre usually lies straight below one of its
+//! A card frame's far-edge centre usually lies straight beyond one of its
 //! premises (always for a single premise). Whole-card ports there would land
-//! on the same x as that premise's ports, so they join the premise's group
-//! and are spread together; each port keeps its own y (premise bottom or
-//! frame bottom).
+//! on the same cross position as that premise's ports, so they join the
+//! premise's group and are spread together; each port keeps its own main
+//! position (premise edge or frame edge).
 
 use emath::{Pos2, Rect};
 use indexmap::IndexMap;
 
 use crate::connector::Strength;
 
+use super::axis::Frame;
 use super::{Connector, ConnectorKind, Layout, LayoutParams, TargetKind};
 use crate::ids::{CardId, Item, NodeId};
 use crate::model::Document;
@@ -22,9 +24,9 @@ use crate::model::Document;
 /// Where a child's connector attaches on its parent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) enum PortKey {
-    /// The bottom centre of a box (a premise, or a box outside cards).
+    /// The far edge of a box (a premise, or a box outside cards).
     Box(NodeId),
-    /// The bottom centre of a card frame.
+    /// The far edge of a card frame.
     Whole(CardId),
 }
 
@@ -45,6 +47,7 @@ pub(super) fn assign(
     pending: Vec<Pending>,
     out: &Layout,
     p: &LayoutParams,
+    frame: Frame,
 ) -> Vec<Connector> {
     let mut groups: IndexMap<PortKey, Vec<usize>> = IndexMap::new();
     for (i, c) in pending.iter().enumerate() {
@@ -56,7 +59,7 @@ pub(super) fn assign(
             let PortKey::Whole(card) = key else {
                 return None;
             };
-            let premise = PortKey::Box(premise_above_centre(doc, out, card)?);
+            let premise = PortKey::Box(premise_above_centre(doc, out, card, frame)?);
             groups.contains_key(&premise).then_some((key, premise))
         })
         .collect();
@@ -76,10 +79,13 @@ pub(super) fn assign(
         let Some(parent) = rect_of(key) else {
             continue;
         };
-        members.sort_by(|&a, &b| pending[a].from.x.total_cmp(&pending[b].from.x));
-        let xs = spread(parent.center().x, parent.width(), members.len(), p);
-        for (&i, x) in members.iter().zip(xs) {
-            ports[i] = rect_of(pending[i].port).map(|r| Pos2::new(x, r.bottom()));
+        let cross_of = |i: usize| frame.cross_of(pending[i].from);
+        members.sort_by(|&a, &b| cross_of(a).total_cmp(&cross_of(b)));
+        let (lo, hi) = frame.cross_range(*parent);
+        let spots = spread((lo + hi) * 0.5, hi - lo, members.len(), p);
+        for (&i, at) in members.iter().zip(spots) {
+            let edge = rect_of(pending[i].port).map(|r| frame.main_range(*r).1);
+            ports[i] = edge.map(|main| frame.point(at, main));
         }
     }
     pending
@@ -102,8 +108,8 @@ pub(super) fn assign(
         .collect()
 }
 
-/// X positions of `n` ports centred on `centre`, `port_spacing` apart but
-/// squeezed to fit within `width - 2 * port_margin`.
+/// Cross positions of `n` ports centred on `centre`, `port_spacing` apart
+/// but squeezed to fit within `width - 2 * port_margin`.
 fn spread(centre: f32, width: f32, n: usize, p: &LayoutParams) -> impl Iterator<Item = f32> {
     let steps = n.saturating_sub(1) as f32;
     let room = (width - 2.0 * p.port_margin).max(0.0);
@@ -113,12 +119,19 @@ fn spread(centre: f32, width: f32, n: usize, p: &LayoutParams) -> impl Iterator<
     (0..n).map(move |i| first + i as f32 * step)
 }
 
-/// The premise of `card` whose rect spans the frame's centre x, if any.
-fn premise_above_centre(doc: &Document, out: &Layout, card: CardId) -> Option<NodeId> {
-    let cx = out.cards.get(&card)?.center().x;
+/// The premise of `card` whose rect spans the frame's cross centre, if any.
+fn premise_above_centre(
+    doc: &Document,
+    out: &Layout,
+    card: CardId,
+    frame: Frame,
+) -> Option<NodeId> {
+    let (lo, hi) = frame.cross_range(*out.cards.get(&card)?);
+    let centre = (lo + hi) * 0.5;
     doc.cards.get(&card)?.premises.iter().copied().find(|id| {
-        out.boxes
-            .get(id)
-            .is_some_and(|r| r.left() <= cx && cx <= r.right())
+        out.boxes.get(id).is_some_and(|r| {
+            let (lo, hi) = frame.cross_range(*r);
+            lo <= centre && centre <= hi
+        })
     })
 }
