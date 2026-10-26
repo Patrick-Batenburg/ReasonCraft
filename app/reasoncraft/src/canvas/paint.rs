@@ -3,7 +3,7 @@
 //! overlays on top: selection ring, comment badges and link glyphs.
 
 use eframe::egui::{Color32, FontId, Painter, Rect, Shape, Stroke, StrokeKind, pos2, vec2};
-use reasoncraft_core::{Document, Item, Layout, NodeId, Role};
+use reasoncraft_core::{ConnectorStyle, Document, Item, Layout, NodeId, Role};
 
 use super::Camera;
 use super::images::ImageCache;
@@ -60,6 +60,8 @@ pub struct PaintOptions {
     pub show_markers: bool,
     /// Tint and weight cards and connectors by their rating.
     pub eval_shading: bool,
+    /// How connectors are drawn.
+    pub connector_style: ConnectorStyle,
 }
 
 /// Paint the map: the dot grid, the scene of the document, then the
@@ -100,6 +102,7 @@ pub fn paint(
         view: Some(view),
         zoom: cam.zoom,
         editing,
+        connector_style: opts.connector_style,
     };
     let scene = build_scene(doc, layout, &scene_opts, fonts);
     paint_scene(painter, &scene, cam, images, tokens);

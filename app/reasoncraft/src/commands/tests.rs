@@ -21,6 +21,11 @@ fn command_ids_unique() {
         let cmd = get(&format!("view.direction.{}", d.key()));
         assert_eq!(cmd.action, Action::SetLayoutDirection(d));
     }
+    assert_eq!(count("view.connector."), 3);
+    for s in reasoncraft_core::ConnectorStyle::ALL {
+        let cmd = get(&format!("view.connector.{}", s.key()));
+        assert_eq!(cmd.action, Action::SetConnectorStyle(s));
+    }
     assert_eq!(count("export.outline_") + count("export.essay_"), 6);
 }
 

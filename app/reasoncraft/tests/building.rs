@@ -259,8 +259,9 @@ fn panel_drop_onto_a_comment_badge() {
     doc.add_comment(p, "Ann", "Hm.", None).unwrap();
     let mut h = harness_with(doc);
     let l = layout_of(&h);
-    // Inside both the badge and the box.
-    let world = l.boxes[&p].right_top() + egui::vec2(-3.0, 3.0);
+    // On the badge, which sits inside the box.
+    let world = badge_rect(l.boxes[&p], 1).center();
+    assert!(l.boxes[&p].contains(world));
     assert!(badge_rect(l.boxes[&p], 1).contains(world));
     let to = screen(&h, world);
     assert_eq!(drop_web_on(&mut h, p, to), 1);

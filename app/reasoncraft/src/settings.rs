@@ -1,5 +1,6 @@
 //! Personal preferences that survive restarts.
 
+use reasoncraft_core::ConnectorStyle;
 use reasoncraft_core::checks::{CheckKind, CheckSet};
 use reasoncraft_core::outline::OutlineOptions;
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,8 @@ pub struct Settings {
     pub show_markers: bool,
     /// Tint boxes and connectors by their rating.
     pub eval_shading: bool,
+    /// How connectors are drawn, on screen and in exports.
+    pub connector_style: ConnectorStyle,
     /// The tab the Text panel shows.
     pub text_tab: TextTab,
     /// What the outline shows: numbers, linking words, notes.
@@ -101,6 +104,7 @@ impl Default for Settings {
             author: String::new(),
             show_markers: true,
             eval_shading: true,
+            connector_style: ConnectorStyle::default(),
             text_tab: TextTab::default(),
             outline: OutlineOptions::default(),
             outline_indent: true,

@@ -11,11 +11,12 @@
 
 mod boxes;
 mod build;
+mod connectors;
 mod egui_paint;
 mod pen;
 
 use eframe::egui::{Align, Color32, Pos2, Rect};
-use reasoncraft_core::{BoxKind, Item, Measure, NodeId};
+use reasoncraft_core::{BoxKind, ConnectorStyle, Item, Measure, NodeId};
 
 pub use boxes::{BOX_RADIUS, SOURCE_HEADER, box_radius};
 pub use build::build_scene;
@@ -109,6 +110,14 @@ pub enum Shape {
     },
     /// A box image, from the document's asset `asset`.
     Image { rect: Rect, asset: String },
+    /// A filled band between two edges with the same number of points:
+    /// `left[i]` and `right[i]` lie across the band from each other. It
+    /// may bend any way (a tapered connector), unlike a filled path.
+    Strip {
+        left: Vec<Pos2>,
+        right: Vec<Pos2>,
+        fill: Color32,
+    },
 }
 
 /// Everything drawn, in paint order, and the world rect it covers.
@@ -141,6 +150,8 @@ pub struct SceneOptions {
     pub zoom: f32,
     /// The box whose text the inline editor shows instead (screen only).
     pub editing: Option<NodeId>,
+    /// How connectors are drawn.
+    pub connector_style: ConnectorStyle,
 }
 
 impl SceneOptions {
@@ -156,6 +167,7 @@ impl SceneOptions {
             view: None,
             zoom: 1.0,
             editing: None,
+            connector_style: ConnectorStyle::Curved,
         }
     }
 }
@@ -201,6 +213,10 @@ impl Shape {
                 }
                 r.expand(half(stroke))
             }
+            Shape::Strip { left, right, .. } => left
+                .iter()
+                .chain(right)
+                .fold(Rect::NOTHING, |r, p| r.union(Rect::from_pos(*p))),
             Shape::Text {
                 origin,
                 rows,
@@ -214,5 +230,7 @@ impl Shape {
     }
 }
 
+#[cfg(test)]
+mod connector_tests;
 #[cfg(test)]
 mod tests;

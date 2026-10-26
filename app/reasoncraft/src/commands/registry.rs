@@ -1,7 +1,8 @@
 //! The list of commands, in ribbon order.
 
 use reasoncraft_core::{
-    Acceptance, CardKind, CardStrength, ClearScope, LayoutDirection, SourceRating, SourceType,
+    Acceptance, CardKind, CardStrength, ClearScope, ConnectorStyle, LayoutDirection, SourceRating,
+    SourceType,
 };
 
 use super::Command;
@@ -257,6 +258,14 @@ fn view() -> Vec<Command> {
         };
         cmd(id, label, "group.layout", A::SetLayoutDirection(d))
     };
+    let connector = |id, s: ConnectorStyle| {
+        let label = match s {
+            ConnectorStyle::Curved => "connector_style.curved",
+            ConnectorStyle::Elbow => "connector_style.elbow",
+            ConnectorStyle::Tapered => "connector_style.tapered",
+        };
+        cmd(id, label, "group.layout", A::SetConnectorStyle(s))
+    };
     #[allow(unused_mut)] // Debug builds add their commands.
     let mut out = vec![
         cmd("view.zoom_fit", "action.zoom_fit", zoom, A::ZoomFit),
@@ -296,6 +305,9 @@ fn view() -> Vec<Command> {
         direction("view.direction.top_down", LayoutDirection::TopDown),
         direction("view.direction.bottom_up", LayoutDirection::BottomUp),
         direction("view.direction.left_right", LayoutDirection::LeftRight),
+        connector("view.connector.curved", ConnectorStyle::Curved),
+        connector("view.connector.elbow", ConnectorStyle::Elbow),
+        connector("view.connector.tapered", ConnectorStyle::Tapered),
     ];
     #[cfg(debug_assertions)]
     out.extend([

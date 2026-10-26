@@ -101,6 +101,7 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             }
         }
         Action::SetTheme(_)
+        | Action::SetConnectorStyle(_)
         | Action::ToggleMarkers
         | Action::ToggleShading
         | Action::TogglePanel(_)
@@ -182,6 +183,7 @@ fn keeps_notes(action: &Action) -> bool {
             | Action::ShowPanel(_)
             | Action::SetTextTab(_)
             | Action::SetTheme(_)
+            | Action::SetConnectorStyle(_)
             | Action::ToggleMarkers
             | Action::ToggleShading
             | Action::SetOutlineOption(..)
@@ -280,6 +282,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::DismissModal
         | Action::ActivateTab(_)
         | Action::SetTheme(_)
+        | Action::SetConnectorStyle(_)
         | Action::ToggleMarkers
         | Action::ToggleShading
         | Action::AddComment { .. }

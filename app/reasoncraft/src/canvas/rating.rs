@@ -17,6 +17,9 @@ pub const FRAME_ALPHA: f32 = 0.12;
 pub const STRONG_ALPHA: f32 = 0.22;
 /// Marker diameter in world px; hidden below [`MARKER_MIN_ZOOM`].
 const MARKER_SIZE: f32 = 16.0;
+/// How far the marks on a box (rating marker, link glyph, comment badge)
+/// sit inside its edges, and apart from each other, in world px.
+pub const CORNER_INSET: f32 = 4.0;
 pub const MARKER_MIN_ZOOM: f32 = 0.35;
 
 /// Fill alpha of a card frame.
@@ -108,11 +111,15 @@ pub fn mark_for(node: &BoxNode) -> Option<Mark> {
 
 /// Centre and radius (world units) of the marker of a box at `world`.
 ///
-/// The circle is centred on the box's top-left corner: it overlays the
-/// corner padding and the gap outside the box, so it can never cover text,
-/// which starts `BOX_TEXT_PAD` inside the box (see the test).
+/// The circle sits inside the box's top-right corner, [`CORNER_INSET`] from
+/// both edges, so it never reaches into a neighbouring box or onto a
+/// connector's arrowhead (which end outside the box).
 pub fn marker_circle(world: Rect) -> (Pos2, f32) {
-    (world.left_top(), MARKER_SIZE / 2.0)
+    let r = MARKER_SIZE / 2.0;
+    (
+        world.right_top() + vec2(-CORNER_INSET - r, CORNER_INSET + r),
+        r,
+    )
 }
 
 /// A ✓ / ? / × marker: a circle of radius `r` (screen px) centred on `c`,
@@ -192,7 +199,6 @@ pub fn mark_shapes(c: Pos2, r: f32, mark: Mark, t: &Tokens, px: f32) -> Vec<Shap
 mod tests {
     use super::*;
     use eframe::egui::pos2;
-    use reasoncraft_core::layout::BOX_TEXT_PAD;
 
     #[test]
     fn rating_label_variants() {
@@ -254,12 +260,11 @@ mod tests {
     }
 
     #[test]
-    fn marker_never_covers_box_text() {
+    fn marker_sits_inside_the_top_right_corner() {
         let world = Rect::from_min_size(pos2(100.0, 50.0), vec2(156.0, 40.0));
-        let text = world.shrink(BOX_TEXT_PAD);
         let (c, r) = marker_circle(world);
-        // The closest text point to the circle is the text rect's top-left.
-        assert!((text.left_top() - c).length() >= r, "marker overlaps text");
+        assert_eq!(c.x + r, world.right() - CORNER_INSET);
+        assert_eq!(c.y - r, world.top() + CORNER_INSET);
     }
 
     #[test]

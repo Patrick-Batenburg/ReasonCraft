@@ -8,42 +8,23 @@
 use std::collections::{HashMap, HashSet};
 
 use eframe::egui::{Align, Color32, Pos2, Rect, Vec2, pos2, vec2};
-use reasoncraft_core::connector::{
-    ARROW_PX, EndMarker, STUB_PX, Segment, curved_path, end_marker, stroke_px,
-};
-use reasoncraft_core::{
-    CardStrength, Connector, ConnectorKind, Document, Item, Layout, NodeId, Role,
-};
+use reasoncraft_core::{CardStrength, Document, Item, Layout, NodeId, Role};
 
 use super::{PathEl, Scene, SceneOptions, Shape, StrokeSpec, TextRows};
 use crate::canvas::paint::{FRAME_RADIUS, parking_frame, screen_font};
 use crate::canvas::rating::{
-    MARKER_MIN_ZOOM, Mark, card_colour, connector_strength, frame_alpha, frame_border, mark_for,
-    mark_shapes, marker_circle, rating_label, split_dots,
+    MARKER_MIN_ZOOM, Mark, card_colour, frame_alpha, frame_border, mark_for, mark_shapes,
+    marker_circle, rating_label, split_dots,
 };
 use crate::i18n::t;
-use crate::theme::Tokens;
 
 const FRAME_STROKE_ALPHA: f32 = 0.55;
 const LABEL_SIZE: f32 = 10.5;
 const PARKING_TITLE_SIZE: f32 = 12.0;
-/// Opposes/rebuts end bar: length and thickness in screen px.
-const BAR_PX: f32 = 11.0;
-const BAR_THICKNESS: f32 = 2.4;
 /// Screen px kept around the view when culling, for strokes and markers.
 const CULL_MARGIN: f32 = 4.0;
 /// Card labels are kept this many screen px beyond the view.
 const LABEL_MARGIN: f32 = 100.0;
-
-fn connector_colour(t: &Tokens, kind: ConnectorKind) -> Color32 {
-    match kind {
-        ConnectorKind::Supports => t.reason,
-        ConnectorKind::Opposes => t.objection,
-        ConnectorKind::Rebuts => t.rebuttal,
-        ConnectorKind::Neutral => t.text_muted,
-        ConnectorKind::Attachment => t.attachment_line,
-    }
-}
 
 /// The scene of `doc` laid out as `layout`, with text rows from `fonts`
 /// (the measure the layout used). Its bounds cover every shape.
@@ -163,7 +144,7 @@ pub(super) struct Builder<'a> {
 }
 
 /// A path through `pts`.
-fn polyline(pts: &[Pos2]) -> Vec<PathEl> {
+pub(super) fn polyline(pts: &[Pos2]) -> Vec<PathEl> {
     pts.iter()
         .enumerate()
         .map(|(i, &p)| {
@@ -202,7 +183,7 @@ impl Builder<'_> {
         screen_font(size, zoom).map_or(size * zoom, |f| f.size)
     }
 
-    fn line(&mut self, pts: &[Pos2], stroke: StrokeSpec) {
+    pub(super) fn line(&mut self, pts: &[Pos2], stroke: StrokeSpec) {
         self.shapes.push(Shape::Path {
             points: polyline(pts),
             stroke: Some(stroke),
@@ -231,88 +212,6 @@ impl Builder<'_> {
             align: Align::Min,
             line_height: self.fonts.line_height(PARKING_TITLE_SIZE),
         });
-    }
-
-    fn connector(&mut self, c: &Connector) {
-        if !self.visible(Rect::from_two_pos(c.from, c.to)) {
-            return;
-        }
-        let tk = self.opts.tokens;
-        let colour = if c.nil {
-            tk.nil
-        } else {
-            connector_colour(&tk, c.kind)
-        };
-        let strength = connector_strength(c.strength, self.opts.eval_shading);
-        let zoom = self.opts.zoom;
-        let stroke = (stroke_px(c.kind, strength, zoom) / zoom, colour);
-        // A full stub when there is room, otherwise half the drop (the
-        // distance from the port to the child along the main axis).
-        let full = STUB_PX * self.px;
-        let drop = -(c.from - c.to).dot(c.dir.toward_parent());
-        let stub = if drop >= 2.0 * full {
-            full
-        } else {
-            (drop / 2.0).max(0.0)
-        };
-        for seg in curved_path(c.from, c.to, stub, c.dir) {
-            match seg {
-                Segment::Cubic([a, b, c, d]) => self.shapes.push(Shape::Path {
-                    points: vec![PathEl::MoveTo(a), PathEl::CubicTo(b, c, d)],
-                    stroke: Some(stroke),
-                    fill: None,
-                    dashed: false,
-                }),
-                Segment::Line([a, b]) => {
-                    let toward = c.dir.toward_parent();
-                    self.stub(a, b, toward, stroke, end_marker(c.kind));
-                }
-            }
-        }
-    }
-
-    /// The straight end of a connector from `a` to the port `b`, with its
-    /// marker oriented along it (along `toward`, toward the parent, when the
-    /// stub has no length).
-    fn stub(&mut self, a: Pos2, b: Pos2, toward: Vec2, stroke: StrokeSpec, marker: EndMarker) {
-        let px = self.px;
-        let d = b - a;
-        let dir = if d.length() > 1e-3 * px {
-            d.normalized()
-        } else {
-            toward
-        };
-        let side = dir.rot90();
-        match marker {
-            EndMarker::Arrow => {
-                // Stop the line just inside the arrowhead so it cannot poke out of the tip.
-                let len = d.length() - (ARROW_PX - 1.0) * px;
-                if len > 0.0 {
-                    self.line(&[a, a + dir * len], stroke);
-                }
-                let base = b - dir * ARROW_PX * px;
-                let half = ARROW_PX * 0.5 * px;
-                let mut points = polyline(&[b, base + side * half, base - side * half]);
-                points.push(PathEl::Close);
-                self.shapes.push(Shape::Path {
-                    points,
-                    stroke: None,
-                    fill: Some(stroke.1),
-                    dashed: false,
-                });
-            }
-            EndMarker::Bar => {
-                // The bar's far edge touches the port.
-                let centre = b - dir * (BAR_THICKNESS * px / 2.0);
-                self.line(&[a, centre], stroke);
-                let half = side * (BAR_PX * px / 2.0);
-                self.line(
-                    &[centre - half, centre + half],
-                    (BAR_THICKNESS * px, stroke.1),
-                );
-            }
-            EndMarker::None => self.line(&[a, b], stroke),
-        }
     }
 
     fn card_frame(&mut self, world: Rect, role: Role, strength: Option<CardStrength>) {

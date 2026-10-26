@@ -1,15 +1,15 @@
-//! The View ribbon tab: zoom, theme, panels, the layout direction,
-//! evaluation display and (debug builds) the sample map.
+//! The View ribbon tab: zoom, theme, panels, the layout direction and
+//! connector style, evaluation display and (debug builds) the sample map.
 
 use eframe::egui::{Button, Popup, Ui};
-use reasoncraft_core::LayoutDirection;
+use reasoncraft_core::{ConnectorStyle, LayoutDirection};
 
 use super::{command, evaluate, group, large_menu, small_command};
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::commands;
 use crate::i18n::t;
-use crate::shell::icons::{Icon, direction_atom};
+use crate::shell::icons::{Icon, connector_atom, direction_atom};
 use crate::theme::ThemeChoice;
 
 pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
@@ -89,10 +89,12 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 }
 
 /// "Direction ▾": the active document's layout direction, with a menu of
-/// all three (each with its glyph).
+/// all three (each with its glyph); "Connectors ▾": the connector style
+/// (a personal setting), each previewed by its glyph.
 fn layout_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     let tk = app.tokens;
     let current = app.active_tab().doc.layout_direction;
+    let style = app.settings.connector_style;
     group(ui, &tk, &t("group.layout"), |ui| {
         let label = t("action.layout_direction");
         let resp = large_menu(ui, &tk, Icon::Direction(current), &label, true);
@@ -101,6 +103,17 @@ fn layout_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
                 let cmd = commands::get(&format!("view.direction.{}", d.key()));
                 let button = Button::new((direction_atom(d, 16.0), t(cmd.label)));
                 if ui.add(button.selected(d == current)).clicked() {
+                    out.push(cmd.action.clone());
+                }
+            }
+        });
+        let label = t("action.connector_style");
+        let resp = large_menu(ui, &tk, Icon::Connector(style), &label, true);
+        Popup::menu(&resp).show(|ui| {
+            for s in ConnectorStyle::ALL {
+                let cmd = commands::get(&format!("view.connector.{}", s.key()));
+                let button = Button::new((connector_atom(s, 16.0), t(cmd.label)));
+                if ui.add(button.selected(s == style)).clicked() {
                     out.push(cmd.action.clone());
                 }
             }

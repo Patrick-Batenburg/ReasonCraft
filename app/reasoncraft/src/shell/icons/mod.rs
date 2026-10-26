@@ -7,10 +7,12 @@ use eframe::egui::{Color32, Painter, Pos2, Rect, Stroke};
 use crate::theme::Tokens;
 
 mod box_group;
+mod connector;
 mod direction;
 mod evaluate;
 mod export;
 mod pen;
+pub use connector::connector_atom;
 pub use direction::{direction_atom, direction_shapes};
 pub(super) use pen::Pen;
 
@@ -89,6 +91,8 @@ pub enum Icon {
     Print,
     /// A parent box and its children in a layout direction.
     Direction(reasoncraft_core::LayoutDirection),
+    /// A parent box and its children joined in a connector style.
+    Connector(reasoncraft_core::ConnectorStyle),
 }
 
 /// Draw `icon` in `rect` (a square). `fg` is the main colour, `bg` the
@@ -355,5 +359,6 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         | Icon::PageSetup
         | Icon::Print => export::paint(&pen, icon, fg, t),
         Icon::Direction(dir) => direction::paint_direction(painter, rect, dir, fg),
+        Icon::Connector(style) => connector::paint_connector(painter, rect, style, fg),
     }
 }

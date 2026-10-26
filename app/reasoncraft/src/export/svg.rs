@@ -226,6 +226,14 @@ impl Writer<'_> {
                 }
             }
             Shape::Image { rect, asset } => self.image(*rect, asset),
+            Shape::Strip { left, right, fill } => {
+                let _ = write!(self.out, "<path d=\"{}\"", strip_data(left, right));
+                self.fill(Some(*fill));
+                self.out.push_str(
+                    "/>
+",
+                );
+            }
         }
     }
 
@@ -347,6 +355,25 @@ fn path_data(els: &[PathEl]) -> String {
         d.push_str(&step);
     }
     d
+}
+
+/// The `d` attribute of a band: along its left edge, back along its right
+/// edge, closed.
+fn strip_data(left: &[Pos2], right: &[Pos2]) -> String {
+    let els: Vec<PathEl> = left
+        .iter()
+        .chain(right.iter().rev())
+        .enumerate()
+        .map(|(i, &p)| {
+            if i == 0 {
+                PathEl::MoveTo(p)
+            } else {
+                PathEl::LineTo(p)
+            }
+        })
+        .chain([PathEl::Close])
+        .collect();
+    path_data(&els)
 }
 
 /// `v` with at most three decimals and no trailing zeros.

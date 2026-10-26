@@ -6,8 +6,9 @@ use eframe::egui::{
 };
 use reasoncraft_core::{Comment, Layout, Verdict};
 
+use super::links::LINK_GLYPH;
 use super::paint::{Pass, screen_font};
-use super::rating::MARKER_MIN_ZOOM;
+use super::rating::{CORNER_INSET, MARKER_MIN_ZOOM};
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t_args};
@@ -78,13 +79,14 @@ fn badge_text(count: usize) -> String {
 }
 
 /// The body of the badge of a box at `world` with `count` comments, in
-/// world units. It is centred on the box's top-right corner and grows to
-/// the right, so it stays clear of the box text (see the test).
+/// world units. It sits inside the box's top-left corner, below the link
+/// glyph's place, [`CORNER_INSET`] from the edges and the glyph, and grows
+/// to the right: it never reaches into a neighbouring box.
 pub fn badge_rect(world: Rect, count: usize) -> Rect {
     let chars = badge_text(count).len().clamp(1, 3);
     let w = BADGE_W[chars - 1];
-    let left = world.right() - BADGE_W[0] / 2.0;
-    Rect::from_min_size(pos2(left, world.top() - BADGE_H / 2.0), vec2(w, BADGE_H))
+    let top = world.top() + CORNER_INSET + LINK_GLYPH + CORNER_INSET;
+    Rect::from_min_size(pos2(world.left() + CORNER_INSET, top), vec2(w, BADGE_H))
 }
 
 /// The badge's accessible name and tooltip, e.g. "3 comments".
@@ -107,7 +109,7 @@ impl Pass<'_> {
         }
         let colour = badge_colour(comments, self.t);
         let stroke = Stroke::new((1.2 * z).max(1.0), colour);
-        // The tail points down and right, away from the box text.
+        // The tail points down and right, staying inside the box.
         let tail = vec![
             body.right_bottom() - vec2(7.0 * z, 0.5 * z),
             body.right_bottom() - vec2(2.5 * z, 0.5 * z),
@@ -175,7 +177,6 @@ mod tests {
     use super::*;
     use crate::i18n::t;
     use reasoncraft_core::Uuid;
-    use reasoncraft_core::layout::BOX_TEXT_PAD;
 
     fn comment(verdict: Option<Verdict>) -> Comment {
         Comment {
@@ -207,21 +208,19 @@ mod tests {
     }
 
     #[test]
-    fn badge_never_covers_box_text() {
+    fn badge_sits_in_the_box_below_the_link_glyph() {
         let world = Rect::from_min_size(pos2(100.0, 50.0), vec2(156.0, 40.0));
-        let text = world.shrink(BOX_TEXT_PAD);
+        let glyph = super::super::links::link_rect(world);
         for count in [1, 12, 100, 5000] {
             let badge = badge_rect(world, count);
-            let overlap = badge.intersect(text);
+            // The tail hangs 3.5 px below the body.
             assert!(
-                overlap.width() <= 0.0 || overlap.height() <= 0.0,
-                "{count}: badge overlaps text"
+                world.contains_rect(badge.expand2(vec2(0.0, 3.5))),
+                "{count}"
             );
-            // Centred on the top-right corner (for one digit), growing right.
-            assert_eq!(badge.center().y, world.top());
-            assert_eq!(badge.left(), world.right() - BADGE_W[0] / 2.0);
+            assert_eq!(badge.left(), world.left() + CORNER_INSET);
+            assert_eq!(badge.top(), glyph.bottom() + CORNER_INSET);
         }
-        assert_eq!(badge_rect(world, 3).center(), world.right_top());
         assert_eq!(badge_text(7), "7");
         assert_eq!(badge_text(100), "99+");
     }

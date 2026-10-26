@@ -105,6 +105,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         paint::PaintOptions {
             show_markers: settings.show_markers,
             eval_shading: settings.eval_shading,
+            connector_style: settings.connector_style,
         },
         images,
         &measure,

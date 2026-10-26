@@ -191,6 +191,7 @@ fn settings_from_old_storage_fill_defaults() {
         author: "Ann".to_owned(),
         show_markers: false,
         eval_shading: true,
+        connector_style: reasoncraft_core::ConnectorStyle::Elbow,
         text_tab: reasoncraft::settings::TextTab::Check,
         outline: reasoncraft_core::outline::OutlineOptions {
             numbering: false,
@@ -222,6 +223,34 @@ fn settings_from_old_storage_fill_defaults() {
         eframe::get_value::<Settings>(&storage, SETTINGS_KEY),
         Some(custom)
     );
+}
+
+/// The connector style is saved with the settings (eframe's storage
+/// format), and settings saved before it existed load as Curved.
+#[test]
+fn connector_style_persists_in_settings() {
+    use reasoncraft::actions::{Action, apply};
+    use reasoncraft::settings::{SETTINGS_KEY, Settings};
+    use reasoncraft_core::ConnectorStyle;
+    let mut storage = MemStorage::default();
+    storage_set(&mut storage, "(theme:Light)");
+    let old: Settings = eframe::get_value(&storage, SETTINGS_KEY).unwrap();
+    assert_eq!(old.connector_style, ConnectorStyle::Curved);
+
+    let mut app = reasoncraft::ReasonCraftApp::new_for_test();
+    apply(&mut app, Action::SetConnectorStyle(ConnectorStyle::Tapered));
+    assert!(
+        app.tabs[0].history.undo.is_empty(),
+        "a setting, not an edit"
+    );
+    eframe::set_value(&mut storage, SETTINGS_KEY, &app.settings);
+    let back: Settings = eframe::get_value(&storage, SETTINGS_KEY).unwrap();
+    assert_eq!(back.connector_style, ConnectorStyle::Tapered);
+}
+
+fn storage_set(storage: &mut MemStorage, value: &str) {
+    use eframe::Storage as _;
+    storage.set_string(reasoncraft::settings::SETTINGS_KEY, value.to_owned());
 }
 
 #[test]

@@ -3,8 +3,8 @@
 use reasoncraft_core::checks::CheckKind;
 use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::{
-    Acceptance, CardKind, CardStrength, ClearScope, Item, LayoutDirection, NewLoose, NodeId,
-    Parent, SnippetSource, SourceRating, SourceType, Uuid, Verdict,
+    Acceptance, CardKind, CardStrength, ClearScope, ConnectorStyle, Item, LayoutDirection,
+    NewLoose, NodeId, Parent, SnippetSource, SourceRating, SourceType, Uuid, Verdict,
 };
 
 use super::{Insertable, Rate};
@@ -171,6 +171,8 @@ pub enum Action {
     /// Set the zoom factor directly (status-bar slider), clamped to the zoom range.
     SetZoom(f32),
     SetTheme(ThemeChoice),
+    /// Draw connectors in this style (a personal setting: no history).
+    SetConnectorStyle(ConnectorStyle),
     /// Lay the document out in this direction (one history step; none
     /// when it already is).
     SetLayoutDirection(LayoutDirection),

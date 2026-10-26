@@ -21,6 +21,7 @@ pub mod rules;
 pub mod snippets;
 pub mod words;
 
+pub use connector::ConnectorStyle;
 pub use edit::{EditError, NewLoose, RemoveMode};
 pub use essay::{EssayPlan, EssaySlot, essay_markdown, essay_order, essay_plain_text};
 pub use evaluate::ClearScope;

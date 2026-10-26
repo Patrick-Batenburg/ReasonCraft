@@ -173,6 +173,12 @@ layout_direction-top_down = Top-down
 layout_direction-bottom_up = Bottom-up
 layout_direction-left_right = Left to right
 
+## Connector styles (View ribbon, Connectors menu)
+action-connector_style = Connectors
+connector_style-curved = Curved
+connector_style-elbow = Elbow
+connector_style-tapered = Tapered
+
 ## Side panels
 panel-building = Building
 panel-coming_later = Coming in a later version.

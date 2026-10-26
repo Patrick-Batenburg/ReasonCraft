@@ -127,8 +127,47 @@ fn paint_shape(painter: &Painter, shape: &Shape, cam: &Camera) {
                 painter.galley(rect.min, galley, *color);
             }
         }
+        Shape::Strip { left, right, fill } => strip(painter, left, right, *fill, cam),
         Shape::Image { .. } => {}
     }
+}
+
+/// A band that may bend any way, as a triangle-strip mesh (egui only fills
+/// convex polygons). Its edges get a line one px wide just inside them: the
+/// mesh itself is not anti-aliased.
+fn strip(painter: &Painter, left: &[Pos2], right: &[Pos2], fill: Color32, cam: &Camera) {
+    let pairs: Vec<(Pos2, Pos2)> = left
+        .iter()
+        .zip(right)
+        .map(|(&l, &r)| (cam.world_to_screen(l), cam.world_to_screen(r)))
+        .collect();
+    if pairs.len() < 2 {
+        return;
+    }
+    let mut mesh = epaint::Mesh::default();
+    for &(l, r) in &pairs {
+        mesh.colored_vertex(l, fill);
+        mesh.colored_vertex(r, fill);
+    }
+    for i in 0..pairs.len() as u32 - 1 {
+        let k = 2 * i;
+        mesh.add_triangle(k, k + 1, k + 2);
+        mesh.add_triangle(k + 1, k + 3, k + 2);
+    }
+    painter.add(epaint::Shape::mesh(mesh));
+    let inset = |a: Pos2, b: Pos2| {
+        let d = b - a;
+        if d.length() > 1.0 {
+            a + d.normalized() * 0.5
+        } else {
+            a + d / 2.0
+        }
+    };
+    let edge = Stroke::new(1.0, fill);
+    let left: Vec<Pos2> = pairs.iter().map(|&(l, r)| inset(l, r)).collect();
+    let right: Vec<Pos2> = pairs.iter().map(|&(l, r)| inset(r, l)).collect();
+    painter.add(epaint::Shape::line(left, edge));
+    painter.add(epaint::Shape::line(right, edge));
 }
 
 /// A path: runs of lines become polylines, a lone stroked curve a Bézier

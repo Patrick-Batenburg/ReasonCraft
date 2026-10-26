@@ -1,14 +1,15 @@
-//! The link glyph of a box with a link: a small chain on the box's bottom
-//! edge, near its right end. A click opens the link; the tooltip shows it.
+//! The link glyph of a box with a link: a small chain inside the box's
+//! top-left corner, clear of the arrowheads that arrive at the box's ports
+//! and of the "+" button on its bottom-right corner. A click opens the
+//! link; the tooltip shows it.
 //! A stored link that is not a safe web or e-mail link (a hand-edited file
 //! may hold `file:` paths or UNC shares) is struck through and never opened.
 
-use eframe::egui::{self, Rect, Role, Sense, Stroke, Ui, WidgetInfo, pos2};
+use eframe::egui::{self, Rect, Role, Sense, Stroke, Ui, WidgetInfo, vec2};
 use reasoncraft_core::Layout;
 
 use super::paint::Pass;
-use super::plus_menu::BUTTON_PX;
-use super::rating::MARKER_MIN_ZOOM;
+use super::rating::{CORNER_INSET, MARKER_MIN_ZOOM};
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t_args};
@@ -17,20 +18,12 @@ use crate::shell::link_modal::{safe_link, visible_link};
 
 /// The glyph's size, in world px.
 pub const LINK_GLYPH: f32 = 12.0;
-/// Gap between the glyph and the box's right edge, in world px.
-const RIGHT_INSET: f32 = 20.0;
-/// Room kept free, in screen px, for the "+" button centred on the
-/// selected box's bottom-right corner.
-const PLUS_CLEARANCE: f32 = BUTTON_PX / 2.0 + 6.0;
-
-/// The glyph of the box at `world` (world units). It sits on the bottom
-/// edge, so its upper half lies in the box's bottom padding and never
-/// covers text, and left of the "+" button at every zoom.
-pub fn link_rect(world: Rect, zoom: f32) -> Rect {
-    let right = world.right() - RIGHT_INSET.max(PLUS_CLEARANCE / zoom);
-    Rect::from_min_max(
-        pos2(right - LINK_GLYPH, world.bottom() - LINK_GLYPH / 2.0),
-        pos2(right, world.bottom() + LINK_GLYPH / 2.0),
+/// The glyph of the box at `world` (world units): inside its top-left
+/// corner, [`CORNER_INSET`] from both edges.
+pub fn link_rect(world: Rect) -> Rect {
+    Rect::from_min_size(
+        world.min + vec2(CORNER_INSET, CORNER_INSET),
+        vec2(LINK_GLYPH, LINK_GLYPH),
     )
 }
 
@@ -55,7 +48,7 @@ impl Pass<'_> {
         if self.cam.zoom < MARKER_MIN_ZOOM {
             return;
         }
-        let r = self.screen(link_rect(world, self.cam.zoom));
+        let r = self.screen(link_rect(world));
         if !self.visible(r) {
             return;
         }
@@ -87,7 +80,7 @@ pub(super) fn glyphs(ui: &Ui, tab: &DocTab, layout: &Layout, pending: &mut Vec<A
         };
         let rect = tab
             .camera
-            .world_rect_to_screen(link_rect(world, zoom))
+            .world_rect_to_screen(link_rect(world))
             .expand(2.0);
         if !clip.intersects(rect) {
             continue;
@@ -110,22 +103,19 @@ pub(super) fn glyphs(ui: &Ui, tab: &DocTab, layout: &Layout, pending: &mut Vec<A
 #[cfg(test)]
 mod tests {
     use super::*;
-    use eframe::egui::vec2;
-    use reasoncraft_core::layout::BOX_TEXT_PAD;
+    use crate::canvas::plus_menu::BUTTON_PX;
+    use eframe::egui::{Vec2, pos2};
 
     #[test]
-    fn glyph_stays_clear_of_text_and_plus_button() {
+    fn glyph_sits_in_the_top_left_corner_clear_of_plus_button() {
         let world = Rect::from_min_size(pos2(100.0, 50.0), vec2(156.0, 40.0));
-        let text = world.shrink(BOX_TEXT_PAD);
+        let glyph = link_rect(world);
+        assert_eq!(glyph.size(), vec2(LINK_GLYPH, LINK_GLYPH));
+        assert_eq!(glyph.min, world.min + vec2(CORNER_INSET, CORNER_INSET));
         for zoom in [MARKER_MIN_ZOOM, 0.5, 1.0, 2.0, 4.0] {
-            let glyph = link_rect(world, zoom);
-            assert_eq!(glyph.size(), vec2(LINK_GLYPH, LINK_GLYPH));
-            assert_eq!(glyph.center().y, world.bottom(), "on the bottom edge");
-            assert!(glyph.top() >= text.bottom(), "{zoom}: covers text");
-            assert!(glyph.left() > world.left(), "{zoom}: inside the box");
             // The "+" button is BUTTON_PX screen px, centred on the corner.
-            let plus_left = world.right() - BUTTON_PX / 2.0 / zoom;
-            assert!(glyph.right() < plus_left, "{zoom}: under the + button");
+            let plus = Rect::from_center_size(world.right_bottom(), Vec2::splat(BUTTON_PX / zoom));
+            assert!(!glyph.intersects(plus), "{zoom}: under the + button");
         }
     }
 }

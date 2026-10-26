@@ -1,4 +1,4 @@
-//! View preferences: theme, rating display, panels, the Text panel tab,
+//! View preferences: theme, connector style, rating display, panels, the Text panel tab,
 //! the outline's switches and which checks run; moving around the map:
 //! zooming, keyboard navigation, revealing the selection; and the
 //! document's layout direction, the only one that changes the document.
@@ -17,6 +17,7 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
     let s = &mut app.settings;
     match action {
         Action::SetTheme(choice) => s.theme = choice,
+        Action::SetConnectorStyle(style) => s.connector_style = style,
         Action::ToggleMarkers => s.show_markers = !s.show_markers,
         Action::ToggleShading => s.eval_shading = !s.eval_shading,
         Action::TogglePanel(Panel::Left) => app.left_panel = !app.left_panel,

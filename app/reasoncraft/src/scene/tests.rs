@@ -1,7 +1,7 @@
 use eframe::egui::{Align, Rect};
 use reasoncraft_core::{
-    BoxKind, CardKind, Comment, ConnectorKind, Document, Item, Layout, LayoutParams, Measure,
-    NewLoose, Parent, Uuid, Verdict, layout,
+    BoxKind, CardKind, Comment, Document, Item, Layout, LayoutParams, Measure, NewLoose, Parent,
+    Uuid, Verdict, layout,
 };
 
 use super::*;
@@ -97,7 +97,7 @@ fn scene_has_no_overlays_for_export() {
 
     let world = layout.boxes[&premise];
     let badge = badge_rect(world, 1);
-    let glyph = link_rect(world, 1.0);
+    let glyph = link_rect(world);
     for s in &scene.shapes {
         let b = s.bounds();
         assert!(!badge.contains_rect(b), "badge shape: {s:?}");
@@ -108,6 +108,7 @@ fn scene_has_no_overlays_for_export() {
                 vec![*fill, stroke.map(|s| s.1)]
             }
             Shape::Text { color, .. } => vec![Some(*color)],
+            Shape::Strip { fill, .. } => vec![Some(*fill)],
             Shape::Image { .. } => vec![],
         };
         assert!(
@@ -214,42 +215,6 @@ fn scene_text_rows_from_measure() {
     let all = texts(&scene);
     assert!(all.contains(&"cite|more".to_owned()), "{all:?}");
     assert!(all.contains(&t("source.web")), "bold type name");
-}
-
-#[test]
-fn screen_px_sizes_follow_the_zoom() {
-    let mut doc = Document::new("Claim");
-    let root = doc.root;
-    doc.add_card(Parent::Box(root), CardKind::Reason, "A")
-        .unwrap();
-    let layout = lay_out(&doc);
-    let width = |zoom: f32| {
-        let mut o = opts();
-        o.zoom = zoom;
-        build_scene(&doc, &layout, &o, &Fake)
-            .shapes
-            .iter()
-            .find_map(|s| match s {
-                Shape::Path {
-                    points,
-                    stroke: Some((w, _)),
-                    ..
-                } if points.iter().any(|p| matches!(p, PathEl::CubicTo(..))) => Some(*w),
-                _ => None,
-            })
-            .unwrap()
-    };
-    let px = |zoom| {
-        reasoncraft_core::connector::stroke_px(
-            ConnectorKind::Supports,
-            reasoncraft_core::connector::Strength::Normal,
-            zoom,
-        )
-    };
-    assert_eq!(width(1.0), px(1.0));
-    // Half the zoom: the same screen width, so twice the world width.
-    assert!((width(0.5) * 0.5 - px(0.5)).abs() < 1e-5);
-    assert!((width(0.1) * 0.1 - px(0.1)).abs() < 1e-5);
 }
 
 #[test]
