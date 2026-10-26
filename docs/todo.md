@@ -68,7 +68,7 @@
   - [x] Task 8: Find and replace
   - [x] Task 9: reasoncraft_spell crate
   - [x] Task 10: Spellcheck in the app
-  - [ ] Task 11: Autosave and crash recovery
+  - [x] Task 11: Autosave and crash recovery
   - [ ] Task 12: Argdown export
   - [ ] Task 13: Argdown import
   - [ ] Task 14: Check carry-overs
