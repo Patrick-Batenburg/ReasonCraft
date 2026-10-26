@@ -222,7 +222,10 @@ fn export_argdown_via_ribbon() {
         .set_image(alpha, Some(image))
         .unwrap();
     fakes.dialogs.set_export(file);
+    h.state_mut().export.delay = Some(Duration::from_millis(300));
     click_button(&mut h, "export.argdown");
+    assert!(h.state().export.busy());
+    assert_eq!(h.state().status_note, None, "said only once it is written");
     wait(&mut h);
     assert_eq!(
         h.state().status_note.as_deref(),

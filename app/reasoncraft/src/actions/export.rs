@@ -136,10 +136,6 @@ fn export_to(app: &mut ReasonCraftApp, request: ExportRequest, path: PathBuf) {
         let only = scope_item(app, options.scope);
         scene_snapshot(app, only, tokens_for(app, options.theme))
     } else {
-        let doc = &app.active_tab().doc;
-        if format == ExportFormat::Argdown && doc.boxes.values().any(|b| b.image.is_some()) {
-            app.status_note = Some(t("export.argdown_no_images"));
-        }
         Snapshot::Doc {
             doc: Box::new(app.active_tab().doc.clone()),
             outline: app.settings.outline,
@@ -262,6 +258,10 @@ pub fn poll_exports(app: &mut ReasonCraftApp) {
     for result in app.export.finished() {
         match result {
             Ok(Outcome::Saved(path)) => app.export.notice = Some(Notice::Saved(path)),
+            Ok(Outcome::SavedWithNote(path, key)) => {
+                app.export.notice = Some(Notice::Saved(path));
+                app.status_note = Some(t(key));
+            }
             Ok(Outcome::Copied) => app.export.notice = Some(Notice::Copied),
             Ok(Outcome::ReadyToPrint(path)) => {
                 if let Err(e) = app.link_opener.open(&path.to_string_lossy()) {

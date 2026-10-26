@@ -45,10 +45,10 @@ impl Writer<'_> {
         let meta = &self.doc.meta;
         format!(
             "===\ntitle: {}\nauthor: {}\nlanguage: {}\ngenerator: {}\n===",
-            quote(&meta.title),
-            quote(&meta.author),
-            quote(&meta.language),
-            quote("ReasonCraft"),
+            front(&meta.title),
+            front(&meta.author),
+            front(&meta.language),
+            front("ReasonCraft"),
         )
     }
 
@@ -59,17 +59,23 @@ impl Writer<'_> {
         lines.join("\n")
     }
 
-    /// A card's argument: its title, its premises with what hangs under
-    /// them, the inference line with the whole-card children, and the
-    /// conclusion (none for a parked card, which targets nothing).
+    /// A card's argument: its title with its kind (and strength), its
+    /// premises with what hangs under them, the inference line with the
+    /// whole-card children, and the conclusion (a placeholder marked
+    /// `{target: none}` for a parked card, which targets nothing).
     fn argument(&self, id: CardId) -> String {
         let Some(card) = self.doc.cards.get(&id) else {
             return String::new();
         };
-        let mut header = format!("<{}>", self.names.of_card(id));
+        let kind = match card.kind {
+            CardKind::Reason => "reason",
+            CardKind::Objection => "objection",
+        };
+        let mut header = format!("<{}> {{kind: {kind}", self.names.of_card(id));
         if let Some(s) = card.strength {
-            header.push_str(&format!(" {{strength: {}}}", strength(s)));
+            header.push_str(&format!(", strength: {}", strength(s)));
         }
+        header.push('}');
         let mut lines = vec![header, String::new()];
         for (k, &p) in card.premises.iter().enumerate() {
             lines.push(self.statement(p, &format!("({}) ", k + 1)));
@@ -102,9 +108,11 @@ impl Writer<'_> {
                     CardKind::Objection => "does not hold",
                 };
                 let target = self.names.of_card(*c);
-                lines.push(format!("({n}) The inference in <{target}> {holds}."));
+                lines.push(format!("({n}) The inference in @<{target}> {holds}."));
             }
-            (Some(Parent::Parking) | None, _) => {}
+            (Some(Parent::Parking) | None, _) => {
+                lines.push(format!("({n}) No target. {{target: none}}"));
+            }
         }
         lines.join("\n")
     }
@@ -272,7 +280,8 @@ pub(super) fn escape(text: &str) -> String {
 }
 
 /// A YAML double-quoted string. Line breaks and other control characters
-/// are escaped, so data values keep them.
+/// are escaped, so data values keep them; so are braces, because Argdown
+/// ends a data block at a `}` even inside quotes.
 pub(super) fn quote(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('"');
@@ -283,12 +292,20 @@ pub(super) fn quote(s: &str) -> String {
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
+            '{' => out.push_str("\\u007B"),
+            '}' => out.push_str("\\u007D"),
             c if c.is_control() => out.push_str(&format!("\\u{:04X}", u32::from(c))),
             c => out.push(c),
         }
     }
     out.push('"');
     out
+}
+
+/// A frontmatter value: [`quote`]d, with `=` escaped too, so a value
+/// never contains the `===` that ends the frontmatter.
+fn front(s: &str) -> String {
+    quote(s).replace('=', "\\u003D")
 }
 
 /// A plain YAML scalar when `s` is a simple name (`[a-z0-9_]`), quoted

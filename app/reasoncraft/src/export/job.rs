@@ -61,6 +61,9 @@ pub enum Target {
 pub enum Outcome {
     /// The file was written.
     Saved(PathBuf),
+    /// The file was written, with something to tell about it: the i18n
+    /// key of a status note (e.g. images left out of an Argdown file).
+    SavedWithNote(PathBuf, &'static str),
     /// The image is on the clipboard.
     Copied,
     /// The print file was written; it still has to be opened.
@@ -85,6 +88,14 @@ impl ExportWork {
     /// Like [`Self::run`], writing the file only while `gate` is open.
     fn run_gated(self, gate: &WriteGate) -> Result<Outcome, ExportError> {
         let fonts = shared_fontdb();
+        let note = match (&self.snapshot, self.format) {
+            (Snapshot::Doc { doc, .. }, ExportFormat::Argdown)
+                if doc.boxes.values().any(|b| b.image.is_some()) =>
+            {
+                Some("export.argdown_no_images")
+            }
+            _ => None,
+        };
         let bytes = match (&self.snapshot, self.format) {
             (
                 Snapshot::Scene {
@@ -146,7 +157,10 @@ impl ExportWork {
         match self.target {
             Target::File(path) => {
                 write_atomically(&path, &bytes)?;
-                Ok(Outcome::Saved(path))
+                Ok(match note {
+                    Some(key) => Outcome::SavedWithNote(path, key),
+                    None => Outcome::Saved(path),
+                })
             }
             Target::Print(dir) => Ok(Outcome::ReadyToPrint(write_print_file(&bytes, &dir)?)),
             Target::Clipboard(_) => Err(ExportError::Unsupported(self.format)),

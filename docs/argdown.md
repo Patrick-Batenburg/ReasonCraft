@@ -10,6 +10,7 @@ The export is meant as an interchange file: it holds everything the map's struct
 - **Headings**: lines starting with `#`.
 - **Statements**: `[Title]: text` defines a statement; `[Title]` alone refers to it.
 - **Arguments**: `<Title>: text` defines an argument; `<Title>` alone refers to it.
+- **Mentions**: `@[Title]` and `@<Title>` inside a text mention a statement or an argument.
 - **Relations**: an indented line under an element relates it to the element above it.
   - `+` supports, `-` attacks, `_` undercuts (attacks the inference of an argument), `><` contradicts.
   - The direction comes first or last: `<+ X` means X supports the element above (the default direction, child to parent); `+> X` means the element above supports X. The same goes for `<-`/`->` and `<_`/`_>`.
@@ -37,12 +38,12 @@ generator: "ReasonCraft"
 ===
 ```
 
-All four values are YAML double-quoted strings. `language` is `en` or `nl`.
+All four values are YAML double-quoted strings (see 5). An `=` in a value is written as `\u003D`, so a title such as `A === B` never ends the frontmatter. `language` is `en` or `nl`.
 
 ### 2. Titles
 
 - Every box written as a statement gets a title made from the first five words of its text.
-  - The characters `[ ] < > { } : # @`, the backslash and a `/` that would start a comment (`//`, `/*`) are left out.
+  - The characters `[ ] < > { } : # @`, the backslash and a `/` that would start a comment (`//`, `/*`) are left out, and so are hyphens at the start (Argdown does not read `[-…]` as a statement reference).
   - Whitespace is collapsed, and the title is cut at 40 characters.
   - A title that is already taken gets " 2", " 3", … appended. A box without text gets `Statement N`, where N counts the statements in the order they are written.
 - Every card becomes an argument titled `R<n>` (a reason) or `O<n>` (an objection). Reasons and objections are counted separately, in the order of the Outline: the main tree first, then the parking area.
@@ -60,7 +61,7 @@ The root is written first as `[Title]: text`. Under it, indented 4 spaces, is on
 After the root come the arguments, one block per card in Outline order, separated by empty lines:
 
 ```
-<R1> {strength: strong}
+<R1> {kind: reason, strength: strong}
 
 (1) [Premise title]: premise text {acceptance: accept}
     <- <O2>
@@ -72,14 +73,15 @@ After the root come the arguments, one block per card in Outline order, separate
 (3) [Target title]
 ```
 
-- **Header**: the argument title, with `{strength: strong|weak|nil}` when the card is rated.
+- **Header**: the argument title with data: `kind: reason` or `kind: objection` always, then `strength: strong|weak|nil` when the card is rated.
 - **Premises**: one numbered statement per premise, with its data. Under each premise, indented, one line per card that targets that premise (`<+ <Rm>` or `<- <Om>`) and one line per source.
 - **Inference line** `----`. Under it, one line per card that targets the whole card: `<_ <Om>` for an objection (an undercut), and `<+ <Rm>` for a reason. The second form is a ReasonCraft convention: Argdown has no relation for supporting an inference, so other Argdown tools show it as plain support of the argument.
 - **Conclusion**:
   - A reason concludes its target: `(3) [Target title]`.
   - An objection concludes `(3) Not: Target title`, followed by an indented `-> [Target title]` (the conclusion attacks the target).
-  - A card that targets a whole card concludes `(n) The inference in <Rk> holds.` (a reason) or `(n) The inference in <Rk> does not hold.` (an objection), without a relation line; the relation is the line under that card's inference line.
-  - A parked card, which targets nothing, has no conclusion.
+  - A card that targets a whole card concludes `(n) The inference in @<Rk> holds.` (a reason) or `(n) The inference in @<Rk> does not hold.` (an objection), a mention of the target argument, without a relation line; the relation is the line under that card's inference line.
+  - A parked card, which targets nothing, concludes with the placeholder `(n) No target. {target: none}`. Argdown needs a conclusion after an inference line; a reader drops a conclusion marked `target: none`.
+- **Reading the kind back**: the `kind` data decides whether a card is a reason or an objection. Without it, the conclusion's shape decides (`Not: …` with `->`, or `… does not hold.`, is an objection), and only then the title's `R`/`O` prefix.
 
 ### 5. Statement data, sources and notes
 
@@ -100,7 +102,7 @@ Data goes after the statement's text, as one `{…}` with these keys, in this or
 - Sources are statements on a relation line `<+ [Title]: citation {source: …}` under the box they belong to: the root, a premise, or (in the parking area) a parked claim.
 - Notes are not statements: their texts are the `notes` data of the box they sit under. Only a parked note, which has no box above it, is a statement of its own, marked `{note: true}`.
 - The root's sources, notes, comments, link and acceptance are written the same way as a premise's.
-- Quoted strings use YAML double quotes: `\"`, `\\`, `\n` (line break), `\r`, `\t` and `\uXXXX` (other control characters) are escapes, so data keeps line breaks.
+- Quoted strings use YAML double quotes: `\"`, `\\`, `\n` (line break), `\r`, `\t` and `\uXXXX` are escapes, so data keeps line breaks. Other control characters, and the braces `{` and `}`, are written as `\uXXXX` (`\u007B`, `\u007D`): Argdown ends a data block at a `}` even inside quotes.
 
 ### 6. Grouping maps
 
@@ -119,18 +121,19 @@ The categories' notes and comments are data on their lines.
 
 The parking area follows the main tree's arguments under the heading `# Not connected` (`# Niet verbonden` in a Dutch map), and only when it holds anything. Each parked item follows as its own block, in the parking area's order:
 
-- a parked card is an argument block without a conclusion, followed by the argument blocks of the cards under it;
+- a parked card is an argument block whose conclusion is the placeholder `No target. {target: none}`, followed by the argument blocks of the cards under it;
 - a parked box is a statement block: the statement with its data and the relation lines under it (cards, sources, categories), followed by the argument blocks of its cards.
 
 ### 8. Text
 
 - Statement text is written on one line: line breaks in a box's text become spaces.
+- Spaces at the start and end of a box's text are not kept: Argdown trims them.
 - A backslash goes before each character that would otherwise mean something in Argdown: `\ [ ] < > { } # @ * _`, and a `/` that would start a comment. The text reads back exactly, and other Argdown tools show it without the backslashes.
 - Not exported: images (the export says "Images are not included in Argdown." when the map has any), box widths, comment dates, the links and comments of notes (a parked note keeps them), the layout direction, snippets and the essay.
 
 ## Example: a map written as Argdown
 
-A claim with a rated reason (two premises and a source), an undercut of that reason, an objection with a rebuttal and a comment, and a parked note:
+A claim with a rated reason (two premises and a source), an undercut of that reason, an objection with a rebuttal and a comment, a parked reason and a parked note:
 
 ```argdown
 ===
@@ -144,7 +147,7 @@ generator: "ReasonCraft"
     <+ <R1>
     <- <O2>
 
-<R1> {strength: strong}
+<R1> {kind: reason, strength: strong}
 
 (1) [Cars make the centre noisy]: Cars make the centre noisy and unsafe.
     <+ [Traffic report 2024]: Traffic report 2024 {source: statistic, rating: solid}
@@ -153,13 +156,13 @@ generator: "ReasonCraft"
     <_ <O1>
 (3) [The town centre should be]
 
-<O1>
+<O1> {kind: objection}
 
 (1) [The report covers only one]: The report covers only one street.
 ----
-(2) The inference in <R1> does not hold.
+(2) The inference in @<R1> does not hold.
 
-<O2>
+<O2> {kind: objection}
 
 (1) [Shops need delivery vans.]: Shops need delivery vans. {comments: [{author: "Sam", text: "Ask the shop owners.", verdict: needs_work}]}
     <- <O3>
@@ -167,7 +170,7 @@ generator: "ReasonCraft"
 (2) Not: The town centre should be
     -> [The town centre should be]
 
-<O3>
+<O3> {kind: objection}
 
 (1) [Deliveries can be made before]: Deliveries can be made before 10 am.
 ----
@@ -175,6 +178,12 @@ generator: "ReasonCraft"
     -> [Shops need delivery vans.]
 
 # Not connected
+
+<R2> {kind: reason}
+
+(1) [Buses could run more often.]: Buses could run more often.
+----
+(2) No target. {target: none}
 
 [Check the bus routes.]: Check the bus routes. {note: true}
 ```

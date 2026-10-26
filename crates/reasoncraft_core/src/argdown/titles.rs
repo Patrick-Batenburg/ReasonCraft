@@ -129,8 +129,8 @@ struct Counts {
 
 /// A title from the first words of `text`: characters with a meaning in
 /// Argdown titles (`[]<>{}:#@`, the backslash, and a slash that would
-/// start a comment) are left out, whitespace is collapsed and the result
-/// is cut at [`MAX_TITLE_CHARS`].
+/// start a comment) are left out, and so are leading hyphens; whitespace
+/// is collapsed and the result is cut at [`MAX_TITLE_CHARS`].
 pub(super) fn base_title(text: &str) -> String {
     let mut kept = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();
@@ -140,6 +140,8 @@ pub(super) fn base_title(text: &str) -> String {
             kept.push(c);
         }
     }
+    // A title starting with `-` is not a statement reference in Argdown.
+    let kept = kept.trim_start_matches(|c: char| c == '-' || c.is_whitespace());
     let words: Vec<&str> = kept.split_whitespace().take(TITLE_WORDS).collect();
     let title: String = words.join(" ").chars().take(MAX_TITLE_CHARS).collect();
     title.trim_end().to_owned()

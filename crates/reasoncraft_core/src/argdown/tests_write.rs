@@ -37,7 +37,7 @@ fn reason_with_two_premises_as_pcs() {
         "{HEAD}[Cats are good pets]: Cats are good pets
     <+ <R1>
 
-<R1>
+<R1> {{kind: reason}}
 
 (1) [They are quiet]: They are quiet
 (2) [They clean themselves]: They clean themselves
@@ -60,14 +60,14 @@ fn objection_targets_premise() {
         "{HEAD}[Claim]: Claim
     <+ <R1>
 
-<R1>
+<R1> {{kind: reason}}
 
 (1) [Alpha]: Alpha
     <- <O1>
 ----
 (2) [Claim]
 
-<O1>
+<O1> {{kind: objection}}
 
 (1) [Beta]: Beta
 ----
@@ -92,7 +92,7 @@ fn whole_card_attack_under_inference() {
         "{HEAD}[Claim]: Claim
     <+ <R1>
 
-<R1>
+<R1> {{kind: reason}}
 
 (1) [Alpha]: Alpha
 ----
@@ -100,17 +100,17 @@ fn whole_card_attack_under_inference() {
     <+ <R2>
 (2) [Claim]
 
-<O1>
+<O1> {{kind: objection}}
 
 (1) [Gamma]: Gamma
 ----
-(2) The inference in <R1> does not hold.
+(2) The inference in @<R1> does not hold.
 
-<R2>
+<R2> {{kind: reason}}
 
 (1) [Delta]: Delta
 ----
-(2) The inference in <R1> holds.
+(2) The inference in @<R1> holds.
 "
     );
     assert_eq!(to_argdown(&d), expected);
@@ -151,7 +151,7 @@ fn sources_and_ratings_in_data() {
     <+ [Episode 4]: Episode 4 {source: podcast}
 ";
     assert!(out.contains(expected_root), "{out}");
-    let expected_card = "<R1> {strength: weak}
+    let expected_card = "<R1> {kind: reason, strength: weak}
 
 (1) [Alpha]: Alpha {acceptance: reject}
     <+ [Smith 2020]: Smith 2020 {source: publication, rating: solid, \
@@ -205,13 +205,14 @@ fn parking_after_heading() {
 
 # Niet verbonden
 
-<O1>
+<O1> {kind: objection}
 
 (1) [Loose]: Loose
     <+ <R2>
 ----
+(2) No target. {target: none}
 
-<R2>
+<R2> {kind: reason}
 
 (1) [Under]: Under
 ----
@@ -236,6 +237,7 @@ fn titles_unique_and_sanitised() {
         "",
         "Statement 6",
         "snake_case *bold* // two\nlines\\",
+        "- - dashed start",
     ] {
         d.add_premise(card, None, text).unwrap();
     }
@@ -246,11 +248,25 @@ fn titles_unique_and_sanitised() {
 (4) [Statement 5]:
 (5) [Statement 6]: Statement 6
 (6) [snake_case *bold* / two lines]: snake\\_case \\*bold\\* \\// two lines\\\\
+(7) [dashed start]: - - dashed start
 ----
-(7) [Same text]
+(8) [Same text]
 ";
     assert!(out.contains(expected), "{out}");
     assert!(out.starts_with(&format!("{HEAD}[Same text]: Same text\n")));
+}
+
+#[test]
+fn braces_and_equals_are_escaped_in_quoted_values() {
+    let mut d = Document::new("Claim");
+    d.set_meta("A === B", "x=y").unwrap();
+    d.add_comment(d.root, "Bo", "a} b {c", None).unwrap();
+    let out = to_argdown(&d);
+    let front = "===\ntitle: \"A \\u003D\\u003D\\u003D B\"\nauthor: \"x\\u003Dy\"\n";
+    assert!(out.starts_with(front), "{out}");
+    let comment = "{comments: [{author: \"Bo\", text: \"a\\u007D b \\u007Bc\"}]}";
+    assert!(out.contains(comment), "{out}");
+    assert_eq!(out.matches("===").count(), 2, "{out}");
 }
 
 #[test]
@@ -327,6 +343,10 @@ fn docs_example() -> Document {
         Some(Verdict::NeedsWork),
     )
     .unwrap();
+    d.add_loose(
+        NewLoose::Card(CardKind::Reason),
+        "Buses could run more often.",
+    );
     d.add_loose(NewLoose::Note, "Check the bus routes.");
     d
 }
