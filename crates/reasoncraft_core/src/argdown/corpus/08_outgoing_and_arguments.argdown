@@ -1,0 +1,17 @@
+[Nuclear]: Nuclear power is needed to meet climate goals.
+
+<Baseload>: Nuclear plants deliver steady baseload power.
+    +> [Nuclear]
+
+<Waste>: Nuclear waste stays dangerous for millennia.
+    -> [Nuclear]
+
+<Storage>: Storage can replace baseload.
+    _> <Baseload>
+
+<Cheap renewables>: Renewables are now the cheapest source.
+    -> <Baseload>
+
+<>: An empty title.
+
+<Lonely>

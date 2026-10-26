@@ -1,0 +1,32 @@
+===
+title: "Fietsen = gezond"
+author: "Piet"
+language: "nl"
+generator: "ReasonCraft"
+===
+
+[Fietsen is gezond]: Fietsen is gezond.
+    <+ <R1>
+
+<R1> {kind: reason}
+
+(1) [Beweging helpt]: Dagelijkse beweging helpt het hart. {acceptance: unsure}
+----
+(2) [Fietsen is gezond]
+
+# Niet verbonden
+
+[Fietspaden]: Er zijn te weinig fietspaden.
+    <- <O1>
+
+<O1> {kind: objection}
+
+(1) [Nieuwe paden]: De gemeente legt nieuwe paden aan.
+----
+(2) Not: Fietspaden
+    -> [Fietspaden]
+
+[Wetgeving]: Fietswet {source: law, rating: shaky}
+
+[Vervoer]: Vervoer {category: true}
+    <+ [Trein]: Trein {category: true}

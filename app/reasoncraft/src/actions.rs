@@ -13,6 +13,8 @@ pub use action::{Action, Dir, Panel, UnsavedChoice};
 mod enabled;
 pub use box_group::{FakeOpener, LinkOpener, SystemOpener};
 pub use enabled::is_enabled;
+mod argdown;
+pub use argdown::report_text as import_report_text;
 mod comments;
 mod editing;
 mod essay;
@@ -72,6 +74,7 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             app.active = app.tabs.len() - 1;
         }
         Action::Open => file_ops::open_with_dialog(app),
+        Action::ImportArgdown => argdown::import_with_dialog(app),
         Action::Save => file_ops::save_active(app, false),
         Action::SaveAs => file_ops::save_active(app, true),
         Action::CloseTab(i) => {
@@ -311,6 +314,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::EditText { .. }
         | Action::TypeText(_)
         | Action::Open
+        | Action::ImportArgdown
         | Action::Save
         | Action::SaveAs
         | Action::CloseTab(_)

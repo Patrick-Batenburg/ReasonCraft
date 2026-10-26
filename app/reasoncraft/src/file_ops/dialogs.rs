@@ -8,12 +8,17 @@ use super::EXTENSION;
 use crate::export::ExportFormat;
 use crate::i18n::t;
 
+/// The extensions of Argdown files.
+pub const ARGDOWN_EXTENSIONS: &[&str] = &["argdown", "ad"];
+
 /// The image files a box can show.
 pub const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp"];
 
 /// Native file pickers. `None` means the user cancelled.
 pub trait FileDialogs {
     fn pick_open(&self) -> Option<PathBuf>;
+    /// An Argdown file to import.
+    fn pick_import(&self) -> Option<PathBuf>;
     /// `suggested` is the proposed file name, extension included.
     fn pick_save(&self, suggested: &str) -> Option<PathBuf>;
     /// An image to put in a box (PNG, JPEG or WebP).
@@ -42,6 +47,12 @@ impl FileDialogs for RfdDialogs {
         Self::dialog().set_file_name(suggested).save_file()
     }
 
+    fn pick_import(&self) -> Option<PathBuf> {
+        rfd::FileDialog::new()
+            .add_filter(t("file.argdown"), ARGDOWN_EXTENSIONS)
+            .pick_file()
+    }
+
     fn pick_image(&self) -> Option<PathBuf> {
         rfd::FileDialog::new()
             .add_filter(t("file.images"), IMAGE_EXTENSIONS)
@@ -56,13 +67,14 @@ impl FileDialogs for RfdDialogs {
     }
 }
 
-/// Test dialogs: each answer is queued with `set_open` / `set_save` /
-/// `set_image` / `set_export` and used
+/// Test dialogs: each answer is queued with `set_open` / `set_import` /
+/// `set_save` / `set_image` / `set_export` and used
 /// once; with nothing queued the dialog counts as cancelled. Clones share
 /// their queue, so a test keeps a clone to steer the app's copy.
 #[derive(Clone, Default)]
 pub struct FakeDialogs {
     pub open: Rc<RefCell<Option<PathBuf>>>,
+    pub import: Rc<RefCell<Option<PathBuf>>>,
     pub save: Rc<RefCell<Option<PathBuf>>>,
     pub image: Rc<RefCell<Option<PathBuf>>>,
     pub export: Rc<RefCell<Option<PathBuf>>>,
@@ -73,6 +85,10 @@ pub struct FakeDialogs {
 impl FakeDialogs {
     pub fn set_open(&self, path: PathBuf) {
         self.open.replace(Some(path));
+    }
+
+    pub fn set_import(&self, path: PathBuf) {
+        self.import.replace(Some(path));
     }
 
     pub fn set_save(&self, path: PathBuf) {
@@ -91,6 +107,10 @@ impl FakeDialogs {
 impl FileDialogs for FakeDialogs {
     fn pick_open(&self) -> Option<PathBuf> {
         self.open.take()
+    }
+
+    fn pick_import(&self) -> Option<PathBuf> {
+        self.import.take()
     }
 
     fn pick_save(&self, _suggested: &str) -> Option<PathBuf> {

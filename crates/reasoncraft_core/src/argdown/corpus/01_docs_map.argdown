@@ -1,0 +1,50 @@
+===
+title: "Car-free centre"
+author: "Sam"
+language: "en"
+generator: "ReasonCraft"
+===
+
+[The town centre should be]: The town centre should be car-free. {acceptance: accept}
+    <+ <R1>
+    <- <O2>
+
+<R1> {kind: reason, strength: strong}
+
+(1) [Cars make the centre noisy]: Cars make the centre noisy and unsafe.
+    <+ [Traffic report 2024]: Traffic report 2024 {source: statistic, rating: solid}
+(2) [A quiet centre draws more]: A quiet centre draws more visitors.
+----
+    <_ <O1>
+(3) [The town centre should be]
+
+<O1> {kind: objection}
+
+(1) [The report covers only one]: The report covers only one street.
+----
+(2) The inference in @<R1> does not hold.
+
+<O2> {kind: objection}
+
+(1) [Shops need delivery vans.]: Shops need delivery vans. {comments: [{author: "Sam", text: "Ask the shop owners.", verdict: needs_work}]}
+    <- <O3>
+----
+(2) Not: The town centre should be
+    -> [The town centre should be]
+
+<O3> {kind: objection}
+
+(1) [Deliveries can be made before]: Deliveries can be made before 10 am.
+----
+(2) Not: Shops need delivery vans.
+    -> [Shops need delivery vans.]
+
+# Not connected
+
+<R2> {kind: reason}
+
+(1) [Buses could run more often.]: Buses could run more often.
+----
+(2) No target. {target: none}
+
+[Check the bus routes.]: Check the bus routes. {note: true}

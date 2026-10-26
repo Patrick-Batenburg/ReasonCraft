@@ -50,6 +50,7 @@ action-new = New
 action-open = Open
 action-save = Save
 action-save_as = Save As
+action-import_argdown = Import Argdown…
 action-undo = Undo
 action-redo = Redo
 action-paste = Paste
@@ -156,6 +157,7 @@ eval-tip-clear_map = Clear every rating in the map (Alt+Shift+0)
 ## Files
 file-filter = ReasonCraft map
 file-images = Images
+file-argdown = Argdown files
 modal-ok = OK
 unsaved-title = Save changes to { $name }?
 unsaved-message = Your changes will be lost if you don't save them.
@@ -181,6 +183,27 @@ error-open-newer_version = This map was made with a newer version of ReasonCraft
 error-open-io = The file could not be read: { $detail }
 error-save-io = The file could not be written: { $detail }. Your changes are still open and unsaved.
 error-save-other = The map could not be saved: { $detail }. Your changes are still open and unsaved.
+
+## Argdown import
+error-import-title = Could not import { $file }
+argdown-error-io = The file could not be read: { $detail }
+argdown-error-too_large = The file is too large to import (over 2 MB).
+argdown-error-too_many_boxes = The file holds more than 5000 statements: too many for one map.
+argdown-error-too_deep = Relations are nested too deeply (line { $line }).
+argdown-error-empty = The file holds no statements or arguments.
+argdown-report-title = Imported with changes
+argdown-report-message = The map could not keep everything as the file wrote it:
+argdown-report-line = Line { $line }: { $text }
+argdown-note-contradiction = A contradiction (><) was left out: maps have no contradictions.
+argdown-note-extra_equivalent_wording = Another wording of a statement was left out; the first one is used.
+argdown-note-shared_statement_copied = A statement used in several places was copied there.
+argdown-note-cycle_broken = A relation that would make a circle was left out.
+argdown-note-unknown_reference = "{ $title }" is defined nowhere; its title became its text.
+argdown-note-intermediate_conclusion = An intermediate conclusion was left out.
+argdown-note-inference_rule_dropped = An inference rule was left out.
+argdown-note-tags_dropped = Tags (#…) were left out.
+argdown-note-undercut_on_statement = An undercut of a statement was read as an objection.
+argdown-note-empty_argument = An argument without premises or text was left out.
 
 ## Backstage
 backstage-back = Back

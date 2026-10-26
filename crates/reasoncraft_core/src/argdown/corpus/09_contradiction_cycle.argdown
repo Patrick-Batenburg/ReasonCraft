@@ -1,0 +1,13 @@
+[A]: Coffee is good for you.
+    + [B]: Coffee contains antioxidants.
+        + [A]
+    - [C]: Coffee raises blood pressure.
+    >< [D]: Coffee is bad for you.
+
+[E]: Tea is good for you.
+    + [B]
+
+[A]: Coffee is healthy.
+
+[F]: Undercut a statement
+    _ [G]: An undercut on a statement.

@@ -1,6 +1,6 @@
 //! The window-wide modal: a file error, "save changes before closing?",
 //! "replace the existing file?" (for a save or an export) or "restore the
-//! documents a crash left behind?".
+//! documents a crash left behind?", or the report of an Argdown import.
 
 use eframe::egui::{self, Role, WidgetInfo};
 
@@ -36,7 +36,12 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
                     .size(16.0)
                     .color(tk.box_text),
             );
-            ui.label(egui::RichText::new(body).color(tk.box_text));
+            // A long report scrolls instead of growing past the window.
+            egui::ScrollArea::vertical()
+                .max_height(320.0)
+                .show(ui, |ui| {
+                    ui.label(egui::RichText::new(body).color(tk.box_text));
+                });
             // Save (or the close) goes ahead by itself once the work is done.
             let waiting = match modal {
                 Modal::Unsaved { waiting: true, .. } => Some("unsaved.waiting_images"),
@@ -96,6 +101,10 @@ fn texts(app: &ReasonCraftApp, modal: &Modal) -> (String, String) {
             (t_args("replace.title", &args), t(message))
         }
         Modal::Recover(docs) => (t("recovery.title"), recover_body(docs)),
+        Modal::ImportReport(notes) => (
+            t("argdown.report.title"),
+            crate::actions::import_report_text(notes),
+        ),
     }
 }
 
@@ -124,7 +133,7 @@ fn recover_body(docs: &[RecoveredDoc]) -> String {
 fn buttons(modal: &Modal) -> (Vec<Button>, Action) {
     let unsaved = Action::ResolveUnsaved;
     match modal {
-        Modal::Error { .. } => (
+        Modal::Error { .. } | Modal::ImportReport(_) => (
             vec![("modal.ok", "modal.ok", Action::DismissModal)],
             Action::DismissModal,
         ),

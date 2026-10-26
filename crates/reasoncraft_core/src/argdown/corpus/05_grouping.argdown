@@ -1,0 +1,5 @@
+[Hobbies]: Hobbies for a rainy day
+    <+ [Indoor]: Indoor hobbies {category: true, notes: ["Cheap ones first."]}
+        <+ [Reading]: Reading {category: true}
+        <+ [Board games]: Board games {category: true, comments: [{author: "Kim", text: "Great with friends", verdict: positive}]}
+    <+ [Crafts]: Crafts {category: true}

@@ -1,0 +1,10 @@
+# School uniforms
+
+[Uniforms]: Schools should require uniforms.
+    + [Equality]: Uniforms hide differences in family income.
+        - [Brands]: Pupils still show status through shoes and bags.
+            + Shoe rules exist in some schools.
+    - [Expression]: Uniforms limit how pupils express themselves.
+        <+ [Clothes matter]: Clothing is an important form of self-expression.
+    <+ [Cost]: Uniforms are cheaper than a changing wardrobe.
+	<- [Price data]: Some uniforms cost more than ordinary clothes.

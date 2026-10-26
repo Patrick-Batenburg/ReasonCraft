@@ -13,6 +13,12 @@ pub(super) fn build() -> Vec<Command> {
     let mut out = vec![
         cmd("file.new", "action.new", file, Action::New),
         cmd("file.open", "action.open", file, Action::Open),
+        cmd(
+            "file.import_argdown",
+            "action.import_argdown",
+            file,
+            Action::ImportArgdown,
+        ),
         cmd("file.save", "action.save", file, Action::Save),
         cmd("file.save_as", "action.save_as", file, Action::SaveAs),
     ];

@@ -79,6 +79,7 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
         (Icon::Back, "backstage.back", Entry::Command(None)),
         command(Icon::New, "file.new"),
         command(Icon::Open, "file.open"),
+        command(Icon::Open, "file.import_argdown"),
         command(Icon::Save, "file.save"),
         command(Icon::SaveAs, "file.save_as"),
         (

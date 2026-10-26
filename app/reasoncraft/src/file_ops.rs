@@ -59,6 +59,8 @@ pub enum Modal {
     },
     /// A crashed session left these documents behind: restore them?
     Recover(Vec<crate::recovery::RecoveredDoc>),
+    /// An Argdown import changed or left out these constructs.
+    ImportReport(Vec<reasoncraft_core::ImportNote>),
 }
 
 /// What a save was part of, so it can carry on once the file is written.

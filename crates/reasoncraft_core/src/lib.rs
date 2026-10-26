@@ -13,6 +13,7 @@ pub mod fixtures;
 pub mod history;
 pub mod ids;
 pub mod layout;
+pub mod link;
 pub mod meta;
 pub mod model;
 pub mod outline;
@@ -23,7 +24,9 @@ pub mod rules;
 pub mod snippets;
 pub mod words;
 
-pub use argdown::to_argdown;
+pub use argdown::{
+    ArgdownError, ImportNote, ImportNoteKind, ImportReport, from_argdown, to_argdown,
+};
 pub use connector::ConnectorStyle;
 pub use edit::{EditError, NewLoose, RemoveMode};
 pub use essay::{EssayPlan, EssaySlot, essay_markdown, essay_order, essay_plain_text};

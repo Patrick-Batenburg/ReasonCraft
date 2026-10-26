@@ -1,0 +1,21 @@
+===
+title: Multi-step argument
+author: Ann
+language: de
+===
+
+[Tax]: A sugar tax should be introduced.
+
+<Health chain>: Taxing sugar improves health.
+
+(1) [Price]: A tax raises the price of sugary drinks.
+(2) [Demand]: Higher prices lower demand.
+-- Modus ponens --
+(3) [Less sugar]: People drink fewer sugary drinks.
+(4) [Health]: Less sugar means fewer health problems.
+--
+Inference to the best explanation
+{uses: [3, 4]}
+--
+(5) [Tax]
+    <- [Regressive]: A sugar tax hits poor households hardest.

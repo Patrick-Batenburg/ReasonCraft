@@ -1,0 +1,9 @@
+// A file full of comments and inline markup.
+/* A block comment
+   over several lines. */
+[Remote work]: _Remote work_ makes teams **more productive**. #work #(future of work)
+    <+ [Study]: A [Stanford study](https://example.org/study) found a 13% gain. <!-- citation -->
+    <- [Meetings]: Meetings over video are *tiring*, says @[Study]. // aside
+    <+ <Focus>
+
+<Focus>: Fewer interruptions at home help @<Focus> and deep work.

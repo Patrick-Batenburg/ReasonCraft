@@ -131,6 +131,20 @@ The parking area follows the main tree's arguments under the heading `# Not conn
 - A backslash goes before each character that would otherwise mean something in Argdown: `\ [ ] < > { } # @ * _`, and a `/` that would start a comment. The text reads back exactly, and other Argdown tools show it without the backslashes.
 - Not exported: images (the export says "Images are not included in Argdown." when the map has any), box widths, comment dates, the links and comments of notes (a parked note keeps them), the layout direction, snippets and the essay.
 
+## Reading Argdown
+
+File → **Import Argdown…** reads any Argdown file, not just ReasonCraft's own, into a new, unsaved tab. A file ReasonCraft wrote reads back as the same map. For other files:
+
+- **The root** is the statement with the most relations pointing at it (directly, or as the conclusion of an argument), among the top-level statements and the statements that support or attack nothing; on a tie, the first one. Only statements before a `# Not connected` (or `# Niet verbonden`) heading count. Every other top-level tree goes to the parking area, in file order, after the items under that heading.
+- **Statements under statements**: `+ [X]` or `<+ [X]` under a statement makes a reason card with X as its premise, `-` an objection. With `{source: …}` X becomes a source of that type (an unknown type is kept by name), with `{category: true}` a category (where a category may go).
+- **Arguments** become cards. Their premises are the PCS statements, except conclusions; an argument without a PCS gets one premise with its text, or its title. An argument concluding a statement supports it; a conclusion with `-> [S]` (or `- [S]`) under it attacks S.
+- **Whole cards**: `_` under an argument or its inference line makes an objection to the whole card, `+` under the inference line a reason for it.
+- **The kind of a card** comes from its `kind` data, else the shape of its conclusion, else an `R1`/`O1` title, else the relation it hangs on.
+- **Text**: escapes are read, inline formatting is removed, `[text](url)` keeps its text and the first link becomes the box's link (if it is a safe link), and mentions `@[T]` and `@<T>` become `T`.
+- **Data**: the keys of section 5 and `kind` and `strength` are read; other keys are ignored. The frontmatter gives the title, author and language (`en` or `nl`, otherwise `en`). Without a title, the file's name is used.
+- **Reported changes**, each with its line: a contradiction (`><`, left out), another wording of a statement already defined (the first is used), a statement used in a second place (copied there), a relation that would make a circle (left out), a reference to a title defined nowhere (the title becomes the text), an intermediate conclusion (left out), an inference rule (left out), tags (left out), an undercut of a statement (read as an objection) and an argument with no premises, text or title (left out).
+- **Limits**: files up to 2 MB, maps up to 5000 boxes and relations nested up to 64 levels.
+
 ## Example: a map written as Argdown
 
 A claim with a rated reason (two premises and a source), an undercut of that reason, an objection with a rebuttal and a comment, a parked reason and a parked note:

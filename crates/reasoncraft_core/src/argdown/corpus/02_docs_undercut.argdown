@@ -1,0 +1,10 @@
+[Car-free centre]: The town centre should be car-free.
+
+<Sample>: Residents want it.
+
+(1) [Survey]: Most residents in a survey want a car-free centre.
+----
+    <_ <Small sample>
+(2) [Car-free centre]
+
+<Small sample>: Only 40 of 12 000 residents answered the survey.

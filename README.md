@@ -18,6 +18,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
 - **Add images.** Put a PNG, JPEG or WebP image in a box. The image is prepared in the background, so a large photo never freezes the window: the box shows "Preparing image…" until it is ready. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.
 - **Export and print.** The Export tab saves the map as PNG, SVG or PDF, copies it to the clipboard as an image, prints it, saves the outline or the essay as Markdown, plain text or Word, and saves the whole map as Argdown text (see [Export and print](#export-and-print)).
+- **Import Argdown.** File → Import Argdown… reads an [Argdown](https://argdown.org) file into a new, unsaved tab and lays it out. Argdown the map cannot hold (contradictions, tags, inference rules, a statement used in two places, and so on) is changed or left out, and a report lists each case with its line. The file itself is never written; use Save As to keep the map. See [docs/argdown.md](docs/argdown.md#reading-argdown).
 
 Files from older versions open unchanged, and files from newer versions keep any parts this version does not understand when you save them.
 

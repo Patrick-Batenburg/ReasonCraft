@@ -293,7 +293,7 @@ fn every_card_gets_one_argument_block() {
 }
 
 /// The map behind the first example in `docs/argdown.md`.
-fn docs_example() -> Document {
+pub(super) fn docs_example() -> Document {
     use crate::edit::NewLoose;
     let mut d = Document::new("The town centre should be car-free.");
     d.set_meta("Car-free centre", "Sam").unwrap();

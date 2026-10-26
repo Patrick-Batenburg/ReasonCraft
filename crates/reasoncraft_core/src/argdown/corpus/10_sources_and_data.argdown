@@ -1,0 +1,23 @@
+===
+title: 'Sources'
+===
+
+[Claim]: Bees are in decline. {acceptance: accept, link: "https://example.org/bees", notes: ["Check 2025 data.", "Ask an expert"]}
+    <+ [Survey]: National bee survey 2024 {source: statistic, rating: solid}
+    <+ [Interview]: Interview with a beekeeper {source: "oral history", rating: nil}
+    <+ <R1>
+
+<R1> {kind: reason, strength: weak}
+
+(1) [Pesticides]: Pesticides harm bees. {acceptance: reject, comments: [{author: "Lee", text: "Which ones?\nNeonicotinoids?"}]}
+    <+ [Lab]: Lab results {source: data}
+(2) [Use]: Pesticide use has grown.
+----
+    <+ <R2>
+(3) [Claim]
+
+<R2> {kind: reason}
+
+(1) [Link]: Studies link the two. {link: "javascript:alert(1)"}
+----
+(2) The inference in @<R1> holds.

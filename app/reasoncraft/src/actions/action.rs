@@ -42,6 +42,8 @@ pub enum UnsavedChoice {
 pub enum Action {
     New,
     Open,
+    /// Read an Argdown file into a new, unsaved tab.
+    ImportArgdown,
     Save,
     SaveAs,
     /// Close the tab at this index, asking first if it has unsaved changes.
