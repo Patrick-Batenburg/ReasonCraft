@@ -41,9 +41,11 @@ fn subtree(doc: &Document, id: NodeId) -> Vec<NodeId> {
 }
 
 /// Spec §5: a premise's sources and notes form a group centred on that
-/// premise. A group may sit off its premise only when something beside it
-/// on the side of its premise holds it there (a neighbouring premise's
-/// group or the card's other children, which keep the premises' order).
+/// premise, to within half a pixel. A group may sit off its premise only
+/// when something beside it on the side of its premise holds it there (a
+/// neighbouring premise's group or the card's other children, which keep
+/// the premises' order). That such a blocker could not itself move is
+/// covered by the `layout::row` unit tests.
 #[test]
 fn sources_sit_under_their_premise() {
     let p = LayoutParams::default();
@@ -75,12 +77,15 @@ fn sources_sit_under_their_premise() {
                 if firsts.is_empty() {
                     continue;
                 }
-                let group = (firsts.iter().map(|&b| rect(Item::Box(b))))
-                    .reduce(Rect::union)
-                    .unwrap();
+                // The group's centre: halfway between its outer members'
+                // centres, which is what the layout centres on the premise.
+                let centres = firsts.iter().map(|&b| rect(Item::Box(b)).center().x);
+                let (lo, hi) = centres.fold((f32::INFINITY, f32::NEG_INFINITY), |(lo, hi), x| {
+                    (lo.min(x), hi.max(x))
+                });
                 let premise = rect(Item::Box(pid));
-                let centre = group.center().x;
-                if premise.x_range().contains(centre) {
+                let centre = (lo + hi) / 2.0;
+                if (centre - premise.center().x).abs() <= 0.5 {
                     centred += 1;
                     continue;
                 }

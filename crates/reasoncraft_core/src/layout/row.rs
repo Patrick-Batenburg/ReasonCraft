@@ -167,8 +167,9 @@ fn is_attached(kid: Kid) -> bool {
 /// Each entry's offset, packed left to right in order, with no group
 /// before its anchor by more than a slack and the slack, the largest
 /// distance of a group from its anchor, as small as it can be. Then every
-/// group left of its anchor is pulled back toward it as far as the entries
-/// after it allow, so a group that need not move sits on its anchor.
+/// group left of its anchor is pulled back toward it, together with the
+/// children riding after it, as far as the entries after them allow, so a
+/// group that need not move sits on its anchor.
 fn place(seq: &[Group], gap: f32) -> Vec<f32> {
     let greedy = |slack: f32| {
         let mut acc = Contour::default();
@@ -198,14 +199,27 @@ fn place(seq: &[Group], gap: f32) -> Vec<f32> {
         }
     }
     let mut at = greedy(hi);
+    // Pull each group, with the children riding after it up to the next
+    // group, back toward its anchor as far as the entries after allow.
     for k in (0..seq.len()).rev() {
         let Some(anchor) = seq[k].anchor.filter(|&a| at[k] < a) else {
             continue;
         };
-        let limit = (k + 1..seq.len())
-            .map(|j| at[j] - Contour::separation(&seq[k].contour, &seq[j].contour) - gap)
+        let end = (k + 1..seq.len())
+            .find(|&j| seq[j].anchor.is_some())
+            .unwrap_or(seq.len());
+        let room = (k..end)
+            .flat_map(|e| (end..seq.len()).map(move |j| (e, j)))
+            .map(|(e, j)| {
+                at[j] - at[e] - Contour::separation(&seq[e].contour, &seq[j].contour) - gap
+            })
             .fold(f32::INFINITY, f32::min);
-        at[k] = at[k].max(anchor.min(limit));
+        let delta = (anchor - at[k]).min(room);
+        if delta > 0.0 {
+            for a in &mut at[k..end] {
+                *a += delta;
+            }
+        }
     }
     at
 }
@@ -293,6 +307,22 @@ mod tests {
         let a_centre = o[1];
         assert!(a_centre < -170.0 && o[3] > 0.0, "A and B both move: {o:?}");
         assert!(o[3] + 64.0 + 18.0 <= o[4] - 64.0 + 0.01, "B clear of C");
+    }
+
+    /// The same with an attacker of C riding after C's group: C's group
+    /// and its attacker are pulled back together, C exactly on its anchor.
+    #[test]
+    fn a_group_with_a_rider_still_reaches_its_anchor() {
+        let (a, b, c) = (
+            Kid::Attached(-170.0),
+            Kid::Attached(0.0),
+            Kid::Attached(300.0),
+        );
+        let kids = [a, a, a, b, c, Kid::Targets(300.0)];
+        let row = pack(&kids, boxes(6, 128.0), 18.0);
+        let o = &row.offsets;
+        assert_eq!(o[4], 300.0, "{o:?}");
+        assert_eq!(o[5], 300.0 + 128.0 + 18.0, "the attacker rides after C");
     }
 
     /// A card attacking the middle premise stays between the groups of the
