@@ -65,7 +65,7 @@
   - [x] Task 5: Layout directions
   - [x] Task 6: Connector styles (Curved, Elbow, Tapered)
   - [x] Task 7: Minimap, numbering on the map, fit selection
-  - [ ] Task 8: Find and replace
+  - [x] Task 8: Find and replace
   - [ ] Task 9: reasoncraft_spell crate
   - [ ] Task 10: Spellcheck in the app
   - [ ] Task 11: Autosave and crash recovery
