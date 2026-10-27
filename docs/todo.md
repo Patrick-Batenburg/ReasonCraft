@@ -79,7 +79,7 @@
   - [x] Task 2: Swappable i18n and the UI language
   - [x] Task 3: Labels in the document's language
   - [x] Task 4: Dutch translation
-  - [ ] Task 5: Accessibility, UI scale and reset to defaults
+  - [x] Task 5: Accessibility, UI scale and reset to defaults
   - [ ] Task 6: OS-correct keyboard shortcuts
   - [ ] Task 7: Map and panel polish
   - [ ] Task 8: Robustness and performance carry-overs
