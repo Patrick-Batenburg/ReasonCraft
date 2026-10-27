@@ -76,6 +76,8 @@ The app draws with wgpu first. Where no GPU driver is usable, wgpu falls back to
 cargo packager --release -p reasoncraft --formats app,dmg
 ```
 
+There is no Mac to build or test on yet: the CI and release workflows build and test on `macos-latest`, and a check on a real Mac is part of the release checklist.
+
 The bundle's `Info.plist` declares the `.rcraft` document type (role Editor).
 Known gap: macOS hands a double-clicked document to an app through an Apple Event, not on the command line, and the app does not handle that event yet.
 Double-clicking a `.rcraft` file starts ReasonCraft without opening the file.
@@ -89,9 +91,66 @@ cargo packager --release -p reasoncraft --formats deb,appimage
 The desktop entry (`packaging/linux/reasoncraft.desktop`) passes the files as `%F` and declares `MimeType=application/x-reasoncraft;`.
 `packaging/linux/reasoncraft-mime.xml` installs to `/usr/share/mime/packages/` and tells shared-mime-info that `*.rcraft` files are `application/x-reasoncraft`.
 
+The binary links only libc: winit, wgpu and glow open the X11, Wayland, xkbcommon, EGL and OpenGL libraries at run time, so dpkg cannot work out the dependencies.
+The `.deb` names them in `depends` under `[package.metadata.packager.deb]`; a test checks the list.
+Its package name is `reasoncraft` (cargo-packager would otherwise make `reason-craft` of the product name).
+
+To build without FUSE (in a container, or on CI), set `APPIMAGE_EXTRACT_AND_RUN=1` for the AppImage.
+
+### Building and testing in Docker
+
+`packaging/linux/Dockerfile` is a Debian bookworm image with the pinned toolchain, egui's build dependencies and cargo-packager.
+Build it from the repository root, so that it picks up `rust-toolchain.toml`:
+
+```sh
+docker build -f app/reasoncraft/packaging/linux/Dockerfile -t reasoncraft-linux .
+```
+
+Then run the tests and build the `.deb` in a copy of the checked-in files, with the `target` folder in a volume (not in the host's checkout):
+
+```sh
+docker run --rm -m 16g -v "$PWD:/repo:ro" -v rc-target:/src/target reasoncraft-linux bash -c '
+  git config --global --add safe.directory /repo &&
+  git -C /repo ls-files -z | tar -C /repo --null -T - -cf - | tar -xf - -C /src &&
+  cargo test --workspace -j 4 &&
+  cargo packager --release -p reasoncraft --formats deb'
+```
+
+The `.deb` lands in the volume, under `/src/target/release/packager/`.
+
+The tests are headless and need no display.
+The clipboard is checked only through the tests' fake clipboard; copying to and pasting from the real X11 or Wayland clipboard is a manual check (see the release checklist).
+
 ## Not published to crates.io
 
 The `reasoncraft` crate has `publish = false`.
 Its About page embeds the workspace's `THIRD-PARTY.md` with `include_str!` from outside the crate folder, which `cargo package` would reject.
 cargo-packager builds from the workspace, so the installers are unaffected.
 `THIRD-PARTY.md` lists every bundled third-party component, including the installer's.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs the quality gate (`cargo fmt --check`, clippy with `-D warnings`, `cargo test --workspace`) on `windows-latest`, `macos-latest` and `ubuntu-latest`, with the toolchain from `rust-toolchain.toml`.
+On Linux it first installs egui's build dependencies, the same as the Docker image.
+
+`.github/workflows/release.yml` runs on a tag `v*` (or by hand).
+It builds the NSIS installer on Windows, the app bundle and `.dmg` on macOS, and the `.deb` and AppImage on Linux, and keeps them as workflow artifacts.
+It publishes nothing.
+
+## Release checklist
+
+1. The CI workflow is green on all three platforms.
+2. `THIRD-PARTY.md` and `packaging/LICENSE.txt` are current (`cargo run -p xtask -- licence`).
+3. Tag the version (`v<version>`) and download the installers from the release workflow's run.
+4. Windows: check the installer in the test VM (see above).
+5. macOS, on a real Mac (CI cannot show a window):
+   - open the `.dmg`, drag the app to Applications, and start it (it is not signed, so open it with right-click → Open the first time);
+   - make, save and reopen a map; export it as PNG and PDF; copy a map as an image and paste it into another app;
+   - check that Quit with unsaved changes asks first;
+   - check the known gap: double-clicking a `.rcraft` file starts the app without opening the file.
+6. Linux, on a desktop (X11 and Wayland if possible):
+   - install the `.deb` with `sudo apt install ./reasoncraft_<version>_amd64.deb` and start ReasonCraft from the app menu;
+   - double-click a `.rcraft` file: it opens in ReasonCraft;
+   - copy a map as an image and paste it into another app, and copy and paste text between ReasonCraft and another app (the real clipboard);
+   - open and save through the file dialogs;
+   - start the AppImage on a second distribution.

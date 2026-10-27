@@ -168,6 +168,54 @@ fn packager_config_has_association() {
     assert!(desktop.contains("MimeType=application/x-reasoncraft;"));
 }
 
+/// The `.deb` control fields. The binary links only libc; winit, wgpu and
+/// glow open the windowing and graphics libraries at run time, so dpkg
+/// cannot see them and the package has to name them.
+#[test]
+fn deb_names_its_runtime_libraries() {
+    let manifest = std::fs::read_to_string(crate_dir().join("Cargo.toml")).unwrap();
+    let manifest: toml::Table = manifest.parse().expect("valid TOML");
+    let packager = &manifest["package"]["metadata"]["packager"];
+
+    // Not the default, the product name in kebab case ("reason-craft").
+    assert_eq!(
+        packager["deb"]["package-name"].as_str(),
+        Some("reasoncraft")
+    );
+    let authors = packager["authors"]
+        .as_array()
+        .expect("authors, the Maintainer");
+    assert_eq!(authors[0].as_str(), Some("ReasonCraft contributors"));
+    assert!(
+        packager["long-description"]
+            .as_str()
+            .is_some_and(|d| !d.is_empty())
+    );
+
+    let depends: Vec<&str> = packager["deb"]["depends"]
+        .as_array()
+        .expect("a list of packages")
+        .iter()
+        .map(|d| d.as_str().expect("a package name"))
+        .collect();
+    for lib in [
+        "libc6",
+        "libgcc-s1",
+        "libxkbcommon0",
+        "libxkbcommon-x11-0",
+        "libx11-6",
+        "libx11-xcb1",
+        "libxcursor1",
+        "libxi6",
+        "libwayland-client0",
+        "libwayland-egl1",
+        "libegl1",
+        "libgl1",
+    ] {
+        assert!(depends.contains(&lib), "the .deb lacks Depends: {lib}");
+    }
+}
+
 #[test]
 fn cli_path_opens_file() {
     // The association passes the path quoted, as one argument; it may hold
