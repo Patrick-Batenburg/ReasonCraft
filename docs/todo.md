@@ -2,7 +2,7 @@
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
 **Active plan:** [docs/plans/2026-10-27-step6-release-readiness.md](plans/2026-10-27-step6-release-readiness.md) — step 6, release readiness
-**Merged:** steps 1–5
+**Merged:** steps 1–5 (step 6 is complete on branch `step6-release-readiness`)
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
 ## Step 1 — Core editor
@@ -20,7 +20,7 @@
 - [x] Task 12: End-to-end verification and docs
 
 ## Later steps (plans to be written)
-- [ ] Step 2 — Sources, evaluation, notes, comments, building panel ([plan](plans/2026-10-25-step2-sources-evaluation.md))
+- [x] Step 2 — Sources, evaluation, notes, comments, building panel ([plan](plans/2026-10-25-step2-sources-evaluation.md))
   - [x] Task 1: Core model — source types, ratings, comments, links, images
   - [x] Task 2: Layout carries roles and strength; image space
   - [x] Task 3: Package format — assets and unknown zip entries
@@ -74,7 +74,7 @@
   - [x] Task 14: Check carry-overs
   - [x] Task 15: Export and panel carry-overs
   - [x] Task 16: End-to-end verification and docs
-- [ ] Step 6 — Release readiness ([plan](plans/2026-10-27-step6-release-readiness.md))
+- [x] Step 6 — Release readiness ([plan](plans/2026-10-27-step6-release-readiness.md))
   - [x] Task 1: Housekeeping: file splits and tolerant settings
   - [x] Task 2: Swappable i18n and the UI language
   - [x] Task 3: Labels in the document's language
@@ -87,7 +87,7 @@
   - [x] Task 10: Example maps, templates and recent files
   - [x] Task 11: App identity and the Windows installer
   - [x] Task 12: Linux and macOS builds and CI
-  - [ ] Task 13: End-to-end check and release docs
+  - [x] Task 13: End-to-end check and release docs
 
 ## Review
 
@@ -322,20 +322,67 @@ The new end-to-end test `tests/e2e/interchange.rs` (`interchange_round_trip`) ru
 - In the PDF, the bold outline is not selectable text; the plain text under it is (ruling T15-1).
 - The Search commands list rebuilds its labels (about 160 strings) every frame while it is open.
 
+### Step 6 — Release readiness (2026-10-27)
+
+**Tests:** 865 pass, 13 ignored, across the workspace (debug, `cargo test --workspace -j 4`):
+- core: 192 unit tests, plus 58 integration tests in 11 files;
+- spell: 8 unit tests;
+- app: 330 unit tests, and 277 UI and integration tests in 43 files (egui_kittest; new in step 6: `accessibility/` (with keyboard and settings), `close_request`, `examples`, `help`, `packaging`, `settings_enums`, `shell_polish`, `spelling_slices` and `ui_language/` (14 tests: the language switch, labels by document language, help, examples, the Dutch ribbon fit and the release flow)), including 9 end-to-end tests in `tests/e2e/`.
+
+`cargo test --workspace --release -j 4` gives 864 passed (one debug-only core test is left out of release builds), and the 13 ignored release-only timing tests pass with `-- --ignored`.
+
+`cargo clippy --workspace --all-targets -j 4 -- -D warnings` and `cargo fmt --check` are clean. `cargo packager --release -p reasoncraft --formats nsis` builds `reasoncraft_0.1.0_x64-setup.exe` (13.0 MB). The Linux test suite and the `.deb` were checked in Docker in Task 12, and the Windows installer in the test VM in Task 11 (29 checks pass).
+
+The new end-to-end test `release_flow` (`tests/ui_language/release.rs`; it switches the UI language, so it lives in that binary, ruling S6-T13-1) runs on a "Dutch computer" (an injected `nl-NL` locale) and drives the app through actions, F1 and `FakeDialogs`:
+1. It sets the UI to Dutch.
+2. It opens the reasoning example, which comes up in Dutch, and finds the Dutch source names ("Publicatie", "Deskundige", …) painted on the map and not the English ones.
+3. It sets the document language to English: the map shows the English names, while the ribbon still reads "Start".
+4. It opens the Blank reasoning template, adds a reason and saves it through the fake dialog; the file heads the recent files.
+5. It resets the settings: the UI scale is back to 100 % and the language back to the system's (still Dutch), and the recent files are kept.
+6. F1 opens the help, and the topic shows its Dutch title, not the English one.
+7. It exports SVG with live text: the English source names are in it, the Dutch ones are not.
+8. No control on screen, the help included, lacks an accessible name.
+
+Setting the document language back to Dutch instead of English in step 3 makes the test fail.
+
+**Checked by hand** (Windows 11 at 125 % display scaling, debug build). No keyboard or mouse input was sent (lessons.md "Agent safety"). The captures are in `.superpowers/sdd/2026-10-27-step6-release-readiness/` as `task-13-*.png`, made with PrintWindow. A temporary environment switch in `main.rs` applied the language, theme and UI scale, opened the reasoning example with the Outline (or the help contents), fitted the map, and closed the window after 9 s; eframe's settings and the recovery folder pointed at a temp folder. The switch was reverted before the commit. The settings file `app.ron` had the same SHA-256 before and after (B4297B4E…1047).
+- English and Dutch, light and dark, at 100 % and 150 % (eight captures), and the help contents in Dutch (dark, 100 %) and English (light, 150 %):
+  - The ribbon, the Building panel, the Text panel tabs, the Outline and the status bar read fully in the chosen language; the map's rating labels and source names follow the example's language.
+  - Both themes are legible; the dark theme's role colours stay distinct.
+  - At 150 %, the window title ran under the command search box ("Untitle", "Naamlo"). Fixed in this task (ruling S6-T13-2, test `window_title_stays_clear_of_the_search_box`), and the captures were taken again.
+  - At 150 % in a 1280 × 800 window, the ribbon's right-hand groups are cut off (see the known limitations).
+  - At 150 % the fitted map is drawn too small for its text (14 %), as expected for a 23-box map in a narrow canvas.
+
+**Also in this task:** `release.yml` names its artifacts after the tag, or after the commit for a run by hand (a branch name may hold a "/"); both workflows install `pkg-config` explicitly; `docs/release.md` notes that the Docker memory cap can be changed. The Linux release binary opens no libXrandr (ruling S6-T13-3), so the `.deb` dependencies are unchanged. `THIRD-PARTY.md` now lists egui's bundled fonts (Ubuntu Light, which PDF exports embed, Hack and egui-icons). The README gained install instructions per OS and a Languages section; `CHANGELOG.md`, `docs/user-guide.md` and `docs/glossary-nl.md` are new.
+
+**Known limitations:**
+- The ribbon neither wraps nor scrolls. In a window narrower than about 1280 points (for example at 150 % UI scale on a laptop screen) its right-hand groups are cut off; Search commands (Alt+Q) still reaches every command (Shift+Cmd+A on a Mac).
+- macOS is configured but unverified: no Mac was available, and CI runs only once a remote exists (ruling M3). Double-clicking a `.rcraft` file starts the app without opening the file (ruling S6-T11-2). There is no app menu, and quitting from the Dock, logging out or shutting down does not ask about unsaved changes (ruling S6-T6-2).
+- The installers are not code-signed, so SmartScreen and Gatekeeper warn (ruling L3).
+- Word files have not been opened in Word or LibreOffice here, and the real Linux clipboard has not been tried; both are on the release checklist.
+- resvg and usvg stay at 0.45, as svg2pdf 0.13 is still the newest release.
+- Import Argdown has no icon of its own in the File backstage (it shares Open's).
+- Dutch term choices await the owner's review ([glossary-nl.md](glossary-nl.md)).
+- Numbers in messages have no thousands separator ("50000").
+- Two instances started at the same instant can both offer the same crashed session (no data is lost).
+- From step 5, still open: the official Argdown map view may show a redundant relation for whole-card conclusions (could not be checked offline); comment dates, the links and comments of notes, where notes sit among their siblings, images and the layout direction are not carried in Argdown; Find does not search comments (ruling B3); ignoring the "not rated yet" hint holds only while the number of unrated items stays the same; in exports, a box with only a link or comments keeps a blank indicator band (ruling T6-4); in the PDF the bold outline is not selectable text (ruling T15-1).
+- A box with many connectors grows to keep their arrowheads apart, so it can be wider (or taller, left to right) than its text needs (ruling S6-T7-2).
+- An interactive pass with real input on several window sizes is still to come (Task 14).
+
 ## Carry-over from step 4 reviews
 - [x] Step 5 (Tasks 1, 15): draw PDF bold once (no duplicate text on copy); non-PNG assets in exports; split `crates/reasoncraft_core/src/edit.rs` (916 lines) and `file.rs` (603 lines)
 - [x] Step 5 (Task 15): virtualise the Essay tab (cached heights) and the Check tab
-- [ ] Step 6: map labels and source names in exports by document language (with the Dutch UI); open the Word files in Word and LibreOffice; test the clipboard on Linux; upgrade resvg/usvg together with svg2pdf
+- [x] Step 6 (Tasks 3, 8, 12): map labels and source names in exports by document language (with the Dutch UI); open the Word files in Word and LibreOffice; test the clipboard on Linux; upgrade resvg/usvg together with svg2pdf — still open: Word/LibreOffice and the real Linux clipboard are manual release-checklist items; resvg/usvg wait for a newer svg2pdf
 - [x] Step 5 (Tasks 1, 2, 6; each connector carries its direction and style, ruling T6-3) (final review): Copy as image of the selection (spec §9); essay plain-text export (`essay_plain_text` exists); File backstage Export…/Print entries (spec §6); essay paragraphs for vanished boxes become unplaced notes on load; Word files carry the document language; split `app/reasoncraft/tests/ui.rs` (1228 lines) and `tests/export.rs`; tell the user when a paste is cut at 50 000 characters; clear `edit_focus` when undo drops an inline edit; setext/indented-code Markdown escaping; mesh/strip fill in the scene painter (tapered connectors are not convex); connector style and direction in `SceneOptions`
-- [ ] Step 6 (final review): lower the 256 MP PNG cap or check memory first (allocation failure aborts the app); swappable i18n bundle plus a document-language label provider for the scene (labels are also made on the export worker); one home for source-type names (en.ftl and core words.rs); translate the page-cap detail and the new close/export prompts into Dutch; Windows: a print file name still being deleted gives PermissionDenied instead of trying the next name
+- [x] Step 6 (Tasks 2, 3, 4, 8) (final review): lower the 256 MP PNG cap or check memory first (allocation failure aborts the app); swappable i18n bundle plus a document-language label provider for the scene (labels are also made on the export worker); one home for source-type names (en.ftl and core words.rs); translate the page-cap detail and the new close/export prompts into Dutch; Windows: a print file name still being deleted gives PermissionDenied instead of trying the next name
 
 ## Carry-over from step 5 (for step 6)
-- [ ] Dutch `nl.ftl` with every UI string, including all strings added since step 4 (find bar, spelling panel, Search commands, layout direction and connector menus, minimap, numbers, autosave settings, recovery prompt, Argdown import report, Ignore/Show ignored hints, essay Plain text export, backstage Export/Print/Import); map labels and source names by document language
-- [ ] macOS keys: Replace is Ctrl+H, but Cmd+H hides the app (ruling F3); review Alt+arrow reorder (Alt+Up/Down in left-to-right maps) and Alt+Q (Option types characters on macOS) with the rest of the macOS key review
-- [ ] Accessibility of the new widgets: find bar, spelling panel, Search commands list, minimap (keyboard and screen reader), recovery prompt, Check tab Ignore buttons, Argdown import report, export dialog options
-- [ ] Spelling suggestions off the UI thread (or cached), so a Dutch F7 pass steps faster than ~50 ms
-- [ ] Spread the arrowheads where many children attach to one premise
-- [ ] Final review (step 5): widen port spacing on short left-to-right edges (opposes bars overlap at ~5.7 units); cap imported box text at MAX_BOX_CHARS with a report note; cache spell underlines per line so typing in a 50 000-character paragraph stays fast; translate key names in shortcut text; tolerant deserialisation for Settings enums (connector style, minimap, theme) and a UI-language setting plus "reset to defaults" (spec §10); split files at ~400 lines before adding to them (file_ops.rs, actions.rs, argdown/build.rs, text_panel/check.rs, tests/ui_editing.rs, tests/e2e/main.rs, canvas/input/tests.rs); blank label of orphan essay notes (screen readers); keyboard navigation to off-screen rows in the virtualised Essay/Check tabs; own icon for Import Argdown; macOS ⌘ glyphs checked visually; run the test suite on macOS and Linux
+- [x] Step 6 (Tasks 3, 4): Dutch `nl.ftl` with every UI string, including all strings added since step 4 (find bar, spelling panel, Search commands, layout direction and connector menus, minimap, numbers, autosave settings, recovery prompt, Argdown import report, Ignore/Show ignored hints, essay Plain text export, backstage Export/Print/Import); map labels and source names by document language
+- [x] Step 6 (Task 6): macOS keys: Replace is Ctrl+H, but Cmd+H hides the app (ruling F3); review Alt+arrow reorder (Alt+Up/Down in left-to-right maps) and Alt+Q (Option types characters on macOS) with the rest of the macOS key review
+- [x] Step 6 (Task 5): Accessibility of the new widgets: find bar, spelling panel, Search commands list, minimap (keyboard and screen reader), recovery prompt, Check tab Ignore buttons, Argdown import report, export dialog options
+- [x] Step 6 (Task 8): Spelling suggestions off the UI thread (or cached), so a Dutch F7 pass steps faster than ~50 ms
+- [x] Step 6 (Task 7): Spread the arrowheads where many children attach to one premise
+- [x] Step 6 (Tasks 1, 2, 5, 6, 7, 8, 12) Final review (step 5): widen port spacing on short left-to-right edges (opposes bars overlap at ~5.7 units); cap imported box text at MAX_BOX_CHARS with a report note; cache spell underlines per line so typing in a 50 000-character paragraph stays fast; translate key names in shortcut text; tolerant deserialisation for Settings enums (connector style, minimap, theme) and a UI-language setting plus "reset to defaults" (spec §10); split files at ~400 lines before adding to them (file_ops.rs, actions.rs, argdown/build.rs, text_panel/check.rs, tests/ui_editing.rs, tests/e2e/main.rs, canvas/input/tests.rs); blank label of orphan essay notes (screen readers); keyboard navigation to off-screen rows in the virtualised Essay/Check tabs; own icon for Import Argdown; macOS ⌘ glyphs checked visually; run the test suite on macOS and Linux — still open: the Import Argdown icon; no ⌘ glyphs in the font (ruling S6-T6-3); the suite ran on Linux in Docker, macOS waits for CI
 
 ## Carry-over from step 1 reviews (put into the step 2+ plans)
 - [x] Step 2, first item: drag siblings to reorder them (spec §5), with a keyboard equivalent; add a "Connect to…" command for parking items
@@ -343,7 +390,7 @@ The new end-to-end test `tests/e2e/interchange.rs` (`interchange_round_trip`) ru
 - [x] Step 2: store roles/strength in `Layout` so evaluation visuals add no per-frame `owner_of` scans; design an image asset store kept out of undo snapshots; save must keep unknown zip entries
 - [x] Step 5 (Tasks 4, 5): compact layout (contour packing) so 100+ box maps stay readable at Fit; lay out on main/cross axes for layout directions
 - [x] Step 5 (Task 1): `validate()` should also check map key == stored id and kind-level attach rules (needed for Argdown import)
-- [ ] Step 6: make the i18n bundle swappable for Dutch; Backspace deletes on macOS; verify Cmd+Q goes through the unsaved-changes prompt; close-button glyph contrast; long tab titles truncate
+- [x] Step 6 (Tasks 2, 5, 6, 7): make the i18n bundle swappable for Dutch; Backspace deletes on macOS; verify Cmd+Q goes through the unsaved-changes prompt; close-button glyph contrast; long tab titles truncate
 
 ## Carry-over from step 2 reviews
 - [x] Step 3, first item: mailto attach check — drop the '#' truncation and refuse control chars / '%' in parameter names
@@ -351,10 +398,10 @@ The new end-to-end test `tests/e2e/interchange.rs` (`interchange_round_trip`) ru
 - [x] Step 4, first task: backend-neutral painter (shape list / surface trait, images by asset key, PaintOptions export flag without selection/badges/link glyphs/grid) before any exporter
 - [x] Step 4: inserting large photos off the UI thread (worker + busy state)
 - [x] Step 5 (Task 6, ruling T6-1): link glyph vs rightmost arrowheads on busy boxes; badge/marker overlap between adjacent co-premises
-- [ ] Step 6: store empty comment author and translate on display; stop parsing '●' out of ftl strings (dot count in code); Unicode Cf characters in links; duplicate accessible names (Nil, panel vs ribbon)
+- [x] Step 6 (Tasks 2, 5): store empty comment author and translate on display; stop parsing '●' out of ftl strings (dot count in code); Unicode Cf characters in links; duplicate accessible names (Nil, panel vs ribbon)
 
 ## Carry-over from step 3 reviews
 - [x] Step 4, task 1: one `EditSession` enum (box/snippet/meta/essay) with a single snapshot; split actions.rs, doc_tab.rs, model.rs (roles.rs + card_roles == card_role test); plural selector for "not rated yet"; release-mode test build (cfg the debug-only helper test)
 - [x] Step 4: exports and Essay use the document language for linking words ("because"/"omdat")
 - [x] Step 5 (Task 14): per-issue "ignore this hint" stored in the document; CheckSet tolerant of unknown kinds; skip quoted text in Compound
-- [ ] Step 6: Compound help by document language; panel min width; drag polish (snippet card follow, autoscroll)
+- [x] Step 6 (Tasks 3, 7): Compound help by document language; panel min width; drag polish (snippet card follow, autoscroll)

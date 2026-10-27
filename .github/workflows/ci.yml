@@ -38,6 +38,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
+            pkg-config \
             libxkbcommon-dev libgtk-3-dev libxcb-render0-dev \
             libxcb-shape0-dev libxcb-xfixes0-dev libssl-dev
 

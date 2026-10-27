@@ -118,6 +118,8 @@ docker run --rm -m 16g -v "$PWD:/repo:ro" -v rc-target:/src/target reasoncraft-l
 
 The `.deb` lands in the volume, under `/src/target/release/packager/`.
 
+`-m 16g` caps the container's memory and can be changed to suit the machine; with less memory, also lower `-j 4`, as each parallel link needs a few gigabytes.
+
 The tests are headless and need no display.
 The clipboard is checked only through the tests' fake clipboard; copying to and pasting from the real X11 or Wayland clipboard is a manual check (see the release checklist).
 
@@ -135,6 +137,7 @@ On Linux it first installs egui's build dependencies, the same as the Docker ima
 
 `.github/workflows/release.yml` runs on a tag `v*` (or by hand).
 It builds the NSIS installer on Windows, the app bundle and `.dmg` on macOS, and the `.deb` and AppImage on Linux, and keeps them as workflow artifacts.
+The artifacts are named after the tag, or after the commit for a run by hand.
 It publishes nothing.
 
 ## Release checklist

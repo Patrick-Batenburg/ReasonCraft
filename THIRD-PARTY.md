@@ -5,6 +5,14 @@
 Pure-Rust Hunspell-compatible spell checker, used unmodified from crates.io and confined to the `reasoncraft_spell` crate.
 Source: https://github.com/helix-editor/spellbook. Licence: Mozilla Public License 2.0.
 
+## Fonts
+
+Bundled with egui (the `epaint_default_fonts` crate) and used unmodified. Ubuntu Light is also embedded in PDF exports, and its glyph outlines draw the text of outlined SVG exports.
+
+- Ubuntu Light: Ubuntu Font Licence 1.0 (https://ubuntu.com/legal/font-licence).
+- Hack Regular: MIT, with the Bitstream Vera licence for the parts from Bitstream Vera (https://github.com/source-foundry/Hack).
+- egui-icons, a five-glyph subset of emoji-icon-font by John Slegers: MIT (https://github.com/jslegers/emoji-icon-font).
+
 ## Dictionaries
 
 Bundled in `crates/reasoncraft_spell/dict/<lang>/`, taken unmodified from https://github.com/wooorm/dictionaries

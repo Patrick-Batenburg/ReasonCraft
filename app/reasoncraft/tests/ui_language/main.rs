@@ -25,6 +25,7 @@ use reasoncraft_core::{
 
 mod examples;
 mod help;
+mod release;
 mod ribbon_fit;
 
 static LANGUAGE: Mutex<()> = Mutex::new(());

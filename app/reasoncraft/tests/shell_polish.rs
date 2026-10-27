@@ -111,3 +111,65 @@ fn side_panel_min_width() {
         assert!(!open, "{pane:?} collapses below 220 px");
     }
 }
+
+/// Where the title bar shows `title`: the rect of the text shape for it
+/// in the bar's height.
+fn title_rect(h: &H, title: &str) -> egui::Rect {
+    fn walk(s: &egui::epaint::Shape, title: &str, out: &mut Vec<egui::Rect>) {
+        match s {
+            egui::epaint::Shape::Vec(v) => v.iter().for_each(|s| walk(s, title, out)),
+            egui::epaint::Shape::Text(t) if t.galley.text() == title => {
+                out.push(t.galley.rect.translate(t.pos.to_vec2()));
+            }
+            _ => {}
+        }
+    }
+    let mut found = Vec::new();
+    for clipped in &h.output().shapes {
+        walk(&clipped.shape, title, &mut found);
+    }
+    found.retain(|r| r.top() < 36.0);
+    let [rect] = found.as_slice() else {
+        panic!("one title in the bar: {found:?}")
+    };
+    *rect
+}
+
+/// The document title sits centred in the title bar when there is room,
+/// and otherwise stays between the quick buttons and the command search,
+/// shortened, instead of running under the search box.
+#[test]
+fn window_title_stays_clear_of_the_search_box() {
+    use reasoncraft::i18n::{FluentArgs, t, t_args};
+    let name = "Why cities should ban cars from their centres and more";
+    let mut args = FluentArgs::new();
+    args.set("keys", "Alt+Q");
+    let search = t_args("titlebar.search", &args);
+    for width in [1400.0, 820.0] {
+        let mut h = Harness::builder()
+            .with_size(egui::vec2(width, 600.0))
+            .with_max_steps(32)
+            .build_ui_state(
+                |ui, app: &mut ReasonCraftApp| app.show(ui),
+                ReasonCraftApp::new_for_test(),
+            );
+        h.state_mut().tabs[0].path = Some(PathBuf::from(format!("{name}.rcraft")));
+        h.run();
+        let title = title_rect(&h, name);
+        let search = h.get_by_label(&search).rect();
+        // The quick Redo, in the bar (the Home tab has one too).
+        let redo = h
+            .query_all_by_label(&t("action.redo"))
+            .map(|n| n.rect())
+            .find(|r| r.top() < 36.0)
+            .expect("the quick Redo");
+        assert!(
+            title.right() <= search.left(),
+            "{width}: {title:?} {search:?}"
+        );
+        assert!(title.left() >= redo.right(), "{width}: {title:?} {redo:?}");
+        if width > 1000.0 {
+            assert!((title.center().x - width / 2.0).abs() < 1.0, "centred");
+        }
+    }
+}

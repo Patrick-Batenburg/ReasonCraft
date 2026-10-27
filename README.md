@@ -1,9 +1,12 @@
 # ReasonCraft
 
-ReasonCraft is a free, open-source desktop app for argument mapping. It lets you lay out a claim, the reasons that support it, the objections that oppose it and the rebuttals to those objections as a clear tree of boxes and connectors. Maps are saved as `.rcraft` files, everything works offline, and the app is built natively in Rust with egui for Windows, macOS and Linux.
+ReasonCraft is a free, open-source desktop app for argument mapping. It lets you lay out a claim, the reasons that support it, the objections that oppose it and the rebuttals to those objections as a clear tree of boxes and connectors. Maps are saved as `.rcraft` files, everything works offline, and the app is built natively in Rust with egui for Windows, macOS and Linux. The interface is in English and Dutch.
+
+New here? The [user guide](docs/user-guide.md) is a short tour, and the full help is built into the app (F1).
 
 ## What you can do
 
+- **Start from an example or a template.** File → New offers a blank map, four templates (Blank reasoning map, Blank grouping map, Essay plan and Peer review) and two finished example maps, a reasoning map and a grouping map. The Building panel also lists the templates, and the Help ribbon tab the examples. They open as new, untitled maps in the interface language, so closing one you have not changed asks nothing. File → Recent lists the last ten maps you opened or saved.
 - **Build the argument.** Add reasons, objections, rebuttals and co-premises by keyboard or from the ribbon, attack a whole card, and group items under categories and notes. Items you have not connected yet wait in the parking area until you drag them into the map or use **Connect to…**.
 - **Reorder.** Drag an item between its siblings, or press Alt+Left / Alt+Right (Alt+Up / Alt+Down in a left-to-right map).
 - **Back claims with sources.** Seventeen source types (expert opinion, statistic, publication, web, quote, personal experience and more), each with its own icon. Add a source from the Home ribbon, the "+" menu, Ctrl+Shift+E or the building panel, and change its type later.
@@ -11,7 +14,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Evaluate.** On the Evaluate tab (or with Alt+1/2/3/0, and Alt+Shift+0 to clear the whole map), accept, doubt or reject claims and premises, rate cards strong, weak or nil, and rate sources solid, shaky or nil. Ratings tint boxes, colour borders, label cards and set connector weight. Markers and shading can be switched off, and you can clear one rating or all of them.
 - **Comment.** Add your own comments or one of twelve presets (positive, needs work, problem) to any box. A badge shows the count, and Ctrl+Shift+M opens them. Set the name shown on your comments in File → Settings.
 - **Write from the Text panel.** View → Text panel opens the panel on the right, with five tabs (see [The Text panel](#the-text-panel)): an **Outline** of the map, an **Essay** written along the map (see [The Essay tab](#the-essay-tab)), a **Check** tab with course-rule hints, **Snippets** of source text to build the map from, and **Help**.
-- **Set the document language.** File → Document holds the title, author and language (English or Dutch) of the open map. The language drives the "and"/"or" and key-term checks; File → Settings sets the language new documents start with.
+- **Choose your languages.** The interface and each map have a language of their own, English or Dutch (see [Languages](#languages)).
 - **Lay the map out your way.** View → Layout direction draws the map top-down (the default), bottom-up or left to right; the direction is saved with the map, and changing it is one undo step. In a left-to-right map the co-premises of a card stack vertically. View → Connectors draws the lines curved, as elbows or as tapered bands that widen toward the parent; this is your own preference, kept for every map. Exports use the direction and style you see.
 - **Keep your bearings.** View → Minimap shows an overview of the whole map in the corner of the canvas, with the part in view outlined; click or drag in it to move there. By default it appears only when the map does not fit the window, and it can also be always on or off. View → Numbers puts the Outline's numbers (1, 1a, 1.w1, P1) on the boxes, on screen and in exports.
 - **Search commands.** The box in the title bar (Alt+Q) finds any command by name, including the ones without a ribbon button, and runs it with Enter.
@@ -21,7 +24,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
   - Windows: `%LOCALAPPDATA%\ReasonCraft\recovery`
   - macOS: `~/Library/Application Support/ReasonCraft/recovery`
   - Linux and other Unix: `$XDG_DATA_HOME/ReasonCraft/recovery`, or `~/.local/share/ReasonCraft/recovery` when that is not set
-- **Accessibility and comfort.** Every control has a name for screen readers. On the map Tab adds a reason; F6 and Shift+F6 move between the ribbon, the panels, the map and the status bar, and once a control has the focus Tab and Shift+Tab move through the controls, the find bar and the panels, including the long Essay and Check lists, which scroll along. File → Settings sets the interface size (80 % to 200 %, on top of the map's own zoom), and **Reset to defaults** puts every setting back as it was at the first start, keeping your personal dictionary.
+- **Accessibility and comfort.** Every control has a name for screen readers. On the map Tab adds a reason; F6 and Shift+F6 move between the ribbon, the panels, the map and the status bar, and once a control has the focus Tab and Shift+Tab move through the controls, the find bar and the panels, including the long Essay and Check lists, which scroll along. File → Settings sets the interface size (80 % to 200 %, on top of the map's own zoom), and **Reset to defaults** puts every setting back as it was at the first start, keeping your recent maps and your personal dictionary.
 - **Change types.** Turn a reason into an objection or back again (its strength is kept), and change a source's type.
 - **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
 - **Add images.** Put a PNG, JPEG or WebP image in a box. The image is prepared in the background, so a large photo never freezes the window: the box shows "Preparing image…" until it is ready. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.
@@ -30,6 +33,12 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Import Argdown.** File → Import Argdown… reads an [Argdown](https://argdown.org) file into a new, unsaved tab and lays it out. Argdown the map cannot hold (contradictions, tags, inference rules, a statement used in two places, and so on) is changed or left out, and a report lists each case with its line. The file itself is never written; use Save As to keep the map. See [docs/argdown.md](docs/argdown.md#reading-argdown).
 
 Files from older versions open unchanged, and files from newer versions keep any parts this version does not understand when you save them.
+
+## Languages
+
+- **The interface** is in English or Dutch. It follows the language of your computer (Dutch for any Dutch locale, otherwise English) until you pick one in View → Language or File → Settings; the change shows at once, without a restart. The help follows the interface language.
+- **Each map** has its own language, set in File → Document with its title and author; File → Settings sets the language new maps start with. The map's language decides everything that belongs to the document: the rating labels and source names drawn on the map, the linking words of the Outline and Essay, the spelling dictionary, the "and"/"or" and key-word checks, and every export. A Dutch map stays Dutch on an English interface, and the other way round.
+- The Dutch uses informal "je" and the terms bewering, reden, bezwaar, weerlegging, medepremisse, premisse and bron; the other term choices are in [docs/glossary-nl.md](docs/glossary-nl.md).
 
 ## The Text panel
 
@@ -67,6 +76,17 @@ Everything is on the **Export** tab of the ribbon. Exports run in the background
 - **Argdown** saves the whole map, with the parking area, as [Argdown](https://argdown.org) text that other Argdown tools can read. Images are left out. The mapping is described in [docs/argdown.md](docs/argdown.md).
 
 Exports show exactly what the map shows (layout, wrapped lines, colours, ratings, source icons and images) without the screen-only parts: the selection, the "+" button, comment badges, link glyphs, find highlights, the minimap and the dot grid. In the outline and essay, the linking words ("because"/"omdat", "but"/"maar") and source names follow the document language (English or Dutch). Word files use the built-in Title and Heading styles, so they open in Word and LibreOffice and pick up their styles.
+
+## Install
+
+The installers are not code-signed, so Windows and macOS warn the first time you start them.
+
+- **Windows:** run `reasoncraft_<version>_x64-setup.exe`. It installs for your account only, without administrator rights, into `%LOCALAPPDATA%\Programs\ReasonCraft`, adds Start menu and desktop shortcuts, and opens `.rcraft` files with ReasonCraft. If SmartScreen stops it, choose **More info**, then **Run anyway**. Uninstall from Settings → Apps; your maps and the recovery folder stay.
+- **macOS:** open the `.dmg` and drag ReasonCraft to Applications. As the app is not signed, open it the first time with right-click (or Control-click) → **Open**. Double-clicking a `.rcraft` file starts the app but does not open the file yet; use File → Open.
+- **Linux (Debian, Ubuntu and derivatives):** `sudo apt install ./reasoncraft_<version>_amd64.deb`, then start ReasonCraft from the app menu. Double-clicking a `.rcraft` file opens it.
+- **Linux (other distributions):** make `reasoncraft_<version>_x86_64.AppImage` executable (`chmod +x`) and run it.
+
+How the installers are built and checked is described in [docs/release.md](docs/release.md). Changes per version are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Build and run
 
@@ -188,6 +208,8 @@ Dragging also reorders: drop an item between its siblings (an insertion bar show
 ## Known limitations
 
 - A box with many connectors attached grows so that their arrowheads stay apart: wider top-down and bottom-up, taller left-to-right. A box therefore can't be narrower than its connectors need, even when its width is set in the file.
+
+- The ribbon does not wrap or scroll: in a window narrower than about 1280 points (for example at 150 % interface size on a laptop screen), the groups at its right end are cut off. Every command stays reachable through Search commands (Alt+Q; Shift+Cmd+A on a Mac).
 
 - macOS: the app has no app menu (About, Hide, Quit), so that Cmd+Q reaches the window and asks about unsaved changes first. Quitting from the Dock, or logging out or shutting down, still quits without asking; with autosave on, the next start offers to recover the work up to the last autosave.
 

@@ -1,7 +1,9 @@
 //! Custom title bar: quick access, document title, command search, window buttons.
 
+use eframe::egui::text::{LayoutJob, TextWrapping};
 use eframe::egui::{
-    self, Align, Align2, FontId, Frame, Layout, Margin, Sense, Vec2, ViewportCommand,
+    self, Align, Color32, FontId, Frame, Layout, Margin, Rangef, Rect, Sense, Vec2,
+    ViewportCommand, pos2,
 };
 
 use super::icons::Icon;
@@ -44,14 +46,8 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     .send_viewport_cmd(ViewportCommand::Maximized(!maximized));
             }
 
-            ui.painter().text(
-                bar.center(),
-                Align2::CENTER_CENTER,
-                app.active_tab().title(),
-                FontId::proportional(13.0),
-                tk.box_text,
-            );
-
+            // The room between the quick buttons and the command search.
+            let mut free = bar.x_range();
             ui.horizontal_centered(|ui| {
                 ui.spacing_mut().item_spacing.x = 2.0;
                 if cfg!(target_os = "macos") {
@@ -72,17 +68,44 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                         app.push(action);
                     }
                 }
-
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.spacing_mut().item_spacing.x = 0.0;
-                    if !cfg!(target_os = "macos") {
-                        window_buttons(ui, app, maximized);
-                        ui.add_space(12.0);
-                    }
-                    super::command_search::show(ui, app);
-                });
+                let left = ui.min_rect().right();
+                let right = ui
+                    .with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        ui.spacing_mut().item_spacing.x = 0.0;
+                        if !cfg!(target_os = "macos") {
+                            window_buttons(ui, app, maximized);
+                            ui.add_space(12.0);
+                        }
+                        super::command_search::show(ui, app);
+                    })
+                    .response
+                    .rect
+                    .left();
+                free = Rangef::new(left, right);
             });
+            paint_title(ui, bar, free, &title, tk.box_text);
         });
+}
+
+/// The document title, centred on the bar when it fits beside the buttons,
+/// otherwise moved into the room `free` between them, shortened with "…"
+/// when even that is too narrow.
+fn paint_title(ui: &egui::Ui, bar: Rect, free: Rangef, title: &str, color: Color32) {
+    const GAP: f32 = 12.0;
+    let room = free.span() - 2.0 * GAP;
+    if room < GAP {
+        return;
+    }
+    let mut job = LayoutJob::simple_singleline(title.to_owned(), FontId::proportional(13.0), color);
+    job.wrap = TextWrapping::truncate_at_width(room);
+    let galley = ui.painter().layout_job(job);
+    let size = galley.size();
+    // Not `clamp`: rounding may leave the bounds a hair the wrong way round.
+    let x = (bar.center().x - size.x / 2.0)
+        .min(free.max - GAP - size.x)
+        .max(free.min + GAP);
+    let pos = pos2(x, bar.center().y - size.y / 2.0);
+    ui.painter().galley(pos, galley, color);
 }
 
 fn window_buttons(ui: &mut egui::Ui, app: &mut ReasonCraftApp, maximized: bool) {

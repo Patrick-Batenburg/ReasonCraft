@@ -97,3 +97,46 @@ Made while executing:
 - Ruling T16-1: the end-to-end test compares the SVGs of the source and the imported tab byte for byte: the SVG writer emits no ids, so "identical apart from ids" means identical — cost: none.
 - Ruling T16-2: the end-to-end test sets the imported tab to left-to-right before exporting, because Argdown carries no layout direction (docs/argdown.md) — cost: none.
 - Ruling S5-F1: final review — fixed before merge: recovery folder test on macOS/Linux, imported and restored tabs autosaved before the first edit (revision ≥ 1), import report grouped by full note kind, translated recovery error; everything else triaged to step 6 or "can wait" (see todo.md) — cost: dense left-to-right arrowheads and the other listed items stay until step 6.
+
+## Step 6 — release readiness
+Planning rulings (from the plan's final section, adopted as written by Ruling Q6-2):
+- Ruling H3: the UI language defaults to the OS language (Dutch for any `nl*` locale, otherwise English). It is switchable in View and Settings and takes effect immediately — cost: none.
+- Ruling I3: map labels, source names and the words in exports follow the document's language, not the UI language — cost: a mixed-language screen when a Dutch user opens an English map.
+- Ruling J3: the Dutch uses informal "je". The fixed argument terms are bewering, reden, bezwaar, weerlegging, medepremisse, premisse and bron — cost: the owner may prefer other terms; they are all in `nl.ftl`.
+- Ruling K3: on macOS, every Alt shortcut becomes Ctrl, Replace becomes Cmd+Alt+F and Search commands becomes Cmd+Shift+A — cost: these differ from the Windows keys.
+- Ruling L3: installers come from `cargo-packager`: NSIS per user (no admin) on Windows, DMG on macOS, and AppImage plus .deb on Linux. They are not code-signed (spec §12) — cost: SmartScreen and Gatekeeper warnings.
+- Ruling M3: the Windows installer is verified only inside the owner's "Windows 11 Sandbox" VM, which is reverted afterwards, never on the host. Linux is verified in Docker. macOS is configured only and runs in CI once a remote exists — cost: the macOS build is unverified until then.
+- Ruling N3: recent files and the personal dictionary survive "Reset to defaults" — cost: none.
+- Ruling O3: examples and templates open as clean untitled tabs, so closing them never prompts — cost: an edited example still prompts, as usual.
+- Ruling P3: the new app icon is an original design: two linked rounded boxes with an arrow — cost: the owner may want a different design later.
+
+Made while implementing:
+- Ruling Q6-1: Task 9 adds the Help → Example maps entry only once Task 10 exists — Task 10 adds it (Task 9 omits it) — cost: none.
+- Ruling Q6-2: planning rulings H3–P3 adopted as written.
+- Ruling S6-T2-1: one process-wide UI language behind an `RwLock`; language-switching tests are isolated in their own test binary (`tests/ui_language/`) with a restoring mutex; all other tests run in English — cost: tests that change the language must live in `tests/ui_language/`.
+- Ruling S6-T3-1: core keeps the linking words, the essay headings and the Argdown "Not connected" heading (the importer needs both languages without the app) — cost: two homes for a few words.
+- Ruling S6-T3-2: the Outline panel's content (including Copy all) is document text, so it uses the document language (matching its exports); tooltips stay in the UI language — cost: none.
+- Ruling S6-T3-3: `ui_language` uses `deserialize_text_or_none` (RON-compatible) — cost: none.
+- Ruling S6-T4-1: the Home ribbon was already wider than 1280 px in English; Category/Note/Comment, Delete/Delete branch and Link/Image/Remove image became small stacked buttons so Dutch fits (28 px spare) — cost: smaller targets for those commands.
+- Ruling S6-T4-2: Dutch glossary beyond the fixed terms (card = blok, box = vak, Outline = Opzet, Essay = Betoog, linking words = signaalwoorden, hints = tips, Assertion = Mededeling, parking = Niet verbonden; the full list is in [glossary-nl.md](glossary-nl.md)) — cost: the owner may prefer other words; all are in `nl.ftl`.
+- Ruling S6-T5-1: F6 / Shift+F6 cycle the panes (ribbon → building panel → map → text panel → status bar), the Office/Windows convention, so keyboard users can leave the map (Tab stays "add reason") — cost: one more shortcut.
+- Ruling S6-T5-2: links keep invisible marks after the host (percent-encoded) and refuse them in the host and in mailto parameter names — cost: Persian or emoji paths are shown percent-encoded.
+- Ruling S6-T6-1: on macOS, Alt→Ctrl applies to letters and digits only; Option+arrows stay (Ctrl+arrows are taken by Mission Control and Spaces) — cost: none.
+- Ruling S6-T6-2: winit's default macOS app menu is turned off so Cmd+Q goes through the unsaved-changes prompt (its Quit exits at once) — cost: no Hide/Minimize/Quit app-menu items on macOS until a custom menu is written and tested on a Mac (unverified here).
+- Ruling S6-T6-3: egui's fonts have no ⌘⌥⇧⌃ glyphs, so macOS shows text modifiers in Apple order ("Shift+Cmd+S") — cost: less Mac-like.
+- Ruling S6-T6-4: macOS ratings use Cmd+Option+digit (and Cmd+Option+Shift+0 to clear the map) instead of Control+digit, which Mission Control may take for "Switch to Desktop N" — cost: a three-key chord on the Mac.
+- Ruling S6-T7-1: in left-to-right maps a box grows along the cross axis so its ports keep `port_spacing` (fanning alone cannot separate nine arrowheads on a 40-unit edge); top-down and bottom-up squeeze and fan — cost: tall boxes in dense left-to-right maps. Extended by S6-T7-2.
+- Ruling S6-T7-2 (extends S6-T7-1): in every direction a box grows along the cross axis so its ports keep `port_spacing`; fanning is only a clamped fallback (tan θ ≤ 1), as spec §5 forbids connectors and markers inside boxes — cost: wide boxes when many children attach to one premise.
+- Ruling S6-T7-3: the whole-card port group is decided from the model: with an odd premise count it joins the middle premise's group; with an even count it spreads about the gap between the two middle premises, which grow to keep clear (sizing comes before positions) — cost: with premises of unequal size, whole-card connectors may sit off the card's centre.
+- Ruling S6-T8-1: the 512 MiB memory guard is the real PNG limit (about 134 megapixels); the 256-megapixel cap stays as a backstop, and the message states the effective limit — cost: none.
+- Ruling S6-T8-2: the print file's temp-name retry gives up after 16 PermissionDenied errors in a row, on all platforms — cost: none.
+- Ruling S6-T9-1: the Check tab's "?" help link sits on each check heading, not on every issue row (unique accessible names); F1 maps the Outline tab to the outline-and-essay topic and Snippets to snippets; the help writes menu paths with ">" (the font lacks "→"); the backstage entry list scrolls — cost: none.
+- Ruling S6-T10-1: the backstage's New opens a page (blank map, templates, examples) per spec §6; Ctrl+N and the tab "+" still create a blank map; only a blank untouched tab is reused (never an example or template) — cost: one more click for a blank map from the backstage.
+- Ruling S6-T10-2: the example premises avoid "and"/"en", so the examples show no Compound hints; the rebuttal "some cities" stays rated Weak — cost: slightly less direct wording.
+- Ruling S6-T11-1: the default renderer is wgpu (with the WARP software fallback on Windows); if it cannot start, glow is tried, then a native translated error dialog shows — the app must start in VMs, over RDP and without a GPU — cost: a larger binary and more dependencies.
+- Ruling S6-T11-2: double-clicking a `.rcraft` file on macOS (an Apple Event "open") is not handled yet; this is a documented limitation — cost: Mac users open files with File → Open until it is fixed.
+- Ruling S6-T11-3: cargo-packager's NSIS template is vendored (it removes the association on uninstall, quotes the exe path and drops an unlicensed plugin), with zlib compression (no CPL-licensed LZMA), a lower-case installer name, and VM auto sign-in turned on inside the checkpoint only — cost: we maintain a 690-line upstream template.
+- Ruling S6-T11-4: the per-user install folder is `%LOCALAPPDATA%\Programs\ReasonCraft` (the old folder collided with the recovery data folder) — cost: none.
+- Ruling S6-T13-1: the release end-to-end test (`release_flow`) switches the UI language, so it lives in the `tests/ui_language/` binary with its language lock (ruling S6-T2-1) instead of `tests/e2e/` — cost: none.
+- Ruling S6-T13-2: when the document title does not fit centred in the title bar, it moves into the free room between the quick buttons and the command search, shortened with "…" (at 150 % UI scale it ran under the search box) — cost: the title is off-centre in narrow windows.
+- Ruling S6-T13-3: the Linux release binary opens no libXrandr (checked with `strings`: it names libX11, libX11-xcb, libXcursor, libXi, libXrender, libxcb, libxkbcommon, Wayland, EGL, GL and Vulkan), so the .deb does not depend on libxrandr2 — cost: none.
