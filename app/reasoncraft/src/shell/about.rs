@@ -1,5 +1,6 @@
 //! The backstage About page: the app's name, version and licence, credits
-//! to the dictionary projects, and the third-party notices.
+//! to the dictionary projects, the third-party notices and the full
+//! licence texts (see [`licences`]).
 
 use std::sync::LazyLock;
 
@@ -8,6 +9,8 @@ use eframe::egui::{self, Label, RichText};
 use crate::app::ReasonCraftApp;
 use crate::help::render::{self, Block, parse};
 use crate::i18n::{FluentArgs, t, t_args};
+
+pub mod licences;
 
 /// `THIRD-PARTY.md`, embedded as it is in the repository.
 pub const THIRD_PARTY: &str = include_str!("../../../../THIRD-PARTY.md");
@@ -38,4 +41,7 @@ pub(super) fn page(ui: &mut egui::Ui, app: &ReasonCraftApp) {
     ui.separator();
     // The notices hold no topic links: nothing in them is clickable.
     render::show(ui, &THIRD_PARTY_BLOCKS, &tk);
+    ui.add_space(8.0);
+    ui.separator();
+    licences::show(ui, &tk);
 }

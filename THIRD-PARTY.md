@@ -24,3 +24,7 @@ at commit `8cfea406b505e4d7df52d5a19bce525df98c54ab`. Each directory carries its
 ## Windows installer
 
 The Windows installer is built with NSIS 3.09 (https://nsis.sourceforge.io), whose installer code and zlib decompressor are under the zlib/libpng licence, through cargo-packager (https://github.com/crabnebula-dev/cargo-packager, MIT OR Apache-2.0). It uses cargo-packager's installer template, changed where marked, and the nsis_tauri_utils plugin (https://github.com/tauri-apps/nsis-tauri-utils, MIT OR Apache-2.0).
+
+## Licence texts
+
+The app shows the full licence texts of these components, and of every Rust crate it is built from, under File > About > Licences.

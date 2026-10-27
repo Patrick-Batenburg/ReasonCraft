@@ -709,6 +709,16 @@ backstage-about = Over
 about-tagline = Een gratis opensource-app voor argumentkaarten en groeperingskaarten. Hij werkt volledig offline.
 about-licence = Licentie: { $licence }, naar keuze.
 about-credits = De spellingcontrole gebruikt het Engelse Hunspell-woordenboek uit SCOWL van Kevin Atkinson en het Nederlandse woordenboek van OpenTaal, zoals gebundeld in het project dictionaries. Dank aan iedereen die eraan werkt.
+about-licences = Licenties
+about-licences-hint = De volledige licentieteksten van de lettertypen, woordenboeken, bibliotheken en onderdelen van het installatieprogramma die ReasonCraft bevat. Open er een om hem te lezen.
+about-licences-ubuntu = Lettertype Ubuntu Light: Ubuntu Font Licence 1.0
+about-licences-hack = Lettertype Hack: MIT en de Bitstream Vera-licentie
+about-licences-emoji = Lettertype egui-icons (uit emoji-icon-font): MIT
+about-licences-dict_en = Engels woordenboek (SCOWL): MIT en BSD
+about-licences-dict_nl = Nederlands woordenboek (OpenTaal): BSD-3-Clause
+about-licences-spellbook = spellbook: Mozilla Public License 2.0
+about-licences-nsis = Windows-installatieprogramma (NSIS): zlib/libpng-licentie
+about-licences-crates = Rust-crates ({ $count } licentieteksten)
 
 ## Accessibility: names screen readers announce
 a11y-in_group = { $group }: { $name }

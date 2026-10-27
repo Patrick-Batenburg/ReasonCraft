@@ -10,6 +10,9 @@
 //! `cargo run -p xtask -- licence` writes the installer's licence page,
 //! `app/reasoncraft/packaging/LICENSE.txt`: both licence texts, as
 //! ReasonCraft is under either at the user's option.
+//!
+//! `cargo run -p xtask -- notices` writes the Rust crates' licence texts for
+//! the About page (see [`notices`]).
 
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
@@ -18,6 +21,8 @@ use std::{env, fs};
 
 use icns::{IconFamily, IconType};
 use resvg::{tiny_skia, usvg};
+
+mod notices;
 
 /// The PNG sizes written to `assets/icons/icon-<size>.png`.
 const PNG_SIZES: [u32; 9] = [16, 24, 32, 48, 64, 128, 256, 512, 1024];
@@ -45,8 +50,9 @@ fn main() -> ExitCode {
         ["icons"] => icons(),
         ["sample-map", path] => sample_map(Path::new(path)),
         ["licence"] => licence(),
+        ["notices"] => notices::notices(),
         _ => {
-            eprintln!("usage: cargo run -p xtask -- icons | sample-map <path> | licence");
+            eprintln!("usage: cargo run -p xtask -- icons | sample-map <path> | licence | notices");
             return ExitCode::FAILURE;
         }
     };

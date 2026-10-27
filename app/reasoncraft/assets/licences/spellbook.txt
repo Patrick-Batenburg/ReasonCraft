@@ -1,0 +1,15 @@
+spellbook 0.4.2
+Copyright Michael Davis and the spellbook contributors.
+
+ReasonCraft's spell checking uses spellbook, a Hunspell-compatible spell
+checker written in Rust, unmodified, as published on crates.io.
+
+spellbook is licensed under the Mozilla Public License, version 2.0
+(MPL-2.0). Its source code, including the version used here, is available
+at:
+
+    https://github.com/helix-editor/spellbook
+    https://crates.io/crates/spellbook/0.4.2
+
+The full text of the MPL-2.0 is listed under "Rust crates" (spellbook),
+and at https://mozilla.org/MPL/2.0/.

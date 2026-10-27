@@ -4792,6 +4792,7 @@ dependencies = [
  "ico",
  "reasoncraft_core",
  "resvg",
+ "serde_json",
 ]
 
 [[package]]

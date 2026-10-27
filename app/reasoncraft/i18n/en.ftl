@@ -708,6 +708,16 @@ backstage-about = About
 about-tagline = A free, open-source app for argument maps and grouping maps. It works fully offline.
 about-licence = Licence: { $licence }, at your option.
 about-credits = Spellcheck uses the English Hunspell dictionary from SCOWL by Kevin Atkinson and the Dutch dictionary of OpenTaal, as packaged by the dictionaries collection. Thank you to everyone who works on them.
+about-licences = Licences
+about-licences-hint = The full licence texts of the fonts, dictionaries, libraries and installer parts that ReasonCraft includes. Open one to read it.
+about-licences-ubuntu = Ubuntu Light font: Ubuntu Font Licence 1.0
+about-licences-hack = Hack font: MIT and the Bitstream Vera licence
+about-licences-emoji = egui-icons font (from emoji-icon-font): MIT
+about-licences-dict_en = English dictionary (SCOWL): MIT and BSD
+about-licences-dict_nl = Dutch dictionary (OpenTaal): BSD-3-Clause
+about-licences-spellbook = spellbook: Mozilla Public License 2.0
+about-licences-nsis = Windows installer (NSIS): zlib/libpng licence
+about-licences-crates = Rust crates ({ $count } licence texts)
 
 ## Accessibility: names screen readers announce
 a11y-in_group = { $group }: { $name }

@@ -176,6 +176,43 @@ fn about_shows_third_party_notices() {
     assert!(has("OpenTaal") && has("SCOWL"));
 }
 
+#[test]
+fn about_shows_the_licence_texts() {
+    use reasoncraft::shell::about::licences::{BUNDLED, crate_licences};
+    // Tall enough that the headers are on screen, to be clicked.
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1400.0, 3000.0))
+        .with_max_steps(32)
+        .build_ui_state(
+            |ui, app: &mut ReasonCraftApp| app.show(ui),
+            ReasonCraftApp::new_for_test(),
+        );
+    act(&mut h, Action::ShowAbout);
+    let has = |h: &H, text: &str| labels(h).iter().any(|l| l.contains(text));
+    assert!(has(&h, &t("about.licences")));
+    // Each licence is a closed header; opening one shows its text.
+    for (key, text) in BUNDLED {
+        assert!(has(&h, &t(key)), "{key}");
+        let first = text.lines().find(|l| !l.trim().is_empty()).unwrap().trim();
+        assert!(!has(&h, first), "{key} starts closed");
+    }
+    h.get_by_label(&t("about.licences.ubuntu")).click();
+    h.run();
+    assert!(has(&h, "UBUNTU FONT LICENCE"));
+    // The crates' licences sit under one header, each under its own.
+    let crates = crate_licences();
+    let mut args = reasoncraft::i18n::FluentArgs::new();
+    args.set("count", crates.len());
+    h.get_by_label(&reasoncraft::i18n::t_args("about.licences.crates", &args))
+        .click();
+    h.run();
+    let egui = crates
+        .iter()
+        .find(|c| c.used_by.split(", ").any(|u| u.starts_with("egui ")))
+        .expect("egui's licence is listed");
+    assert!(has(&h, egui.name));
+}
+
 /// At the panel's default width the five Text panel tabs fit on one line.
 #[test]
 fn text_tabs_fit_on_one_line() {

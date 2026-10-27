@@ -11,6 +11,18 @@ cargo install cargo-packager --version 0.11.8 --locked
 The version is pinned in this file, in `.github/workflows/release.yml` and in `packaging/linux/Dockerfile`.
 The Windows installer's NSIS script is vendored from this version (see below), so bumping it means re-vendoring `packaging/windows/installer.nsi` from the new version's template, with the marked changes, and changing all three places together.
 
+## Licence notices
+
+The About page shows the full licence texts of everything ReasonCraft bundles (File > About > Licences), embedded in the binary.
+The texts of the fonts, the spell checker and the installer live in `app/reasoncraft/assets/licences/`; the dictionaries' come from `crates/reasoncraft_spell/dict/*/LICENSE`.
+The Rust crates' licences are in `app/reasoncraft/assets/licences/crates.txt`, generated with [cargo-about](https://github.com/EmbarkStudios/cargo-about) from the app's run-time dependencies on all release platforms (configuration: `xtask/about.toml`).
+Regenerate and commit it whenever `Cargo.lock` changes:
+
+```sh
+cargo install cargo-about --version 0.9.3 --locked --features cli
+cargo run -p xtask -- notices
+```
+
 ## App icon
 
 The master is `app/reasoncraft/assets/icon.svg`, an original design.
@@ -146,7 +158,7 @@ It publishes nothing.
 ## Release checklist
 
 1. The CI workflow is green on all three platforms.
-2. `THIRD-PARTY.md` and `packaging/LICENSE.txt` are current (`cargo run -p xtask -- licence`).
+2. `THIRD-PARTY.md`, `packaging/LICENSE.txt` (`cargo run -p xtask -- licence`) and the crates' licence texts (`cargo run -p xtask -- notices`, see [Licence notices](#licence-notices)) are current: running both leaves no change to commit.
 3. Tag the version (`v<version>`) and download the installers from the release workflow's run.
 4. Windows: check the installer in the test VM (see above).
 5. macOS, on a real Mac (CI cannot show a window):

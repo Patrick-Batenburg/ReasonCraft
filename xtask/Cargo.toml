@@ -12,6 +12,7 @@ reasoncraft_core = { path = "../crates/reasoncraft_core" }
 resvg = { version = "0.45", default-features = false }
 ico = "0.6"
 icns = "0.5"
+serde_json.workspace = true
 
 [lints]
 workspace = true

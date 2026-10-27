@@ -204,6 +204,7 @@ const SAME_IN_DUTCH: &[&str] = &[
     "a11y-in_group",
     "spell-suggesting",
     "backstage-recent",
+    "about-licences-spellbook",
 ];
 
 #[test]
