@@ -170,6 +170,20 @@ fn settings_from_old_storage_fill_defaults() {
     assert_eq!(s.author, "");
     assert!(s.show_markers && s.eval_shading);
 
+    // A check name only a newer build knows (a bare identifier in eframe's
+    // RON) is skipped; the rest of the settings still load.
+    let mut storage = MemStorage::default();
+    storage.set_string(
+        SETTINGS_KEY,
+        "(author:\"Ann\",checks:(disabled:[key_term,future_kind]))".to_owned(),
+    );
+    let s: Settings = eframe::get_value(&storage, SETTINGS_KEY).unwrap();
+    assert_eq!(s.author, "Ann");
+    assert_eq!(
+        s.checks.disabled,
+        vec![reasoncraft_core::checks::CheckKind::KeyTerm]
+    );
+
     // The same through eframe's own storage format, as a step-1 build wrote it.
     let mut storage = MemStorage::default();
     storage.set_string(SETTINGS_KEY, "(theme:Light)".to_owned());

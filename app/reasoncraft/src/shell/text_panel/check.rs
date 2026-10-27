@@ -201,7 +201,7 @@ fn row(
         egui::vec2(button_w, TITLE + 4.0),
     );
     let button = egui::Button::new(RichText::new(ignore).size(EXPLAIN)).small();
-    if ui.put(button_rect, button).clicked() {
+    if ui.place(button_rect, button).clicked() {
         out.push(Action::IgnoreHint(issue.clone()));
     }
     resp.widget_info(|| WidgetInfo::selected(Role::ListItem, true, selected, &title));

@@ -155,6 +155,8 @@ pub(super) fn without_quoted(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
     let mut out = String::with_capacity(text.len());
     let mut i = 0;
+    // Openers with no closer left after them: later ones have none either.
+    let mut dead: Vec<char> = Vec::new();
     while i < chars.len() {
         let closers: &[char] = match chars[i] {
             '"' => &['"'],
@@ -163,16 +165,20 @@ pub(super) fn without_quoted(text: &str) -> String {
             '\u{2018}' => &['\u{2019}'],
             _ => &[],
         };
-        let close = chars[i + 1..].iter().position(|c| closers.contains(c));
-        match close {
-            Some(n) if !closers.is_empty() => {
-                out.push(' ');
-                i += n + 2;
+        let close = if closers.is_empty() || dead.contains(&chars[i]) {
+            None
+        } else {
+            chars[i + 1..].iter().position(|c| closers.contains(c))
+        };
+        if let Some(n) = close {
+            out.push(' ');
+            i += n + 2;
+        } else {
+            if !closers.is_empty() && !dead.contains(&chars[i]) {
+                dead.push(chars[i]);
             }
-            _ => {
-                out.push(chars[i]);
-                i += 1;
-            }
+            out.push(chars[i]);
+            i += 1;
         }
     }
     out

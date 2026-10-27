@@ -311,3 +311,37 @@ fn ignore_button_hides_hint_and_footer_restores_it() {
     assert!(h.state().tabs[0].doc.ignored_hints.is_empty());
     assert!(has(&h, &heading("not_connected", 1)));
 }
+
+#[test]
+fn rows_do_not_overlap() {
+    let mut d = clean_doc();
+    d.add_loose(reasoncraft_core::NewLoose::Category, "First parked");
+    d.add_loose(reasoncraft_core::NewLoose::Category, "Second parked");
+    d.add_loose(reasoncraft_core::NewLoose::Category, "Third parked");
+    let mut h = harness_with(d, TextTab::Check);
+    h.run();
+    let mut rows: Vec<_> = ["First parked", "Second parked", "Third parked"]
+        .iter()
+        .map(|l| h.get_by_role_and_label(Role::ListItem, l).rect())
+        .collect();
+    rows.sort_by(|a, b| a.top().total_cmp(&b.top()));
+    for pair in rows.windows(2) {
+        assert!(pair[1].top() >= pair[0].bottom() - 0.5, "{pair:?}");
+    }
+    // The footer does not overlap the last row either.
+    h.get_all_by_role_and_label(Role::Button, &t("check.ignore"))
+        .next()
+        .unwrap()
+        .click();
+    h.run();
+    let mut args = FluentArgs::new();
+    args.set("count", 1);
+    let footer = h
+        .get_by_role_and_label(Role::Button, &t_args("check.restore", &args))
+        .rect();
+    let last = h
+        .get_all_by_role(Role::ListItem)
+        .map(|n| n.rect().bottom())
+        .fold(0.0_f32, f32::max);
+    assert!(footer.top() >= last - 0.5, "{footer:?} vs {last}");
+}
