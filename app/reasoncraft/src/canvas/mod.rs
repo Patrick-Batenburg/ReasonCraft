@@ -81,6 +81,12 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         && old != rect
     {
         tab.camera.follow_resize(old, rect);
+        // The box being edited stays in view as the window shrinks.
+        if let Some(edited) = tab.editing()
+            && let Some(world) = layout.boxes.get(&edited)
+        {
+            tab.camera.reveal(*world, rect, camera::REVEAL_MARGIN);
+        }
     }
     tab.viewport = Some(rect);
     if tab.fit_pending {

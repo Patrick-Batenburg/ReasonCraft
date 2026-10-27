@@ -2,7 +2,10 @@
 //! every ribbon command stays reachable by mouse and the map keeps room.
 
 use eframe::egui;
-use egui_kittest::{Harness, kittest::Queryable};
+use egui_kittest::{
+    Harness,
+    kittest::{NodeT, Queryable},
+};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::app::RibbonTab;
 use reasoncraft::i18n::t;
@@ -144,4 +147,38 @@ fn squeezed_panels_get_their_width_back() {
         back > squeezed + 100.0,
         "the Text panel is {back} wide again (was {squeezed})"
     );
+}
+
+/// Shrinking the window while a box is being edited keeps that box in
+/// view (and in edit mode).
+#[test]
+fn edited_box_stays_in_view_when_the_window_shrinks() {
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1280.0, 800.0))
+        .build_ui_state(
+            |ui, app: &mut ReasonCraftApp| app.show(ui),
+            ReasonCraftApp::new_for_test(),
+        );
+    h.run();
+    let root = h.state().tabs[0].doc.root;
+    h.state_mut().tabs[0].begin_edit(root, false);
+    h.run();
+    // Put the box near the right edge of the large view.
+    let view = h.state().tabs[0].viewport.expect("map shown");
+    // The box's text field, where the box is drawn.
+    let shown = |h: &Harness<'static, ReasonCraftApp>| {
+        h.get_by_role(egui::accesskit::Role::MultilineTextInput)
+            .rect()
+    };
+    let now = shown(&h);
+    h.state_mut().tabs[0].camera.offset.x += view.right() - 30.0 - now.right();
+    h.run();
+    h.set_size(egui::vec2(800.0, 500.0));
+    for _ in 0..3 {
+        h.run();
+    }
+    let view = h.state().tabs[0].viewport.expect("map shown");
+    let rect = shown(&h);
+    assert!(view.contains_rect(rect), "{rect:?} outside {view:?}");
+    assert_eq!(h.state().tabs[0].editing(), Some(root));
 }
