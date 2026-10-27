@@ -82,7 +82,7 @@
   - [x] Task 5: Accessibility, UI scale and reset to defaults
   - [x] Task 6: OS-correct keyboard shortcuts
   - [x] Task 7: Map and panel polish
-  - [ ] Task 8: Robustness and performance carry-overs
+  - [x] Task 8: Robustness and performance carry-overs
   - [ ] Task 9: Offline help and About
   - [ ] Task 10: Example maps, templates and recent files
   - [ ] Task 11: App identity and the Windows installer
