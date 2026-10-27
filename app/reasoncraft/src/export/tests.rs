@@ -183,7 +183,10 @@ fn svg_embeds_images() {
         svg.contains("stroke-dasharray"),
         "missing image placeholder"
     );
-    assert!(text_elements(&svg).contains(&escape(&crate::i18n::t("image.missing"))));
+    assert!(text_elements(&svg).contains(&escape(&crate::i18n::t_lang(
+        &doc.meta.language,
+        "image.missing"
+    ))));
     let tree = parse(&svg);
     assert_eq!(
         count(tree.root(), &|n| matches!(n, usvg::Node::Image(_))),
@@ -208,7 +211,10 @@ fn svg_refuses_images_the_screen_refuses() {
     doc.set_image(root, image).unwrap();
     let svg = svg_of(&doc, &assets, &live());
     assert!(!svg.contains("<image"), "{svg}");
-    assert!(text_elements(&svg).contains(&escape(&crate::i18n::t("image.missing"))));
+    assert!(text_elements(&svg).contains(&escape(&crate::i18n::t_lang(
+        &doc.meta.language,
+        "image.missing"
+    ))));
 }
 
 /// The nodes under `g` (subtrees included) that match `pred`. (usvg's

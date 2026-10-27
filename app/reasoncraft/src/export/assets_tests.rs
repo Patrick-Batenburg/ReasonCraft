@@ -19,9 +19,13 @@ fn encoded(w: u32, h: u32, format: ImageFormat) -> Vec<u8> {
     out
 }
 
-/// The live SVG of a map whose one card shows `bytes`.
+/// The language of the map [`svg_with_image`] draws.
+const LANG: &str = "nl";
+
+/// The live SVG of a map in [`LANG`] whose one card shows `bytes`.
 fn svg_with_image(bytes: Vec<u8>) -> String {
     let mut doc = Document::new("Claim");
+    doc.meta.language = LANG.to_owned();
     let mut assets = Assets::default();
     let key = assets.insert("img", bytes);
     let (_, card) = doc
@@ -60,7 +64,7 @@ fn jpeg_asset_exports_as_png() {
     assert_eq!(images.len(), 1, "{svg}");
     let png = image::load_from_memory_with_format(&images[0], ImageFormat::Png).unwrap();
     assert_eq!((png.width(), png.height()), (8, 4));
-    assert!(!svg.contains(&crate::i18n::t("image.missing")));
+    assert!(!svg.contains(&crate::i18n::t_lang(LANG, "image.missing")));
 }
 
 #[test]
@@ -82,7 +86,7 @@ fn png_assets_pass_unchanged_and_others_are_refused() {
     assert!(export_png_bytes(b"\xff\xd8\xff\xe0 not really a jpeg").is_none());
     let svg = svg_with_image(GIF.to_vec());
     assert!(!svg.contains("<image"));
-    assert!(svg.contains(&crate::i18n::t("image.missing")));
+    assert!(svg.contains(&crate::i18n::t_lang(LANG, "image.missing")));
 }
 
 /// A JPEG larger than this build ever stores is refused, as on screen.

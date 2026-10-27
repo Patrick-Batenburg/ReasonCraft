@@ -16,7 +16,7 @@ use reasoncraft::actions::Action;
 use reasoncraft::canvas::input::{shortcut_for, shortcut_text};
 use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::{self, FluentArgs, t, t_args, t_lang, ui_language};
-use reasoncraft::settings::Settings;
+use reasoncraft::settings::{Settings, TextTab};
 use reasoncraft::{ReasonCraftApp, commands};
 use reasoncraft_core::{BoxKind, CardKind, CardStrength, Document, NewLoose, Parent, SourceType};
 
@@ -166,8 +166,9 @@ fn ui_language_setting_defaults_to_the_os_and_survives_unknown_values() {
     assert_eq!(s.author, "Ann");
 }
 
-/// The texts painted in the last frame.
-fn painted_texts(h: &Harness<'static, ReasonCraftApp>) -> Vec<String> {
+/// The texts painted in the last frame inside the part of the window
+/// labelled `area` (its painters clip to it).
+fn painted_texts(h: &Harness<'static, ReasonCraftApp>, area: &str) -> Vec<String> {
     fn walk(s: &epaint::Shape, out: &mut Vec<String>) {
         match s {
             epaint::Shape::Vec(v) => v.iter().for_each(|s| walk(s, out)),
@@ -175,9 +176,12 @@ fn painted_texts(h: &Harness<'static, ReasonCraftApp>) -> Vec<String> {
             _ => {}
         }
     }
+    let rect = h.get_by_label(area).rect();
     let mut out = Vec::new();
     for clipped in &h.output().shapes {
-        walk(&clipped.shape, &mut out);
+        if rect.contains(clipped.clip_rect.center()) {
+            walk(&clipped.shape, &mut out);
+        }
     }
     out
 }
@@ -200,9 +204,9 @@ fn rated_map(lang: &str) -> ReasonCraftApp {
     doc.add_loose(NewLoose::Card(CardKind::Reason), "Loose");
     let mut app = ReasonCraftApp::new_for_test();
     app.tabs[0] = DocTab::from_document(doc);
-    // No panels: the Outline would name the source in the UI language.
-    app.left_panel = false;
-    app.right_panel = false;
+    // The Text panel's Outline shows too: it is document text as well.
+    app.settings.text_tab = TextTab::Outline;
+    app.right_panel = true;
     app
 }
 
@@ -217,13 +221,21 @@ fn map_labels_follow_document_language_not_ui() {
     h.run();
     h.state_mut().push(Action::ZoomFit);
     h.run();
-    let texts = painted_texts(&h);
+    // The map speaks Dutch; the Building panel beside it lists source
+    // types in the UI language.
+    let texts = painted_texts(&h, &t("canvas.label"));
     for key in words {
         let (nl, en) = (t_lang("nl", key), t_lang("en", key));
         assert_ne!(nl, en, "{key} has a Dutch text");
         assert!(texts.contains(&nl), "{nl:?} in {texts:?}");
         assert!(!texts.contains(&en), "{en:?} in {texts:?}");
     }
+    // The Outline beside it is document text too.
+    let row = "1 omdat Cleaner air";
+    assert!(
+        h.query_by_role_and_label(Role::ListItem, row).is_some(),
+        "{row}"
+    );
 
     // UI Dutch, document English: the map speaks English.
     i18n::set_ui_language("nl");
@@ -231,12 +243,38 @@ fn map_labels_follow_document_language_not_ui() {
     h.run();
     h.state_mut().push(Action::ZoomFit);
     h.run();
-    let texts = painted_texts(&h);
+    let texts = painted_texts(&h, &t("canvas.label"));
     for key in words {
         let en = t_lang("en", key);
         assert!(texts.contains(&en), "{en:?} in {texts:?}");
         assert!(!texts.contains(&t_lang("nl", key)), "{key} in {texts:?}");
     }
+}
+
+#[test]
+fn outline_copy_all_uses_document_language() {
+    let _lang = lock();
+    let mut h = harness_with(rated_map("nl"));
+    h.run();
+    h.get_by_label(&t("outline.copy_all")).click();
+    h.step();
+    let copied: Vec<&String> = h
+        .output()
+        .platform_output
+        .commands
+        .iter()
+        .filter_map(|c| match c {
+            egui::OutputCommand::CopyText(text) => Some(text),
+            _ => None,
+        })
+        .collect();
+    let [text] = copied.as_slice() else {
+        panic!("one copy: {copied:?}")
+    };
+    assert!(text.contains("omdat Cleaner air"), "{text}");
+    let law = format!("[{}] Clean air act", t_lang("nl", "source.law"));
+    assert!(text.contains(&law), "{text}");
+    assert!(!text.contains("because") && !text.contains("Law"), "{text}");
 }
 
 #[test]

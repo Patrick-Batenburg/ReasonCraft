@@ -6,13 +6,15 @@ use eframe::egui::{
     self, Color32, FontId, Id, Painter, Rect, Response, Role, ScrollArea, Sense, Ui, WidgetInfo,
     pos2, text::LayoutJob, vec2,
 };
-use reasoncraft_core::outline::{LineKind, LinkLabel, OutlineLine, outline_plain_text};
+use reasoncraft_core::outline::{LineKind, LinkLabel, OutlineLine};
+use reasoncraft_core::outline_md::{outline_plain_text_lang, source_name};
+use reasoncraft_core::words::linking_words;
 use reasoncraft_core::{Item, SourceType};
 
 use crate::actions::Action;
 use crate::canvas::rating::{Mark, card_colour, mark_for, paint_mark};
 use crate::doc_tab::DocTab;
-use crate::i18n::t;
+use crate::i18n::{t, t_lang};
 use crate::settings::{OutlineToggle, Settings};
 use crate::shell::source_icons::paint_source_icon;
 use crate::shell::{hover_fill, selected_fill};
@@ -42,19 +44,16 @@ const TOGGLES: [(OutlineToggle, &str); 5] = [
     (OutlineToggle::Notes, "notes"),
 ];
 
-/// The linking word shown for `label` ("" for none).
-pub fn label_word(label: LinkLabel) -> String {
-    match label {
-        LinkLabel::Because => t("outline.label.because"),
-        LinkLabel::But => t("outline.label.but"),
-        LinkLabel::However => t("outline.label.however"),
-        LinkLabel::None => String::new(),
-    }
+/// The linking word shown for `label` in the document language `lang`
+/// ("" for none): the outline is document text, like its exports.
+fn label_word(lang: &str, label: LinkLabel) -> String {
+    linking_words(lang).word(label).to_owned()
 }
 
-/// The name of a source type, as on the canvas.
-pub fn source_word(source_type: &SourceType) -> String {
-    t(&format!("source.{}", source_type.key()))
+/// The name of a source type in the document language `lang`, as on the
+/// canvas.
+fn source_word(lang: &str, source_type: &SourceType) -> String {
+    source_name(source_type, &|key| t_lang(lang, key))
 }
 
 /// Draw the Outline tab for `tab`.
@@ -69,7 +68,8 @@ pub fn show(
     let tab = &*tab;
     let lines = tab.outline_cache.as_ref().map_or(&[][..], |(_, _, l)| l);
     let (doc, selection) = (&tab.doc, tab.selection);
-    toolbar(ui, lines, settings, tk, out);
+    let lang = doc.meta.language.as_str();
+    toolbar(ui, lines, lang, settings, tk, out);
     ui.add_space(6.0);
     ui.scope(|ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
@@ -84,7 +84,7 @@ pub fn show(
                         }
                         _ => None,
                     };
-                    if row(ui, line, mark, selected, settings, tk).clicked() {
+                    if row(ui, line, lang, mark, selected, settings, tk).clicked() {
                         out.push(Action::Select(Some(line.item)));
                         out.push(Action::RevealSelection);
                     }
@@ -93,9 +93,12 @@ pub fn show(
     });
 }
 
+/// The switches and "Copy all", which copies the outline as the Outline
+/// (text) export writes it, in the document language `lang`.
 fn toolbar(
     ui: &mut Ui,
     lines: &[OutlineLine],
+    lang: &str,
     settings: &Settings,
     tk: &Tokens,
     out: &mut Vec<Action>,
@@ -118,7 +121,8 @@ fn toolbar(
             .on_hover_text(t("outline.tip.copy_all"))
             .clicked()
         {
-            let text = outline_plain_text(lines, &settings.outline, &label_word, &source_word);
+            let label = |key: &str| t_lang(lang, key);
+            let text = outline_plain_text_lang(lines, &settings.outline, lang, &label);
             ui.ctx().copy_text(text);
             let now = ui.input(|i| i.time);
             ui.data_mut(|d| d.insert_temp(copied_id, now));
@@ -134,8 +138,9 @@ fn toolbar(
     });
 }
 
-/// The words of a row before its text: number, linking word, source type.
-fn lead(line: &OutlineLine, settings: &Settings) -> (String, String) {
+/// The words of a row before its text: number, linking word, source type
+/// (in the document language `lang`).
+fn lead(line: &OutlineLine, lang: &str, settings: &Settings) -> (String, String) {
     let opts = settings.outline;
     let number = if opts.numbering {
         line.number.clone()
@@ -143,8 +148,8 @@ fn lead(line: &OutlineLine, settings: &Settings) -> (String, String) {
         String::new()
     };
     let word = match &line.kind {
-        LineKind::Source(source_type) => source_word(source_type),
-        _ if opts.labels => label_word(line.label),
+        LineKind::Source(source_type) => source_word(lang, source_type),
+        _ if opts.labels => label_word(lang, line.label),
         _ => String::new(),
     };
     (number, word)
@@ -156,8 +161,8 @@ pub(super) fn one_line(text: &str) -> String {
 }
 
 /// The row's accessible name and tooltip: what it shows, uncut.
-fn row_label(line: &OutlineLine, settings: &Settings) -> String {
-    let (number, word) = lead(line, settings);
+fn row_label(line: &OutlineLine, lang: &str, settings: &Settings) -> String {
+    let (number, word) = lead(line, lang, settings);
     let label = [number, word, one_line(&line.text)]
         .into_iter()
         .filter(|p| !p.is_empty())
@@ -182,6 +187,7 @@ fn bar_colour(line: &OutlineLine, tk: &Tokens) -> Option<Color32> {
 fn row(
     ui: &mut Ui,
     line: &OutlineLine,
+    lang: &str,
     mark: Option<Mark>,
     selected: bool,
     settings: &Settings,
@@ -189,7 +195,7 @@ fn row(
 ) -> Response {
     let width = ui.available_width();
     let (rect, resp) = ui.allocate_exact_size(vec2(width, ROW_H), Sense::click());
-    let label = row_label(line, settings);
+    let label = row_label(line, lang, settings);
     resp.widget_info(|| WidgetInfo::selected(Role::ListItem, true, selected, &label));
     if !ui.is_rect_visible(rect) {
         return resp;
@@ -221,7 +227,7 @@ fn row(
 
     let right = rect.right() - 4.0 - if mark.is_some() { MARK + GAP } else { 0.0 };
     let font = FontId::proportional(FONT);
-    let (number, word) = lead(line, settings);
+    let (number, word) = lead(line, lang, settings);
     let mut elided = false;
     // Everything before the marker is cut at `right`, the lead words too.
     let mut put = |x: &mut f32, text: String, colour: Color32| {

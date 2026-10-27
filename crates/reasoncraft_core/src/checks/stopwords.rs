@@ -4,6 +4,8 @@
 //! words are lowercase and folded (no diacritics) and sorted, so lookups
 //! use a binary search.
 
+use crate::meta::primary_language;
+
 /// English function words, plus the stems left of negative contractions
 /// once the apostrophe suffix is dropped ("shouldn't" -> "shouldn").
 #[rustfmt::skip]
@@ -50,10 +52,10 @@ pub(super) const NL: &[&str] = &[
 ];
 
 /// Whether `lang` names Dutch: `"nl"` in any case, alone or with a region
-/// (`"nl-NL"`, `"nl_BE"`). Anything else is treated as English.
+/// (`"nl-NL"`, `"nl_BE"`; see [`primary_language`]). Anything else is
+/// treated as English.
 pub(crate) fn is_dutch(lang: &str) -> bool {
-    let code = lang.split(['-', '_']).next().unwrap_or_default();
-    code.eq_ignore_ascii_case("nl")
+    primary_language(lang).eq_ignore_ascii_case("nl")
 }
 
 /// The stopword list for `lang`: Dutch when [`is_dutch`], otherwise English.

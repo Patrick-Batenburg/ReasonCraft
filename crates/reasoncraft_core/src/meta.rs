@@ -6,6 +6,13 @@ use crate::model::Document;
 /// The languages checks know about.
 pub const LANGUAGES: [&str; 2] = ["en", "nl"];
 
+/// The language part of a language tag: `nl` of `nl`, `nl-NL`, `nl_BE`,
+/// `nl_BE.UTF-8` or `nl@euro`. The one rule for reading tags, in the core
+/// and the app; compare it ignoring case.
+pub fn primary_language(tag: &str) -> &str {
+    tag.split(['-', '_', '.', '@']).next().unwrap_or_default()
+}
+
 impl Document {
     /// Set the document language: `"en"` or `"nl"`, else
     /// [`EditError::NotAllowed`]. Setting the current language changes

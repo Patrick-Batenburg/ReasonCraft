@@ -76,8 +76,7 @@ fn pack(docx: Docx, author: &str, lang: &str) -> Result<Vec<u8>, ExportError> {
 /// (`nl-NL`, `nl_BE`, ...), British English otherwise, matching the
 /// headings and linking words, which fall back to English.
 fn language_tag(lang: &str) -> &'static str {
-    let primary = lang.split(['-', '_']).next().unwrap_or_default();
-    if primary.eq_ignore_ascii_case("nl") {
+    if crate::i18n::language_of(lang) == "nl" {
         "nl-NL"
     } else {
         "en-GB"

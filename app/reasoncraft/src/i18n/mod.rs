@@ -29,7 +29,7 @@ static ACTIVE: RwLock<&str> = RwLock::new(UI_LANGUAGES[0]);
 /// names (its language part, in any case), else English. A document's
 /// text is drawn and exported in `language_of(&doc.meta.language)`.
 pub fn language_of(tag: &str) -> &'static str {
-    let primary = tag.split(['-', '_', '.', '@']).next().unwrap_or_default();
+    let primary = reasoncraft_core::meta::primary_language(tag);
     UI_LANGUAGES
         .into_iter()
         .find(|l| primary.eq_ignore_ascii_case(l))
