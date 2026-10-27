@@ -17,6 +17,8 @@ mod evaluate;
 mod export;
 mod help;
 mod home;
+mod insert;
+mod overflow;
 mod view;
 
 const STRIP_H: f32 = 30.0;
@@ -45,21 +47,18 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         .show_separator_line(false)
         .show(ui, |ui| {
             tab_strip(ui, app);
-            if app.ribbon_tab != RibbonTab::File {
-                ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+            let tab = app.ribbon_tab;
+            if tab != RibbonTab::File {
+                overflow::row(ui, &tk, tab, |ui| {
                     ui.set_height(BUTTON_H + LABEL_H + 4.0);
-                    match app.ribbon_tab {
+                    match tab {
                         RibbonTab::Home => home::show(ui, app),
+                        RibbonTab::Insert => insert::show(ui, app),
                         RibbonTab::Evaluate => evaluate::show(ui, app),
                         RibbonTab::View => view::show(ui, app),
                         RibbonTab::Export => export::show(ui, app),
                         RibbonTab::Help => help::show(ui, app),
-                        _ => {
-                            ui.add_space(8.0);
-                            ui.label(
-                                egui::RichText::new(t("ribbon.coming_soon")).color(tk.text_muted),
-                            );
-                        }
+                        RibbonTab::File => {}
                     }
                 });
             }
@@ -233,6 +232,7 @@ fn large_button(
     };
     let (rect, resp) = ui.allocate_exact_size(size, sense);
     resp.widget_info(|| WidgetInfo::selected(Role::Button, enabled, selected, label));
+    overflow::follow_focus(&resp);
     if ui.is_rect_visible(rect) {
         let surface = button_bg(ui, tk, rect, &resp, enabled, selected);
         let icon_rect =
@@ -272,6 +272,7 @@ fn small(ui: &mut Ui, tk: &Tokens, icon: Icon, label: &str, enabled: bool) -> Re
     };
     let (rect, resp) = ui.allocate_exact_size(size, sense);
     resp.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, label));
+    overflow::follow_focus(&resp);
     if ui.is_rect_visible(rect) {
         let surface = button_bg(ui, tk, rect, &resp, enabled, false);
         let icon_rect =

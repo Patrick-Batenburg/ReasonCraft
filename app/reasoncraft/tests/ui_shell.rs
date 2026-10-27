@@ -66,7 +66,7 @@ fn new_tab_button_opens_second_document() {
 fn missing_i18n_key_returns_key() {
     assert_eq!(t("no.such.key"), "no.such.key");
     assert_eq!(t("untitled"), "Untitled");
-    assert_eq!(t("ribbon.coming_soon"), "Coming soon");
+    assert_eq!(t("ribbon.tab.insert"), "Insert");
 }
 
 fn harness_with(doc: reasoncraft_core::Document) -> Harness<'static, ReasonCraftApp> {

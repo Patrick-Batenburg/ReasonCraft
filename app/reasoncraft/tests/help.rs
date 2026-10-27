@@ -116,7 +116,6 @@ fn help_ribbon_tab_opens_help_and_about() {
     h.get_by_role_and_label(Role::Tab, &t("ribbon.tab.help"))
         .click();
     h.run();
-    assert!(h.query_by_label(&t("ribbon.coming_soon")).is_none());
     click_button(&mut h, "help.cmd.topics");
     assert_eq!(h.state().help.page, HelpPage::Contents);
     click_button(&mut h, "help.cmd.keyboard");

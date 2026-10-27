@@ -25,7 +25,8 @@ ribbon-tab-evaluate = Beoordelen
 ribbon-tab-view = Beeld
 ribbon-tab-export = Exporteren
 ribbon-tab-help = Help
-ribbon-coming_soon = Komt binnenkort
+ribbon-scroll_left = Lint naar links schuiven
+ribbon-scroll_right = Lint naar rechts schuiven
 
 ## Ribbon groups
 group-clipboard = Klembord
@@ -45,6 +46,9 @@ group-eval_view = Weergave
 group-evaluation = Beoordeling
 group-box = Vak
 group-add_source = Bron toevoegen
+group-boxes = Vakken
+group-whole_card = Heel blok
+group-sources = Bronnen
 
 ## Commands
 action-new = Nieuw

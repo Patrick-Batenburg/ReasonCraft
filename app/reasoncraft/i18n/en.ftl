@@ -24,7 +24,8 @@ ribbon-tab-evaluate = Evaluate
 ribbon-tab-view = View
 ribbon-tab-export = Export
 ribbon-tab-help = Help
-ribbon-coming_soon = Coming soon
+ribbon-scroll_left = Scroll the ribbon left
+ribbon-scroll_right = Scroll the ribbon right
 
 ## Ribbon groups
 group-clipboard = Clipboard
@@ -44,6 +45,9 @@ group-eval_view = Display
 group-evaluation = Evaluation
 group-box = Box
 group-add_source = Add source
+group-boxes = Boxes
+group-whole_card = Whole card
+group-sources = Sources
 
 ## Commands
 action-new = New

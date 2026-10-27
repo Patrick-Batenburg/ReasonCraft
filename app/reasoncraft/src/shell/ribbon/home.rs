@@ -9,8 +9,10 @@ use crate::actions::{Action, is_enabled, selected_card};
 use crate::app::ReasonCraftApp;
 use crate::canvas::plus_menu::source_button;
 use crate::commands;
+use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::shell::icons::Icon;
+use crate::theme::Tokens;
 
 pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
@@ -42,18 +44,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         for (icon, id) in adds {
             command(ui, &tk, icon, id, enabled(id), false, &mut out);
         }
-        let generic = Action::AddSource(SourceType::Source);
-        let label = t("action.add_source");
-        let resp = large_menu(ui, &tk, Icon::Source, &label, is_enabled(tab, &generic));
-        Popup::menu(&resp).show(|ui| {
-            for st in SourceType::ALL {
-                let cmd = commands::get(&commands::add_source_id(&st));
-                let on = is_enabled(tab, &cmd.action);
-                if ui.add_enabled(on, source_button(&st)).clicked() {
-                    out.push(cmd.action.clone());
-                }
-            }
-        });
+        source_menu(ui, &tk, tab, &mut out);
         // The other items in a column of small buttons, so that the Home
         // tab fits 1280 px in the longer Dutch labels too.
         ui.vertical(|ui| {
@@ -102,6 +93,22 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     });
     box_group(ui, app, &mut out);
     app.pending.extend(out);
+}
+
+/// "Source ▾": a menu of every source type to add.
+pub(super) fn source_menu(ui: &mut Ui, tk: &Tokens, tab: &DocTab, out: &mut Vec<Action>) {
+    let generic = Action::AddSource(SourceType::Source);
+    let label = t("action.add_source");
+    let resp = large_menu(ui, tk, Icon::Source, &label, is_enabled(tab, &generic));
+    Popup::menu(&resp).show(|ui| {
+        for st in SourceType::ALL {
+            let cmd = commands::get(&commands::add_source_id(&st));
+            let on = is_enabled(tab, &cmd.action);
+            if ui.add_enabled(on, source_button(&st)).clicked() {
+                out.push(cmd.action.clone());
+            }
+        }
+    });
 }
 
 /// "Type ▾" (a card's kind, a source's type), then "Link", "Image" and

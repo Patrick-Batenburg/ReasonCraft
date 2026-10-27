@@ -88,8 +88,10 @@ fn ribbon_fits_in_dutch_at_1280() {
             );
         }
         // Each button's label lies within the button. A name may put the
-        // group before the label ("Card: Nil").
-        for (name, rect) in &buttons {
+        // group before the label ("Card: Nil"). The scroll arrows of an
+        // overflowing row are drawn arrows, not text.
+        let arrows = ["ribbon.scroll_left", "ribbon.scroll_right"].map(t);
+        for (name, rect) in buttons.iter().filter(|(n, _)| !arrows.contains(n)) {
             let text = texts
                 .iter()
                 .find(|(text, r)| name.ends_with(text.as_str()) && r.intersects(*rect))

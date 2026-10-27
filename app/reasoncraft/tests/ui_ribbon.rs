@@ -214,3 +214,34 @@ fn ribbon_source_dropdown_adds_law_to_claim() {
     );
     assert_eq!(tab.editing(), Some(s));
 }
+
+#[test]
+fn insert_tab_adds_items_including_whole_card_ones() {
+    use reasoncraft_core::{CardKind, Document, Item, Parent};
+    let mut d = Document::new("Claim");
+    let root = d.root;
+    let (card, premise) = d
+        .add_card(Parent::Box(root), CardKind::Reason, "Premise")
+        .unwrap();
+    let mut h = harness_with(d);
+    h.state_mut().left_panel = false;
+    h.state_mut().tabs[0].selection = Some(Item::Box(premise));
+    h.run();
+    h.get_by_label(&t("ribbon.tab.insert")).click();
+    h.run();
+    h.get_by_label(&t("command.whole_card_objection")).click();
+    h.run();
+    let tab = &h.state().tabs[0];
+    let on_card = &tab.doc.cards[&card].children;
+    assert_eq!(on_card.len(), 1, "an objection to the whole card");
+    assert_eq!(tab.doc.cards[&on_card[0]].kind, CardKind::Objection);
+    // The tab has the box items too; nothing says "coming soon".
+    for key in [
+        "action.add_reason",
+        "action.add_note",
+        "action.comment",
+        "action.link",
+    ] {
+        assert!(h.query_by_label(&t(key)).is_some(), "{key}");
+    }
+}
