@@ -80,7 +80,7 @@
   - [x] Task 3: Labels in the document's language
   - [x] Task 4: Dutch translation
   - [x] Task 5: Accessibility, UI scale and reset to defaults
-  - [ ] Task 6: OS-correct keyboard shortcuts
+  - [x] Task 6: OS-correct keyboard shortcuts
   - [ ] Task 7: Map and panel polish
   - [ ] Task 8: Robustness and performance carry-overs
   - [ ] Task 9: Offline help and About
