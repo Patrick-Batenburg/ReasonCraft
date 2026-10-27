@@ -1,5 +1,6 @@
 //! ReasonCraft desktop app: window chrome, document tabs and commands.
 
+pub mod a11y;
 pub mod actions;
 pub mod app;
 pub mod canvas;

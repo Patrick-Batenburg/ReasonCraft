@@ -4,14 +4,38 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InvalidLink;
 
-/// Control characters, and the invisible format characters that can make
-/// a link read as another (bidi controls, zero-width marks, the BOM).
+/// The invisible format characters (Unicode general category Cf, as of
+/// Unicode 16, plus the unassigned U+2065 inside a Cf block): bidi
+/// controls, zero-width marks, the soft hyphen, the BOM, Arabic and
+/// Mongolian marks, interlinear annotations and tag characters. Any of
+/// them can make a link read as another.
+const FORMAT_CHARS: &[(char, char)] = &[
+    ('\u{00AD}', '\u{00AD}'),
+    ('\u{0600}', '\u{0605}'),
+    ('\u{061C}', '\u{061C}'),
+    ('\u{06DD}', '\u{06DD}'),
+    ('\u{070F}', '\u{070F}'),
+    ('\u{0890}', '\u{0891}'),
+    ('\u{08E2}', '\u{08E2}'),
+    ('\u{180E}', '\u{180E}'),
+    ('\u{200B}', '\u{200F}'),
+    ('\u{202A}', '\u{202E}'),
+    ('\u{2060}', '\u{206F}'),
+    ('\u{FEFF}', '\u{FEFF}'),
+    ('\u{FFF9}', '\u{FFFB}'),
+    ('\u{110BD}', '\u{110BD}'),
+    ('\u{110CD}', '\u{110CD}'),
+    ('\u{13430}', '\u{1343F}'),
+    ('\u{1BCA0}', '\u{1BCA3}'),
+    ('\u{1D173}', '\u{1D17A}'),
+    ('\u{E0001}', '\u{E0001}'),
+    ('\u{E0020}', '\u{E007F}'),
+];
+
+/// Control characters and invisible format characters (see
+/// [`FORMAT_CHARS`]).
 fn is_hidden_char(c: char) -> bool {
-    c.is_control()
-        || matches!(
-            c,
-            '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2060}'..='\u{2069}' | '\u{FEFF}'
-        )
+    c.is_control() || FORMAT_CHARS.iter().any(|&(lo, hi)| (lo..=hi).contains(&c))
 }
 
 /// `s` with `%XX` escapes decoded, ASCII-lowercased.
@@ -117,4 +141,46 @@ pub fn visible_link(s: &str) -> String {
     s.chars()
         .map(|c| if is_hidden_char(c) { '\u{FFFD}' } else { c })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every invisible format character (Unicode category Cf) is refused:
+    /// bidi controls, zero-width marks, the soft hyphen, Arabic and
+    /// Mongolian marks, interlinear annotations and tag characters.
+    #[test]
+    fn cf_characters_refused_in_links() {
+        for c in [
+            '\u{202E}',
+            '\u{00AD}',
+            '\u{0600}',
+            '\u{061C}',
+            '\u{06DD}',
+            '\u{070F}',
+            '\u{0890}',
+            '\u{08E2}',
+            '\u{180E}',
+            '\u{200B}',
+            '\u{2064}',
+            '\u{206A}',
+            '\u{FEFF}',
+            '\u{FFF9}',
+            '\u{110BD}',
+            '\u{13430}',
+            '\u{1BCA0}',
+            '\u{1D173}',
+            '\u{E0001}',
+            '\u{E0041}',
+        ] {
+            let url = format!("https://example.org/a{c}b");
+            assert_eq!(normalize_link(&url), Err(InvalidLink), "U+{:04X}", c as u32);
+            assert_eq!(safe_link(&url), None, "U+{:04X}", c as u32);
+            assert_eq!(visible_link(&url), "https://example.org/a\u{FFFD}b");
+        }
+        // Visible text in other scripts is fine.
+        let fine = "https://example.org/caf\u{E9}/\u{0645}\u{0631}\u{062D}\u{0628}\u{0627}";
+        assert_eq!(safe_link(fine), Some(fine.to_owned()));
+    }
 }

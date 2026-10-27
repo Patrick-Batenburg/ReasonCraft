@@ -60,7 +60,8 @@ fn switching_language_changes_checks() {
     assert!(has(&h, &chip(0)));
 
     open_document_page(&mut h);
-    h.get_by_label(&t("lang.nl")).click();
+    let dutch = reasoncraft::a11y::in_group(&t("document.language"), &t("lang.nl"));
+    h.get_by_label(&dutch).click();
     h.run();
     assert_eq!(h.state().tabs[0].doc.meta.language, "nl");
     h.state_mut().ribbon_tab = RibbonTab::Home;
@@ -101,7 +102,8 @@ fn settings_page_sets_default_language() {
     h.run();
     h.get_by_label(&t("backstage.settings")).click();
     h.run();
-    h.get_by_label(&t("lang.nl")).click();
+    let dutch = reasoncraft::a11y::in_group(&t("settings.default_language"), &t("lang.nl"));
+    h.get_by_label(&dutch).click();
     h.run();
     assert_eq!(h.state().settings.default_doc_language, "nl");
 }

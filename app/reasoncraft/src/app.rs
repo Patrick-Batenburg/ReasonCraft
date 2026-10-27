@@ -247,6 +247,7 @@ impl ReasonCraftApp {
         crate::spell::poll(self);
         shell::statusbar::expire_notes(&ctx, self);
         self.sync_theme(&ctx);
+        self.sync_ui_scale(&ctx);
         self.sync_window_title(&ctx);
         // The OS (or the title bar on macOS) asks to close: ask about unsaved
         // changes first.
@@ -315,6 +316,15 @@ impl ReasonCraftApp {
             ctx.options_mut(|o| o.zoom_with_keyboard = false);
             theme::apply(ctx, &self.tokens);
             self.applied = Some(self.tokens);
+        }
+    }
+
+    /// The whole interface at the size the settings ask for (egui's zoom
+    /// factor). The map's zoom works in points, so it comes on top.
+    fn sync_ui_scale(&self, ctx: &egui::Context) {
+        let scale = self.settings.ui_scale_factor();
+        if ctx.zoom_factor() != scale {
+            ctx.set_zoom_factor(scale);
         }
     }
 

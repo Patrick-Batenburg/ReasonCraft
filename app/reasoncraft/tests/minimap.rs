@@ -42,7 +42,7 @@ fn layout_of(h: &H) -> Layout {
 }
 
 fn minimap_shown(h: &H) -> bool {
-    h.query_by_label(&t("minimap.label")).is_some()
+    h.query_by_label(&t("minimap.name")).is_some()
 }
 
 /// A big map at 100%, so it does not fit the view.
@@ -83,7 +83,7 @@ fn minimap_click_centres_camera() {
     // Look somewhere else first.
     h.state_mut().tabs[0].camera.offset += egui::vec2(700.0, -400.0);
     h.run();
-    let centre = h.get_by_label(&t("minimap.label")).rect().center();
+    let centre = h.get_by_label(&t("minimap.name")).rect().center();
     let selection = h.state().tabs[0].selection;
     h.event(egui::Event::PointerMoved(centre));
     for pressed in [true, false] {

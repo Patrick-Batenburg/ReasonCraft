@@ -16,7 +16,7 @@ use super::source_icons::paint_source_icon;
 use crate::actions::{Action, Insertable, is_enabled};
 use crate::canvas::comments::{PRESETS, verdict_colour};
 use crate::doc_tab::DocTab;
-use crate::i18n::t;
+use crate::i18n::{FluentArgs, t, t_args};
 use crate::theme::Tokens;
 
 const BOXES: [Insertable; 5] = [
@@ -227,8 +227,13 @@ fn backdrop(painter: &Painter, rect: Rect, resp: &egui::Response, tk: &Tokens) {
 }
 
 /// Accessibility, tooltip, click to insert at the selection, drag payload.
+/// Its accessible name says where it is, as the ribbon has items of the
+/// same name.
 fn finish(resp: egui::Response, what: Insertable, on: bool, name: String, out: &mut Vec<Action>) {
-    resp.widget_info(|| WidgetInfo::labeled(Role::Button, on, &name));
+    let mut args = FluentArgs::new();
+    args.set("item", name.as_str());
+    let spoken = t_args("building.item_name", &args);
+    resp.widget_info(|| WidgetInfo::labeled(Role::Button, on, &spoken));
     let resp = resp.on_hover_text(&name);
     if on {
         let resp = resp.clone().on_hover_cursor(CursorIcon::PointingHand);

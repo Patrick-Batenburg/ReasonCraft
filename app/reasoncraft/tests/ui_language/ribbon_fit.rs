@@ -87,11 +87,12 @@ fn ribbon_fits_in_dutch_at_1280() {
                 WINDOW.x
             );
         }
-        // Each button's label lies within the button.
+        // Each button's label lies within the button. A name may put the
+        // group before the label ("Card: Nil").
         for (name, rect) in &buttons {
             let text = texts
                 .iter()
-                .find(|(text, r)| text == name && r.intersects(*rect))
+                .find(|(text, r)| name.ends_with(text.as_str()) && r.intersects(*rect))
                 .unwrap_or_else(|| panic!("{label}: {name:?} paints its label"));
             assert!(
                 rect.expand(0.5).contains_rect(text.1),

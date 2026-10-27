@@ -52,6 +52,9 @@ pub struct RowHeights<K> {
     estimates: HashMap<K, f32>,
     /// Rows laid out in the current (or last) frame.
     laid_out: usize,
+    /// The row holding the keyboard focus in the last frame, and the
+    /// focused widget.
+    pub(crate) focus: Option<(K, eframe::egui::Id)>,
 }
 
 impl<K> Default for RowHeights<K> {
@@ -61,6 +64,7 @@ impl<K> Default for RowHeights<K> {
             heights: HashMap::new(),
             estimates: HashMap::new(),
             laid_out: 0,
+            focus: None,
         }
     }
 }

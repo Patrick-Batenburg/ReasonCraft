@@ -25,12 +25,16 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         .show_separator_line(false)
         .show(ui, |ui| {
             let bar = ui.max_rect();
-            // Interact with the whole bar first, so the buttons on top win the hit test.
+            // Interact with the whole bar first, so the buttons on top win the
+            // hit test. It moves the window by mouse only: Tab skips it, and a
+            // screen reader reads it as the title bar.
             let drag = ui.interact(
                 bar,
                 ui.scope_id().with("titlebar_drag"),
-                Sense::click_and_drag(),
+                Sense::CLICK | Sense::DRAG,
             );
+            let title = app.active_tab().title();
+            drag.widget_info(|| egui::WidgetInfo::labeled(egui::Role::TitleBar, true, &title));
             if drag.drag_started() {
                 ui.ctx().send_viewport_cmd(ViewportCommand::StartDrag);
             }
@@ -89,21 +93,16 @@ fn window_buttons(ui: &mut egui::Ui, app: &mut ReasonCraftApp, maximized: bool) 
         let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
         let hovered = resp.hovered();
+        let (surface, fg) = match (hovered, danger) {
+            (true, true) => (tk.danger, tk.on_danger),
+            (true, false) => (hover_fill(&tk, tk.bg), tk.box_text),
+            (false, _) => (tk.bg, tk.box_text),
+        };
         if hovered {
-            let fill = if danger {
-                tk.objection
-            } else {
-                hover_fill(&tk, tk.bg)
-            };
-            ui.painter().rect_filled(rect, 0.0, fill);
+            ui.painter().rect_filled(rect, 0.0, surface);
         }
         let icon_rect = egui::Rect::from_center_size(rect.center(), Vec2::splat(14.0));
-        let surface = if hovered && danger {
-            tk.objection
-        } else {
-            tk.bg
-        };
-        super::icons::paint(ui.painter(), icon_rect, icon, tk.box_text, surface, &tk);
+        super::icons::paint(ui.painter(), icon_rect, icon, fg, surface, &tk);
         resp.on_hover_text(label).clicked()
     };
     // Right to left: close, maximize/restore, minimize.

@@ -10,6 +10,7 @@ use eframe::egui::{
 
 use reasoncraft_core::FindHit;
 
+use crate::a11y::labelled;
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
@@ -65,7 +66,8 @@ pub fn show(
                     let with = pass.replacement.clone();
                     buttons(ui, hit, pass.word.clone(), with, out);
                 }
-                if ui.button(t("spell.close")).clicked() {
+                let close = ui.button(t("spell.close"));
+                if labelled(close, t("spell.close_name")).clicked() {
                     out.push(Action::CloseSpelling);
                 }
             });

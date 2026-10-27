@@ -3,23 +3,23 @@
 
 use eframe::egui::{self, RichText, TextEdit};
 
+use crate::a11y::{in_group, labelled};
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::i18n::t;
 use reasoncraft_core::meta::LANGUAGES;
 
 /// The picker for a language: one choice per language, the current one
-/// selected. Returns the language picked this frame, if it is a change.
-pub(super) fn language_picker(ui: &mut egui::Ui, current: &str) -> Option<String> {
+/// selected, each named with the picker's `group` label for screen
+/// readers. Returns the language picked this frame, if it is a change.
+pub(super) fn language_picker(ui: &mut egui::Ui, group: &str, current: &str) -> Option<String> {
     let mut picked = None;
     ui.horizontal(|ui| {
         for lang in LANGUAGES {
             let on = current == lang;
-            if ui
-                .selectable_label(on, t(&format!("lang.{lang}")))
-                .clicked()
-                && !on
-            {
+            let name = t(&format!("lang.{lang}"));
+            let resp = ui.selectable_label(on, &name);
+            if labelled(resp, in_group(group, &name)).clicked() && !on {
                 picked = Some(lang.to_owned());
             }
         }
@@ -65,8 +65,9 @@ pub(super) fn page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         app.push(Action::SetDocMeta { title, author });
     }
     ui.add_space(8.0);
-    ui.label(RichText::new(t("document.language")).color(tk.box_text));
-    if let Some(lang) = language_picker(ui, &current_language) {
+    let group = t("document.language");
+    ui.label(RichText::new(&group).color(tk.box_text));
+    if let Some(lang) = language_picker(ui, &group, &current_language) {
         app.push(Action::SetDocLanguage(lang));
     }
     ui.label(RichText::new(t("document.language_hint")).color(tk.text_muted));

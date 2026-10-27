@@ -287,6 +287,15 @@ fn incomplete_evaluation_is_one_row_that_goes_to_the_next() {
     assert_eq!(h.state().tabs[0].selection, Some(card));
 }
 
+/// The accessible name of the Ignore button of `item`'s "not connected"
+/// hint.
+fn ignore_name(item: &str) -> String {
+    let mut args = FluentArgs::new();
+    args.set("item", item);
+    args.set("kind", t("check.kind.not_connected"));
+    t_args("check.ignore_name", &args)
+}
+
 #[test]
 fn ignore_button_hides_hint_and_footer_restores_it() {
     let mut d = clean_doc();
@@ -295,7 +304,7 @@ fn ignore_button_hides_hint_and_footer_restores_it() {
     h.run();
     assert!(has(&h, &heading("not_connected", 1)));
 
-    h.get_by_role_and_label(Role::Button, &t("check.ignore"))
+    h.get_by_role_and_label(Role::Button, &ignore_name("Parked thought"))
         .click();
     h.run();
     let tab = &h.state().tabs[0];
@@ -329,9 +338,7 @@ fn rows_do_not_overlap() {
         assert!(pair[1].top() >= pair[0].bottom() - 0.5, "{pair:?}");
     }
     // The footer does not overlap the last row either.
-    h.get_all_by_role_and_label(Role::Button, &t("check.ignore"))
-        .next()
-        .unwrap()
+    h.get_by_role_and_label(Role::Button, &ignore_name("First parked"))
         .click();
     h.run();
     let mut args = FluentArgs::new();

@@ -1,6 +1,7 @@
 //! The window-wide modal: a file error, "save changes before closing?",
 //! "replace the existing file?" (for a save or an export) or "restore the
-//! documents a crash left behind?", or the report of an Argdown import.
+//! documents a crash left behind?", the report of an Argdown import, or
+//! "put every setting back to its default?".
 
 use eframe::egui::{self, Role, WidgetInfo};
 
@@ -105,6 +106,7 @@ fn texts(app: &ReasonCraftApp, modal: &Modal) -> (String, String) {
             t("argdown.report.title"),
             crate::actions::import_report_text(notes),
         ),
+        Modal::ResetSettings => (t("settings.reset.title"), t("settings.reset.message")),
     }
 }
 
@@ -213,6 +215,21 @@ fn buttons(modal: &Modal) -> (Vec<Button>, Action) {
                 answer(RecoveryChoice::Later),
             )
         }
+        Modal::ResetSettings => (
+            vec![
+                (
+                    "settings.reset.cancel",
+                    "settings.reset.cancel",
+                    Action::DismissModal,
+                ),
+                (
+                    "settings.reset.confirm",
+                    "settings.reset.confirm",
+                    Action::ConfirmResetSettings,
+                ),
+            ],
+            Action::DismissModal,
+        ),
         Modal::ConfirmExportReplace { .. } => (
             vec![
                 (

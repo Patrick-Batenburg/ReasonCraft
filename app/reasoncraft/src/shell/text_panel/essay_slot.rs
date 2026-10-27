@@ -45,6 +45,9 @@ pub(super) struct Statement<'a> {
     pub source: Option<&'a SourceType>,
     pub mark: Option<Mark>,
     pub selected: bool,
+    /// The accessible name, when the text alone does not tell the row
+    /// apart (the claim shows in the introduction and the conclusion).
+    pub name: Option<String>,
 }
 
 /// A map statement, wrapped to the panel's width. Clicking it selects the
@@ -66,7 +69,8 @@ pub(super) fn statement(ui: &mut Ui, s: &Statement, tk: &Tokens, out: &mut Vec<A
     let galley = ui.painter().layout_job(job);
     let height = galley.size().y + 2.0 * PAD_Y;
     let (rect, resp) = ui.allocate_exact_size(vec2(width, height), Sense::click());
-    resp.widget_info(|| WidgetInfo::selected(Role::ListItem, true, s.selected, &text));
+    let name = s.name.as_ref().unwrap_or(&text);
+    resp.widget_info(|| WidgetInfo::selected(Role::ListItem, true, s.selected, name));
     if ui.is_rect_visible(rect) {
         let painter = ui.painter();
         if s.selected {

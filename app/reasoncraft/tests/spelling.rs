@@ -177,7 +177,7 @@ fn spelling_pass_change_and_undo() {
     // The claim (reached by wrapping around) has none: the pass ends.
     assert!(h.state().tabs[0].spelling.as_ref().unwrap().done);
     assert!(h.query_by_label(&t("spell.done")).is_some());
-    h.get_by_label(&t("spell.close")).click();
+    h.get_by_label(&t("spell.close_name")).click();
     h.run();
     assert!(h.state().tabs[0].spelling.is_none());
 }

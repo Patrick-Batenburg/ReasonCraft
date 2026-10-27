@@ -12,6 +12,7 @@ use egui_kittest::{
     Harness,
     kittest::{NodeT, Queryable},
 };
+use reasoncraft::a11y::in_group;
 use reasoncraft::actions::Action;
 use reasoncraft::canvas::input::{shortcut_for, shortcut_text};
 use reasoncraft::doc_tab::DocTab;
@@ -94,7 +95,7 @@ fn switching_language_updates_ribbon_and_search() {
         .iter()
         .find(|c| c.tab() == "ribbon.tab.home")
         .unwrap();
-    let label = t(home_cmd.label);
+    let label = in_group(&t(home_cmd.group), &t(home_cmd.label));
     assert!(
         h.query_by_role_and_label(Role::ListItem, &label).is_some(),
         "\"Start\" lists {label}"
@@ -144,7 +145,8 @@ fn settings_page_picks_the_language() {
     h.run();
     click(&mut h, &t("ribbon.tab.file"));
     click(&mut h, &t("backstage.settings"));
-    click(&mut h, &t("ui_language.nl"));
+    let group = t("settings.ui_language");
+    click(&mut h, &in_group(&group, &t("ui_language.nl")));
     assert_eq!(h.state().settings.ui_language.as_deref(), Some("nl"));
     assert_eq!(ui_language(), "nl");
     // The page itself now reads in Dutch.
@@ -153,12 +155,9 @@ fn settings_page_picks_the_language() {
     h.get_by_label(&label);
     assert_eq!(t("ribbon.tab.home"), "Start");
     h.get_by_role_and_label(Role::Tab, "Start");
-    // "System" also names a theme further down the page.
-    h.query_all_by_label(&t("ui_language.system"))
-        .next()
-        .unwrap()
-        .click();
-    h.run();
+    // Named with its group: "System" also names a theme.
+    let group = t("settings.ui_language");
+    click(&mut h, &in_group(&group, &t("ui_language.system")));
     assert_eq!(h.state().settings.ui_language, None);
     // Tests never read the OS locale: the test app's OS has none.
     assert_eq!(ui_language(), "en");
@@ -336,7 +335,8 @@ fn choosing_the_shown_language_again_changes_nothing() {
         // The settings page shows the same choice.
         click(&mut h, &t("ribbon.tab.file"));
         click(&mut h, &t("backstage.settings"));
-        selected_node(&h, &label).click();
+        let named = in_group(&t("settings.ui_language"), &label);
+        selected_node(&h, &named).click();
         h.run();
         assert_eq!(h.state().settings.ui_language.as_deref(), Some(stored));
     }

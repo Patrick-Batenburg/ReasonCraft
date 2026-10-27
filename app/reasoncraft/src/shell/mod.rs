@@ -127,6 +127,14 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             let mut spell = SpellFields::new(&mut app.spell, &app.settings, &lang, &tk);
             text_panel::show(ui, tab, &app.settings, &tk, &mut spell, &mut out);
         });
+    // egui names both resize handles "Resize panel".
+    for (salt, key) in [
+        ("building_panel", "a11y.resize_building"),
+        ("text_panel", "a11y.resize_text"),
+    ] {
+        let handle = ui.scope_id().with(salt).with("__resize");
+        crate::a11y::name_node(ui.ctx(), handle, &crate::i18n::t(key));
+    }
     app.pending.extend(out);
 }
 

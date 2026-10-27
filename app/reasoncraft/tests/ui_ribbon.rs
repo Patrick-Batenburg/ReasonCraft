@@ -6,6 +6,7 @@ use egui_kittest::{
     kittest::{NodeT, Queryable},
 };
 use reasoncraft::ReasonCraftApp;
+use reasoncraft::a11y::in_group;
 use reasoncraft::i18n::t;
 
 fn harness() -> Harness<'static, ReasonCraftApp> {
@@ -47,17 +48,15 @@ fn evaluate_tab_rates_selected_card() {
     h.run();
     h.get_by_label(&t("ribbon.tab.evaluate")).click();
     h.run();
-    let strong = t("eval.strong");
-    assert_eq!(strong, "Strong");
+    assert_eq!(t("eval.strong"), "Strong");
+    // Named with their group: a card's and a source's scale both have Nil.
+    let strong = in_group(&t("group.eval_card"), &t("eval.strong"));
     let toggled =
         |h: &Harness<'static, ReasonCraftApp>| h.get_by_label(&strong).accesskit_node().toggled();
     assert_eq!(toggled(&h), Some(egui::accesskit::Toggled::False));
     // A card takes no acceptance: that group is greyed out.
-    assert!(
-        h.get_by_label(&t("eval.accept"))
-            .accesskit_node()
-            .is_disabled()
-    );
+    let accept = in_group(&t("group.eval_claim"), &t("eval.accept"));
+    assert!(h.get_by_label(&accept).accesskit_node().is_disabled());
     h.get_by_label(&strong).click();
     h.run();
     let tab = &h.state().tabs[0];

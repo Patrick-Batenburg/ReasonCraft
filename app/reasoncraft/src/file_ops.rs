@@ -63,6 +63,8 @@ pub enum Modal {
     Recover(Vec<crate::recovery::RecoveredDoc>),
     /// An Argdown import changed or left out these constructs.
     ImportReport(Vec<reasoncraft_core::ImportNote>),
+    /// Put every setting back to its default?
+    ResetSettings,
 }
 
 /// What a save was part of, so it can carry on once the file is written.

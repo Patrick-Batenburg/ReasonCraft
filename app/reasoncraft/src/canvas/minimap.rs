@@ -185,12 +185,14 @@ pub(super) fn show(
     let panel = panel_rect(viewport);
     let map = Mapping::new(cache.bounds, panel);
 
+    // A picture for the mouse; the keyboard pans with Ctrl+Alt+arrows
+    // and fits with "Fit map", so Tab skips it.
     let response = ui.interact(
         panel,
         ui.scope_id().with("minimap"),
-        Sense::click_and_drag(),
+        Sense::CLICK | Sense::DRAG,
     );
-    let label = t("minimap.label");
+    let label = t("minimap.name");
     response.widget_info(|| WidgetInfo::labeled(Role::Image, true, &label));
     let painter = ui.painter_at(panel);
     painter.rect(

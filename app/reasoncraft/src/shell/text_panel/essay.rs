@@ -13,8 +13,9 @@ use reasoncraft_core::essay::{ElementRole, EssayElement, EssaySection, EssaySlot
 use reasoncraft_core::{BoxKind, Document, Item, Role as CardRole};
 
 use super::essay_rows::{Part, parts};
-use super::essay_slot::{self, Paragraph, Statement, paragraph_id};
+use super::essay_slot::{self, Paragraph, Statement};
 use super::virtual_rows::{self, Rows};
+use crate::a11y::{in_group, labelled};
 use crate::actions::Action;
 use crate::canvas::rating::{Mark, card_colour, mark_for, rating_dots, rating_label};
 use crate::doc_tab::{DocTab, EssayRow, EssayView};
@@ -65,19 +66,10 @@ pub fn show(
         };
         let parts = parts(&tab_ref.doc, view);
         let keys: Vec<EssayRow> = parts.iter().map(Part::key).collect();
-        // The row whose field has the keyboard focus stays laid out.
-        let focused = ui.memory(|m| m.focused());
-        let keep = focused.and_then(|id| {
-            keys.iter().find(|k| match k {
-                EssayRow::Slot(slot) => paragraph_id(tab_ref, *slot) == id,
-                _ => false,
-            })
-        });
         let rows = Rows {
             keys: &keys,
             estimate: ROW_ESTIMATE,
             revision: tab_ref.revision(),
-            keep,
             draw: |ui: &mut Ui, i: usize| part(ui, &cx, &parts[i], spell, out),
         };
         virtual_rows::show(ui, &mut heights, rows);
@@ -160,11 +152,13 @@ fn end_slot(
     } else {
         "essay.conclusion"
     };
-    heading(ui, &t(key), 0, cx.tk.box_text, cx.tk);
+    let part = t(key);
+    heading(ui, &part, 0, cx.tk.box_text, cx.tk);
     ui.add_space(2.0);
     let root = cx.doc.root;
     if let Some(claim) = cx.doc.boxes.get(&root) {
         let s = Statement {
+            name: Some(in_group(&part, &one_line(&claim.text))),
             item: Item::Box(root),
             text: &claim.text,
             depth: 0,
@@ -268,6 +262,7 @@ fn element(
         source,
         mark: mark(cx, item),
         selected: cx.selection == Some(item),
+        name: None,
     };
     ui.add_space(4.0);
     essay_slot::statement(ui, &s, cx.tk, out);
@@ -322,25 +317,43 @@ fn inactive(ui: &mut Ui, cx: &Ctx, item: Item, label: &str, text: &str, out: &mu
             source: None,
             mark: None,
             selected: cx.selection == Some(item),
+            name: None,
         };
         essay_slot::statement(ui, &s, cx.tk, out);
         ui.label(text);
-        if ui.button(t("essay.copy")).clicked() {
+        if labelled(ui.button(t("essay.copy")), named("essay.copy_name", label)).clicked() {
             ui.ctx().copy_text(text.to_owned());
         }
     });
 }
 
-/// The `i`th note whose item was deleted, with Copy and Remove.
+/// `key` with `name` as its `$name`.
+fn named(key: &str, name: &str) -> String {
+    let mut args = FluentArgs::new();
+    args.set("name", name);
+    t_args(key, &args)
+}
+
+/// The `i`th note whose item was deleted, with Copy and Remove. A note
+/// without a label is called by its number.
 fn unplaced(ui: &mut Ui, cx: &Ctx, i: usize, label: &str, text: &str, out: &mut Vec<Action>) {
+    let label = if label.trim().is_empty() {
+        let mut args = FluentArgs::new();
+        args.set("n", i + 1);
+        t_args("essay.unplaced_note", &args)
+    } else {
+        label.to_owned()
+    };
     note_frame(ui, cx.tk, |ui| {
-        ui.label(RichText::new(label).strong().color(cx.tk.text_muted));
+        ui.label(RichText::new(&label).strong().color(cx.tk.text_muted));
         ui.label(text);
         ui.horizontal(|ui| {
-            if ui.button(t("essay.copy")).clicked() {
+            let copy = ui.button(t("essay.copy"));
+            if labelled(copy, named("essay.copy_name", &label)).clicked() {
                 ui.ctx().copy_text(text.to_owned());
             }
-            if ui.button(t("essay.remove")).clicked() {
+            let remove = ui.button(t("essay.remove"));
+            if labelled(remove, named("essay.remove_name", &label)).clicked() {
                 out.push(Action::RemoveUnplaced(i));
             }
         });

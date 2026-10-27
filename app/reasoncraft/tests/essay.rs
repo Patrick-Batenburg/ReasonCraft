@@ -253,6 +253,13 @@ fn essay_session_commits_on_save_and_close() {
     );
 }
 
+/// `key` with `name` as its `$name`.
+fn named(key: &str, name: &str) -> String {
+    let mut args = FluentArgs::new();
+    args.set("name", name);
+    t_args(key, &args)
+}
+
 #[test]
 fn deleting_branch_shows_unplaced_note() {
     let (mut doc, cards) = rated_doc();
@@ -275,13 +282,15 @@ fn deleting_branch_shows_unplaced_note() {
     );
     h.get_by_label(&t("essay.unplaced"));
     h.get_by_label("Written for it");
-    h.get_by_label(&t("essay.copy"));
+    // The buttons name the note they act on.
+    h.get_by_label(&named("essay.copy_name", "Weak reason"));
 
     // Remove deletes the note as one undoable step.
     let steps = undo_len(&h);
-    h.get_by_label(&t("essay.remove")).scroll_to_me();
+    let remove = named("essay.remove_name", "Weak reason");
+    h.get_by_label(&remove).scroll_to_me();
     h.run();
-    h.get_by_label(&t("essay.remove")).click();
+    h.get_by_label(&remove).click();
     h.run();
     assert!(h.state().tabs[0].doc.essay.unplaced.is_empty());
     assert_eq!(undo_len(&h), steps + 1);

@@ -85,7 +85,7 @@ action-numbers = Numbers
 minimap-auto = Show minimap when the map does not fit
 minimap-on = Always show minimap
 minimap-off = Hide minimap
-minimap-label = Overview map
+minimap-name = Overview map
 action-load_sample = Load sample map (debug)
 action-source_icons = Source icons (debug)
 
@@ -132,6 +132,7 @@ spell-ignore = Ignore
 spell-ignore_all = Ignore all
 spell-add = Add to dictionary
 spell-close = Close
+spell-close_name = Close spelling
 spell-add_refused = This word cannot be added to the dictionary.
 spell-load_failed = The spelling dictionary could not be loaded ({ $error }). Editing works as usual, without spellcheck.
 
@@ -232,6 +233,14 @@ settings-autosave = Autosave every
 settings-autosave_unit = { " " }seconds
 settings-autosave_interval = Seconds between autosaves
 settings-autosave_hint = Keeps a copy of unsaved work, so it can be restored after a crash. Your files are only written when you save.
+settings-ui_scale = Interface size
+settings-ui_scale_unit = { " " }%
+settings-reset = Reset to defaults
+settings-reset-hint = Puts every setting back as it was at the first start. Your personal dictionary is kept.
+settings-reset-title = Reset all settings?
+settings-reset-message = Every setting goes back to its default: theme, languages, interface size, checks, export choices and the rest. Your personal dictionary is kept.
+settings-reset-cancel = Cancel
+settings-reset-confirm = Reset
 
 ## Recovery
 recovery-title = Restore unsaved work?
@@ -324,6 +333,9 @@ essay-unplaced = Unplaced notes
 essay-unplaced-hint = Text written for parts of the map that were deleted. Copy it to where it belongs, or remove it.
 essay-copy = Copy text
 essay-remove = Remove note
+essay-unplaced_note = Unplaced note { $n }
+essay-copy_name = Copy the text of { $name }
+essay-remove_name = Remove { $name }
 snippet-new = New snippet
 snippet-tip-new = Add an empty snippet to type or paste text into
 snippet-paste = Paste as snippet
@@ -355,6 +367,7 @@ outline-copied = Copied
 outline-empty = (empty)
 check-all_clear = No problems found. Well done!
 check-ignore = Ignore
+check-ignore_name = Ignore { $kind } for { $item }
 check-restore = Show ignored hints ({ $count })
 check-heading = { $kind } ({ $count })
 check-kind-key_term = Missing key words
@@ -392,6 +405,7 @@ check-card = { $kind }: { $premises }
 building-boxes = Boxes
 building-sources = Sources
 building-comments = Comments
+building-item_name = { $item } (Building panel)
 
 ## Canvas
 canvas-empty_claim = Type your main claim
@@ -601,3 +615,8 @@ status-jobs-images = { $count ->
 }
 export-error-stopped = The export stopped unexpectedly. Please try again.
 export-error-unsupported = This kind of export is not available yet ({ $detail }).
+
+## Accessibility: names screen readers announce
+a11y-in_group = { $group }: { $name }
+a11y-resize_building = Resize the Building panel
+a11y-resize_text = Resize the Text panel

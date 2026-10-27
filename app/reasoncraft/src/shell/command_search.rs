@@ -167,13 +167,16 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 /// One result: the label, its group, and the shortcut at the right.
 fn result_row(ui: &mut Ui, tk: &Tokens, cmd: &Command, enabled: bool, on: bool) -> Response {
     let label = t(cmd.label);
+    let group = t(cmd.group);
     let sense = if enabled {
         Sense::click()
     } else {
         Sense::hover()
     };
     let (rect, resp) = ui.allocate_exact_size(Vec2::new(LIST_W, ROW_H), sense);
-    resp.widget_info(|| WidgetInfo::selected(Role::ListItem, enabled, on, &label));
+    // Named with its group, as a label may stand in two groups (Nil).
+    let name = crate::a11y::in_group(&group, &label);
+    resp.widget_info(|| WidgetInfo::selected(Role::ListItem, enabled, on, &name));
     if !ui.is_rect_visible(rect) {
         return resp;
     }
@@ -187,7 +190,6 @@ fn result_row(ui: &mut Ui, tk: &Tokens, cmd: &Command, enabled: bool, on: bool) 
     let shown = painter.text(left, Align2::LEFT_CENTER, &label, font.clone(), colour);
     let group_pos = pos2(shown.right() + 10.0, rect.center().y);
     let small = FontId::proportional(11.0);
-    let group = t(cmd.group);
     painter.text(
         group_pos,
         Align2::LEFT_CENTER,

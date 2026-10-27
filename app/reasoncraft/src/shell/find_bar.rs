@@ -13,6 +13,7 @@ use reasoncraft_core::FindOptions;
 
 use super::icon_button;
 use super::icons::Icon;
+use crate::a11y::labelled;
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
@@ -103,10 +104,10 @@ fn bar(ui: &mut Ui, tab: &mut DocTab, tk: &Tokens, out: &mut Vec<Action>) {
             out.push(Action::SetFindQuery(query));
         }
         let opts = tab.find.opts;
+        // The glyph (Aa, W) shows; the tooltip text is the name.
         let toggle = |ui: &mut Ui, on: bool, key: &str, tip: &str| {
-            ui.add(Button::selectable(on, t(key)))
-                .on_hover_text(t(tip))
-                .clicked()
+            let resp = ui.add(Button::selectable(on, t(key)));
+            labelled(resp, t(tip)).on_hover_text(t(tip)).clicked()
         };
         if toggle(
             ui,

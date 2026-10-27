@@ -43,6 +43,9 @@ pub struct Tokens {
     pub find_hit: Color32,
     /// The screen-only underline under misspelled words in editing fields.
     pub spell_error: Color32,
+    /// The hovered window Close button, and its glyph.
+    pub danger: Color32,
+    pub on_danger: Color32,
 }
 
 const fn hex(rgb: u32) -> Color32 {
@@ -72,6 +75,8 @@ impl Tokens {
             note_text: hex(0x26220F),
             find_hit: hex(0xE879F9),
             spell_error: hex(0xFF5C5C),
+            danger: hex(0xC42B1C),
+            on_danger: hex(0xFFFFFF),
         }
     }
 
@@ -97,6 +102,8 @@ impl Tokens {
             note_text: hex(0x3A3412),
             find_hit: hex(0xA21CAF),
             spell_error: hex(0xD92020),
+            danger: hex(0xC42B1C),
+            on_danger: hex(0xFFFFFF),
         }
     }
 }
@@ -159,7 +166,7 @@ mod tests {
     /// Text needs 4.5:1 (WCAG AA); role colours are mostly borders and
     /// connectors, so they need the 3:1 for non-text UI.
     #[test]
-    fn colours_meet_wcag_aa_in_both_themes() {
+    fn contrast_of_all_text_tokens_aa() {
         for t in [Tokens::dark(), Tokens::light()] {
             for bg in [t.bg, t.panel, t.ribbon, t.box_fill, t.canvas] {
                 let text = [t.box_text, t.text_muted, t.accent].map(|c| (c, 4.5));
@@ -188,6 +195,25 @@ mod tests {
                 let c = contrast(t.spell_error, bg);
                 assert!(c >= 3.0, "spell_error: {c:.2} (dark = {})", t.dark);
             }
+        }
+        // Close glyphs: on the tabs (also hovered), the panels, and the
+        // window's Close button, hovered on its danger fill.
+        for t in [Tokens::dark(), Tokens::light()] {
+            let surfaces = [t.bg, t.ribbon, t.panel].map(|s| [s, crate::shell::hover_fill(&t, s)]);
+            for bg in surfaces.into_iter().flatten() {
+                let c = contrast(t.box_text, bg);
+                assert!(
+                    c >= 4.5,
+                    "close glyph on {bg:?}: {c:.2} (dark = {})",
+                    t.dark
+                );
+            }
+            let c = contrast(t.on_danger, t.danger);
+            assert!(
+                c >= 4.5,
+                "close glyph on danger: {c:.2} (dark = {})",
+                t.dark
+            );
         }
         // Light-theme role colours are also used for label text.
         let t = Tokens::light();

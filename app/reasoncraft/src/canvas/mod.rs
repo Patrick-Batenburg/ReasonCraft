@@ -40,16 +40,18 @@ impl From<Hit> for Item {
     }
 }
 
+/// The widget id of the map: while it (or nothing) has the keyboard focus,
+/// the keys work the map.
+pub fn canvas_id() -> egui::Id {
+    egui::Id::unique("map_canvas")
+}
+
 /// Lay out, navigate and paint the active document in the space `ui` has
 /// left. A click selects what is under the pointer (or nothing); a drag
 /// moves it; the selected box gets a "+" menu and the edited box a text field.
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let rect = ui.max_rect();
-    let response = ui.interact(
-        rect,
-        ui.scope_id().with("map_canvas"),
-        Sense::click_and_drag(),
-    );
+    let response = ui.interact(rect, canvas_id(), Sense::click_and_drag());
     let label = t("canvas.label");
     response.widget_info(|| WidgetInfo::labeled(Role::Canvas, true, &label));
 

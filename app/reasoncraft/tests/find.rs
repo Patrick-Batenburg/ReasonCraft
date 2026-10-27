@@ -57,7 +57,7 @@ fn find_bar_keyboard() {
     h.key_press_modifiers(Modifiers::COMMAND, Key::F);
     h.run();
     assert!(h.state().tabs[0].find.open, "open");
-    assert!(h.query_by_label(&t("find.match_case")).is_some());
+    assert!(h.query_by_label(&t("find.match_case.tip")).is_some());
     assert!(focused(&h, "find.query"), "Ctrl+F focuses the field");
     assert!(h.query_by_label(&t("find.replacement")).is_none());
     assert_eq!(h.state().tabs[0].selection, Some(Item::Box(root)));

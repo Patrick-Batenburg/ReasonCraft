@@ -86,7 +86,7 @@ action-numbers = Nummers
 minimap-auto = Minikaart tonen als de kaart niet past
 minimap-on = Minikaart altijd tonen
 minimap-off = Minikaart verbergen
-minimap-label = Overzichtskaart
+minimap-name = Overzichtskaart
 action-load_sample = Voorbeeldkaart laden (debug)
 action-source_icons = Bronpictogrammen (debug)
 
@@ -133,6 +133,7 @@ spell-ignore = Negeren
 spell-ignore_all = Alles negeren
 spell-add = Aan woordenlijst toevoegen
 spell-close = Sluiten
+spell-close_name = Spelling sluiten
 spell-add_refused = Dit woord kan niet aan de woordenlijst worden toegevoegd.
 spell-load_failed = De woordenlijst kon niet worden geladen ({ $error }). Bewerken werkt gewoon, alleen zonder spellingcontrole.
 
@@ -233,6 +234,14 @@ settings-autosave = Automatisch opslaan elke
 settings-autosave_unit = { " " }seconden
 settings-autosave_interval = Seconden tussen automatisch opslaan
 settings-autosave_hint = Bewaart een kopie van niet-opgeslagen werk, zodat je het na een crash kunt herstellen. Je bestanden worden alleen geschreven als je opslaat.
+settings-ui_scale = Grootte van de interface
+settings-ui_scale_unit = { " " }%
+settings-reset = Standaardinstellingen herstellen
+settings-reset-hint = Zet alle instellingen terug zoals bij de eerste start. Je eigen woordenlijst blijft bewaard.
+settings-reset-title = Alle instellingen herstellen?
+settings-reset-message = Elke instelling gaat terug naar de standaardwaarde: thema, talen, grootte van de interface, controles, exportkeuzes en de rest. Je eigen woordenlijst blijft bewaard.
+settings-reset-cancel = Annuleren
+settings-reset-confirm = Herstellen
 
 ## Recovery
 recovery-title = Niet-opgeslagen werk herstellen?
@@ -325,6 +334,9 @@ essay-unplaced = Losse aantekeningen
 essay-unplaced-hint = Tekst bij delen van de kaart die zijn verwijderd. Kopieer hem naar de juiste plek, of verwijder hem.
 essay-copy = Tekst kopiëren
 essay-remove = Aantekening verwijderen
+essay-unplaced_note = Losse aantekening { $n }
+essay-copy_name = Tekst van { $name } kopiëren
+essay-remove_name = { $name } verwijderen
 snippet-new = Nieuw fragment
 snippet-tip-new = Voeg een leeg fragment toe om tekst in te typen of te plakken
 snippet-paste = Plakken als fragment
@@ -356,6 +368,7 @@ outline-copied = Gekopieerd
 outline-empty = (leeg)
 check-all_clear = Geen tips: alles ziet er goed uit. Goed gedaan!
 check-ignore = Negeren
+check-ignore_name = { $kind } negeren bij { $item }
 check-restore = Genegeerde tips tonen ({ $count })
 check-heading = { $kind } ({ $count })
 check-kind-key_term = Ontbrekende kernwoorden
@@ -393,6 +406,7 @@ check-card = { $kind }: { $premises }
 building-boxes = Vakken
 building-sources = Bronnen
 building-comments = Opmerkingen
+building-item_name = { $item } (Bouwstenen)
 
 ## Canvas
 canvas-empty_claim = Typ je hoofdbewering
@@ -602,3 +616,8 @@ status-jobs-images = { $count ->
 }
 export-error-stopped = Het exporteren is onverwacht gestopt. Probeer het opnieuw.
 export-error-unsupported = Dit soort export is nog niet beschikbaar ({ $detail }).
+
+## Accessibility: names screen readers announce
+a11y-in_group = { $group }: { $name }
+a11y-resize_building = Breedte van Bouwstenen aanpassen
+a11y-resize_text = Breedte van het Tekstpaneel aanpassen

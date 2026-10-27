@@ -7,11 +7,12 @@ use eframe::egui::{
 
 use super::hover_fill;
 use super::icons::{self, Icon};
+use crate::a11y::{in_group, labelled};
 use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::commands;
 use crate::i18n::{UI_LANGUAGES, t};
-use crate::settings::{AUTOSAVE_DEFAULT, AUTOSAVE_MAX, AUTOSAVE_MIN};
+use crate::settings::{AUTOSAVE_DEFAULT, AUTOSAVE_MAX, AUTOSAVE_MIN, UI_SCALE_MAX, UI_SCALE_MIN};
 use crate::shell::text_panel::{check_help, check_key};
 use crate::theme::{ThemeChoice, Tokens};
 use reasoncraft_core::checks::CheckKind;
@@ -57,9 +58,14 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     ui.add_space(24.0);
                     ui.separator();
                     ui.add_space(24.0);
-                    ui.vertical(|ui| match page {
-                        Page::Document => document::page(ui, app),
-                        Page::Settings => settings_page(ui, app),
+                    // Scrolls when it does not fit (at a large UI scale),
+                    // each page on its own.
+                    let scroll = egui::ScrollArea::vertical().id_salt(page == Page::Settings);
+                    scroll.show(ui, |ui| {
+                        ui.vertical(|ui| match page {
+                            Page::Document => document::page(ui, app),
+                            Page::Settings => settings_page(ui, app),
+                        })
                     });
                 }
             });
@@ -135,8 +141,9 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
     }
 }
 
-/// The interface language, the author name, the theme, the default
-/// language, spellcheck, autosave and which checks run.
+/// The interface language, the author name, the theme and interface
+/// size, the default language, spellcheck, autosave, which checks run,
+/// and Reset to defaults.
 fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -151,7 +158,8 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     ui.add_space(8.0);
     author_field(ui, app, &tk);
     ui.add_space(8.0);
-    ui.label(RichText::new(t("settings.theme")).color(tk.box_text));
+    let group = t("settings.theme");
+    ui.label(RichText::new(&group).color(tk.box_text));
     ui.horizontal(|ui| {
         let themes = [
             ("theme.system", ThemeChoice::System),
@@ -159,18 +167,19 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             ("theme.dark", ThemeChoice::Dark),
         ];
         for (key, choice) in themes {
-            if ui
-                .selectable_label(app.settings.theme == choice, t(key))
-                .clicked()
-            {
+            let resp = ui.selectable_label(app.settings.theme == choice, t(key));
+            if labelled(resp, in_group(&group, &t(key))).clicked() {
                 app.push(Action::SetTheme(choice));
             }
         }
     });
     ui.add_space(8.0);
-    ui.label(RichText::new(t("settings.default_language")).color(tk.box_text));
+    ui_scale(ui, app, &tk);
+    ui.add_space(8.0);
+    let group = t("settings.default_language");
+    ui.label(RichText::new(&group).color(tk.box_text));
     let current = app.settings.default_doc_language.clone();
-    if let Some(lang) = document::language_picker(ui, &current) {
+    if let Some(lang) = document::language_picker(ui, &group, &current) {
         app.push(Action::SetDefaultDocLanguage(lang));
     }
     ui.label(RichText::new(t("settings.default_language_hint")).color(tk.text_muted));
@@ -187,20 +196,52 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     autosave(ui, app, &tk);
     ui.add_space(8.0);
     checks(ui, app, &tk);
+    ui.add_space(16.0);
+    if ui.button(t("settings.reset")).clicked() {
+        app.push(Action::ResetSettings);
+    }
+    ui.label(RichText::new(t("settings.reset.hint")).color(tk.text_muted));
+}
+
+/// The size of the whole interface, 80 % to 200 % in steps of 10 %. A
+/// drag applies when it ends: the slider would move under the pointer if
+/// the interface grew while dragging. Keys apply at once.
+fn ui_scale(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
+    let label = t("settings.ui_scale");
+    ui.label(RichText::new(&label).color(tk.box_text));
+    let percent = |scale: f32| (scale * 100.0).round() as u32;
+    let dragging_id = Id::unique("settings_ui_scale_drag");
+    let mut value = ui
+        .data(|d| d.get_temp(dragging_id))
+        .unwrap_or_else(|| percent(app.settings.ui_scale_factor()));
+    let slider = egui::Slider::new(&mut value, percent(UI_SCALE_MIN)..=percent(UI_SCALE_MAX))
+        .step_by(10.0)
+        .suffix(t("settings.ui_scale_unit"));
+    let resp = labelled(ui.add(slider), label);
+    if resp.dragged() {
+        ui.data_mut(|d| d.insert_temp(dragging_id, value));
+    } else {
+        ui.data_mut(|d| d.remove_temp::<u32>(dragging_id));
+        if resp.changed() || resp.drag_stopped() {
+            app.push(Action::SetUiScale(value as f32 / 100.0));
+        }
+    }
 }
 
 /// The interface language: System (the OS language) or one of the UI
 /// languages, each named in its own language. Same commands as View →
 /// Language.
 fn ui_language(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
-    ui.label(RichText::new(t("settings.ui_language")).color(tk.box_text));
+    let group = t("settings.ui_language");
+    ui.label(RichText::new(&group).color(tk.box_text));
     let current = app.settings.ui_language_choice();
     ui.horizontal(|ui| {
         let langs = UI_LANGUAGES.map(|l| (l, Some(l)));
         for (key, lang) in std::iter::once(("system", None)).chain(langs) {
             let cmd = commands::get(&format!("view.language.{key}"));
             let on = current == lang;
-            if ui.selectable_label(on, t(cmd.label)).clicked() && !on {
+            let resp = ui.selectable_label(on, t(cmd.label));
+            if labelled(resp, in_group(&group, &t(cmd.label))).clicked() && !on {
                 app.push(cmd.action.clone());
             }
         }
@@ -263,8 +304,7 @@ fn checks(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
 /// The author name field. While it has focus it shows what is typed (so
 /// a trailing space survives); every change is applied, trimmed.
 fn author_field(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
-    let label = t("settings.author");
-    ui.label(RichText::new(&label).color(tk.box_text));
+    let label = ui.label(RichText::new(t("settings.author")).color(tk.box_text));
     let id = Id::unique("settings_author");
     let focused = ui.memory(|m| m.has_focus(id));
     let mut text = if focused {
@@ -273,12 +313,14 @@ fn author_field(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
     } else {
         app.settings.author.clone()
     };
-    let response = ui.add(
-        TextEdit::singleline(&mut text)
-            .id(id)
-            .hint_text(t("comment.anonymous"))
-            .desired_width(280.0),
-    );
+    let response = ui
+        .add(
+            TextEdit::singleline(&mut text)
+                .id(id)
+                .hint_text(t("comment.anonymous"))
+                .desired_width(280.0),
+        )
+        .labelled_by(label.id);
     if response.changed() {
         app.push(Action::SetAuthor(text.clone()));
     }

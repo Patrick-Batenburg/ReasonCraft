@@ -195,6 +195,8 @@ const SAME_IN_DUTCH: &[&str] = &[
     "export-png-scale_value",
     "export-page-a4",
     "export-page-letter",
+    "settings-ui_scale_unit",
+    "a11y-in_group",
 ];
 
 #[test]

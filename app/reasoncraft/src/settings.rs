@@ -61,6 +61,10 @@ pub struct Settings {
     /// Seconds between autosaves to the recovery folder; 0 turns autosave
     /// off. Used clamped to [`AUTOSAVE_MIN`]..=[`AUTOSAVE_MAX`].
     pub autosave_secs: u32,
+    /// The size of the whole interface, 1.0 for 100 %. Used in steps of
+    /// 10 % within [`UI_SCALE_MIN`]..=[`UI_SCALE_MAX`] (see
+    /// [`Settings::ui_scale_factor`]). The map's own zoom comes on top.
+    pub ui_scale: f32,
 }
 
 /// Read a field, taking its default when the saved value is not one this
@@ -103,6 +107,10 @@ pub const AUTOSAVE_DEFAULT: u32 = 45;
 /// The shortest and longest autosave intervals, in seconds.
 pub const AUTOSAVE_MIN: u32 = 30;
 pub const AUTOSAVE_MAX: u32 = 600;
+
+/// The smallest and largest interface scales (80 % and 200 %).
+pub const UI_SCALE_MIN: f32 = 0.8;
+pub const UI_SCALE_MAX: f32 = 2.0;
 
 /// When the overview minimap shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -153,6 +161,32 @@ impl Settings {
         } else {
             secs.clamp(AUTOSAVE_MIN, AUTOSAVE_MAX)
         }
+    }
+
+    /// `scale` as an interface scale: rounded to a step of 10 % within
+    /// [`UI_SCALE_MIN`]..=[`UI_SCALE_MAX`]; 100 % for a value that is not a
+    /// number.
+    pub fn clamp_ui_scale(scale: f32) -> f32 {
+        if scale.is_finite() {
+            ((scale * 10.0).round() / 10.0).clamp(UI_SCALE_MIN, UI_SCALE_MAX)
+        } else {
+            1.0
+        }
+    }
+
+    /// The interface scale to use (see [`Self::clamp_ui_scale`]).
+    pub fn ui_scale_factor(&self) -> f32 {
+        Self::clamp_ui_scale(self.ui_scale)
+    }
+
+    /// Every setting back to its default, except the personal dictionary
+    /// (and the recent files, once the settings keep them): those are the
+    /// user's own data, not preferences.
+    pub fn reset_to_defaults(&mut self) {
+        *self = Settings {
+            spell_words: std::mem::take(&mut self.spell_words),
+            ..Settings::default()
+        };
     }
 
     /// Seconds between autosaves, or `None` when autosave is off.
@@ -239,6 +273,7 @@ impl Default for Settings {
             spellcheck: true,
             spell_words: Vec::new(),
             autosave_secs: AUTOSAVE_DEFAULT,
+            ui_scale: 1.0,
         }
     }
 }

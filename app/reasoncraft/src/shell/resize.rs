@@ -71,7 +71,8 @@ pub fn show(ctx: &egui::Context) {
         let response = Area::new(Id::unique(("window_resize", i)))
             .order(Order::Foreground)
             .fixed_pos(rect.min)
-            .sense(Sense::drag())
+            // Mouse only, like an OS window frame: Tab skips the zones.
+            .sense(Sense::DRAG)
             .show(ctx, |ui| ui.allocate_space(rect.size()))
             .response;
         if response.hovered() || response.dragged() {

@@ -237,6 +237,7 @@ fn settings_from_old_storage_fill_defaults() {
         spellcheck: false,
         spell_words: vec!["Reasoncraftish".to_owned()],
         autosave_secs: 120,
+        ui_scale: 1.3,
     };
     eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
     assert_eq!(
@@ -301,7 +302,8 @@ fn backstage_settings_set_author() {
     h.run();
     assert_eq!(h.state().settings.author, "Ann Lee");
     // The theme can be chosen here too.
-    h.get_by_label(&t("theme.light")).click();
+    let light = reasoncraft::a11y::in_group(&t("settings.theme"), &t("theme.light"));
+    h.get_by_label(&light).click();
     h.run();
     assert_eq!(
         h.state().settings.theme,

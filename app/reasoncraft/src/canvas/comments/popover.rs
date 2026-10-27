@@ -175,7 +175,7 @@ fn contents(
     }
     ui.separator();
     let mut layouter = spell.layouter(FieldStyle::default());
-    ui.add(
+    let field = ui.add(
         TextEdit::multiline(&mut draft.text)
             .id(field_id)
             .layouter(&mut layouter)
@@ -183,6 +183,8 @@ fn contents(
             .desired_rows(3)
             .desired_width(f32::INFINITY),
     );
+    // Named by its hint, which shows only while it is empty.
+    crate::a11y::labelled(field, t("comment.hint"));
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing.x = 4.0;
         for (verdict, key) in VERDICTS {

@@ -1,4 +1,4 @@
-//! View preferences: theme, interface language, connector style, rating
+//! View preferences: theme, interface language and scale, connector style, rating
 //! display, minimap, numbering, panels, the Text panel tab, the outline's
 //! switches and which checks run; moving around the map: zooming, keyboard
 //! navigation, revealing the selection; and the document's layout
@@ -52,6 +52,7 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
             }
         }
         Action::SetAutosaveSecs(secs) => s.autosave_secs = Settings::clamp_autosave(secs),
+        Action::SetUiScale(scale) => s.ui_scale = Settings::clamp_ui_scale(scale),
         _ => unreachable!("not a view action"),
     }
 }

@@ -36,14 +36,13 @@ fn screen(h: &H, p: egui::Pos2) -> egui::Pos2 {
     h.state().tabs[0].camera.world_to_screen(p)
 }
 
-/// The centre of the building-panel item called `label` (the lowest of
-/// the widgets with that name, so not the ribbon's).
+/// The centre of the building-panel item called `label` (its accessible
+/// name says it is the panel's, not the ribbon's).
 fn panel_item(h: &H, label: &str) -> egui::Pos2 {
-    h.get_all_by_label(label)
-        .max_by(|a, b| a.rect().top().total_cmp(&b.rect().top()))
-        .expect("panel item")
-        .rect()
-        .center()
+    let mut args = reasoncraft::i18n::FluentArgs::new();
+    args.set("item", label);
+    let name = reasoncraft::i18n::t_args("building.item_name", &args);
+    h.get_by_label(&name).rect().center()
 }
 
 /// Press at `from`, move to `to` over several frames, release.

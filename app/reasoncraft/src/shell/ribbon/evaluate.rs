@@ -5,6 +5,7 @@ use eframe::egui::Ui;
 use reasoncraft_core::{Acceptance, CardStrength, ClearScope, SourceRating};
 
 use super::{command, group, large};
+use crate::a11y::{in_group, labelled};
 use crate::actions::{Action, Rated, is_enabled, rated};
 use crate::app::ReasonCraftApp;
 use crate::commands;
@@ -43,37 +44,40 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         (Icon::Weak, "evaluate.shaky", S::Shaky),
         (Icon::Nil, "evaluate.source_nil", S::Nil),
     ];
-    group(ui, &tk, &t("group.eval_claim"), |ui| {
+    let name = t("group.eval_claim");
+    group(ui, &tk, &name, |ui| {
         let tip = t("eval.tip.claim");
         out.extend(scale(
             ui,
             &tk,
             tab,
-            &tip,
+            (&name, &tip),
             acceptance,
             claim,
             Action::SetAcceptance,
         ));
     });
-    group(ui, &tk, &t("group.eval_card"), |ui| {
+    let name = t("group.eval_card");
+    group(ui, &tk, &name, |ui| {
         let tip = t("eval.tip.card");
         out.extend(scale(
             ui,
             &tk,
             tab,
-            &tip,
+            (&name, &tip),
             strength,
             card,
             Action::SetStrength,
         ));
     });
-    group(ui, &tk, &t("group.eval_source"), |ui| {
+    let name = t("group.eval_source");
+    group(ui, &tk, &name, |ui| {
         let tip = t("eval.tip.source");
         out.extend(scale(
             ui,
             &tk,
             tab,
-            &tip,
+            (&name, &tip),
             source,
             src,
             Action::SetSourceRating,
@@ -109,13 +113,14 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 }
 
 /// One rating scale: a button per value (a registry command id), "on" for
-/// the current value. Clicking the current value clears it. Returns the
-/// clicked button's action.
+/// the current value, named with the `group` it is in (Strong, Weak and
+/// Nil of a card; Solid, Shaky and Nil of a source). Clicking the current
+/// value clears it. Returns the clicked button's action.
 fn scale<T: Copy + PartialEq>(
     ui: &mut Ui,
     tk: &Tokens,
     tab: &DocTab,
-    tip: &str,
+    (group, tip): (&str, &str),
     current: Option<T>,
     values: [(Icon, &str, T); 3],
     set: fn(Option<T>) -> Action,
@@ -126,7 +131,9 @@ fn scale<T: Copy + PartialEq>(
         let cmd = commands::get(id);
         let action = cmd.action.clone();
         let enabled = is_enabled(tab, &action);
-        if large(ui, tk, icon, &t(cmd.label), enabled, on)
+        let label = t(cmd.label);
+        let button = large(ui, tk, icon, &label, enabled, on);
+        if labelled(button, in_group(group, &label))
             .on_hover_text(tip)
             .clicked()
         {

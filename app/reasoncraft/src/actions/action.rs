@@ -335,6 +335,14 @@ pub enum Action {
     SetSpellcheck(bool),
     /// Set the seconds between autosaves (0: off), clamped to the allowed range.
     SetAutosaveSecs(u32),
+    /// Set the interface scale (1.0 for 100 %), rounded to a step of 10 %
+    /// within the allowed range. The map's zoom is separate.
+    SetUiScale(f32),
+    /// Ask whether to put every setting back to its default.
+    ResetSettings,
+    /// Put every setting back to its default, but the personal dictionary
+    /// (the answer Reset to [`Action::ResetSettings`]).
+    ConfirmResetSettings,
     /// The answer to the recovery prompt shown after a crash.
     ResolveRecovery(RecoveryChoice),
     /// Open the built-in sample map in a new tab (debug builds only).

@@ -21,6 +21,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
   - Windows: `%LOCALAPPDATA%\ReasonCraft\recovery`
   - macOS: `~/Library/Application Support/ReasonCraft/recovery`
   - Linux and other Unix: `$XDG_DATA_HOME/ReasonCraft/recovery`, or `~/.local/share/ReasonCraft/recovery` when that is not set
+- **Accessibility and comfort.** Every control has a name for screen readers. On the map Tab adds a reason; once a field has the focus (Alt+Q, Ctrl+F or a click), Tab and Shift+Tab move through the controls, the find bar and the panels, including the long Essay and Check lists, which scroll along. File → Settings sets the interface size (80 % to 200 %, on top of the map's own zoom), and **Reset to defaults** puts every setting back as it was at the first start, keeping your personal dictionary.
 - **Change types.** Turn a reason into an objection or back again (its strength is kept), and change a source's type.
 - **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
 - **Add images.** Put a PNG, JPEG or WebP image in a box. The image is prepared in the background, so a large photo never freezes the window: the box shows "Preparing image…" until it is ready. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.

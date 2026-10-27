@@ -10,6 +10,7 @@ use reasoncraft_core::{CardKind, CardStrength, Document, Item};
 
 use super::outline::one_line;
 use super::virtual_rows::{self, Rows};
+use crate::a11y::labelled;
 use crate::actions::Action;
 use crate::doc_tab::{CheckRow, DocTab};
 use crate::i18n::{FluentArgs, t, t_args};
@@ -137,7 +138,6 @@ pub fn show(
             keys: &keys,
             estimate: ROW_ESTIMATE,
             revision: tab_ref.revision(),
-            keep: None,
             draw,
         };
         virtual_rows::show(ui, &mut heights, rows);
@@ -274,7 +274,11 @@ fn row(
         egui::vec2(button_w, TITLE + 4.0),
     );
     let button = egui::Button::new(RichText::new(ignore).size(EXPLAIN)).small();
-    if ui.place(button_rect, button).clicked() {
+    let mut args = FluentArgs::new();
+    args.set("item", title.as_str());
+    args.set("kind", t(&format!("check.kind.{}", check_key(issue.kind))));
+    let name = t_args("check.ignore_name", &args);
+    if labelled(ui.place(button_rect, button), name).clicked() {
         out.push(Action::IgnoreHint(issue.clone()));
     }
     resp.widget_info(|| WidgetInfo::selected(Role::ListItem, true, selected, &title));

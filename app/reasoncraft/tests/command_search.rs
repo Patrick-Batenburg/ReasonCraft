@@ -44,10 +44,15 @@ struct Row {
     disabled: bool,
 }
 
+/// The accessible name of command `id`'s result row: its group and label.
+fn row_name(id: &str) -> String {
+    let cmd = commands::get(id);
+    reasoncraft::a11y::in_group(&t(cmd.group), &t(cmd.label))
+}
+
 /// The result row of command `id`, if listed.
 fn row(h: &Harness<'static, ReasonCraftApp>, id: &str) -> Option<Row> {
-    let label = t(commands::get(id).label);
-    h.query_by_role_and_label(Role::ListItem, &label)
+    h.query_by_role_and_label(Role::ListItem, &row_name(id))
         .map(|n| Row {
             highlighted: n.accesskit_node().toggled() == Some(Toggled::True),
             disabled: n.accesskit_node().is_disabled(),
@@ -116,8 +121,8 @@ fn arrows_move_highlight_and_click_runs() {
     h.key_press(Key::ArrowUp);
     h.run();
     assert!(selected(&h, "view.zoom_fit"));
-    let label = t(commands::get("view.zoom_100").label);
-    h.get_by_role_and_label(Role::ListItem, &label).click();
+    h.get_by_role_and_label(Role::ListItem, &row_name("view.zoom_100"))
+        .click();
     h.run();
     assert_eq!(h.state().tabs[0].camera.zoom, 1.0);
 }

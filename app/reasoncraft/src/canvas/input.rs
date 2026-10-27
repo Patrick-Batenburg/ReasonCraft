@@ -84,7 +84,8 @@ fn works_while_editing(action: &Action) -> bool {
 /// them and return their actions. Typed text on a selected box starts
 /// editing it (whitespace alone does not: Space is held to pan). Keys are
 /// left alone while a menu is open (Esc closes the menu); while another
-/// text field has focus only the file keys are taken (see [`file_keys`]).
+/// control has the focus (a text field, or a button reached with Tab) only
+/// the file keys are taken (see [`file_keys`]).
 ///
 /// The caller queues the returned actions after the frame's widgets have
 /// run, so text typed into the inline editor in the same frame as a command
@@ -98,7 +99,13 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     if Popup::is_any_open(ctx) {
         return Vec::new();
     }
-    if ctx.text_edit_focused() && focused != editing.map(|b| editor_id(tab, b)) {
+    // Another control has the focus (a field, or a button reached with
+    // Tab): its keys are its own (Tab moves on, Enter presses it); only
+    // the file keys still work.
+    let map_focused = focused.is_none_or(|id| {
+        id == super::canvas_id() || Some(id) == editing.map(|b| editor_id(tab, b))
+    });
+    if !map_focused {
         return file_keys(ctx, app);
     }
     // Esc drops widget focus as the frame begins; keep it on the editor for
