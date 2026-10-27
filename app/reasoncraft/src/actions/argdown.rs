@@ -73,8 +73,6 @@ pub fn import_path(app: &mut ReasonCraftApp, path: &Path) {
     let mut tab = DocTab::from_document(doc);
     // Never saved: closing it asks first, and autosave keeps it.
     tab.history.saved_marker = None;
-    // Revision 0 means "no recovery copy": a loaded tab is past it.
-    tab.mark_loaded(0);
     app.tabs.push(tab);
     app.active = app.tabs.len() - 1;
     if !report.notes.is_empty() {

@@ -139,6 +139,20 @@ fn current_word(h: &H) -> Option<String> {
     pass.current.as_ref().map(|_| pass.word.clone())
 }
 
+/// Run frames until the pass has its suggestions (at most 20 s).
+fn wait_suggestions(h: &mut H) -> Vec<String> {
+    let start = Instant::now();
+    loop {
+        let pass = h.state().tabs[0].spelling.as_ref().expect("a pass runs");
+        if let Some(found) = &pass.suggestions {
+            return found.clone();
+        }
+        assert!(start.elapsed() < Duration::from_secs(20), "none came");
+        h.step();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
 fn open_pass(h: &mut H) {
     apply(h.state_mut(), Action::OpenSpelling);
     h.run();
@@ -158,9 +172,9 @@ fn spelling_pass_change_and_undo() {
     wait_dictionary(&mut h, "en");
     assert_eq!(current_word(&h).as_deref(), Some("recieve"));
     assert_eq!(h.state().tabs[0].selection, Some(Item::Box(ids[1])));
-    let pass = h.state().tabs[0].spelling.clone().unwrap();
-    assert!(pass.suggestions.len() <= 6);
-    assert!(pass.suggestions.contains(&"receive".to_owned()));
+    let found = wait_suggestions(&mut h);
+    assert!(found.len() <= 6);
+    assert!(found.contains(&"receive".to_owned()));
     h.state_mut().tabs[0].spelling.as_mut().unwrap().replacement = "receive".into();
     h.run();
     let before = undo_len(&h);
@@ -310,4 +324,73 @@ fn change_to_the_same_word_adds_no_history() {
     apply(h.state_mut(), Action::SpellChangeAll { word, with });
     assert_eq!(undo_len(&h), before, "Change all to the same word");
     assert!(h.state().tabs[0].spelling.as_ref().unwrap().done);
+}
+
+#[test]
+fn suggestions_never_block_ui() {
+    let (d, _) = map("I recieve mail", &[]);
+    let mut h = harness_with(d, |_| {});
+    wait_dictionary(&mut h, "en");
+    // Hold every suggestion job back: the pass shows the word at once.
+    h.state_mut().spell.delay = Some(Duration::from_millis(400));
+    let start = Instant::now();
+    apply(h.state_mut(), Action::OpenSpelling);
+    assert!(start.elapsed() < Duration::from_millis(100), "no wait");
+    h.run();
+    assert_eq!(current_word(&h).as_deref(), Some("recieve"));
+    let pass = h.state().tabs[0].spelling.clone().unwrap();
+    assert_eq!(pass.suggestions, None, "still being worked out");
+    assert_eq!(pass.replacement, "recieve");
+    assert!(
+        h.query_by_label(&t("spell.suggesting")).is_some(),
+        "shows …"
+    );
+    assert!(h.state_mut().spell.suggest_async("en", "recieve").is_none());
+    let found = wait_suggestions(&mut h);
+    h.run();
+    let pass = h.state().tabs[0].spelling.clone().unwrap();
+    assert!(found.contains(&"receive".to_owned()), "{found:?}");
+    assert!(found.len() <= 6);
+    assert_eq!(pass.replacement, found[0], "the first one is picked");
+    assert!(h.query_by_label(&t("spell.suggesting")).is_none());
+    assert_eq!(
+        h.state_mut().spell.suggest_async("en", "recieve"),
+        Some(found),
+        "kept"
+    );
+}
+
+#[test]
+fn f7_pass_slices_work() {
+    // 500 Dutch boxes, the only misspelling in the last one.
+    // Each text differs (its number), so none comes from the cache.
+    let line = "Dit is een fietsenstalling bij het station, vlak naast de ingang";
+    let mut reasons: Vec<String> = (0..499).map(|i| format!("{line} {i}")).collect();
+    reasons.push("Een fietz bij het station".to_owned());
+    let reasons: Vec<&str> = reasons.iter().map(String::as_str).collect();
+    let (mut d, ids) = map(line, &reasons);
+    d.meta.language = "nl".to_owned();
+    let mut app = ReasonCraftApp::new_for_test();
+    app.tabs[0] = DocTab::from_document(d);
+    let start = Instant::now();
+    while app.spell.get("nl").is_none() {
+        assert!(start.elapsed() < Duration::from_secs(20), "nl never loaded");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    apply(&mut app, Action::OpenSpelling);
+    let mut frames = 1;
+    while app.tabs[0].spelling.as_ref().unwrap().current.is_none() {
+        assert!(frames < 10_000, "the pass never got there");
+        reasoncraft::spell::poll(&mut app);
+        frames += 1;
+    }
+    let pass = app.tabs[0].spelling.clone().unwrap();
+    assert_eq!(pass.word, "fietz");
+    assert_eq!(pass.current.as_ref().unwrap().node, ids[500]);
+    let longest = pass.longest_slice();
+    assert!(
+        longest <= Duration::from_millis(10),
+        "{longest:?} in one frame"
+    );
+    eprintln!("f7 pass: {frames} frames, longest {longest:?}");
 }

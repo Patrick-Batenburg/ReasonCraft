@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::job::write_atomically;
+use super::job::{create_first_new_with, write_atomically};
 
 fn names(dir: &Path) -> Vec<String> {
     let mut v: Vec<String> = std::fs::read_dir(dir)
@@ -52,4 +52,38 @@ fn failed_export_removes_its_temp_file() {
     std::fs::create_dir(&path).unwrap();
     assert!(write_atomically(&path, b"x").is_err());
     assert_eq!(names(dir.path()), ["taken.docx"]);
+}
+
+#[test]
+fn print_name_retries_on_permission_denied() {
+    use std::io::{Error, ErrorKind};
+    let dir = tempfile::tempdir().unwrap();
+    let candidates = (0..3).map(|n| dir.path().join(format!("print-{n}.pdf")));
+    // Windows refuses a name whose file is being deleted: the first name
+    // is denied, the next one is free.
+    let mut tried = Vec::new();
+    let (path, _file) = create_first_new_with(candidates, |p| {
+        tried.push(p.to_path_buf());
+        match tried.len() {
+            1 => Err(Error::from(ErrorKind::PermissionDenied)),
+            _ => std::fs::File::create_new(p),
+        }
+    })
+    .unwrap();
+    assert_eq!(path, dir.path().join("print-1.pdf"));
+    assert_eq!(tried.len(), 2);
+    // A folder that refuses every name gives up instead of trying forever.
+    let endless = (0u64..).map(|n| dir.path().join(format!("x-{n}")));
+    let err = create_first_new_with(endless, |_| Err(Error::from(ErrorKind::PermissionDenied)))
+        .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+    // Other errors are not retried.
+    let mut calls = 0;
+    let other = (0..3).map(|n| dir.path().join(format!("y-{n}")));
+    let err = create_first_new_with(other, |_| {
+        calls += 1;
+        Err(Error::other("disk"))
+    })
+    .unwrap_err();
+    assert_eq!((calls, err.kind()), (1, ErrorKind::Other));
 }

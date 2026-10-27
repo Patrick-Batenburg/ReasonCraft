@@ -180,6 +180,10 @@ fn png_options(options: &ExportOptions) -> PngOptions {
     }
 }
 
+/// How many names in a row may be refused with `PermissionDenied` before
+/// [`create_first_new`] gives up (a folder that refuses every name).
+const MAX_DENIED_NAMES: usize = 16;
+
 /// Makes a new, empty file at the first of `candidates` that does not
 /// exist yet. `create_new` means an existing file (or a link) with that
 /// name is never opened, let alone overwritten. `private`: on Unix, only
@@ -197,10 +201,26 @@ pub(super) fn create_first_new(
     }
     #[cfg(not(unix))]
     let _ = private;
+    create_first_new_with(candidates, |path| options.open(path))
+}
+
+/// [`create_first_new`] making each file with `open`. A name that exists
+/// is skipped, and so is one refused with `PermissionDenied`: Windows
+/// refuses a name whose file is still being deleted. After
+/// [`MAX_DENIED_NAMES`] refusals in a row that error is returned.
+pub(super) fn create_first_new_with(
+    candidates: impl IntoIterator<Item = PathBuf>,
+    mut open: impl FnMut(&Path) -> std::io::Result<std::fs::File>,
+) -> std::io::Result<(PathBuf, std::fs::File)> {
+    use std::io::ErrorKind;
+    let mut denied = 0;
     for path in candidates {
-        match options.open(&path) {
+        match open(&path) {
             Ok(file) => return Ok((path, file)),
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(e) if e.kind() == ErrorKind::AlreadyExists => denied = 0,
+            Err(e) if e.kind() == ErrorKind::PermissionDenied && denied + 1 < MAX_DENIED_NAMES => {
+                denied += 1;
+            }
             Err(e) => return Err(e),
         }
     }

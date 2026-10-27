@@ -32,6 +32,10 @@ pub(crate) fn is_default<T: Default + PartialEq>(v: &T) -> bool {
 /// Current file schema version.
 pub const SCHEMA_VERSION: u32 = 1;
 
+/// The most characters a box's text holds: the editor and imports cut
+/// longer text.
+pub const MAX_BOX_CHARS: usize = 50_000;
+
 /// What a box represents.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]

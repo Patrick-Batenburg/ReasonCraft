@@ -108,9 +108,9 @@ pub struct DocTab {
     pub spelling: Option<crate::spell::SpellPass>,
     /// Names this tab's copy in the recovery folder.
     pub recovery_key: Uuid,
-    /// The [`Self::revision`] last autosaved to the recovery folder; 0
-    /// when the folder holds no copy of this tab.
-    pub autosaved_revision: u64,
+    /// The [`Self::revision`] last autosaved to the recovery folder;
+    /// `None` when the folder holds no copy of this tab.
+    pub autosaved_revision: Option<u64>,
     /// The modification time of [`Self::path`] when the tab last opened or
     /// saved it (autosave records it, so a restore can tell whether the
     /// file changed since).
@@ -191,7 +191,7 @@ impl DocTab {
             find: FindState::default(),
             spelling: None,
             recovery_key: Uuid::new_v4(),
-            autosaved_revision: 0,
+            autosaved_revision: None,
             disk_mtime: None,
             recovered_from: None,
             ui_key: NEXT_UI_KEY.fetch_add(1, Ordering::Relaxed),

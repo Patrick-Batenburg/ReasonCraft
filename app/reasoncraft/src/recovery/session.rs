@@ -18,7 +18,7 @@ use crate::i18n::{FluentArgs, t_args};
 /// matches it, so the next autosave tries again, and the tab still counts
 /// as having a copy (an older one may be there), so it is removed once the
 /// tab is clean or closed.
-const RETRY: u64 = u64::MAX;
+const RETRY: Option<u64> = Some(u64::MAX);
 
 /// Run once per frame with the egui time `now` (seconds). Shows a recovery
 /// prompt that waited for another message to close, and notes failed
@@ -47,9 +47,9 @@ pub fn tick(app: &mut ReasonCraftApp, now: f64) {
         }
     }
     for tab in &mut app.tabs {
-        if tab.autosaved_revision != 0 && !tab.has_unsaved_work() {
+        if tab.autosaved_revision.is_some() && !tab.has_unsaved_work() {
             store.remove(tab.recovery_key);
-            tab.autosaved_revision = 0;
+            tab.autosaved_revision = None;
         }
     }
     let Some(secs) = app.settings.autosave_interval() else {
@@ -79,7 +79,7 @@ pub(crate) fn due_in(app: &ReasonCraftApp, now: f64) -> Option<f64> {
 
 /// Unsaved work not in the recovery folder yet.
 fn needs_autosave(tab: &DocTab) -> bool {
-    tab.has_unsaved_work() && tab.revision() != tab.autosaved_revision
+    tab.has_unsaved_work() && Some(tab.revision()) != tab.autosaved_revision
 }
 
 /// Snapshot `tab` (live edit-session text included: it is already in the
@@ -105,13 +105,13 @@ pub(super) fn autosave_tab(
         Some(doc) => store.write_then_discard(tab.recovery_key, pkg, meta, doc),
         None => store.write(tab.recovery_key, pkg, meta),
     }
-    tab.autosaved_revision = tab.revision();
+    tab.autosaved_revision = Some(tab.revision());
 }
 
 /// A tab is closing (saved or discarded): its copy goes.
 pub(crate) fn forget(app: &ReasonCraftApp, tab: &DocTab) {
     if let Some(store) = &app.recovery
-        && tab.autosaved_revision != 0
+        && tab.autosaved_revision.is_some()
     {
         store.remove(tab.recovery_key);
     }

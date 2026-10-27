@@ -1,6 +1,11 @@
 //! The spelling pass (F7): the misspellings of box text, sources and notes
 //! one at a time, in find order from the selected box (wrapping around),
 //! each with Change, Change all, Ignore, Ignore all and Add to dictionary.
+//! The walk goes on in slices of at most [`SLICE`] a frame, and the
+//! suggestions are worked out on a worker thread, so the window never
+//! waits for either.
+
+use std::time::{Duration, Instant};
 
 use reasoncraft_core::find::search_order;
 use reasoncraft_core::{Document, EditError, FindHit, FindOptions, Item, NodeId, find_all};
@@ -15,6 +20,9 @@ use crate::i18n::t;
 pub const MAX_SUGGESTIONS: usize = 6;
 /// How many characters of context show on each side of the word.
 pub const CONTEXT_CHARS: usize = 30;
+/// How long the walk goes on in one frame before it waits for the next
+/// (a box being checked is finished first).
+const SLICE: Duration = Duration::from_millis(8);
 
 /// Where a pass looks next: a box (`None`: the start of the walk), its
 /// place in the walk when last seen (used if the box is gone) and a byte
@@ -36,11 +44,20 @@ pub struct SpellPass {
     /// The misspelling on show (its box is selected), and its word.
     pub current: Option<FindHit>,
     pub word: String,
-    pub suggestions: Vec<String>,
-    /// What Change puts in: the first suggestion until the user edits it.
+    /// Up to [`MAX_SUGGESTIONS`] for the word; `None` while they are being
+    /// worked out.
+    pub suggestions: Option<Vec<String>>,
+    /// What Change puts in: the word, then the first suggestion once they
+    /// arrive, until the user edits it.
     pub replacement: String,
     /// Every box has been looked at: "Spelling check complete".
     pub done: bool,
+    /// The last frame's walk stopped at its time limit: it goes on next
+    /// frame.
+    sliced: bool,
+    /// The longest a step of the walk took (tests check it stays within
+    /// a frame's share).
+    longest: Duration,
 }
 
 impl SpellPass {
@@ -64,6 +81,16 @@ impl SpellPass {
         !self.done && self.current_word(doc).is_none()
     }
 
+    /// Whether the walk stopped at its time limit and goes on next frame.
+    pub fn walking(&self) -> bool {
+        self.sliced && !self.done
+    }
+
+    /// The longest one step of the walk took so far (a test hook).
+    pub fn longest_slice(&self) -> Duration {
+        self.longest
+    }
+
     /// The word on show, while its box still holds it at the hit.
     pub fn current_word(&self, doc: &Document) -> Option<&str> {
         let hit = self.current.as_ref()?;
@@ -81,13 +108,25 @@ fn walk(doc: &Document, start: Option<NodeId>) -> Vec<NodeId> {
     order
 }
 
+/// Move `tab`'s pass on towards the next misspelling from where it is,
+/// for at most about [`SLICE`]; see [`walk_on`].
+pub(super) fn advance(tab: &mut DocTab, service: &mut SpellService) {
+    let started = Instant::now();
+    walk_on(tab, service, started);
+    if let Some(pass) = &mut tab.spelling {
+        pass.longest = pass.longest.max(started.elapsed());
+    }
+}
+
 /// Move `tab`'s pass to the next misspelling from where it is, selecting
 /// and revealing its box; or finish it. While the dictionary loads it
-/// waits (see [`super::poll`]).
-pub(super) fn advance(tab: &mut DocTab, service: &mut SpellService) {
+/// waits, and past [`SLICE`] since `started` it stops at the next box;
+/// [`super::poll`] goes on next frame.
+fn walk_on(tab: &mut DocTab, service: &mut SpellService, started: Instant) {
     let Some(mut pass) = tab.spelling.take() else {
         return;
     };
+    pass.sliced = false;
     let lang = tab.doc.meta.language.clone();
     let order = walk(&tab.doc, pass.start);
     pass.current = None;
@@ -101,8 +140,19 @@ pub(super) fn advance(tab: &mut DocTab, service: &mut SpellService) {
         // The box is gone: go on from where it was.
         (Some(_), None) => (pass.at.index.min(order.len()), 0),
     };
+    let first = i;
     while i < order.len() {
         let node = order[i];
+        if i > first && started.elapsed() >= SLICE {
+            pass.at = Place {
+                node: Some(node),
+                index: i,
+                offset: from,
+            };
+            pass.sliced = true;
+            tab.spelling = Some(pass);
+            return;
+        }
         let Some(text) = tab.doc.boxes.get(&node).map(|b| &b.text) else {
             (i, from) = (i + 1, 0);
             continue;
@@ -122,9 +172,10 @@ pub(super) fn advance(tab: &mut DocTab, service: &mut SpellService) {
                 offset: r.start,
             };
             pass.word = word.to_owned();
-            pass.suggestions = service.suggest(&lang, &pass.word, MAX_SUGGESTIONS);
-            pass.replacement = pass.suggestions.first().unwrap_or(&pass.word).clone();
+            pass.suggestions = None;
+            pass.replacement = pass.word.clone();
             pass.current = Some(FindHit { node, range: r });
+            take_suggestions(&mut pass, service, &lang);
             tab.selection = Some(Item::Box(node));
             tab.reveal_pending = true;
             tab.spelling = Some(pass);
@@ -139,6 +190,23 @@ pub(super) fn advance(tab: &mut DocTab, service: &mut SpellService) {
     };
     pass.done = true;
     tab.spelling = Some(pass);
+}
+
+/// Pick up the suggestions for the word on show once they are worked out
+/// (starting that the first time); the replacement becomes the first one
+/// unless the user changed it already.
+pub(super) fn take_suggestions(pass: &mut SpellPass, service: &mut SpellService, lang: &str) {
+    if pass.current.is_none() || pass.suggestions.is_some() {
+        return;
+    }
+    if let Some(found) = service.suggest_async(lang, &pass.word) {
+        if pass.replacement == pass.word
+            && let Some(first) = found.first()
+        {
+            pass.replacement = first.clone();
+        }
+        pass.suggestions = Some(found);
+    }
 }
 
 /// The current misspelling and its word, while its box still holds the

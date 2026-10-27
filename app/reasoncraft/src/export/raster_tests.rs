@@ -1,7 +1,7 @@
 use eframe::egui::{Align, Color32, Pos2, Rect, pos2};
 use reasoncraft_core::Assets;
 
-use super::raster::pixel_size;
+use super::raster::{MAX_RGBA_BYTES, pixel_size};
 use super::tests::{preview_doc, scene_of};
 use super::*;
 use crate::scene::{Scene, Shape};
@@ -103,8 +103,8 @@ fn png_export_capped() {
         svg_to_png(&svg, &opts(4.0), &fonts),
         Err(ExportError::TooLarge { w, .. }) if w > MAX_SIDE_PX
     ));
-    // Within the side cap but over the pixel cap: 12 000 x 12 000 = 144 MP
-    // at 1x is fine, at 2x it is 576 MP.
+    // Within the side cap but over the pixel cap: 12 000 x 12 000 at 2x
+    // is 576 MP.
     let svg = svg_for(&rect_scene(12_000.0, 12_000.0), true);
     let err = svg_to_png(&svg, &opts(2.0), &fonts).unwrap_err();
     assert!(matches!(err, ExportError::TooLarge { .. }), "{err}");
@@ -113,13 +113,11 @@ fn png_export_capped() {
 
 #[test]
 fn pixel_caps_are_exact() {
-    assert!(pixel_size(16_384.0, 15_625.0, 1.0).is_ok());
+    assert!(pixel_size(16_384.0, 10.0, 1.0).is_ok());
     assert!(pixel_size(16_385.0, 10.0, 1.0).is_err());
-    assert!(
-        pixel_size(16_000.0, 16_000.0, 1.0).is_ok(),
-        "exactly 256 MP"
-    );
-    assert!(pixel_size(16_000.0, 16_001.0, 1.0).is_err());
+    // The memory guard (512 MiB of RGBA, 128 Mi pixels) comes before the
+    // 256 MP cap, so an image that large is refused for its memory.
+    assert!(pixel_size(16_000.0, 16_000.0, 1.0).is_err());
     assert!(pixel_size(f32::NAN, 10.0, 1.0).is_err());
     assert!(pixel_size(10.0, 10.0, 0.0).is_err());
 }
@@ -208,4 +206,29 @@ fn png_preview_sample() {
     );
     let png = svg_to_png(&svg, &PngOptions::default(), &bundled_fontdb()).unwrap();
     std::fs::write(std::path::Path::new(&dir).join("task-4.png"), png).unwrap();
+}
+
+#[test]
+fn png_export_refuses_over_memory_guard() {
+    // 16 384 x 8 192 px is exactly 512 MiB of RGBA: allowed. One row more
+    // is over the guard, though far under the 256 MP cap.
+    assert_eq!(MAX_RGBA_BYTES, 512 * 1024 * 1024);
+    assert!(pixel_size(16_384.0, 8_192.0, 1.0).is_ok());
+    let err = pixel_size(16_384.0, 8_193.0, 1.0).unwrap_err();
+    assert!(matches!(
+        err,
+        ExportError::TooLarge {
+            w: 16_384,
+            h: 8_193
+        }
+    ));
+    assert_eq!(err.key(), "export-error-too_large", "the cap's message");
+    // 12 000 x 12 000 px (144 MP, 576 MB) is refused before rendering.
+    let svg = svg_for(&rect_scene(12_000.0, 12_000.0), true);
+    let opts = PngOptions {
+        scale: 1.0,
+        transparent: true,
+    };
+    let err = svg_to_png(&svg, &opts, &bundled_fontdb()).unwrap_err();
+    assert!(matches!(err, ExportError::TooLarge { .. }), "{err}");
 }

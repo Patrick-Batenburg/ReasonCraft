@@ -330,6 +330,9 @@ impl ReasonCraftApp {
             // Look for the result again soon, without spinning.
             ctx.request_repaint_after(Duration::from_millis(30));
         }
+        if crate::spell::walking(self) {
+            ctx.request_repaint();
+        }
         if std::mem::take(&mut self.close_now) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }

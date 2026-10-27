@@ -17,8 +17,9 @@ use crate::app::ReasonCraftApp;
 use crate::i18n::{FluentArgs, t_args};
 
 /// Once a frame: pick up loaded dictionaries, report a load failure (once,
-/// in the status bar) and let a spelling pass go on that waits for its
-/// dictionary or whose misspelling the document no longer holds.
+/// in the status bar), let a spelling pass go on that waits for its
+/// dictionary, walks on from the last frame or whose misspelling the
+/// document no longer holds, and pick up its suggestions.
 pub fn poll(app: &mut ReasonCraftApp) {
     app.spell.poll_all();
     if let Some(error) = app.spell.take_error() {
@@ -34,4 +35,17 @@ pub fn poll(app: &mut ReasonCraftApp) {
     {
         pass::advance(tab, &mut app.spell);
     }
+    if let Some(tab) = app.tabs.get_mut(app.active)
+        && let Some(pass) = &mut tab.spelling
+    {
+        pass::take_suggestions(pass, &mut app.spell, &tab.doc.meta.language);
+    }
+}
+
+/// Whether the active tab's spelling pass walks on next frame (so the
+/// next frame should come at once).
+pub fn walking(app: &ReasonCraftApp) -> bool {
+    let tab = app.tabs.get(app.active);
+    tab.and_then(|t| t.spelling.as_ref())
+        .is_some_and(SpellPass::walking)
 }

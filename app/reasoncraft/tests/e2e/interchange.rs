@@ -19,13 +19,13 @@ use super::output::export;
 use super::{card_of, editing, run, typed};
 
 /// Runs spelling frames (dictionary loads included) until the pass shows
-/// a misspelling or is done (at most 20 s).
+/// a misspelling with its suggestions, or is done (at most 20 s).
 fn wait_for_spelling(app: &mut ReasonCraftApp) {
     let start = Instant::now();
     loop {
         reasoncraft::spell::poll(app);
         let pass = app.active_tab().spelling.as_ref().expect("a pass runs");
-        if pass.current.is_some() || pass.done {
+        if pass.suggestions.is_some() || pass.done {
             return;
         }
         assert!(start.elapsed() < Duration::from_secs(20), "no dictionary");
@@ -194,7 +194,8 @@ fn interchange_round_trip() {
     wait_for_spelling(&mut app);
     let pass = app.active_tab().spelling.clone().unwrap();
     assert_eq!(pass.word, "gezondt");
-    assert!(pass.suggestions.contains(&"gezond".to_owned()), "{pass:?}");
+    let found = pass.suggestions.as_ref().unwrap();
+    assert!(found.contains(&"gezond".to_owned()), "{pass:?}");
     let hit = pass.current.unwrap();
     assert_eq!(hit.node, p2);
     run(

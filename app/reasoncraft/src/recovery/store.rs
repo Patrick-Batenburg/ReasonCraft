@@ -15,6 +15,7 @@
 //! never overtakes the write before it and the window never waits on the
 //! disk. Failed writes are reported back ([`RecoveryStore::failed_writes`]).
 
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io;
 use std::path::PathBuf;
@@ -78,6 +79,7 @@ struct WriteHooks {
 enum Op {
     /// Write `tab_key`'s copy into `folder` (this session's); then, only if
     /// that succeeded, delete the orphaned copy `then_discard` (a restore).
+    /// When that fails, the tab's next write deletes it.
     Write {
         folder: PathBuf,
         tab_key: Uuid,
@@ -121,18 +123,32 @@ impl RecoveryStore {
         let pending = Arc::new(AtomicUsize::new(0));
         let done = Arc::clone(&pending);
         let worker = std::thread::spawn(move || {
-            for op in rx {
+            // Per tab, the orphaned copy a failed write was to delete: the
+            // tab's next write deletes it instead.
+            let mut kept_discards = HashMap::new();
+            for mut op in rx {
                 if let Op::Flush(reply) = op {
                     let _ = reply.send(());
                     continue;
                 }
-                let tab_key = match &op {
-                    Op::Write { tab_key, .. } => Some(*tab_key),
-                    _ => None,
-                };
-                match (run(op), tab_key) {
+                let mut write = None;
+                if let Op::Write {
+                    tab_key,
+                    then_discard,
+                    ..
+                } = &mut op
+                {
+                    if then_discard.is_none() {
+                        *then_discard = kept_discards.remove(tab_key);
+                    }
+                    write = Some((*tab_key, then_discard.clone()));
+                }
+                match (run(op), write) {
                     (Ok(()), _) => {}
-                    (Err(err), Some(tab_key)) => {
+                    (Err(err), Some((tab_key, discard))) => {
+                        if let Some(discard) = discard {
+                            kept_discards.insert(tab_key, discard);
+                        }
                         let reason = err.to_string();
                         let _ = failed.send(WriteFailure { tab_key, reason });
                     }
@@ -250,8 +266,8 @@ impl RecoveryStore {
     }
 
     /// End the session on a normal exit: finish the pending work, delete
-    /// the copies while the lock is still held, then release the lock and
-    /// remove the lock file and the folder.
+    /// the copies while the lock is still held, then release the lock and,
+    /// when every copy went, remove the lock file and the folder.
     pub fn shutdown(self) {
         let folder = self.session_dir();
         let RecoveryStore {
@@ -259,16 +275,21 @@ impl RecoveryStore {
         } = self;
         drop(ops);
         let _ = worker.join();
-        if let Ok(files) = fs::read_dir(&folder) {
-            for path in files.flatten().map(|f| f.path()) {
-                if !is_lock_file(&path) {
-                    let _ = fs::remove_file(path);
-                }
-            }
-        }
+        // Every file is tried, even after one fails.
+        let all_deleted = fs::read_dir(&folder).is_ok_and(|files| {
+            (files.flatten().map(|f| f.path()))
+                .filter(|path| !is_lock_file(path))
+                .filter(|path| fs::remove_file(path).is_err())
+                .count()
+                == 0
+        });
         drop(_lock);
-        let _ = fs::remove_file(folder.join(LOCK_FILE));
-        let _ = fs::remove_dir(&folder);
+        // A file left behind keeps the lock file: the next start then sees
+        // a crashed session and tidies the folder.
+        if all_deleted {
+            let _ = fs::remove_file(folder.join(LOCK_FILE));
+            let _ = fs::remove_dir(&folder);
+        }
     }
 
     /// True while writes or removals are pending.

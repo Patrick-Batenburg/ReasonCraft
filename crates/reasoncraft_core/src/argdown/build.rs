@@ -25,9 +25,14 @@ pub(super) fn build(g: &Graph, report: &mut ImportReport) -> Result<Document, Ar
         return Err(ArgdownError::Empty);
     }
     let root = super::graph::root(g);
-    let text = root
+    let mut text = root
         .and_then(|s| g.stmts[s].text.clone())
         .unwrap_or_default();
+    if let Some(s) = root
+        && nodes::cut_text(&mut text)
+    {
+        report.note(g.stmts[s].line, K::TextCut);
+    }
     let mut doc = Document::new(&text);
     doc.meta.title = g.title.clone();
     doc.meta.author = g.author.clone();
@@ -268,7 +273,7 @@ impl Builder<'_> {
                 return;
             };
             let id = NodeId::new();
-            if !self.insert_box(BoxNode::new(id, BoxKind::Premise, &text)) {
+            if !self.insert_box(BoxNode::new(id, BoxKind::Premise, &text), arg.line) {
                 return;
             }
             premises.push(Some(id));

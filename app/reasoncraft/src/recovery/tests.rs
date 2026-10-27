@@ -196,3 +196,21 @@ fn missing_session_folder_error_is_translated() {
     assert!(!text.starts_with("recovery."), "{text}");
     assert_eq!(text, crate::i18n::t("recovery.session_gone"));
 }
+
+#[test]
+fn failed_shutdown_delete_keeps_lock() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    write(&a, "Robots");
+    let folder = a.session_dir();
+    // A directory cannot be deleted as a file: that delete fails.
+    std::fs::create_dir(folder.join("stuck.tmp")).unwrap();
+    a.shutdown();
+    assert!(folder.join("session.lock").is_file(), "the lock file stays");
+    assert_eq!(entries(&folder), 2, "only the lock and the stuck entry");
+    // The next start can take the lock and tidy the folder.
+    std::fs::remove_dir(folder.join("stuck.tmp")).unwrap();
+    let b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    assert!(b.orphaned().is_empty());
+    assert!(!folder.exists());
+}

@@ -125,6 +125,8 @@ find-replaced = Replaced { $count }
 ## Spelling panel
 spell-title = Spelling
 spell-loading = Loading dictionary…
+spell-checking = Checking…
+spell-suggesting = …
 spell-done = Spelling check complete
 spell-no_suggestions = No suggestions
 spell-change_to = Change to
@@ -214,6 +216,7 @@ argdown-note-empty_argument = An argument without premises or text was left out.
 argdown-note-moved_to_parking = An item could not go where the file puts it and is in the parking area.
 argdown-note-relation_dropped = A relation to a conclusion that was left out was left out too; its statement is in the parking area.
 argdown-note-link_dropped = A link that is not a safe web or mail link was left out.
+argdown-note-text_cut = Text longer than 50,000 characters was cut to fit a box.
 
 ## Backstage
 backstage-back = Back

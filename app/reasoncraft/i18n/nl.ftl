@@ -126,6 +126,8 @@ find-replaced = { $count } vervangen
 ## Spelling panel
 spell-title = Spelling
 spell-loading = Woordenlijst laden…
+spell-checking = Controleren…
+spell-suggesting = …
 spell-done = Spellingcontrole klaar
 spell-no_suggestions = Geen suggesties
 spell-change_to = Wijzigen in
@@ -215,6 +217,7 @@ argdown-note-empty_argument = Een argument zonder premissen of tekst is weggelat
 argdown-note-moved_to_parking = Een onderdeel kon niet op de plek uit het bestand komen en staat nu bij Niet verbonden.
 argdown-note-relation_dropped = Een relatie naar een weggelaten conclusie is ook weggelaten; de uitspraak staat nu bij Niet verbonden.
 argdown-note-link_dropped = Een link die geen veilige web- of e-maillink is, is weggelaten.
+argdown-note-text_cut = Tekst van meer dan 50.000 tekens is ingekort zodat hij in een vak past.
 
 ## Backstage
 backstage-back = Terug

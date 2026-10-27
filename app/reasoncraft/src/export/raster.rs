@@ -18,6 +18,9 @@ use crate::theme::Tokens;
 pub const MAX_SIDE_PX: u32 = 16_384;
 /// The most pixels an exported image may have.
 pub const MAX_PIXELS: u64 = 256_000_000;
+/// The most memory an image's RGBA pixels may take (4 bytes a pixel),
+/// checked before [`MAX_PIXELS`]: 512 MiB.
+pub const MAX_RGBA_BYTES: u64 = 512 * 1024 * 1024;
 
 /// The most pixels an image put on the clipboard may have. The clipboard
 /// holds straight RGBA and the OS copies it again, so this stays well
@@ -44,7 +47,8 @@ impl Default for PngOptions {
 }
 
 /// The pixel size of an image of `width` x `height` SVG px at `scale`, or
-/// `TooLarge` when it is over the caps. Nothing is allocated here.
+/// `TooLarge` when its pixels would take more than [`MAX_RGBA_BYTES`] or
+/// it is over the caps. Nothing is allocated here.
 pub(super) fn pixel_size(width: f32, height: f32, scale: f32) -> Result<(u32, u32), ExportError> {
     if !(scale.is_finite() && scale > 0.0 && width.is_finite() && height.is_finite()) {
         return Err(ExportError::Render("invalid size or scale".into()));
@@ -52,7 +56,8 @@ pub(super) fn pixel_size(width: f32, height: f32, scale: f32) -> Result<(u32, u3
     let w = (f64::from(width) * f64::from(scale)).ceil().max(1.0);
     let h = (f64::from(height) * f64::from(scale)).ceil().max(1.0);
     let side = f64::from(MAX_SIDE_PX);
-    if w > side || h > side || w * h > MAX_PIXELS as f64 {
+    let over_memory = w * h * 4.0 > MAX_RGBA_BYTES as f64;
+    if over_memory || w > side || h > side || w * h > MAX_PIXELS as f64 {
         return Err(ExportError::TooLarge {
             w: w.min(f64::from(u32::MAX)) as u32,
             h: h.min(f64::from(u32::MAX)) as u32,
@@ -63,7 +68,7 @@ pub(super) fn pixel_size(width: f32, height: f32, scale: f32) -> Result<(u32, u3
 
 /// `svg` as PNG bytes at `opts.scale`, with text drawn from `fonts`.
 /// Fails with `TooLarge` before allocating when the image would pass
-/// [`MAX_SIDE_PX`] or [`MAX_PIXELS`].
+/// [`MAX_RGBA_BYTES`], [`MAX_SIDE_PX`] or [`MAX_PIXELS`].
 pub fn svg_to_png(
     svg: &str,
     opts: &PngOptions,

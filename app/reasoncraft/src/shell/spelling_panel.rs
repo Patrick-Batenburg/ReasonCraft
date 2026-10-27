@@ -55,8 +55,10 @@ pub fn show(
                 note(ui, t("spell.done"));
             } else if let Some(error) = spell.failure(&lang) {
                 note(ui, error.to_owned());
-            } else if pass.current.is_none() {
+            } else if spell.is_loading(&lang) {
                 note(ui, t("spell.loading"));
+            } else if pass.current.is_none() {
+                note(ui, t("spell.checking"));
             }
             if let Some(shown) = &shown {
                 details(ui, pass, shown, field_id, tk);
@@ -122,19 +124,25 @@ fn details(
     job.wrap.max_width = ui.available_width();
     ui.label(job);
 
-    if pass.suggestions.is_empty() {
-        ui.label(RichText::new(t("spell.no_suggestions")).color(tk.text_muted));
-    } else {
-        ui.horizontal_wrapped(|ui| {
-            for s in &pass.suggestions {
-                if ui
-                    .selectable_label(pass.replacement == *s, s.as_str())
-                    .clicked()
-                {
-                    pass.replacement = s.clone();
+    match &pass.suggestions {
+        None => {
+            ui.label(RichText::new(t("spell.suggesting")).color(tk.text_muted));
+        }
+        Some(found) if found.is_empty() => {
+            ui.label(RichText::new(t("spell.no_suggestions")).color(tk.text_muted));
+        }
+        Some(found) => {
+            ui.horizontal_wrapped(|ui| {
+                for s in found {
+                    if ui
+                        .selectable_label(pass.replacement == *s, s.as_str())
+                        .clicked()
+                    {
+                        pass.replacement = s.clone();
+                    }
                 }
-            }
-        });
+            });
+        }
     }
     let label = t("spell.change_to");
     let resp = ui.add(

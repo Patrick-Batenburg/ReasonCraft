@@ -52,6 +52,9 @@ pub enum ImportNoteKind {
     RelationDropped,
     /// A link that is not a safe web or mail link was left out.
     LinkDropped,
+    /// Text longer than [`MAX_BOX_CHARS`](crate::model::MAX_BOX_CHARS)
+    /// characters was cut to fit a box.
+    TextCut,
 }
 
 impl ImportNoteKind {
@@ -71,6 +74,7 @@ impl ImportNoteKind {
             ImportNoteKind::MovedToParking => "moved_to_parking",
             ImportNoteKind::RelationDropped => "relation_dropped",
             ImportNoteKind::LinkDropped => "link_dropped",
+            ImportNoteKind::TextCut => "text_cut",
         }
     }
 }

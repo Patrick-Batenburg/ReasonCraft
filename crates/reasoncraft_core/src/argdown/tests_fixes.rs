@@ -130,3 +130,23 @@ fn second_wordings_links_and_odd_lines_are_noted_or_kept() {
     assert!(t.contains(&"=== not frontmatter"), "{t:?}");
     assert!(d.boxes.values().all(|b| b.link.is_none()));
 }
+
+#[test]
+fn import_caps_long_text_with_note() {
+    use crate::model::MAX_BOX_CHARS;
+    let long = "é".repeat(MAX_BOX_CHARS + 10);
+    let src = format!("[Claim]: {long}\n    <+ Short reason.\n    <- [Long]: {long}\n");
+    let (d, notes) = import(&src);
+    assert_eq!(
+        notes,
+        [K::TextCut, K::TextCut],
+        "the root and the objection"
+    );
+    let cut: Vec<&str> = texts(&d)
+        .into_iter()
+        .filter(|t| t.starts_with('é'))
+        .collect();
+    assert_eq!(cut.len(), 2);
+    assert!(cut.iter().all(|t| t.chars().count() == MAX_BOX_CHARS));
+    assert!(texts(&d).contains(&"Short reason."));
+}

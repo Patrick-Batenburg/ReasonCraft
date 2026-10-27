@@ -269,3 +269,30 @@ fn unreadable_copy_is_named_by_its_document_and_kept() {
     }
     assert!(orphan.is_file());
 }
+
+#[test]
+fn retry_keeps_then_discard() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let mut app = app_with_recovery(rec.path());
+    let orphan = offered(&app)[0].package.clone();
+    app.recovery.as_mut().unwrap().set_fail_writes(true);
+    actions::apply(
+        &mut app,
+        Action::ResolveRecovery(RecoveryChoice::RestoreAll),
+    );
+    wait(&app);
+    recovery::tick(&mut app, 0.0);
+    assert!(orphan.is_file());
+    // The folder works again: the retried copy still replaces the orphan.
+    app.recovery.as_mut().unwrap().set_fail_writes(false);
+    recovery::tick(&mut app, 47.0);
+    wait(&app);
+    assert_eq!(root_text(&recovery_file(&app, 0)), "Edited");
+    assert!(
+        !orphan.exists(),
+        "the orphan went once the retry was written"
+    );
+    assert!(!orphan.parent().unwrap().exists());
+}

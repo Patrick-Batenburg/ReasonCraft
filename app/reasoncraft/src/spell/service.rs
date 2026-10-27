@@ -1,6 +1,6 @@
 //! Dictionaries per language, loaded on a worker thread the first time a
-//! language is asked for, and the misspellings found in a text, cached
-//! per language and text.
+//! language is asked for; the misspellings found in a text, cached per
+//! language and line; and suggestions, worked out on a worker thread.
 
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
@@ -11,10 +11,13 @@ use std::time::Duration;
 
 use reasoncraft_spell::Speller;
 
+use super::MAX_SUGGESTIONS;
 use crate::jobs::{Job, JobState};
 
-/// How many texts keep their misspellings cached.
+/// How many lines keep their misspellings cached.
 const CACHE_SIZE: usize = 256;
+/// How many words keep their suggestions.
+const SUGGESTION_CACHE: usize = 64;
 
 /// The misspelled byte ranges of one text.
 pub type Ranges = Arc<Vec<Range<usize>>>;
@@ -30,6 +33,12 @@ enum Dict {
     Failed(String),
 }
 
+/// The suggestions for one word: being worked out, or found.
+enum Suggestions {
+    Pending(Job<Vec<String>>),
+    Ready(Vec<String>),
+}
+
 /// The dictionaries of every language asked for so far, the user's
 /// personal words, the words ignored for this session and the cache of
 /// misspellings found.
@@ -40,14 +49,17 @@ pub struct SpellService {
     personal: Vec<String>,
     /// "Ignore all" words, until the app closes.
     ignored: HashSet<String>,
-    /// Misspellings per (language, text hash), with when each was last used.
+    /// Misspellings per (language, line hash), with when each was last used.
     cache: HashMap<(String, u64), (u64, Ranges)>,
+    /// Suggestions per (language, word).
+    suggestions: HashMap<(String, String), Suggestions>,
     tick: u64,
-    /// How many texts have been checked (cache misses).
+    /// How many lines have been checked (cache misses).
     checks: u64,
     /// Load failures not reported yet.
     errors: Vec<String>,
-    /// Wait this long before each dictionary loads (tests only).
+    /// Wait this long before each dictionary load and each suggestion
+    /// job (tests only).
     pub delay: Option<Duration>,
 }
 
@@ -60,6 +72,7 @@ impl SpellService {
             personal: personal.to_vec(),
             ignored: HashSet::new(),
             cache: HashMap::new(),
+            suggestions: HashMap::new(),
             tick: 0,
             checks: 0,
             errors: Vec::new(),
@@ -105,11 +118,12 @@ impl SpellService {
         }
     }
 
-    /// Whether any dictionary is still loading.
+    /// Whether any dictionary is still loading, or suggestions are being
+    /// worked out.
     pub fn busy(&self) -> bool {
-        self.dicts
-            .values()
-            .any(|d| matches!(d, Dict::Loading { .. }))
+        let loading = |d: &Dict| matches!(d, Dict::Loading { .. });
+        let pending = |s: &Suggestions| matches!(s, Suggestions::Pending(_));
+        self.dicts.values().any(loading) || self.suggestions.values().any(pending)
     }
 
     /// Pick up every dictionary that finished loading.
@@ -153,23 +167,37 @@ impl SpellService {
 
     /// The misspelled byte ranges of `text` in `lang`, leaving out words
     /// ignored for the session; `None` until the dictionary is loaded.
-    /// Found once per text: later calls with the same text hit the cache.
+    /// Found once per line: a line seen before hits the cache, so typing
+    /// checks only the line typed in.
     pub fn misspelled(&mut self, lang: &str, text: &str) -> Option<Ranges> {
         let speller = self.get(lang)?;
+        let mut found = Vec::new();
+        let mut at = 0;
+        for line in text.split('\n') {
+            let ranges = self.line_misspelled(&speller, lang, line);
+            found.extend(ranges.iter().map(|r| r.start + at..r.end + at));
+            at += line.len() + 1;
+        }
+        Some(Arc::new(found))
+    }
+
+    /// The misspelled byte ranges of one `line`, from the cache when it
+    /// was checked before.
+    fn line_misspelled(&mut self, speller: &Speller, lang: &str, line: &str) -> Ranges {
         let mut h = DefaultHasher::new();
-        text.hash(&mut h);
+        line.hash(&mut h);
         let key = (lang.to_owned(), h.finish());
         self.tick += 1;
         if let Some((used, ranges)) = self.cache.get_mut(&key) {
             *used = self.tick;
-            return Some(ranges.clone());
+            return ranges.clone();
         }
         self.checks += 1;
         let ranges: Ranges = Arc::new(
             speller
-                .misspelled(text)
+                .misspelled(line)
                 .into_iter()
-                .filter(|r| !self.ignored.contains(&text[r.clone()]))
+                .filter(|r| !self.ignored.contains(&line[r.clone()]))
                 .collect(),
         );
         if self.cache.len() >= CACHE_SIZE
@@ -182,14 +210,36 @@ impl SpellService {
             self.cache.remove(&oldest);
         }
         self.cache.insert(key, (self.tick, ranges.clone()));
-        Some(ranges)
+        ranges
     }
 
-    /// Up to `max` suggestions for `word` in `lang` (none while loading).
-    pub fn suggest(&mut self, lang: &str, word: &str, max: usize) -> Vec<String> {
-        self.get(lang)
-            .map(|s| s.suggest(word, max))
-            .unwrap_or_default()
+    /// Up to [`MAX_SUGGESTIONS`] suggestions for `word` in `lang`, worked
+    /// out on a worker thread: `None` while that runs (the first call
+    /// starts it) and while the dictionary loads. Never blocks.
+    pub fn suggest_async(&mut self, lang: &str, word: &str) -> Option<Vec<String>> {
+        let key = (lang.to_owned(), word.to_owned());
+        if let Some(entry) = self.suggestions.get_mut(&key) {
+            if let Suggestions::Pending(job) = entry {
+                *entry = Suggestions::Ready(match job.poll() {
+                    JobState::Running => return None,
+                    JobState::Done(found) => found,
+                    JobState::Lost => Vec::new(),
+                });
+            }
+            return match entry {
+                Suggestions::Ready(found) => Some(found.clone()),
+                Suggestions::Pending(_) => None,
+            };
+        }
+        let speller = self.get(lang)?;
+        if self.suggestions.len() >= SUGGESTION_CACHE {
+            self.suggestions
+                .retain(|_, s| matches!(s, Suggestions::Pending(_)));
+        }
+        let owned = word.to_owned();
+        let job = Job::spawn(self.delay, move || speller.suggest(&owned, MAX_SUGGESTIONS));
+        self.suggestions.insert(key, Suggestions::Pending(job));
+        None
     }
 
     /// Accept `word` everywhere until the app closes.
@@ -208,8 +258,9 @@ impl SpellService {
             if let Dict::Ready(s) = dict {
                 match Arc::get_mut(s) {
                     Some(s) => taken &= s.add_word(&word),
-                    // Only the service keeps a dictionary between frames,
-                    // so this does not happen; still accept the word.
+                    // A suggestion job still holds the dictionary: accept
+                    // the word for the session (and from the next start
+                    // through the personal list).
                     None => {
                         self.ignored.insert(word.clone());
                     }
@@ -226,7 +277,7 @@ impl SpellService {
         Some(word)
     }
 
-    /// How many texts were checked against a dictionary so far (each
+    /// How many lines were checked against a dictionary so far (each
     /// cache miss counts once).
     pub fn checks_run(&self) -> u64 {
         self.checks
@@ -243,79 +294,5 @@ fn load(lang: &str, words: &[String]) -> Result<Speller, String> {
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
-    use std::time::Instant;
-
-    use super::*;
-
-    /// Poll `service` until `lang` is loaded (or 20 s pass).
-    pub(crate) fn wait(service: &mut SpellService, lang: &str) -> Arc<Speller> {
-        let start = Instant::now();
-        loop {
-            if let Some(s) = service.get(lang) {
-                return s;
-            }
-            assert!(start.elapsed().as_secs() < 20, "{lang} never loaded");
-            std::thread::sleep(Duration::from_millis(5));
-        }
-    }
-
-    #[test]
-    fn dictionary_loads_off_ui_thread() {
-        let mut s = SpellService::new(&[]);
-        s.delay = Some(Duration::from_millis(200));
-        assert!(s.get("en").is_none(), "the first call only starts the load");
-        assert!(s.is_loading("en") && s.busy());
-        assert!(s.misspelled("en", "teh").is_none(), "no underlines yet");
-        let speller = wait(&mut s, "en");
-        assert!(!speller.check_word("recieve"));
-        assert!(!s.busy());
-        let found = s.misspelled("en", "I recieve").unwrap();
-        assert_eq!(found.first(), Some(&(2..9)));
-        assert_eq!(found.len(), 1);
-    }
-
-    #[test]
-    fn personal_and_ignored_words_are_accepted() {
-        let mut s = SpellService::new(&["Reasoncraftish".to_owned()]);
-        wait(&mut s, "en");
-        assert!(s.misspelled("en", "Reasoncraftish").unwrap().is_empty());
-        assert_eq!(s.misspelled("en", "teh blorb").unwrap().len(), 2);
-        s.ignore_all("teh");
-        assert_eq!(s.add_word(" blorb ").as_deref(), Some("blorb"));
-        assert_eq!(s.add_word("blorb").as_deref(), Some("blorb"));
-        assert_eq!(s.personal, ["Reasoncraftish", "blorb"], "kept once");
-        assert!(s.misspelled("en", "teh blorb").unwrap().is_empty());
-        assert!(s.add_word("a/b").is_none() && s.add_word(" ").is_none());
-    }
-
-    #[test]
-    fn unknown_language_fails_once() {
-        let mut s = SpellService::new(&[]);
-        assert!(s.get("fr").is_none());
-        let start = Instant::now();
-        while s.failure("fr").is_none() {
-            assert!(start.elapsed().as_secs() < 20);
-            s.poll_all();
-            std::thread::sleep(Duration::from_millis(5));
-        }
-        assert!(s.take_error().is_some());
-        assert!(s.take_error().is_none(), "reported once");
-        assert!(s.get("fr").is_none(), "not retried");
-    }
-
-    #[test]
-    fn cache_keeps_the_last_256_texts() {
-        let mut s = SpellService::new(&[]);
-        wait(&mut s, "en");
-        for i in 0..300 {
-            s.misspelled("en", &format!("teh {i}"));
-        }
-        assert_eq!(s.checks_run(), 300);
-        assert!(s.cache.len() <= CACHE_SIZE);
-        s.misspelled("en", "teh 299");
-        assert_eq!(s.checks_run(), 300, "recent text is cached");
-        s.misspelled("en", "teh 0");
-        assert_eq!(s.checks_run(), 301, "the oldest was dropped");
-    }
-}
+#[path = "service_tests.rs"]
+pub(crate) mod tests;
