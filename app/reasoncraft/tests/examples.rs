@@ -171,6 +171,12 @@ fn recent_files_capped_and_deduplicated() {
     s.push_recent(&dir.path().join("sub").join("..").join("same.rcraft"));
     let same = |p: &PathBuf| p.file_name() == file.file_name();
     assert_eq!(s.recent_files.iter().filter(|p| same(p)).count(), 1);
+    // Stored resolved, in the spelling people know (no `\\?\` on Windows).
+    let stored = s.recent_files[0].to_string_lossy().into_owned();
+    assert!(!stored.starts_with(r"\\?\"), "{stored}");
+    assert!(!stored.contains(".."), "{stored}");
+    s.push_recent(&file);
+    assert_eq!(s.recent_files.iter().filter(|p| same(p)).count(), 1);
     // A path the settings cannot store (not UTF-8) is left out, and one
     // put in the list anyway is not written: the rest still saves.
     let odd = non_utf8_path();

@@ -246,16 +246,17 @@ impl Settings {
     }
 
     /// Put `path` first in the recent files (once: another spelling of the
-    /// same file goes), keeping at most [`MAX_RECENT`]. A relative path is
-    /// made absolute first. A path that is not valid UTF-8 is left out:
-    /// the settings cannot store it.
+    /// same file goes), keeping at most [`MAX_RECENT`]. The path is stored
+    /// resolved (see [`recent_form`]); the listed ones are only made
+    /// absolute to compare, so no file system walk runs for them. A path
+    /// that is not valid UTF-8 is left out: the settings cannot store it.
     pub fn push_recent(&mut self, path: &Path) {
         if path.to_str().is_none() {
             return;
         }
-        let path = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+        let path = recent_form(path);
         self.recent_files
-            .retain(|p| !crate::file_ops::same_file(p, &path));
+            .retain(|p| std::path::absolute(p).as_ref().unwrap_or(p) != &path);
         self.recent_files.insert(0, path);
         self.recent_files.truncate(MAX_RECENT);
     }
@@ -310,6 +311,24 @@ impl Settings {
             disabled.push(kind);
         }
     }
+}
+
+/// How the recent files store `path`: resolved (links and `..` followed)
+/// when the file exists, else made absolute. On Windows the resolved form
+/// keeps the usual `C:\` spelling, not the `\\?\` one.
+fn recent_form(path: &Path) -> PathBuf {
+    use std::path::{Component, Prefix};
+    let Ok(resolved) = path.canonicalize() else {
+        return std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    };
+    let mut parts = resolved.components();
+    if let Some(Component::Prefix(prefix)) = parts.next()
+        && let Prefix::VerbatimDisk(drive) = prefix.kind()
+    {
+        let rest: PathBuf = parts.filter(|c| *c != Component::RootDir).collect();
+        return PathBuf::from(format!("{}:\\", drive as char)).join(rest);
+    }
+    resolved
 }
 
 /// The tabs of the Text panel.
