@@ -409,3 +409,12 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 - [x] Step 4: exports and Essay use the document language for linking words ("because"/"omdat")
 - [x] Step 5 (Task 14): per-issue "ignore this hint" stored in the document; CheckSet tolerant of unknown kinds; skip quoted text in Compound
 - [x] Step 6 (Tasks 3, 7): Compound help by document language; panel min width; drag polish (snippet card follow, autoscroll)
+
+## Carry-over after step 6 (before a public v0.1.0)
+- [ ] CI green on windows-latest, macos-latest and ubuntu-latest once a remote exists (macOS code has never compiled or run)
+- [ ] Release checklist in docs/release.md: interactive installer run in the VM (licence page), 200 % UI-scale check, macOS manual checks, Wayland and real Linux clipboard, Word/LibreOffice open checks
+- [ ] Verify the zlib and nsis_tauri_utils notices upstream; consider collecting Apache NOTICE files; drop the Noto Emoji OFL entry if the font isn't compiled in
+- [ ] macOS: open a double-clicked .rcraft (Apple Event), custom app menu (Hide/Quit through the unsaved prompt), Dock-quit prompt
+- [ ] Owner review of the Dutch glossary (docs/glossary-nl.md)
+- [ ] Split files at ~400 lines before the next feature (canvas/input.rs, app.rs, icons/mod.rs)
+- [ ] Smaller: Recent shows \?\UNC paths for network shares; profile warning invisible in GUI builds; per-frame Fluent lookups in the scene; thousands separators
