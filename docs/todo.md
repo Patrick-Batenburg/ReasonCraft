@@ -84,7 +84,7 @@
   - [x] Task 7: Map and panel polish
   - [x] Task 8: Robustness and performance carry-overs
   - [x] Task 9: Offline help and About
-  - [ ] Task 10: Example maps, templates and recent files
+  - [x] Task 10: Example maps, templates and recent files
   - [ ] Task 11: App identity and the Windows installer
   - [ ] Task 12: Linux and macOS builds and CI
   - [ ] Task 13: End-to-end check and release docs
