@@ -61,6 +61,12 @@ pub(crate) fn open_about(ctx: &egui::Context) {
 /// page beside them keeps room (a small window at a large UI scale).
 const COMPACT_BELOW: f32 = 640.0;
 
+/// The widest a page gets, in points: longer lines wrap.
+const PAGE_MAX_WIDTH: f32 = 680.0;
+
+/// Kept free right of a page for the scroll bar floating over it.
+const SCROLL_BAR_ROOM: f32 = 14.0;
+
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let shown = egui::CentralPanel::default()
@@ -87,6 +93,10 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     // True when a map was chosen on the page.
                     let chosen = scroll.show(ui, |ui| {
                         ui.vertical(|ui| {
+                            // A readable line length, and room on the right
+                            // for the scroll bar that floats over the page.
+                            let room = ui.available_width() - SCROLL_BAR_ROOM;
+                            ui.set_max_width(room.min(PAGE_MAX_WIDTH));
                             match page {
                                 Page::New => return new_page::page(ui, app),
                                 Page::Recent => return recent::page(ui, app),
