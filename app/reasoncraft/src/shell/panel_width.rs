@@ -1,7 +1,8 @@
 //! Side panels keep the width the user gave them. A small window squeezes
 //! a panel (see [`super::panel_width_range`]); egui then stores the
 //! squeezed width as the panel's own, so a larger window would not give
-//! the width back. The chosen width is kept here, and the panel's stored
+//! the width back. The chosen width is kept here (with the window state,
+//! so across restarts too), and the panel's stored
 //! width is set from it every frame.
 
 use eframe::egui::{self, Rangef, Rect, containers::panel::PanelState, pos2, vec2};
@@ -40,12 +41,14 @@ pub(super) fn keep_chosen(ui: &egui::Ui, salt: &str, side: Side, range: Rangef, 
     }
     let chosen_id = panel.with("chosen_width");
     let squeezed = width >= range.max - 0.5;
-    let chosen = match ctx.data(|d| d.get_temp::<f32>(chosen_id)) {
+    let chosen = match ctx.data_mut(|d| d.get_persisted::<f32>(chosen_id)) {
         Some(chosen) if !was_dragged => chosen,
         None if squeezed => width.max(default),
         _ => width,
     };
-    ctx.data_mut(|d| d.insert_temp(chosen_id, chosen));
+    // Kept with the window state, so a restart in a small window does
+    // not forget it.
+    ctx.data_mut(|d| d.insert_persisted(chosen_id, chosen));
     let want = range.clamp(chosen);
     if (want - width).abs() < 0.5 {
         return;
