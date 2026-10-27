@@ -9,39 +9,44 @@ use crate::actions::{Action, Dir, is_enabled};
 use crate::app::ReasonCraftApp;
 
 mod shortcuts;
-pub use shortcuts::{ActionCtor, SHORTCUTS, Shortcut, shortcut_for, shortcut_text};
+pub use shortcuts::{ActionCtor, Os, Shortcut, shortcut_for, shortcut_text, shortcuts};
 #[cfg(test)]
-pub(crate) use shortcuts::{format_shortcut, key_name};
+pub(crate) use shortcuts::{MAC_GLYPHS, MAC_SYMBOLS, format_shortcut, key_name, types_with_opt};
 
-/// The command bound to `key` with `mods`, if any: an entry of
-/// [`SHORTCUTS`], or one of the context keys below. `Modifiers::command`
-/// is Ctrl, or Cmd on macOS.
+/// The command bound to `key` with `mods` on `os`, if any: an entry of
+/// [`shortcuts`]`(os)`, or one of the context keys below.
+/// `Modifiers::command` is Ctrl, or Cmd on macOS.
 ///
 /// - Tab / Shift+Tab add a reason / objection, Enter or F2 edits the
 ///   selected box, Esc stops editing and the arrows move the selection.
+///   On macOS Backspace deletes the selected box like Delete.
 /// - While a box is being edited only Esc (finish), Tab / Shift+Tab (finish
 ///   and add a reason / objection) and the table's whole-card, source,
 ///   co-premise, file and find keys (finish, then the command) are commands;
 ///   every other key is text.
 /// - Ctrl+Enter adds a co-premise with or without Shift, and Ctrl+Shift+=
 ///   zooms in like Ctrl+=.
-/// - Alt+Q (Search commands) is the only Alt combination that is a
-///   command while editing. Alt with Ctrl never is: AltGr reports Ctrl+Alt.
-pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action> {
+/// - On Windows and Linux Alt+Q (Search commands) is the only Alt
+///   combination that is a command while editing, and Alt with Ctrl never
+///   is: AltGr reports Ctrl+Alt. On macOS Opt is an ordinary modifier.
+pub fn key_to_action(os: Os, key: Key, mods: Modifiers, editing: bool) -> Option<Action> {
     use Action as A;
     if mods.alt {
-        if mods.ctrl || mods.command || mods.mac_cmd {
+        if os != Os::Mac && (mods.ctrl || mods.command || mods.mac_cmd) {
             return None;
         }
-        let action = shortcuts::lookup(key, mods);
-        return action.filter(|a| !editing || *a == A::OpenCommandSearch);
+        let editable = |a: &Action| match os {
+            Os::Mac => works_while_editing(a),
+            Os::Windows | Os::Linux => *a == A::OpenCommandSearch,
+        };
+        return shortcuts::lookup(os, key, mods).filter(|a| !editing || editable(a));
     }
     let (cmd, shift) = (mods.command, mods.shift);
     let context = match (key, cmd, shift) {
         (Key::Tab, false, false) => Some(A::AddReason),
         (Key::Tab, false, true) => Some(A::AddObjection),
         (Key::Escape, false, _) => Some(A::StopEditing),
-        // Also a (display-only) row of SHORTCUTS; Shift does not matter here.
+        // Also a (display-only) row of the table; Shift does not matter here.
         (Key::Enter, true, _) => Some(A::AddCoPremise),
         _ => None,
     };
@@ -49,7 +54,7 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
         return context;
     }
     if editing {
-        return shortcuts::lookup(key, mods).filter(works_while_editing);
+        return shortcuts::lookup(os, key, mods).filter(works_while_editing);
     }
     let context = match (key, cmd, shift) {
         (Key::Enter, false, false) => Some(A::Edit),
@@ -58,9 +63,10 @@ pub fn key_to_action(key: Key, mods: Modifiers, editing: bool) -> Option<Action>
         (Key::ArrowLeft, false, false) => Some(A::Navigate(Dir::Left)),
         (Key::ArrowRight, false, false) => Some(A::Navigate(Dir::Right)),
         (Key::Equals | Key::Plus, true, true) => Some(A::ZoomIn),
+        (Key::Backspace, false, false) if os == Os::Mac => Some(A::Delete),
         _ => None,
     };
-    context.or_else(|| shortcuts::lookup(key, mods))
+    context.or_else(|| shortcuts::lookup(os, key, mods))
 }
 
 /// The table's commands that also end an inline edit.
@@ -73,6 +79,7 @@ fn works_while_editing(action: &Action) -> bool {
             | Action::SaveAs
             | Action::Open
             | Action::New
+            | Action::OpenCommandSearch
             | Action::OpenFind { .. }
             | Action::FindNext
             | Action::FindPrev
@@ -117,8 +124,7 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     }
     let can_type = editing.is_none() && matches!(tab.selection, Some(Item::Box(_)));
     let mut out = Vec::new();
-    // The text an Alt shortcut also produces ("1", or "¡" or
-    // "œ" on macOS) is not typing.
+    // The text an Alt shortcut also produces (say "1") is not typing.
     let mut alt_text = false;
     ctx.input_mut(|i| {
         i.events.retain(|e| {
@@ -131,15 +137,16 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                     ..
                 } => {
                     let action = shortcut_key(*key, *physical_key, *modifiers)
-                        .and_then(|key| key_to_action(key, *modifiers, editing.is_some()));
-                    alt_text = matches!(
-                        action,
-                        Some(
-                            Action::Rate(_)
-                                | Action::ClearEvaluation(_)
-                                | Action::OpenCommandSearch
-                        )
-                    );
+                        .and_then(|key| key_to_action(app.os, key, *modifiers, editing.is_some()));
+                    alt_text = modifiers.alt
+                        && matches!(
+                            action,
+                            Some(
+                                Action::Rate(_)
+                                    | Action::ClearEvaluation(_)
+                                    | Action::OpenCommandSearch
+                            )
+                        );
                     action
                 }
                 Event::Text(_) if std::mem::take(&mut alt_text) => return false,
@@ -190,15 +197,16 @@ fn allowed(app: &ReasonCraftApp, tab: &crate::doc_tab::DocTab, action: &Action) 
 /// essay paragraph, the find bar):
 /// Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N, the find keys (Ctrl+F,
 /// Ctrl+H, F3, Shift+F3), the same subset that works while editing a box,
-/// Alt+Q and F6 / Shift+F6. They are taken out of the input; every other key
-/// stays with the field. Applying the action first ends the field's
-/// editing session, so its typing becomes a history step before the save.
+/// Search commands (Alt+Q) and F6 / Shift+F6, or their macOS keys. They
+/// are taken out of the input; every other key stays with the field.
+/// Applying the action first ends the field's editing session, so its
+/// typing becomes a history step before the save.
 pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     let Some(tab) = app.tabs.get(app.active) else {
         return Vec::new();
     };
     let mut out = Vec::new();
-    // The text Alt+Q also types ("œ" on macOS) stays out of the field.
+    // The text an Alt shortcut also types stays out of the field.
     let mut alt_text = false;
     ctx.input_mut(|i| {
         i.events.retain(|e| {
@@ -212,7 +220,7 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                 Event::Text(_) => return !std::mem::take(&mut alt_text),
                 _ => return true,
             };
-            match key_to_action(*key, *modifiers, true) {
+            match key_to_action(app.os, *key, *modifiers, true) {
                 Some(
                     a @ (Action::Save
                     | Action::SaveAs
@@ -226,7 +234,7 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                     | Action::NextPane
                     | Action::PrevPane),
                 ) => {
-                    alt_text = a == Action::OpenCommandSearch;
+                    alt_text = modifiers.alt;
                     out.push(a);
                     false
                 }
@@ -242,15 +250,17 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
 }
 
 /// The key [`key_to_action`] looks up for a key event, `None` for none.
-/// Alt+Shift goes by the physical key: a shifted digit arrives as the
-/// symbol it types (")" for Shift+0 on a US layout, which egui has no key
-/// for, "=" on a German one).
+/// Alt+Shift (Control+Shift on macOS) goes by the physical key: a shifted
+/// digit arrives as the symbol it types (")" for Shift+0 on a US layout,
+/// which egui has no key for, "=" on a German one).
 /// Plain Alt drops the keys of a Windows Alt-code (see [`is_alt_code_key`]).
 pub fn shortcut_key(key: Key, physical: Option<Key>, mods: Modifiers) -> Option<Key> {
-    match (mods.alt, mods.shift) {
-        (true, true) => Some(physical.unwrap_or(key)),
-        (true, false) if is_alt_code_key(key, physical) => None,
-        _ => Some(key),
+    if (mods.alt || shortcuts::mac_ctrl(mods)) && mods.shift {
+        Some(physical.unwrap_or(key))
+    } else if mods.alt && is_alt_code_key(key, physical) {
+        None
+    } else {
+        Some(key)
     }
 }
 
@@ -392,3 +402,5 @@ fn neighbour<T>(list: &[T], i: usize, step: isize) -> Option<&T> {
 mod tests;
 #[cfg(test)]
 mod tests_alt;
+#[cfg(test)]
+mod tests_os;

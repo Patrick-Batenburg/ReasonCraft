@@ -2786,6 +2786,7 @@ dependencies = [
  "tempfile",
  "unic-langid",
  "unicode-normalization",
+ "winit",
  "zip 9.1.0",
 ]
 

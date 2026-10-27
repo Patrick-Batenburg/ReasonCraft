@@ -10,7 +10,7 @@ use eframe::egui::{
 use super::selected_fill;
 use crate::actions::{Action, is_enabled};
 use crate::app::{ReasonCraftApp, RibbonTab};
-use crate::canvas::input::{shortcut_for, shortcut_text};
+use crate::canvas::input::{Os, shortcut_for, shortcut_text};
 use crate::commands::{Command, search};
 use crate::i18n::{FluentArgs, t, t_args};
 use crate::theme::Tokens;
@@ -47,6 +47,7 @@ pub fn focus(ctx: &egui::Context) {
 
 pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
+    let os = app.os;
     let id = field_id();
     let state_id = id.with("state");
     let mut st: State = ui.data(|d| d.get_temp(state_id)).unwrap_or_default();
@@ -74,7 +75,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         .corner_radius(6)
         .inner_margin(Margin::symmetric(8, 4));
     let mut args = FluentArgs::new();
-    let keys = shortcut_for(&Action::OpenCommandSearch).map(shortcut_text);
+    let keys = shortcut_keys(&Action::OpenCommandSearch, os);
     args.set("keys", keys.unwrap_or_default());
     let hint = t_args("titlebar.search", &args);
     let resp = ui.add(
@@ -134,7 +135,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             Frame::popup(ui.style()).fill(tk.panel).show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
                 for (i, cmd) in results.iter().enumerate() {
-                    let row = result_row(ui, &tk, cmd, enabled[i], i == st.highlight);
+                    let row = result_row(ui, &tk, os, cmd, enabled[i], i == st.highlight);
                     if row.hovered() && i != st.highlight {
                         st.highlight = i;
                         st.refused = false;
@@ -164,8 +165,20 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     ui.data_mut(|d| d.insert_temp(state_id, st));
 }
 
+/// How the shortcut of `action` on `os` is written, if it has one.
+fn shortcut_keys(action: &Action, os: Os) -> Option<String> {
+    shortcut_for(action, os).map(|s| shortcut_text(s, os))
+}
+
 /// One result: the label, its group, and the shortcut at the right.
-fn result_row(ui: &mut Ui, tk: &Tokens, cmd: &Command, enabled: bool, on: bool) -> Response {
+fn result_row(
+    ui: &mut Ui,
+    tk: &Tokens,
+    os: Os,
+    cmd: &Command,
+    enabled: bool,
+    on: bool,
+) -> Response {
     let label = t(cmd.label);
     let group = t(cmd.group);
     let sense = if enabled {
@@ -197,15 +210,9 @@ fn result_row(ui: &mut Ui, tk: &Tokens, cmd: &Command, enabled: bool, on: bool) 
         small.clone(),
         tk.text_muted,
     );
-    if let Some(s) = shortcut_for(&cmd.action) {
+    if let Some(keys) = shortcut_keys(&cmd.action, os) {
         let right = pos2(rect.right() - 8.0, rect.center().y);
-        painter.text(
-            right,
-            Align2::RIGHT_CENTER,
-            shortcut_text(s),
-            small,
-            tk.text_muted,
-        );
+        painter.text(right, Align2::RIGHT_CENTER, keys, small, tk.text_muted);
     }
     resp
 }

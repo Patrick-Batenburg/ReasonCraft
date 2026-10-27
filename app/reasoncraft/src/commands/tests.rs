@@ -4,7 +4,7 @@ use eframe::egui::{Key, Modifiers};
 
 use super::*;
 use crate::canvas::input::{
-    SHORTCUTS, format_shortcut, key_name, key_to_action, shortcut_for, shortcut_text,
+    Os, format_shortcut, key_name, key_to_action, shortcut_for, shortcut_text, shortcuts,
 };
 use crate::i18n::t;
 
@@ -100,61 +100,70 @@ fn search_ignores_diacritics() {
 
 #[test]
 fn shortcut_table_round_trips() {
-    for (s, ctor) in SHORTCUTS {
-        let action = ctor();
-        assert_eq!(
-            key_to_action(s.key, s.mods, false),
-            Some(action.clone()),
-            "{s:?}"
-        );
-        let shown = shortcut_for(&action).expect("an entry exists");
-        assert_eq!(key_to_action(shown.key, shown.mods, false), Some(action));
+    for os in [Os::Windows, Os::Mac, Os::Linux] {
+        for (s, ctor) in shortcuts(os) {
+            let action = ctor();
+            assert_eq!(
+                key_to_action(os, s.key, s.mods, false),
+                Some(action.clone()),
+                "{os:?} {s:?}"
+            );
+            let shown = shortcut_for(&action, os).expect("an entry exists");
+            assert_eq!(
+                key_to_action(os, shown.key, shown.mods, false),
+                Some(action)
+            );
+        }
     }
     // While editing, Alt+Q is the one Alt shortcut.
     let alt = Modifiers::ALT;
     assert_eq!(
-        key_to_action(Key::Q, alt, true),
+        key_to_action(Os::Windows, Key::Q, alt, true),
         Some(Action::OpenCommandSearch)
     );
-    assert_eq!(key_to_action(Key::Num1, alt, true), None);
+    assert_eq!(key_to_action(Os::Windows, Key::Num1, alt, true), None);
     // The first entry for an action is the one shown.
+    let redo = shortcut_for(&Action::Redo, Os::Windows);
     assert_eq!(
-        shortcut_for(&Action::Redo).map(|s| format_shortcut(s, false, "en")),
+        redo.map(|s| format_shortcut(s, Os::Windows, false, "en")),
         Some("Ctrl+Y".to_owned())
     );
 }
 
 #[test]
 fn shortcut_text_per_platform() {
-    let s = shortcut_for(&Action::TargetWholeCard(reasoncraft_core::CardKind::Reason)).unwrap();
-    assert_eq!(format_shortcut(s, false, "en"), "Ctrl+Shift+R");
-    assert_eq!(format_shortcut(s, true, "en"), "⌘⇧R");
-    let q = shortcut_for(&Action::OpenCommandSearch).unwrap();
-    assert_eq!(format_shortcut(q, false, "en"), "Alt+Q");
+    let whole = Action::TargetWholeCard(reasoncraft_core::CardKind::Reason);
+    let s = shortcut_for(&whole, Os::Windows).unwrap();
+    assert_eq!(format_shortcut(s, Os::Windows, false, "en"), "Ctrl+Shift+R");
+    // Linux writes them the same way; macOS in Apple's order.
+    assert_eq!(format_shortcut(s, Os::Linux, true, "en"), "Ctrl+Shift+R");
+    assert_eq!(format_shortcut(s, Os::Mac, true, "en"), "⇧⌘R");
+    assert_eq!(format_shortcut(s, Os::Mac, false, "en"), "Shift+Cmd+R");
+    let q = shortcut_for(&Action::OpenCommandSearch, Os::Windows).unwrap();
+    assert_eq!(format_shortcut(q, Os::Windows, false, "en"), "Alt+Q");
 }
 
 #[test]
 fn shortcut_text_uses_translated_key_names() {
     use crate::actions::Dir;
     use crate::i18n::{UI_LANGUAGES, t_lang};
-    let left = shortcut_for(&Action::Reorder(Dir::Left)).unwrap();
-    let co_premise = shortcut_for(&Action::AddCoPremise).unwrap();
-    let branch = shortcut_for(&Action::DeleteBranch).unwrap();
+    let win = |a: Action| shortcut_for(&a, Os::Windows).unwrap();
+    let left = win(Action::Reorder(Dir::Left));
+    let co_premise = win(Action::AddCoPremise);
+    let branch = win(Action::DeleteBranch);
+    let rate = shortcut_for(&Action::Rate(crate::actions::Rate::High), Os::Mac).unwrap();
     for lang in UI_LANGUAGES {
         let k = |key: &str| t_lang(lang, key);
         let joined = |a: &str, b: &str| format!("{}+{}", k(a), k(b));
-        assert_eq!(
-            format_shortcut(left, false, lang),
-            joined("key.alt", "key.left")
-        );
-        assert_eq!(
-            format_shortcut(co_premise, false, lang),
-            joined("key.ctrl", "key.enter")
-        );
-        assert_eq!(
-            format_shortcut(branch, false, lang),
-            joined("key.shift", "key.delete")
-        );
+        let format = |s| format_shortcut(s, Os::Windows, false, lang);
+        assert_eq!(format(left), joined("key.alt", "key.left"));
+        assert_eq!(format(co_premise), joined("key.ctrl", "key.enter"));
+        assert_eq!(format(branch), joined("key.shift", "key.delete"));
+        // The macOS names without the symbols.
+        let mac = |s| format_shortcut(s, Os::Mac, false, lang);
+        assert_eq!(mac(left), joined("key.opt", "key.left"));
+        assert_eq!(mac(co_premise), joined("key.cmd", "key.enter"));
+        assert_eq!(mac(rate), format!("{}+1", k("key.ctrl")));
         for (key, name) in [(Key::Escape, "key.esc"), (Key::Space, "key.space")] {
             assert_eq!(key_name(key, lang), k(name));
             assert_ne!(k(name), name, "`{name}` has a text");
@@ -163,16 +172,18 @@ fn shortcut_text_uses_translated_key_names() {
     assert_eq!(key_name(Key::Space, "nl"), "Spatie");
     assert_eq!(key_name(Key::R, "nl"), "R");
     // macOS keeps its modifier symbols.
-    assert_eq!(format_shortcut(left, true, "en"), "⌥Left");
+    assert_eq!(format_shortcut(left, Os::Mac, true, "en"), "⌥Left");
     // What menus show follows the UI language (English in this binary).
-    let mac = cfg!(target_os = "macos");
-    assert_eq!(shortcut_text(left), format_shortcut(left, mac, "en"));
+    assert_eq!(
+        shortcut_text(left, Os::Windows),
+        format_shortcut(left, Os::Windows, false, "en")
+    );
 }
 
-/// README's keyboard tables list exactly the shortcuts of [`SHORTCUTS`];
-/// rows marked "(context)" describe keys handled outside the table.
-#[test]
-fn readme_shortcuts_match_table() {
+/// The shortcuts README's keyboard tables list in column `col` (0: Windows
+/// and Linux, 1: macOS); rows marked "(context)" describe keys handled
+/// outside the tables.
+fn readme_column(col: usize) -> BTreeSet<String> {
     let readme = include_str!("../../../../README.md");
     let start = readme
         .find("## Keyboard shortcuts")
@@ -185,23 +196,38 @@ fn readme_shortcuts_match_table() {
         if !line.starts_with('|') || line.contains("(context)") {
             continue;
         }
-        let keys = line.trim_matches('|').split('|').next().unwrap().trim();
-        if keys == "Keys" || keys.starts_with("---") {
+        let cells: Vec<&str> = line.trim_matches('|').split('|').map(str::trim).collect();
+        assert_eq!(cells.len(), 3, "a row has three columns: {line}");
+        let keys = cells[col];
+        if cells[0] == "Windows / Linux" || keys.starts_with("---") {
             continue;
         }
         for part in keys.split(" or ").flat_map(|p| p.split(" / ")) {
             listed.insert(part.trim().to_owned());
         }
     }
-    let table: BTreeSet<String> = SHORTCUTS
-        .iter()
-        .map(|(s, _)| format_shortcut(*s, false, "en"))
-        .collect();
-    let missing: Vec<_> = table.difference(&listed).collect();
-    let extra: Vec<_> = listed.difference(&table).collect();
-    assert!(
-        missing.is_empty(),
-        "shortcuts missing from README: {missing:?}"
-    );
-    assert!(extra.is_empty(), "README rows not in SHORTCUTS: {extra:?}");
+    listed
+}
+
+/// README's keyboard tables list exactly the shortcuts of each platform's
+/// table, macOS's in its own column.
+#[test]
+fn readme_matches_both_tables() {
+    for (col, os) in [(0, Os::Windows), (0, Os::Linux), (1, Os::Mac)] {
+        let listed = readme_column(col);
+        let table: BTreeSet<String> = shortcuts(os)
+            .iter()
+            .map(|(s, _)| format_shortcut(*s, os, false, "en"))
+            .collect();
+        let missing: Vec<_> = table.difference(&listed).collect();
+        let extra: Vec<_> = listed.difference(&table).collect();
+        assert!(
+            missing.is_empty(),
+            "{os:?} shortcuts missing from README: {missing:?}"
+        );
+        assert!(
+            extra.is_empty(),
+            "README rows not in {os:?}'s table: {extra:?}"
+        );
+    }
 }

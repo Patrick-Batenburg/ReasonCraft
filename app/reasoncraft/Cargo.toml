@@ -33,6 +33,11 @@ unicode-normalization = "0.1.26"
 chrono = { workspace = true, features = ["serde"] }
 serde_json.workspace = true
 
+# Turns off the default app menu on macOS, whose Quit item would quit
+# without asking about unsaved changes (the same winit eframe uses).
+[target.'cfg(target_os = "macos")'.dependencies]
+winit = { version = "0.30", default-features = false }
+
 [dev-dependencies]
 egui_kittest = "0.37"
 reasoncraft_core = { path = "../../crates/reasoncraft_core", features = ["test-fixtures"] }

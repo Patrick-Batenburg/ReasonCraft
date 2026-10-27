@@ -151,11 +151,11 @@ eval-clear_selection = Selection
 eval-clear_map = Map
 eval-show_markers = Show markers
 eval-shading = Evaluation shading
-eval-tip-claim = Accept, doubt or reject the selected claim or premise (Alt+1, Alt+2, Alt+3; Alt+0 clears)
-eval-tip-card = Rate how strongly the selected card's premises carry its conclusion (Alt+1, Alt+2, Alt+3; Alt+0 clears)
-eval-tip-source = Rate how reliable the selected source is (Alt+1, Alt+2, Alt+3; Alt+0 clears)
-eval-tip-clear_selection = Clear the rating of the selected item (Alt+0)
-eval-tip-clear_map = Clear every rating in the map (Alt+Shift+0)
+eval-tip-claim = Accept, doubt or reject the selected claim or premise ({ $high }, { $mid }, { $low }; { $clear } clears)
+eval-tip-card = Rate how strongly the selected card's premises carry its conclusion ({ $high }, { $mid }, { $low }; { $clear } clears)
+eval-tip-source = Rate how reliable the selected source is ({ $high }, { $mid }, { $low }; { $clear } clears)
+eval-tip-clear_selection = Clear the rating of the selected item ({ $clear })
+eval-tip-clear_map = Clear every rating in the map ({ $clear_map })
 
 ## Files
 file-filter = ReasonCraft map
@@ -281,6 +281,8 @@ settings-ui_language_hint = System follows the language of your computer.
 key-ctrl = Ctrl
 key-shift = Shift
 key-alt = Alt
+key-cmd = Cmd
+key-opt = Opt
 key-esc = Esc
 key-enter = Enter
 key-space = Space

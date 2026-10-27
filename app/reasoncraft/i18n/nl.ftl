@@ -152,11 +152,11 @@ eval-clear_selection = Selectie
 eval-clear_map = Kaart
 eval-show_markers = Markeringen
 eval-shading = Kleuring
-eval-tip-claim = Aanvaard, betwijfel of verwerp de gekozen bewering of premisse (Alt+1, Alt+2, Alt+3; Alt+0 wist)
-eval-tip-card = Beoordeel hoe sterk de premissen van het gekozen blok de conclusie dragen (Alt+1, Alt+2, Alt+3; Alt+0 wist)
-eval-tip-source = Beoordeel hoe betrouwbaar de gekozen bron is (Alt+1, Alt+2, Alt+3; Alt+0 wist)
-eval-tip-clear_selection = Wis de beoordeling van het gekozen onderdeel (Alt+0)
-eval-tip-clear_map = Wis alle beoordelingen op de kaart (Alt+Shift+0)
+eval-tip-claim = Aanvaard, betwijfel of verwerp de gekozen bewering of premisse ({ $high }, { $mid }, { $low }; { $clear } wist)
+eval-tip-card = Beoordeel hoe sterk de premissen van het gekozen blok de conclusie dragen ({ $high }, { $mid }, { $low }; { $clear } wist)
+eval-tip-source = Beoordeel hoe betrouwbaar de gekozen bron is ({ $high }, { $mid }, { $low }; { $clear } wist)
+eval-tip-clear_selection = Wis de beoordeling van het gekozen onderdeel ({ $clear })
+eval-tip-clear_map = Wis alle beoordelingen op de kaart ({ $clear_map })
 
 ## Files
 file-filter = ReasonCraft-kaart
@@ -282,6 +282,8 @@ settings-ui_language_hint = Systeem volgt de taal van je computer.
 key-ctrl = Ctrl
 key-shift = Shift
 key-alt = Alt
+key-cmd = Cmd
+key-opt = Opt
 key-esc = Esc
 key-enter = Enter
 key-space = Spatie

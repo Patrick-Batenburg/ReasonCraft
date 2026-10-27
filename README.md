@@ -88,80 +88,81 @@ A debug build (`cargo run -p reasoncraft`) adds **View → Load sample map (debu
 
 ## Keyboard shortcuts
 
-Ctrl means Cmd on macOS. Typing while a box is selected starts editing that box. Keys marked (context) only work where the table says: elsewhere, for example in a text field, they type or move the focus as usual.
+macOS has its own column: there Cmd takes the place of Ctrl, Opt of Alt, and Control (Ctrl) is a key of its own; Backspace is the key labelled delete, Delete is Fn+delete. Typing while a box is selected starts editing that box. Keys marked (context) only work where the table says: elsewhere, for example in a text field, they type or move the focus as usual.
 
-| Keys | Action |
-| --- | --- |
-| Alt+Q | Search commands, also while typing in a box or field: type part of a command's name, pick it with the arrow keys and press Enter (Esc closes the list) |
-| Ctrl+F | Find in box text, sources and notes, also while typing in a box or field: the find bar opens above the map (in its field Enter / Shift+Enter go to the next / previous hit, Esc closes it) |
-| Ctrl+H | Find and replace (on macOS Cmd+H hides the app: use Replace in the Home ribbon or Search commands instead) |
-| F3 / Shift+F3 | Go to the next / previous hit |
-| F7 | Spelling, also while typing in a box or field: check the spelling of box text, sources and notes from the selection, one misspelling at a time |
-| F6 / Shift+F6 | Move the keyboard focus to the next / previous pane, from any control: ribbon, Building panel, map, Text panel, status bar (hidden panels are skipped) |
+| Windows / Linux | macOS | Action |
+| --- | --- | --- |
+| Alt+Q | Shift+Cmd+A | Search commands, also while typing in a box or field: type part of a command's name, pick it with the arrow keys and press Enter (Esc closes the list) |
+| Ctrl+F | Cmd+F | Find in box text, sources and notes, also while typing in a box or field: the find bar opens above the map (in its field Enter / Shift+Enter go to the next / previous hit, Esc closes it) |
+| Ctrl+H | Opt+Cmd+F | Find and replace |
+| F3 / Shift+F3 | F3 / Shift+F3 | Go to the next / previous hit |
+| F7 | F7 | Spelling, also while typing in a box or field: check the spelling of box text, sources and notes from the selection, one misspelling at a time |
+| F6 / Shift+F6 | F6 / Shift+F6 | Move the keyboard focus to the next / previous pane, from any control: ribbon, Building panel, map, Text panel, status bar (hidden panels are skipped) |
 
 ### While a box or card is selected
 
-| Keys | Action |
-| --- | --- |
-| Tab | Add a reason (context) |
-| Shift+Tab | Add an objection (context) |
-| Ctrl+Enter | Add a co-premise |
-| Ctrl+Shift+R | Add a reason for the whole card (of the selected card or premise) |
-| Ctrl+Shift+O | Add an objection to the whole card (of the selected card or premise) |
-| Ctrl+Shift+E | Add a source (under the selected claim or premise, or loose) |
-| F2 | Edit the selected box |
-| Enter | Edit the selected box (context) |
-| Esc | Stop editing (context) |
-| Delete | Delete (items under it move to the parking area) |
-| Shift+Delete | Delete with everything under it |
-| Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise). The arrows follow the layout direction: bottom-up, Down goes to the parent; left-to-right, Left goes to the parent and Up/Down move between siblings (context) |
-| Ctrl+Shift+P | Jump between the main map and the parking area |
-| Ctrl+Shift+M | Open the comments of the selected box (Esc closes them) |
-| Ctrl+Shift+K | Connect to…: pick where the selected parked item goes (see below) |
-| Alt+Left / Alt+Right / Alt+Up / Alt+Down | Move the selection one place among its siblings (a premise within its card): Alt+Left / Alt+Right in top-down and bottom-up maps, Alt+Up / Alt+Down in left-to-right maps, where siblings stack vertically |
-| Alt+1 | Rate the selection high: accept a claim or premise, strong card, solid source |
-| Alt+2 | Rate the selection mid: unsure, weak card, shaky source |
-| Alt+3 | Rate the selection low: reject a claim or premise, nil card or source |
-| Alt+0 | Clear the selection's rating |
-| Alt+Shift+0 | Clear every rating in the map |
-| Ctrl+Z | Undo |
-| Ctrl+Y or Ctrl+Shift+Z | Redo |
-| Ctrl+S | Save |
-| Ctrl+Shift+S | Save as |
-| Ctrl+O | Open |
-| Ctrl+N | New map |
-| Ctrl+0 | Zoom to 100% |
-| Ctrl+1 | Zoom to fit |
-| Ctrl+Shift+1 | Zoom to fit the selection (a card with everything under it) |
-| Ctrl+= or Ctrl++ | Zoom in |
-| Ctrl+- | Zoom out |
+| Windows / Linux | macOS | Action |
+| --- | --- | --- |
+| Tab | Tab | Add a reason (context) |
+| Shift+Tab | Shift+Tab | Add an objection (context) |
+| Ctrl+Enter | Cmd+Enter | Add a co-premise |
+| Ctrl+Shift+R | Shift+Cmd+R | Add a reason for the whole card (of the selected card or premise) |
+| Ctrl+Shift+O | Shift+Cmd+O | Add an objection to the whole card (of the selected card or premise) |
+| Ctrl+Shift+E | Shift+Cmd+E | Add a source (under the selected claim or premise, or loose) |
+| F2 | F2 | Edit the selected box |
+| Enter | Enter | Edit the selected box (context) |
+| Esc | Esc | Stop editing (context) |
+| Delete | Delete | Delete (items under it move to the parking area) |
+| – | Backspace | Delete, like Delete (context) |
+| Shift+Delete | Shift+Delete | Delete with everything under it |
+| Arrow keys | Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise). The arrows follow the layout direction: bottom-up, Down goes to the parent; left-to-right, Left goes to the parent and Up/Down move between siblings (context) |
+| Ctrl+Shift+P | Shift+Cmd+P | Jump between the main map and the parking area |
+| Ctrl+Shift+M | Shift+Cmd+M | Open the comments of the selected box (Esc closes them) |
+| Ctrl+Shift+K | Shift+Cmd+K | Connect to…: pick where the selected parked item goes (see below) |
+| Alt+Left / Alt+Right / Alt+Up / Alt+Down | Opt+Left / Opt+Right / Opt+Up / Opt+Down | Move the selection one place among its siblings (a premise within its card): Left / Right in top-down and bottom-up maps, Up / Down in left-to-right maps, where siblings stack vertically |
+| Alt+1 | Ctrl+1 | Rate the selection high: accept a claim or premise, strong card, solid source |
+| Alt+2 | Ctrl+2 | Rate the selection mid: unsure, weak card, shaky source |
+| Alt+3 | Ctrl+3 | Rate the selection low: reject a claim or premise, nil card or source |
+| Alt+0 | Ctrl+0 | Clear the selection's rating |
+| Alt+Shift+0 | Ctrl+Shift+0 | Clear every rating in the map |
+| Ctrl+Z | Cmd+Z | Undo |
+| Ctrl+Y or Ctrl+Shift+Z | Cmd+Y or Shift+Cmd+Z | Redo |
+| Ctrl+S | Cmd+S | Save |
+| Ctrl+Shift+S | Shift+Cmd+S | Save as |
+| Ctrl+O | Cmd+O | Open |
+| Ctrl+N | Cmd+N | New map |
+| Ctrl+0 | Cmd+0 | Zoom to 100% |
+| Ctrl+1 | Cmd+1 | Zoom to fit |
+| Ctrl+Shift+1 | Shift+Cmd+1 | Zoom to fit the selection (a card with everything under it) |
+| Ctrl+= or Ctrl++ | Cmd+= or Cmd++ | Zoom in |
+| Ctrl+- | Cmd+- | Zoom out |
 
 ### While editing a box's text
 
-| Keys | Action |
-| --- | --- |
-| Esc | Finish editing (context) |
-| Tab | Finish and add a reason (context) |
-| Shift+Tab | Finish and add an objection (context) |
-| Ctrl+Enter | Finish and add a co-premise |
-| Ctrl+Shift+R | Finish and add a reason for the whole card |
-| Ctrl+Shift+O | Finish and add an objection to the whole card |
-| Ctrl+Shift+E | Finish and add a source |
-| Ctrl+S | Finish and save |
-| Ctrl+Shift+S | Finish and save as |
-| Ctrl+O | Finish and open |
-| Ctrl+N | Finish and start a new map |
+| Windows / Linux | macOS | Action |
+| --- | --- | --- |
+| Esc | Esc | Finish editing (context) |
+| Tab | Tab | Finish and add a reason (context) |
+| Shift+Tab | Shift+Tab | Finish and add an objection (context) |
+| Ctrl+Enter | Cmd+Enter | Finish and add a co-premise |
+| Ctrl+Shift+R | Shift+Cmd+R | Finish and add a reason for the whole card |
+| Ctrl+Shift+O | Shift+Cmd+O | Finish and add an objection to the whole card |
+| Ctrl+Shift+E | Shift+Cmd+E | Finish and add a source |
+| Ctrl+S | Cmd+S | Finish and save |
+| Ctrl+Shift+S | Shift+Cmd+S | Finish and save as |
+| Ctrl+O | Cmd+O | Finish and open |
+| Ctrl+N | Cmd+N | Finish and start a new map |
 
 All other keys are typed into the box.
 
 ### While typing in a snippet, citation, link, title, author or essay field
 
-| Keys | Action |
-| --- | --- |
-| Ctrl+S | Finish and save |
-| Ctrl+Shift+S | Finish and save as |
-| Ctrl+O | Finish and open |
-| Ctrl+N | Finish and start a new map |
+| Windows / Linux | macOS | Action |
+| --- | --- | --- |
+| Ctrl+S | Cmd+S | Finish and save |
+| Ctrl+Shift+S | Shift+Cmd+S | Finish and save as |
+| Ctrl+O | Cmd+O | Finish and open |
+| Ctrl+N | Cmd+N | Finish and start a new map |
 
 All other keys stay with the field.
 
@@ -169,13 +170,13 @@ All other keys stay with the field.
 
 Connect to… works on an item at the top of the parking area (or a premise of a parked card, which connects its card).
 
-| Keys | Action |
-| --- | --- |
-| Click a box or card | Connect the parked item there (targets that refuse it show red and do nothing) (context) |
-| Arrow keys | Move the selection in the map (context) |
-| Enter or F2 | Connect the parked item to the selected box or card (context) |
-| Ctrl+Shift+P, zoom keys | Work as usual (context) |
-| Esc | Cancel (context) |
+| Windows / Linux | macOS | Action |
+| --- | --- | --- |
+| Click a box or card | Click a box or card | Connect the parked item there (targets that refuse it show red and do nothing) (context) |
+| Arrow keys | Arrow keys | Move the selection in the map (context) |
+| Enter or F2 | Enter or F2 | Connect the parked item to the selected box or card (context) |
+| Ctrl+Shift+P, zoom keys | Shift+Cmd+P, zoom keys | Work as usual (context) |
+| Esc | Esc | Cancel (context) |
 
 Other keys do nothing until you connect or cancel.
 

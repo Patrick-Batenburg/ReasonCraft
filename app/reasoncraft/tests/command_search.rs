@@ -11,7 +11,7 @@ use egui_kittest::{
 };
 use reasoncraft::actions::Action;
 use reasoncraft::app::RibbonTab;
-use reasoncraft::canvas::input::{shortcut_for, shortcut_text};
+use reasoncraft::canvas::input::{Os, shortcut_for, shortcut_text};
 use reasoncraft::i18n::{FluentArgs, t, t_args};
 use reasoncraft::{ReasonCraftApp, commands};
 
@@ -28,7 +28,8 @@ fn harness() -> Harness<'static, ReasonCraftApp> {
 /// The search field's accessible name: its hint text.
 fn field_label() -> String {
     let mut args = FluentArgs::new();
-    let keys = shortcut_for(&Action::OpenCommandSearch).map(shortcut_text);
+    let os = Os::current();
+    let keys = shortcut_for(&Action::OpenCommandSearch, os).map(|s| shortcut_text(s, os));
     args.set("keys", keys.unwrap());
     t_args("titlebar.search", &args)
 }

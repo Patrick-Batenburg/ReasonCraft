@@ -6,11 +6,12 @@ use reasoncraft_core::{Acceptance, CardStrength, ClearScope, SourceRating};
 
 use super::{command, group, large};
 use crate::a11y::{in_group, labelled};
-use crate::actions::{Action, Rated, is_enabled, rated};
+use crate::actions::{Action, Rate, Rated, is_enabled, rated};
 use crate::app::ReasonCraftApp;
+use crate::canvas::input::{Os, shortcut_for, shortcut_text};
 use crate::commands;
 use crate::doc_tab::DocTab;
-use crate::i18n::t;
+use crate::i18n::{FluentArgs, t, t_args};
 use crate::shell::icons::Icon;
 use crate::theme::Tokens;
 
@@ -25,6 +26,8 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         None => {}
     }
     let mut out = Vec::new();
+    let keys = rating_keys(app.os);
+    let tip = |key: &str| t_args(key, &keys);
 
     use Acceptance as A;
     use CardStrength as C;
@@ -46,7 +49,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     ];
     let name = t("group.eval_claim");
     group(ui, &tk, &name, |ui| {
-        let tip = t("eval.tip.claim");
+        let tip = tip("eval.tip.claim");
         out.extend(scale(
             ui,
             &tk,
@@ -59,7 +62,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     });
     let name = t("group.eval_card");
     group(ui, &tk, &name, |ui| {
-        let tip = t("eval.tip.card");
+        let tip = tip("eval.tip.card");
         out.extend(scale(
             ui,
             &tk,
@@ -72,7 +75,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     });
     let name = t("group.eval_source");
     group(ui, &tk, &name, |ui| {
-        let tip = t("eval.tip.source");
+        let tip = tip("eval.tip.source");
         out.extend(scale(
             ui,
             &tk,
@@ -96,7 +99,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             enabled,
             false,
         )
-        .on_hover_text(t("eval.tip.clear_selection"))
+        .on_hover_text(tip("eval.tip.clear_selection"))
         .clicked()
         {
             out.extend(selection);
@@ -104,7 +107,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         let id = "evaluate.clear_map";
         let on = is_enabled(tab, &commands::get(id).action);
         command(ui, &tk, Icon::Clear, id, on, false, &mut out)
-            .on_hover_text(t("eval.tip.clear_map"));
+            .on_hover_text(tip("eval.tip.clear_map"));
     });
     group(ui, &tk, &t("group.eval_view"), |ui| {
         display_toggles(ui, app, &mut out);
@@ -153,4 +156,21 @@ pub(super) fn display_toggles(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<A
     for (icon, id, on) in toggles {
         command(ui, &tk, icon, id, true, on, out);
     }
+}
+
+/// The rating keys of `os`, for the tooltips: `high`, `mid`, `low`,
+/// `clear` and `clear_map`.
+fn rating_keys(os: Os) -> FluentArgs<'static> {
+    let mut args = FluentArgs::new();
+    for (name, action) in [
+        ("high", Action::Rate(Rate::High)),
+        ("mid", Action::Rate(Rate::Mid)),
+        ("low", Action::Rate(Rate::Low)),
+        ("clear", Action::Rate(Rate::Clear)),
+        ("clear_map", Action::ClearEvaluation(ClearScope::Map)),
+    ] {
+        let keys = shortcut_for(&action, os).map(|s| shortcut_text(s, os));
+        args.set(name, keys.unwrap_or_default());
+    }
+    args
 }

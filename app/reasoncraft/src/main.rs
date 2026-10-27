@@ -28,6 +28,7 @@ fn main() -> eframe::Result {
     }
     let options = eframe::NativeOptions {
         viewport,
+        event_loop_builder: event_loop_hook(),
         ..Default::default()
     };
     eframe::run_native(
@@ -42,4 +43,20 @@ fn main() -> eframe::Result {
             Ok(Box::new(app))
         }),
     )
+}
+
+/// On macOS, no default app menu: its Quit item (Cmd+Q) would quit without
+/// asking about unsaved changes, while the key itself reaches the app,
+/// which asks first.
+#[cfg(target_os = "macos")]
+fn event_loop_hook() -> Option<eframe::EventLoopBuilderHook> {
+    use winit::platform::macos::EventLoopBuilderExtMacOS as _;
+    Some(Box::new(|builder| {
+        builder.with_default_menu(false);
+    }))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn event_loop_hook() -> Option<eframe::EventLoopBuilderHook> {
+    None
 }

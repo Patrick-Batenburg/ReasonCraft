@@ -14,7 +14,7 @@ use egui_kittest::{
 };
 use reasoncraft::a11y::in_group;
 use reasoncraft::actions::Action;
-use reasoncraft::canvas::input::{shortcut_for, shortcut_text};
+use reasoncraft::canvas::input::{Os, shortcut_for, shortcut_text};
 use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::{self, FluentArgs, t, t_args, t_lang, ui_language};
 use reasoncraft::settings::{Settings, TextTab};
@@ -59,7 +59,8 @@ fn search_for(h: &mut Harness<'static, ReasonCraftApp>, query: &str) {
     h.key_press_modifiers(Modifiers::ALT, Key::Q);
     h.run();
     let mut args = FluentArgs::new();
-    let keys = shortcut_for(&Action::OpenCommandSearch).map(shortcut_text);
+    let os = Os::current();
+    let keys = shortcut_for(&Action::OpenCommandSearch, os).map(|s| shortcut_text(s, os));
     args.set("keys", keys.unwrap());
     h.get_by_label(&t_args("titlebar.search", &args))
         .type_text(query);

@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use crate::actions::{self, Action, FakeOpener, LinkOpener, SystemOpener};
 use crate::canvas::images::{ImageCache, ImageJobs};
+use crate::canvas::input::Os;
 use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
 use crate::export::{ExportJobs, FakeClipboard, SharedClipboard, SystemClipboard};
@@ -39,6 +40,8 @@ pub struct ReasonCraftApp {
     /// Reads the OS locale, for a UI language that follows the OS: the
     /// platform's own in the app; none in tests, which then read English.
     pub os_locale: fn() -> Option<String>,
+    /// The platform whose keys apply: this one, or another in tests.
+    pub os: Os,
     pub left_panel: bool,
     pub right_panel: bool,
     /// Actions queued by widgets this frame, applied at the end of the frame.
@@ -116,6 +119,7 @@ impl ReasonCraftApp {
             spell: SpellService::new(&settings.spell_words),
             settings,
             os_locale,
+            os: Os::current(),
             left_panel: true,
             right_panel: true,
             pending: Vec::new(),
@@ -257,10 +261,13 @@ impl ReasonCraftApp {
         self.sync_theme(&ctx);
         self.sync_ui_scale(&ctx);
         self.sync_window_title(&ctx);
-        // The OS (or the title bar on macOS) asks to close: ask about unsaved
-        // changes first.
-        if ctx.input(|i| i.viewport().close_requested()) && !self.close_confirmed {
+        // The OS (or the title bar on macOS) asks to close, or Cmd+Q on
+        // macOS: ask about unsaved changes first.
+        let close_requested = ctx.input(|i| i.viewport().close_requested());
+        if close_requested && !self.close_confirmed {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.pending.push(Action::CloseWindow);
+        } else if self.quit_key(&ctx) {
             self.pending.push(Action::CloseWindow);
         }
         // Shortcuts are taken out first, so no widget sees (or moves focus
@@ -317,6 +324,13 @@ impl ReasonCraftApp {
         if std::mem::take(&mut self.close_now) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
+    }
+
+    /// Takes Cmd+Q out of the input on macOS: quitting closes the window
+    /// (the app menu, which would quit at once, is off; see `main.rs`).
+    fn quit_key(&self, ctx: &egui::Context) -> bool {
+        let quit = |i: &mut egui::InputState| i.consume_key(egui::Modifiers::MAC_CMD, egui::Key::Q);
+        self.os == Os::Mac && ctx.input_mut(quit)
     }
 
     fn sync_theme(&mut self, ctx: &egui::Context) {
