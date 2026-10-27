@@ -12,3 +12,7 @@ at commit `8cfea406b505e4d7df52d5a19bce525df98c54ab`. Each directory carries its
 
 - English (`dict/en`): dictionary-en 4.0.0, licence MIT AND BSD.
 - Dutch (`dict/nl`): dictionary-nl 2.0.0 (OpenTaal), dual-licensed BSD-3-Clause OR CC-BY-3.0. We use it under BSD-3-Clause.
+
+## Windows installer
+
+The Windows installer is built with NSIS 3.09 (https://nsis.sourceforge.io), whose installer code and zlib decompressor are under the zlib/libpng licence, through cargo-packager (https://github.com/crabnebula-dev/cargo-packager, MIT OR Apache-2.0). It uses cargo-packager's installer template, changed where marked, and the nsis_tauri_utils plugin (https://github.com/tauri-apps/nsis-tauri-utils, MIT OR Apache-2.0).

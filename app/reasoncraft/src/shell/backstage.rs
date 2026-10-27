@@ -121,7 +121,7 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
             Entry::Page(Page::New),
         ),
         command(Icon::Open, "file.open"),
-        (Icon::Open, "backstage.recent", Entry::Page(Page::Recent)),
+        (Icon::Recent, "backstage.recent", Entry::Page(Page::Recent)),
         command(Icon::Open, "file.import_argdown"),
         command(Icon::Save, "file.save"),
         command(Icon::SaveAs, "file.save_as"),

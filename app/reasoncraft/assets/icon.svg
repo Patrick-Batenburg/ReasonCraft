@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- ReasonCraft app icon (original design): a claim box above a reason
+       box, linked by an arrow that points from the reason to the claim. -->
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="#1A5CC8"/>
+  <rect x="32" y="36" width="152" height="68" rx="16" fill="#FFFFFF"/>
+  <rect x="50" y="56" width="96" height="10" rx="5" fill="#1A5CC8"/>
+  <rect x="50" y="76" width="64" height="10" rx="5" fill="#8AB4FF"/>
+  <rect x="72" y="152" width="152" height="68" rx="16" fill="#DCE8FF"/>
+  <rect x="90" y="172" width="96" height="10" rx="5" fill="#1A5CC8"/>
+  <rect x="90" y="192" width="64" height="10" rx="5" fill="#8AB4FF"/>
+  <path d="M148 150 V132 H108 V124" fill="none" stroke="#FFFFFF" stroke-width="10"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M95 126 L108 110 L121 126 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="4"
+        stroke-linejoin="round"/>
+</svg>

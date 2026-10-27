@@ -1,5 +1,6 @@
 //! Generates the index of the help pages: every `help/<lang>/<topic>.md`,
-//! embedded with `include_str!` (see `src/help/index.rs`).
+//! embedded with `include_str!` (see `src/help/index.rs`). On Windows, also
+//! gives the exe its icon and version information.
 
 use std::fmt::Write as _;
 use std::path::Path;
@@ -33,7 +34,28 @@ fn main() {
     out.push(']');
     let dest = Path::new(&env::var("OUT_DIR").expect("set by cargo")).join("help_index.rs");
     fs::write(dest, out).expect("OUT_DIR is writable");
+    windows_resources();
 }
+
+/// The exe's icon and the details Explorer shows (Windows targets only).
+#[cfg(windows)]
+fn windows_resources() {
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
+        return;
+    }
+    println!("cargo:rerun-if-changed=assets/icon.ico");
+    let mut res = winresource::WindowsResource::new();
+    res.set_icon("assets/icon.ico")
+        .set("ProductName", "ReasonCraft")
+        .set("FileDescription", "ReasonCraft")
+        .set("CompanyName", "ReasonCraft contributors")
+        .set("LegalCopyright", "Copyright (c) ReasonCraft contributors")
+        .set("OriginalFilename", "reasoncraft.exe");
+    res.compile().expect("the Windows resources compile");
+}
+
+#[cfg(not(windows))]
+fn windows_resources() {}
 
 fn name(path: &Path) -> String {
     path.file_name()

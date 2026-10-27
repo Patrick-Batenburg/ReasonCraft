@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/reasoncraft_core", "crates/reasoncraft_spell", "app/reasoncraft"]
+members = ["crates/reasoncraft_core", "crates/reasoncraft_spell", "app/reasoncraft", "xtask"]
 
 [workspace.package]
 edition = "2024"

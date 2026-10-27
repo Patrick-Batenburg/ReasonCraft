@@ -1,0 +1,17 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Developer tasks for the ReasonCraft workspace (never shipped)."
+
+[dependencies]
+reasoncraft_core = { path = "../crates/reasoncraft_core" }
+resvg = { version = "0.45", default-features = false }
+ico = "0.6"
+icns = "0.5"
+
+[lints]
+workspace = true

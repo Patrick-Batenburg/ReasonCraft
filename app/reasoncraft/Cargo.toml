@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+description = "Map out arguments: claims, reasons and objections."
+# Not published to crates.io: the About page embeds the workspace's
+# THIRD-PARTY.md from outside this folder (see docs/release.md).
+publish = false
 
 [dependencies]
 # `test-fixtures` also feeds the debug-only "Load sample map" command; the
@@ -46,6 +50,49 @@ miniz_oxide = "0.8"
 # Parses the .ftl files in the translation parity tests.
 fluent-syntax = "0.12"
 roxmltree = "0.20"
+# Reads the packager configuration in the packaging tests.
+toml = "1"
+
+# The exe's icon and version information (Windows only).
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
 
 [lints]
 workspace = true
+
+# Installers, built with `cargo packager --release -p reasoncraft` (see
+# docs/release.md). Paths are relative to this folder.
+[package.metadata.packager]
+product-name = "ReasonCraft"
+identifier = "nl.reasoncraft.app"
+publisher = "ReasonCraft contributors"
+copyright = "Copyright (c) ReasonCraft contributors"
+category = "Education"
+license-file = "../../LICENSE-MIT"
+icons = ["assets/icons/icon-*.png", "assets/icon.ico", "assets/icon.icns"]
+formats = ["nsis", "app", "dmg", "deb", "appimage"]
+out-dir = "../../target/release/packager"
+before-packaging-command = "cargo build --release -p reasoncraft -j 4"
+
+[[package.metadata.packager.file-associations]]
+extensions = ["rcraft"]
+name = "ReasonCraft map"
+description = "ReasonCraft map"
+mime-type = "application/x-reasoncraft"
+role = "editor"
+
+[package.metadata.packager.nsis]
+installer-mode = "currentUser"
+# zlib: its decompressor in the installer is under the zlib licence.
+compression = "zlib"
+# The packager's own template, with the uninstaller removing the file
+# association again (see the header of that file).
+template = "packaging/windows/installer.nsi"
+
+[package.metadata.packager.deb]
+desktop-template = "packaging/linux/reasoncraft.desktop"
+section = "editors"
+files = { "packaging/linux/reasoncraft-mime.xml" = "usr/share/mime/packages/reasoncraft.xml" }
+
+[package.metadata.packager.appimage]
+files = { "packaging/linux/reasoncraft-mime.xml" = "usr/share/mime/packages/reasoncraft.xml" }
