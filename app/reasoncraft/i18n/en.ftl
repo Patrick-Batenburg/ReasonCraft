@@ -193,17 +193,24 @@ argdown-error-too_deep = Relations are nested too deeply (line { $line }).
 argdown-error-empty = The file holds no statements or arguments.
 argdown-report-title = Imported with changes
 argdown-report-message = The map could not keep everything as the file wrote it:
-argdown-report-line = Line { $line }: { $text }
+argdown-report-group = { $text } ({ $count ->
+    [one] line
+   *[other] lines
+} { $lines })
+argdown-report-more = { $lines } and { $more } more
 argdown-note-contradiction = A contradiction (><) was left out: maps have no contradictions.
-argdown-note-extra_equivalent_wording = Another wording of a statement was left out; the first one is used.
+argdown-note-extra_equivalent_wording = Another wording of a statement, or another description or premise list of an argument, was left out; the first one is used.
 argdown-note-shared_statement_copied = A statement used in several places was copied there.
 argdown-note-cycle_broken = A relation that would make a circle was left out.
-argdown-note-unknown_reference = "{ $title }" is defined nowhere; its title became its text.
+argdown-note-unknown_reference = Titles defined nowhere (such as "{ $title }") became statements with the title as text.
 argdown-note-intermediate_conclusion = An intermediate conclusion was left out.
 argdown-note-inference_rule_dropped = An inference rule was left out.
 argdown-note-tags_dropped = Tags (#…) were left out.
 argdown-note-undercut_on_statement = An undercut of a statement was read as an objection.
 argdown-note-empty_argument = An argument without premises or text was left out.
+argdown-note-moved_to_parking = An item could not go where the file puts it and is in the parking area.
+argdown-note-relation_dropped = A relation to a conclusion that was left out was left out too; its statement is in the parking area.
+argdown-note-link_dropped = A link that is not a safe web or mail link was left out.
 
 ## Backstage
 backstage-back = Back

@@ -100,15 +100,40 @@ pub fn note_text(kind: &ImportNoteKind) -> String {
     t_args(&format!("argdown.note.{}", kind.key()), &args)
 }
 
-/// The report's body: an introduction and one line per note.
+/// How many line numbers the report lists per kind of note.
+const LINES_SHOWN: usize = 5;
+
+/// The report's body: an introduction and one line per kind of note, with
+/// how often it happened and the first few line numbers, so a long report
+/// stays short.
 pub fn report_text(notes: &[ImportNote]) -> String {
-    let mut body = t("argdown.report.message");
+    let mut groups: Vec<(&ImportNoteKind, Vec<usize>)> = Vec::new();
     for note in notes {
+        match groups.iter_mut().find(|(k, _)| k.key() == note.kind.key()) {
+            Some((_, lines)) => lines.push(note.line),
+            None => groups.push((&note.kind, vec![note.line])),
+        }
+    }
+    let mut body = t("argdown.report.message");
+    for (kind, lines) in groups {
+        let shown: Vec<String> = lines
+            .iter()
+            .take(LINES_SHOWN)
+            .map(usize::to_string)
+            .collect();
+        let mut shown = shown.join(", ");
+        if lines.len() > LINES_SHOWN {
+            let mut args = FluentArgs::new();
+            args.set("lines", shown);
+            args.set("more", lines.len() - LINES_SHOWN);
+            shown = t_args("argdown.report.more", &args);
+        }
         let mut args = FluentArgs::new();
-        args.set("line", note.line);
-        args.set("text", note_text(&note.kind));
+        args.set("text", note_text(kind));
+        args.set("count", lines.len());
+        args.set("lines", shown);
         body.push_str("\n• ");
-        body.push_str(&t_args("argdown.report.line", &args));
+        body.push_str(&t_args("argdown.report.group", &args));
     }
     body
 }

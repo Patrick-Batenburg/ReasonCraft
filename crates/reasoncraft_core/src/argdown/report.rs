@@ -25,7 +25,8 @@ pub enum ArgdownError {
 pub enum ImportNoteKind {
     /// A `><` relation: maps have no contradictions; it was left out.
     Contradiction,
-    /// Another wording of a statement already defined; the first is used.
+    /// Another wording of a statement already defined, or another
+    /// description or PCS of an argument; the first is used.
     ExtraEquivalentWording,
     /// A statement used in a second place became a copy there.
     SharedStatementCopied,
@@ -43,6 +44,14 @@ pub enum ImportNoteKind {
     UndercutOnStatement,
     /// An argument with no premises, text or title was left out.
     EmptyArgument,
+    /// An item could not go where the file puts it (say, a reason under a
+    /// category) and went to the parking area.
+    MovedToParking,
+    /// A relation into a conclusion that was left out (an intermediate
+    /// one, or a placeholder) was left out too.
+    RelationDropped,
+    /// A link that is not a safe web or mail link was left out.
+    LinkDropped,
 }
 
 impl ImportNoteKind {
@@ -59,6 +68,9 @@ impl ImportNoteKind {
             ImportNoteKind::TagsDropped => "tags_dropped",
             ImportNoteKind::UndercutOnStatement => "undercut_on_statement",
             ImportNoteKind::EmptyArgument => "empty_argument",
+            ImportNoteKind::MovedToParking => "moved_to_parking",
+            ImportNoteKind::RelationDropped => "relation_dropped",
+            ImportNoteKind::LinkDropped => "link_dropped",
         }
     }
 }
@@ -80,12 +92,5 @@ pub struct ImportReport {
 impl ImportReport {
     pub(super) fn note(&mut self, line: usize, kind: ImportNoteKind) {
         self.notes.push(ImportNote { line, kind });
-    }
-
-    /// Note `kind` unless a note of that kind exists already.
-    pub(super) fn note_once(&mut self, line: usize, kind: ImportNoteKind) {
-        if !self.notes.iter().any(|n| n.kind == kind) {
-            self.note(line, kind);
-        }
     }
 }

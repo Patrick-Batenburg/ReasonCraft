@@ -2,8 +2,10 @@
 //! links, comments, notes and card kinds (the keys in `docs/argdown.md`).
 //! Other keys are ignored.
 
+use std::collections::HashSet;
+
 use super::data::{self, Data, Value};
-use super::import::{Arg, Stmt};
+use super::graph::{Arg, Stmt};
 use super::lex::Op;
 use crate::link::safe_link;
 use crate::model::{
@@ -142,10 +144,10 @@ pub(super) fn strength(d: &Data) -> Option<CardStrength> {
     }
 }
 
-/// Add `more`'s keys that `data` lacks.
-pub(super) fn merge(data: &mut Data, more: &Data) {
+/// Add `more`'s keys that `data` (whose keys are `keys`) lacks.
+pub(super) fn merge(data: &mut Data, keys: &mut HashSet<String>, more: &Data) {
     for (k, v) in more {
-        if data.iter().all(|(have, _)| have != k) {
+        if keys.insert(k.clone()) {
             data.push((k.clone(), v.clone()));
         }
     }

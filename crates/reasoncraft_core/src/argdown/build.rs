@@ -6,9 +6,10 @@
 //! Met again elsewhere it becomes a copy of its text; met again among its
 //! own ancestors, the relation is left out (it would close a cycle).
 
-use super::data;
+use std::collections::HashMap;
+
 use super::fields;
-use super::import::{Edge, Graph, Node, Tgt};
+use super::graph::{Edge, Graph, Node, Tgt};
 use super::lex::Op;
 use super::report::{ArgdownError, ImportNoteKind as K, ImportReport, MAX_IMPORT_BOXES};
 use crate::ids::{CardId, Item, NodeId, Parent};
@@ -20,7 +21,7 @@ pub(super) fn build(g: &Graph, report: &mut ImportReport) -> Result<Document, Ar
     if g.stmts.is_empty() && g.args.is_empty() {
         return Err(ArgdownError::Empty);
     }
-    let root = root(g);
+    let root = super::graph::root(g);
     let text = root
         .and_then(|s| g.stmts[s].text.clone())
         .unwrap_or_default();
@@ -37,6 +38,7 @@ pub(super) fn build(g: &Graph, report: &mut ImportReport) -> Result<Document, Ar
         chains: Vec::new(),
         tasks: Vec::new(),
         too_many: false,
+        refused: HashMap::new(),
     };
     if let Some(s) = root {
         let id = b.doc.root;
@@ -55,7 +57,7 @@ pub(super) fn build(g: &Graph, report: &mut ImportReport) -> Result<Document, Ar
     }
     // Then whatever is left: whole trees first, then the rest.
     let mut rest: Vec<(usize, Node)> = (g.stmts.iter().enumerate())
-        .filter(|(_, s)| !s.premise && !s.consumed)
+        .filter(|(_, s)| !s.premise && !s.dropped())
         .map(|(k, s)| (s.line, Node::S(k)))
         .chain(g.args.iter().enumerate().map(|(k, a)| (a.line, Node::A(k))))
         .collect();
@@ -71,29 +73,6 @@ pub(super) fn build(g: &Graph, report: &mut ImportReport) -> Result<Document, Ar
         return Err(ArgdownError::TooManyBoxes);
     }
     Ok(b.doc)
-}
-
-/// The main root: of the top-level statements and the statements not
-/// related to anything, the one with the most relations pointing at it
-/// (the first one on a tie). Only statements before a "Not connected"
-/// heading count.
-fn root(g: &Graph) -> Option<usize> {
-    let mut best: Option<(usize, usize)> = None;
-    for (k, s) in g.stmts.iter().enumerate() {
-        let special = ["source", "category", "note"]
-            .iter()
-            .any(|key| data::get(&s.data, key).is_some());
-        let before_heading = g.heading.is_none_or(|h| s.line < h);
-        let tree = s.top || !g.has_out.contains(&Node::S(k));
-        if s.premise || s.consumed || special || !before_heading || !tree {
-            continue;
-        }
-        let score = g.incoming.get(&Tgt::S(k)).map_or(0, Vec::len);
-        if best.is_none_or(|(_, b)| score > b) {
-            best = Some((k, score));
-        }
-    }
-    best.map(|(k, _)| k)
 }
 
 /// Place what points at `tgt` under `parent`.
@@ -115,6 +94,8 @@ struct Builder<'a> {
     /// Work still to do, last first.
     tasks: Vec<Task>,
     too_many: bool,
+    /// Items whose place in the file was refused, with that line.
+    refused: HashMap<Node, usize>,
 }
 
 impl Builder<'_> {
@@ -143,7 +124,16 @@ impl Builder<'_> {
             let edges = self.g.incoming.get(&task.tgt).cloned().unwrap_or_default();
             let mut next = Vec::new();
             for edge in edges {
-                if self.on_path(task.chain, edge.src) {
+                if self.too_many {
+                    return;
+                }
+                // Only a placed source can be an ancestor: the walk up the
+                // path is skipped for all the others.
+                let placed = match edge.src {
+                    Node::S(x) => self.placed_s[x],
+                    Node::A(a) => self.placed_a[a],
+                };
+                if placed && self.on_path(task.chain, edge.src) {
                     self.report.note(edge.line, K::CycleBroken);
                     continue;
                 }
@@ -169,6 +159,7 @@ impl Builder<'_> {
                     _ => CardKind::Objection,
                 };
                 if !can_attach(&self.doc, parent, NewItem::Card(kind.clone())) {
+                    self.refused.entry(edge.src).or_insert(edge.line);
                     return;
                 }
                 if let Some(p) = self.premise(x, edge.line, chain, next) {
@@ -179,6 +170,8 @@ impl Builder<'_> {
                 let kind = fields::card_kind(&self.g.args[a], Some(edge.op));
                 if can_attach(&self.doc, parent, NewItem::Card(kind.clone())) {
                     self.arg_card(a, kind, parent, Some(chain), edge.line, next);
+                } else {
+                    self.refused.entry(edge.src).or_insert(edge.line);
                 }
             }
         }
@@ -305,7 +298,7 @@ impl Builder<'_> {
         let mut next = Vec::new();
         match node {
             Node::S(x)
-                if !self.placed_s[x] && !self.g.stmts[x].consumed && !self.g.stmts[x].premise =>
+                if !self.placed_s[x] && !self.g.stmts[x].dropped() && !self.g.stmts[x].premise =>
             {
                 let kind = fields::special_kind(&self.g.stmts[x].data).unwrap_or(BoxKind::Claim);
                 self.statement_box(x, kind, Parent::Parking, None, 0, &mut next);
@@ -316,6 +309,10 @@ impl Builder<'_> {
                 self.arg_card(a, kind, Parent::Parking, None, line, &mut next);
             }
             _ => return,
+        }
+        // It could not go where the file put it.
+        if let Some(&line) = self.refused.get(&node) {
+            self.report.note(line, K::MovedToParking);
         }
         self.tasks.extend(next.into_iter().rev());
         self.run();
@@ -371,7 +368,9 @@ impl Builder<'_> {
                     card.children.push(k);
                 }
             }
-            (Parent::Card(_), Item::Box(_)) => {}
+            (Parent::Card(_), Item::Box(_)) => {
+                debug_assert!(false, "a box under a card");
+            }
             (Parent::Parking, item) => self.doc.parking.push(item),
         }
     }

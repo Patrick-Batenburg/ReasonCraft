@@ -77,8 +77,8 @@ struct Parser {
     last_argument: Option<usize>,
     /// The line plain text continues, if the line before was an element.
     continued: Option<usize>,
-    /// The inference line of a rule written over several lines, while
-    /// it is open.
+    /// The inference line of a rule written over several lines (`--`,
+    /// text lines, `--`), while it is open.
     open_rule: Option<usize>,
 }
 
@@ -107,15 +107,21 @@ impl Parser {
             indent,
             kind,
         } = line;
+        // A rule over several lines is plain text up to its closing `--`.
+        // A blank or structural line ends it too (and is read as usual), so
+        // a stray `--` cannot swallow the rest of the file.
         if let Some(rule) = self.open_rule {
             match kind {
-                LineKind::InferenceOpen | LineKind::Inference(_) => self.open_rule = None,
-                LineKind::Blank => {}
-                _ => {
-                    self.tree.entries[rule].kind = EntryKind::Inference { rule: true };
+                LineKind::InferenceOpen | LineKind::Inference(_) => {
+                    self.open_rule = None;
+                    return Ok(());
                 }
+                LineKind::Text(_) => {
+                    self.tree.entries[rule].kind = EntryKind::Inference { rule: true };
+                    return Ok(());
+                }
+                _ => self.open_rule = None,
             }
-            return Ok(());
         }
         let continued = self.continued.take();
         match kind {
@@ -130,7 +136,12 @@ impl Parser {
                 Some(entry) => {
                     let more = super::lex::element(&text);
                     let elem = &mut self.tree.entries[entry].elem;
-                    elem.text = format!("{} {}", elem.text, more.text).trim().to_owned();
+                    if !more.text.is_empty() {
+                        if !elem.text.is_empty() {
+                            elem.text.push(' ');
+                        }
+                        elem.text.push_str(&more.text);
+                    }
                     if elem.data.is_empty() {
                         elem.data = more.data;
                     }

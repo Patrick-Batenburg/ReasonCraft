@@ -27,6 +27,7 @@ pub(super) fn clean(raw: &str) -> Cleaned {
     let chars: Vec<char> = raw.chars().collect();
     let mut out = Cleaned::default();
     let mut toks: Vec<Tok> = Vec::with_capacity(chars.len());
+    let mut closers = Closers::new(&chars);
     let mut i = 0;
     while let Some(&c) = chars.get(i) {
         let next = chars.get(i + 1).copied();
@@ -40,7 +41,7 @@ pub(super) fn clean(raw: &str) -> Cleaned {
             }
             '@' if matches!(next, Some('[' | '<')) => {
                 let close = if next == Some('[') { ']' } else { '>' };
-                match find(&chars, i + 2, close) {
+                match closers.find(i + 2, close) {
                     Some(end) => {
                         push_literal(&mut toks, &unescape_chars(&chars[i + 2..end]));
                         i = end + 1;
@@ -51,7 +52,7 @@ pub(super) fn clean(raw: &str) -> Cleaned {
                     }
                 }
             }
-            '[' => match link_at(&chars, i) {
+            '[' => match closers.link_at(i) {
                 Some((text_end, url_end)) => {
                     let text = &chars[i + 1..text_end];
                     toks.extend(text.iter().map(|&c| Tok { c, literal: false }));
@@ -67,7 +68,7 @@ pub(super) fn clean(raw: &str) -> Cleaned {
             '#' if i == 0 || chars[i - 1].is_whitespace() => {
                 out.tags = true;
                 i = if next == Some('(') {
-                    find(&chars, i + 2, ')').map_or(chars.len(), |e| e + 1)
+                    closers.find(i + 2, ')').map_or(chars.len(), |e| e + 1)
                 } else {
                     let rest = chars[i..].iter().position(|c| c.is_whitespace());
                     rest.map_or(chars.len(), |n| i + n)
@@ -128,6 +129,51 @@ pub(super) fn find(chars: &[char], from: usize, close: char) -> Option<usize> {
     None
 }
 
+/// [`find`] for a scan that only moves forward: each search is
+/// remembered (per closing character), and a later search from further on
+/// reuses it while it still applies, so unclosed brackets cost one scan
+/// in all, not one per bracket.
+struct Closers<'a> {
+    chars: &'a [char],
+    /// Per closing character: where the last search started and what it
+    /// found.
+    memo: Vec<(char, usize, Option<usize>)>,
+}
+
+impl<'a> Closers<'a> {
+    fn new(chars: &'a [char]) -> Self {
+        Closers {
+            chars,
+            memo: Vec::new(),
+        }
+    }
+
+    fn find(&mut self, from: usize, close: char) -> Option<usize> {
+        let slot = self.memo.iter().position(|m| m.0 == close);
+        if let Some(&(_, start, found)) = slot.map(|k| &self.memo[k])
+            && start <= from
+            && found.is_none_or(|p| p >= from)
+        {
+            return found;
+        }
+        let found = find(self.chars, from, close);
+        match slot {
+            Some(k) => self.memo[k] = (close, from, found),
+            None => self.memo.push((close, from, found)),
+        }
+        found
+    }
+
+    /// [`link_at`] through the remembered searches.
+    fn link_at(&mut self, start: usize) -> Option<(usize, usize)> {
+        let text_end = self.find(start + 1, ']')?;
+        if self.chars.get(text_end + 1) != Some(&'(') {
+            return None;
+        }
+        Some((text_end, self.find(text_end + 2, ')')?))
+    }
+}
+
 /// For a `[text](url)` at `start`: the index of `]` and of `)`.
 pub(super) fn link_at(chars: &[char], start: usize) -> Option<(usize, usize)> {
     let text_end = find(chars, start + 1, ']')?;
@@ -164,22 +210,23 @@ fn strip_formatting(toks: &mut Vec<Tok>) {
     let space = |c: Option<char>| c.is_none_or(char::is_whitespace);
     let word = |c: Option<char>| c.is_some_and(char::is_alphanumeric);
     let mut remove = vec![false; toks.len()];
-    let mut open: Vec<(usize, usize)> = Vec::new();
+    // Open markers per kind (`*`, `**`, `_`, `__`): a closing marker pairs
+    // with the latest open one of its kind.
+    let mut open: [Vec<usize>; 4] = Default::default();
     for &(start, len) in &runs {
         let c = toks[start].c;
         let before = at(start.checked_sub(1));
         let after = at(Some(start + len));
         let can_close = !space(before) && (c == '*' || !word(after));
         let can_open = !space(after) && (c == '*' || !word(before));
-        let partner = open.iter().rposition(|&(s, l)| toks[s].c == c && l == len);
-        match partner {
-            Some(p) if can_close => {
-                let (s, l) = open[p];
-                open.truncate(p);
-                remove[s..s + l].fill(true);
+        let kind = &mut open[usize::from(c == '_') * 2 + len - 1];
+        match kind.last() {
+            Some(&s) if can_close => {
+                kind.pop();
+                remove[s..s + len].fill(true);
                 remove[start..start + len].fill(true);
             }
-            _ if can_open => open.push((start, len)),
+            _ if can_open => kind.push(start),
             _ => {}
         }
     }

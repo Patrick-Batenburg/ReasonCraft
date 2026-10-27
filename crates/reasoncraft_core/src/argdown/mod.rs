@@ -12,8 +12,10 @@
 //! out as a map, noting in an [`ImportReport`] what it could not keep.
 
 mod build;
+mod comments;
 mod data;
 mod fields;
+mod graph;
 mod import;
 mod lex;
 mod parse;
@@ -32,6 +34,10 @@ pub use write::to_argdown;
 #[cfg(test)]
 mod tests_corpus;
 #[cfg(test)]
+mod tests_fixes;
+#[cfg(test)]
 mod tests_import;
+#[cfg(test)]
+mod tests_speed;
 #[cfg(test)]
 mod tests_write;

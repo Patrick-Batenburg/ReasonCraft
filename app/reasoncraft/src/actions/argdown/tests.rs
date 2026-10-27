@@ -79,6 +79,9 @@ fn every_note_and_error_is_translated() {
         ImportNoteKind::TagsDropped,
         ImportNoteKind::UndercutOnStatement,
         ImportNoteKind::EmptyArgument,
+        ImportNoteKind::MovedToParking,
+        ImportNoteKind::RelationDropped,
+        ImportNoteKind::LinkDropped,
     ];
     for kind in kinds {
         let text = note_text(&kind);
@@ -96,4 +99,23 @@ fn every_note_and_error_is_translated() {
         assert!(!text.starts_with("argdown."), "{text}");
     }
     assert_ne!(t("argdown.report.title"), "argdown.report.title");
+}
+
+#[test]
+fn long_reports_are_grouped_and_capped() {
+    let note = |line, kind| ImportNote { line, kind };
+    let mut notes: Vec<ImportNote> = (1..=12)
+        .map(|l| note(l, ImportNoteKind::Contradiction))
+        .collect();
+    notes.push(note(20, ImportNoteKind::UnknownReference("A".into())));
+    notes.push(note(21, ImportNoteKind::UnknownReference("B".into())));
+    let body = report_text(&notes);
+    // One line per kind, after the introduction.
+    assert_eq!(body.lines().count(), 3, "{body}");
+    assert!(
+        body.contains("1, 2, 3, 4, 5") && body.contains('7'),
+        "{body}"
+    );
+    assert!(!body.contains(", 6"), "{body}");
+    assert!(body.contains("20, 21"), "{body}");
 }

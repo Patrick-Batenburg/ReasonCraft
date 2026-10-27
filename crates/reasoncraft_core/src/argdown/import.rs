@@ -4,88 +4,16 @@
 
 use std::collections::{HashMap, HashSet};
 
-use super::data::{self, Data, Value};
+use super::graph::{Arg, Edge, Graph, Node, Stmt, Tgt};
+
+use super::data::{self, Value};
 use super::lex::Op;
 use super::parse::{EntryKind, Tree, parse};
 use super::report::{ArgdownError, ImportNoteKind as K, ImportReport, MAX_ARGDOWN_BYTES};
 use super::text::clean;
+use crate::link::safe_link;
 use crate::model::{CardKind, Document};
 use crate::words::not_connected_heading;
-
-/// A statement or an argument class.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(super) enum Node {
-    S(usize),
-    A(usize),
-}
-
-/// What a relation points at: a statement, or an argument as a whole
-/// card (its inference).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(super) enum Tgt {
-    S(usize),
-    Card(usize),
-}
-
-/// A relation: `src` supports or attacks `dst`.
-#[derive(Clone, Copy, Debug)]
-pub(super) struct Edge {
-    pub src: Node,
-    pub op: Op,
-    pub line: usize,
-}
-
-/// A statement class: every occurrence of one title (or one untitled
-/// statement).
-#[derive(Debug, Default)]
-pub(super) struct Stmt {
-    pub title: Option<String>,
-    /// The first definition's text.
-    pub text: Option<String>,
-    pub link: Option<String>,
-    pub data: Data,
-    pub line: usize,
-    /// Written as a top-level statement somewhere.
-    pub top: bool,
-    /// A premise of some argument's PCS.
-    pub premise: bool,
-    /// An intermediate conclusion, or a final one that only carried
-    /// relations or a placeholder.
-    pub consumed: bool,
-}
-
-/// An argument class.
-#[derive(Debug, Default)]
-pub(super) struct Arg {
-    pub title: Option<String>,
-    pub desc: Option<String>,
-    pub data: Data,
-    pub line: usize,
-    pub defined: bool,
-    pub premises: Vec<usize>,
-    /// Its PCS was read (a second one is ignored).
-    pub pcs_read: bool,
-    /// The kind its conclusion's shape tells.
-    pub shape: Option<CardKind>,
-}
-
-/// The graph of a file.
-#[derive(Debug, Default)]
-pub(super) struct Graph {
-    pub title: String,
-    pub author: String,
-    pub language: String,
-    pub stmts: Vec<Stmt>,
-    pub args: Vec<Arg>,
-    /// The relations into each target, in file order, one per source.
-    pub incoming: HashMap<Tgt, Vec<Edge>>,
-    /// Sources with a relation out of them.
-    pub has_out: HashSet<Node>,
-    /// The first line of the "Not connected" heading, if any.
-    pub heading: Option<usize>,
-    /// Top-level items after that heading, in order.
-    pub parked_tops: Vec<Node>,
-}
 
 /// Read an Argdown text as a map, with a report of what could not be
 /// kept as written. See `docs/argdown.md`.
@@ -115,6 +43,12 @@ struct Reader<'a> {
     by_title: HashMap<(bool, String), usize>,
     /// The final conclusion entries, with their argument.
     conclusions: HashMap<usize, usize>,
+    /// Final conclusion entries that only carry relations or a placeholder.
+    carriers: HashSet<usize>,
+    /// The relations added so far, as (target, source).
+    seen: HashSet<(Tgt, Node)>,
+    /// Tags were noted (once is enough).
+    tags_noted: bool,
 }
 
 impl<'a> Reader<'a> {
@@ -126,6 +60,9 @@ impl<'a> Reader<'a> {
             class: vec![None; tree.entries.len()],
             by_title: HashMap::new(),
             conclusions: HashMap::new(),
+            carriers: HashSet::new(),
+            seen: HashSet::new(),
+            tags_noted: false,
         }
     }
 
@@ -174,8 +111,18 @@ impl<'a> Reader<'a> {
         let key = e.title.clone().map(|t| (e.argument, t));
         let existing = key.as_ref().and_then(|k| self.by_title.get(k)).copied();
         let cleaned = e.defines.then(|| clean(&e.text));
-        if cleaned.as_ref().is_some_and(|c| c.tags) {
-            self.report.note_once(line, K::TagsDropped);
+        let data_link = data::get(&e.data, "link").and_then(Value::as_str);
+        let md_link = cleaned.as_ref().and_then(|c| c.link.as_deref());
+        if [data_link, md_link]
+            .into_iter()
+            .flatten()
+            .any(|l| !l.trim().is_empty() && safe_link(l).is_none())
+        {
+            self.report.note(line, K::LinkDropped);
+        }
+        if cleaned.as_ref().is_some_and(|c| c.tags) && !self.tags_noted {
+            self.tags_noted = true;
+            self.report.note(line, K::TagsDropped);
         }
         let node = if e.argument {
             let id = existing.unwrap_or_else(|| {
@@ -188,10 +135,14 @@ impl<'a> Reader<'a> {
             });
             let a = &mut self.g.args[id];
             a.defined |= e.defines || entry.kind == EntryKind::Top;
-            if let Some(c) = cleaned.filter(|c| !c.text.is_empty()) {
-                a.desc.get_or_insert(c.text);
+            match (&a.desc, cleaned.filter(|c| !c.text.is_empty())) {
+                (None, Some(c)) => a.desc = Some(c.text),
+                (Some(d), Some(c)) if *d != c.text => {
+                    self.report.note(line, K::ExtraEquivalentWording);
+                }
+                _ => {}
             }
-            super::fields::merge(&mut a.data, &e.data);
+            super::fields::merge(&mut a.data, &mut a.keys, &e.data);
             Node::A(id)
         } else {
             let id = existing.unwrap_or_else(|| {
@@ -216,7 +167,7 @@ impl<'a> Reader<'a> {
                     s.link = c.link;
                 }
             }
-            super::fields::merge(&mut s.data, &e.data);
+            super::fields::merge(&mut s.data, &mut s.keys, &e.data);
             Node::S(id)
         };
         if let (Some(k), Node::S(id) | Node::A(id)) = (key, node) {
@@ -234,7 +185,9 @@ impl<'a> Reader<'a> {
             return;
         };
         if std::mem::replace(&mut self.g.args[a].pcs_read, true) {
-            return; // A second PCS of the same argument is not read.
+            // A second PCS of the same argument is not read.
+            self.report.note(entry.line, K::ExtraEquivalentWording);
+            return;
         }
         let steps = &entry.steps;
         let mut after_inference = false;
@@ -275,6 +228,7 @@ impl<'a> Reader<'a> {
         let inference = super::fields::inference_mention(&e.elem.text);
         if outgoing || placeholder || inference.is_some() {
             self.g.stmts[s].consumed = true;
+            self.carriers.insert(step);
         }
         if outgoing {
             let attacks = e.children.iter().any(|&c| {
@@ -314,7 +268,7 @@ impl<'a> Reader<'a> {
         let e = &tree.entries[i];
         let line = e.line;
         if let Some(&a) = self.conclusions.get(&i) {
-            if let Some(Node::S(s)) = self.class[i].filter(|_| !self.consumed(i)) {
+            if let Some(Node::S(s)) = self.class[i].filter(|_| !self.carriers.contains(&i)) {
                 self.add(Node::A(a), Tgt::S(s), Op::Support, line);
             }
             return;
@@ -351,11 +305,11 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn consumed(&self, i: usize) -> bool {
-        matches!(self.class[i], Some(Node::S(s)) if self.g.stmts[s].consumed)
-    }
-
     fn add(&mut self, src: Node, dst: Tgt, mut op: Op, line: usize) {
+        if matches!(dst, Tgt::S(s) if self.g.stmts[s].dropped()) {
+            self.report.note(line, K::RelationDropped);
+            return;
+        }
         if matches!(dst, Tgt::S(_)) && op == Op::Undercut {
             self.report.note(line, K::UndercutOnStatement);
             op = Op::Attack;
@@ -364,8 +318,8 @@ impl<'a> Reader<'a> {
             self.report.note(line, K::CycleBroken);
             return;
         }
-        let list = self.g.incoming.entry(dst).or_default();
-        if list.iter().all(|e| e.src != src) {
+        if self.seen.insert((dst, src)) {
+            let list = self.g.incoming.entry(dst).or_default();
             list.push(Edge { src, op, line });
             self.g.has_out.insert(src);
         }

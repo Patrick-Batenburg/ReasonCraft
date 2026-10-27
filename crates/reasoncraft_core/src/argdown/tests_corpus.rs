@@ -138,7 +138,7 @@ fn corpus_samples_read_as_expected() {
     assert_eq!(study.link.as_deref(), Some("https://example.org/study"));
     // Sources, data and unsafe links.
     let (d, notes) = import(get("10"));
-    assert_eq!(notes, vec![]);
+    assert_eq!(notes, vec![K::LinkDropped]);
     let root = &d.boxes[&d.root];
     assert_eq!(root.acceptance, Some(Acceptance::Accept));
     assert_eq!(root.link.as_deref(), Some("https://example.org/bees"));
