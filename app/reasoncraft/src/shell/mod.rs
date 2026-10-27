@@ -115,8 +115,26 @@ pub fn tab_button(
 }
 
 /// The narrowest a side panel gets, in px; dragged narrower, it collapses
-/// to its toggle.
+/// to its toggle. A small window squeezes it further (see
+/// [`panel_width_range`]).
 pub const PANEL_MIN_WIDTH: f32 = 220.0;
+
+/// The narrowest the map gets beside open side panels, in px.
+pub const MAP_MIN_WIDTH: f32 = 240.0;
+
+/// The narrowest a squeezed side panel gets, in px, however small the
+/// window.
+const PANEL_SQUEEZED_WIDTH: f32 = 120.0;
+
+/// The widths a side panel may take when `open` side panels share a
+/// window `available` px wide: each at most an equal share of what the
+/// map leaves, so the map keeps [`MAP_MIN_WIDTH`]; the usual minimum
+/// gives way to that share in a small window.
+pub fn panel_width_range(available: f32, open: usize) -> egui::Rangef {
+    let share = (available - MAP_MIN_WIDTH) / open.max(1) as f32;
+    let max = share.max(PANEL_SQUEEZED_WIDTH);
+    egui::Rangef::new(PANEL_MIN_WIDTH.min(max), max)
+}
 
 /// Building panel (left) and Text panel (right).
 /// Hidden while the backstage is open.
@@ -128,10 +146,12 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let frame = Frame::new().fill(tk.panel).inner_margin(Margin::same(12));
     let tab = &mut app.tabs[app.active];
     let mut out = Vec::new();
+    let open = usize::from(app.left_panel) + usize::from(app.right_panel);
+    let widths = panel_width_range(ui.available_width(), open);
     let building = egui::Panel::left("building_panel")
         .frame(frame)
         .default_size(220.0)
-        .min_size(PANEL_MIN_WIDTH)
+        .size_range(widths)
         .show_collapsible(ui, &mut app.left_panel, |ui| {
             building::show(ui, tab, &tk, &mut out);
         });
@@ -141,7 +161,7 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let text = egui::Panel::right("text_panel")
         .frame(frame)
         .default_size(320.0)
-        .min_size(PANEL_MIN_WIDTH)
+        .size_range(widths)
         .show_collapsible(ui, &mut app.right_panel, |ui| {
             spelling_panel::show(ui, tab, &mut app.spell, &tk, &mut out);
             let lang = tab.doc.meta.language.clone();

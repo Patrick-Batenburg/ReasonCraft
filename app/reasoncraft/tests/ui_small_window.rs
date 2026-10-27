@@ -60,3 +60,17 @@ fn a_ribbon_that_fits_has_no_scroll_buttons() {
     assert!(h.query_by_label(&t("ribbon.scroll_left")).is_none());
 }
 
+#[test]
+fn map_keeps_room_beside_both_panels() {
+    use reasoncraft::shell::MAP_MIN_WIDTH;
+    for scale in [1.0, 1.5] {
+        let h = harness(scale);
+        assert!(h.state().left_panel && h.state().right_panel);
+        let map = h.state().tabs[0].viewport.expect("map shown");
+        assert!(
+            map.width() >= MAP_MIN_WIDTH - 1.0,
+            "at {scale}: map {} wide",
+            map.width()
+        );
+    }
+}
