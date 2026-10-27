@@ -86,7 +86,7 @@
   - [x] Task 9: Offline help and About
   - [x] Task 10: Example maps, templates and recent files
   - [x] Task 11: App identity and the Windows installer
-  - [ ] Task 12: Linux and macOS builds and CI
+  - [x] Task 12: Linux and macOS builds and CI
   - [ ] Task 13: End-to-end check and release docs
 
 ## Review
