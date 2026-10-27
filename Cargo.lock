@@ -2768,6 +2768,7 @@ dependencies = [
  "eframe",
  "egui_kittest",
  "fluent-bundle",
+ "fluent-syntax",
  "image",
  "miniz_oxide 0.8.9",
  "open",

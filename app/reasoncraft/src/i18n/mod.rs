@@ -9,7 +9,7 @@
 //! The UI language is one setting for the whole process. Tests run in
 //! parallel threads of one process, so a test that switches it would
 //! change the text other tests see: such tests live in their own test
-//! binary (`tests/ui_language.rs`) and take turns there. Tests elsewhere
+//! binary (`tests/ui_language/`) and take turns there. Tests elsewhere
 //! leave it English and use [`t_lang`] for other languages.
 
 use std::sync::{PoisonError, RwLock};
@@ -87,74 +87,4 @@ fn lookup(lang: &str, key: &str, args: Option<&FluentArgs>) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn args_are_substituted_without_isolation_marks() {
-        let mut args = FluentArgs::new();
-        args.set("count", 3);
-        assert_eq!(t_args("status.boxes", &args), "3 boxes");
-        args.set("count", 1);
-        assert_eq!(t_args("status.boxes", &args), "1 box");
-    }
-
-    #[test]
-    fn os_language_maps_dutch_variants() {
-        for locale in ["nl", "nl-NL", "nl_BE.UTF-8", "NL-nl"] {
-            assert_eq!(os_ui_language(Some(locale)), "nl", "{locale}");
-        }
-        for locale in [Some("de-DE"), Some("en-US"), Some("nld"), Some(""), None] {
-            assert_eq!(os_ui_language(locale), "en", "{locale:?}");
-        }
-    }
-
-    #[test]
-    fn missing_dutch_key_falls_back_to_english() {
-        // nl.ftl may lack a message: it then comes from en.ftl.
-        assert_eq!(t_lang("nl", "ribbon.tab.file"), "File");
-        assert_eq!(t_lang("nl", "ribbon.tab.home"), "Start");
-        assert_eq!(t_lang("en", "ribbon.tab.home"), "Home");
-        let mut args = FluentArgs::new();
-        args.set("count", 2);
-        assert_eq!(t_lang_args("nl", "status.boxes", &args), "2 boxes");
-        // An unknown language reads as English; an unknown key as itself.
-        assert_eq!(t_lang("fr", "ribbon.tab.home"), "Home");
-        assert_eq!(t_lang("nl", "no.such.key"), "no.such.key");
-    }
-
-    #[test]
-    fn source_names_single_source() {
-        // Source-type names live in the ftl files only: the core's words
-        // file names none of them, and Dutch has its own for each type.
-        let words = include_str!("../../../../crates/reasoncraft_core/src/words.rs");
-        for st in reasoncraft_core::SourceType::ALL {
-            let key = format!("source.{}", st.key());
-            for lang in UI_LANGUAGES {
-                let name = t_lang(lang, &key);
-                assert!(!words.contains(&format!("\"{name}\"")), "{lang} {name}");
-            }
-            let id = keys::message_id(&key);
-            assert!(bundles::NL.contains(&format!("\n{id} = ")), "nl lacks {id}");
-        }
-    }
-
-    #[test]
-    fn region_tags_read_as_their_language() {
-        assert_eq!(t_lang("nl-BE", "ribbon.tab.home"), "Start");
-        assert_eq!(language_of("nl_NL"), "nl");
-        assert_eq!(language_of("en-GB"), "en");
-        assert_eq!(language_of("de"), "en");
-    }
-
-    #[test]
-    fn ui_languages_parse_and_unknown_is_english() {
-        for lang in UI_LANGUAGES {
-            assert_eq!(t_lang(lang, "app.name"), "ReasonCraft");
-        }
-        // Only ever set to English here: other tests in this binary read
-        // the UI language (see the module docs).
-        set_ui_language("xx");
-        assert_eq!(ui_language(), "en");
-    }
-}
+mod tests;

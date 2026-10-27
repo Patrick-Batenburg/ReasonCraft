@@ -38,6 +38,8 @@ egui_kittest = "0.37"
 reasoncraft_core = { path = "../../crates/reasoncraft_core", features = ["test-fixtures"] }
 tempfile.workspace = true
 miniz_oxide = "0.8"
+# Parses the .ftl files in the translation parity tests.
+fluent-syntax = "0.12"
 roxmltree = "0.20"
 
 [lints]

@@ -3,7 +3,7 @@ use std::io::{Cursor, Read};
 use reasoncraft_core::outline::{OutlineOptions, build_outline};
 use reasoncraft_core::{CardKind, CardStrength, Document, EssaySlot, Item, NewLoose, Parent};
 
-use super::docx::{INDENT_TWIPS, essay_docx, outline_docx};
+use super::docx::{INDENT_TWIPS, essay_docx, language_tag, outline_docx};
 
 const W: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
@@ -376,4 +376,12 @@ fn docx_sets_document_language() {
             assert!(styles.contains(&format!("w:lang w:val=\"{tag}\"")));
         }
     }
+}
+
+#[test]
+fn every_ui_language_has_a_word_language_tag() {
+    let tags = crate::i18n::UI_LANGUAGES.map(language_tag);
+    assert_eq!(tags, ["en-GB", "nl-NL"]);
+    assert_eq!(language_tag("nl_BE"), "nl-NL");
+    assert_eq!(language_tag("de"), "en-GB");
 }

@@ -74,12 +74,13 @@ fn pack(docx: Docx, author: &str, lang: &str) -> Result<Vec<u8>, ExportError> {
 
 /// Word's language tag for document language `lang`: Dutch for `nl`
 /// (`nl-NL`, `nl_BE`, ...), British English otherwise, matching the
-/// headings and linking words, which fall back to English.
-fn language_tag(lang: &str) -> &'static str {
-    if crate::i18n::language_of(lang) == "nl" {
-        "nl-NL"
-    } else {
-        "en-GB"
+/// headings and linking words, which fall back to English. Each UI
+/// language is listed: a new one must be given its tag here.
+pub(super) fn language_tag(lang: &str) -> &'static str {
+    match crate::i18n::language_of(lang) {
+        "en" => "en-GB",
+        "nl" => "nl-NL",
+        other => unreachable!("no Word language tag for UI language {other}"),
     }
 }
 

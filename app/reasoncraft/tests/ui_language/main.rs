@@ -18,7 +18,11 @@ use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::{self, FluentArgs, t, t_args, t_lang, ui_language};
 use reasoncraft::settings::{Settings, TextTab};
 use reasoncraft::{ReasonCraftApp, commands};
-use reasoncraft_core::{BoxKind, CardKind, CardStrength, Document, NewLoose, Parent, SourceType};
+use reasoncraft_core::{
+    BoxKind, CardKind, CardStrength, Document, Item, NewLoose, Parent, SourceType,
+};
+
+mod ribbon_fit;
 
 static LANGUAGE: Mutex<()> = Mutex::new(());
 
@@ -143,8 +147,12 @@ fn settings_page_picks_the_language() {
     click(&mut h, &t("ui_language.nl"));
     assert_eq!(h.state().settings.ui_language.as_deref(), Some("nl"));
     assert_eq!(ui_language(), "nl");
-    // The page itself now reads in Dutch (falling back to English per key).
-    h.get_by_label(&t_lang("nl", "settings.ui_language"));
+    // The page itself now reads in Dutch.
+    let label = t_lang("nl", "settings.ui_language");
+    assert_ne!(label, t_lang("en", "settings.ui_language"));
+    h.get_by_label(&label);
+    assert_eq!(t("ribbon.tab.home"), "Start");
+    h.get_by_role_and_label(Role::Tab, "Start");
     // "System" also names a theme further down the page.
     h.query_all_by_label(&t("ui_language.system"))
         .next()
@@ -332,4 +340,28 @@ fn choosing_the_shown_language_again_changes_nothing() {
         h.run();
         assert_eq!(h.state().settings.ui_language.as_deref(), Some(stored));
     }
+}
+
+#[test]
+fn empty_comment_author_reads_in_the_ui_language() {
+    let _lang = lock();
+    let mut doc = Document::new("Claim");
+    let root = doc.root;
+    doc.add_comment(root, "", "Goed gedaan", None).unwrap();
+    let mut app = ReasonCraftApp::new_for_test();
+    app.tabs[0] = DocTab::from_document(doc);
+    app.left_panel = false;
+    app.tabs[0].selection = Some(Item::Box(root));
+    let mut h = harness_with(app);
+    h.state_mut()
+        .push(Action::SetUiLanguage(Some("nl".to_owned())));
+    h.run();
+    click(&mut h, &t("action.comment"));
+    assert_eq!(h.state().tabs[0].comments_open, Some(root));
+    assert_eq!(t("comment.anonymous"), "Anoniem");
+    h.get_by_label("Anoniem");
+    assert!(
+        h.query_by_label(&t_lang("en", "comment.anonymous"))
+            .is_none()
+    );
 }

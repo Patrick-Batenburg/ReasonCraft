@@ -38,8 +38,6 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             (Icon::Reason, "home.add_reason"),
             (Icon::Objection, "home.add_objection"),
             (Icon::CoPremise, "home.add_co_premise"),
-            (Icon::Category, "home.add_category"),
-            (Icon::Note, "home.add_note"),
         ];
         for (icon, id) in adds {
             command(ui, &tk, icon, id, enabled(id), false, &mut out);
@@ -56,16 +54,28 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
                 }
             }
         });
-        let id = "home.comment";
-        command(ui, &tk, Icon::Comment, id, enabled(id), false, &mut out);
+        // The other items in a column of small buttons, so that the Home
+        // tab fits 1280 px in the longer Dutch labels too.
+        ui.vertical(|ui| {
+            let others = [
+                (Icon::Category, "home.add_category"),
+                (Icon::Note, "home.add_note"),
+                (Icon::Comment, "home.comment"),
+            ];
+            for (icon, id) in others {
+                small_command(ui, &tk, icon, id, enabled(id), &mut out);
+            }
+        });
     });
     group(ui, &tk, &t("group.editing"), |ui| {
-        for (icon, id) in [
-            (Icon::Delete, "home.delete"),
-            (Icon::DeleteBranch, "home.delete_branch"),
-        ] {
-            command(ui, &tk, icon, id, enabled(id), false, &mut out);
-        }
+        ui.vertical(|ui| {
+            for (icon, id) in [
+                (Icon::Delete, "home.delete"),
+                (Icon::DeleteBranch, "home.delete_branch"),
+            ] {
+                small_command(ui, &tk, icon, id, enabled(id), &mut out);
+            }
+        });
         let connect = commands::get("home.connect");
         let label = t(connect.label);
         let on = tab.connect_mode.is_some();
@@ -94,8 +104,8 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     app.pending.extend(out);
 }
 
-/// "Type ▾" (a card's kind, a source's type), "Link", "Image" and
-/// "Remove image".
+/// "Type ▾" (a card's kind, a source's type), then "Link", "Image" and
+/// "Remove image" as small buttons.
 fn box_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     let tk = app.tokens;
     let tab = app.active_tab();
@@ -137,14 +147,16 @@ fn box_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
                 }
             }
         });
-        let buttons = [
-            (Icon::Link, "home.link"),
-            (Icon::Image, "home.image"),
-            (Icon::RemoveImage, "home.remove_image"),
-        ];
-        for (icon, id) in buttons {
-            let on = is_enabled(tab, &commands::get(id).action);
-            command(ui, &tk, icon, id, on, false, out);
-        }
+        ui.vertical(|ui| {
+            let buttons = [
+                (Icon::Link, "home.link"),
+                (Icon::Image, "home.image"),
+                (Icon::RemoveImage, "home.remove_image"),
+            ];
+            for (icon, id) in buttons {
+                let on = is_enabled(tab, &commands::get(id).action);
+                small_command(ui, &tk, icon, id, on, out);
+            }
+        });
     });
 }
