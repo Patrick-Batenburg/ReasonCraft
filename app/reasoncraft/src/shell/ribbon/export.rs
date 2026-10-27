@@ -21,7 +21,7 @@ const ESSAY: [&str; 3] = ["export.essay_md", "export.essay_txt", "export.essay_d
 pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let mut out = Vec::new();
-    group(ui, &tk, &t("group.image"), |ui| {
+    group(ui, &tk, Icon::ExportPng, &t("group.image"), |ui| {
         let images = [
             (Icon::ExportPng, "export.png"),
             (Icon::ExportSvg, "export.svg"),
@@ -32,7 +32,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             command(ui, &tk, icon, id, true, false, &mut out);
         }
     });
-    group(ui, &tk, &t("group.text"), |ui| {
+    group(ui, &tk, Icon::Essay, &t("group.text"), |ui| {
         menu(ui, &tk, Icon::Outline, "export.outline", &OUTLINE, &mut out);
         menu(ui, &tk, Icon::Essay, "export.essay", &ESSAY, &mut out);
         command(
@@ -45,7 +45,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             &mut out,
         );
     });
-    group(ui, &tk, &t("group.print"), |ui| {
+    group(ui, &tk, Icon::Print, &t("group.print"), |ui| {
         command(
             ui,
             &tk,

@@ -11,7 +11,7 @@ use crate::shell::icons::Icon;
 pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let mut out = Vec::new();
-    group(ui, &tk, &t("group.help"), |ui| {
+    group(ui, &tk, Icon::Help, &t("group.help"), |ui| {
         let buttons = [
             (Icon::Help, "help.topics"),
             (Icon::Keyboard, "help.keyboard"),
@@ -21,7 +21,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             command(ui, &tk, icon, id, true, false, &mut out);
         }
     });
-    group(ui, &tk, &t("group.examples"), |ui| {
+    group(ui, &tk, Icon::Reason, &t("group.examples"), |ui| {
         let buttons = [
             (Icon::Reason, "help.example_reasoning"),
             (Icon::Category, "help.example_grouping"),

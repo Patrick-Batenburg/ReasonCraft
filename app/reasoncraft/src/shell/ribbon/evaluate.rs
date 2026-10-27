@@ -48,7 +48,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         (Icon::Nil, "evaluate.source_nil", S::Nil),
     ];
     let name = t("group.eval_claim");
-    group(ui, &tk, &name, |ui| {
+    group(ui, &tk, Icon::Accept, &name, |ui| {
         let tip = tip("eval.tip.claim");
         out.extend(scale(
             ui,
@@ -61,7 +61,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         ));
     });
     let name = t("group.eval_card");
-    group(ui, &tk, &name, |ui| {
+    group(ui, &tk, Icon::Strong, &name, |ui| {
         let tip = tip("eval.tip.card");
         out.extend(scale(
             ui,
@@ -74,7 +74,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         ));
     });
     let name = t("group.eval_source");
-    group(ui, &tk, &name, |ui| {
+    group(ui, &tk, Icon::Source, &name, |ui| {
         let tip = tip("eval.tip.source");
         out.extend(scale(
             ui,
@@ -86,7 +86,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             Action::SetSourceRating,
         ));
     });
-    group(ui, &tk, &t("group.eval_clear"), |ui| {
+    group(ui, &tk, Icon::Clear, &t("group.eval_clear"), |ui| {
         let selection = tab
             .selection
             .map(|item| Action::ClearEvaluation(ClearScope::Item(item)));
@@ -109,7 +109,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         command(ui, &tk, Icon::Clear, id, on, false, &mut out)
             .on_hover_text(tip("eval.tip.clear_map"));
     });
-    group(ui, &tk, &t("group.eval_view"), |ui| {
+    group(ui, &tk, Icon::Markers, &t("group.eval_view"), |ui| {
         display_toggles(ui, app, &mut out);
     });
     app.pending.extend(out);

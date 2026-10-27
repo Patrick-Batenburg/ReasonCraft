@@ -20,7 +20,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let enabled = |id: &str| is_enabled(tab, &commands::get(id).action);
     let mut out = Vec::new();
 
-    group(ui, &tk, &t("group.clipboard"), |ui| {
+    group(ui, &tk, Icon::Paste, &t("group.clipboard"), |ui| {
         large(ui, &tk, Icon::Paste, &t("action.paste"), false, false);
         ui.vertical(|ui| {
             small(ui, &tk, Icon::Cut, &t("action.cut"), false);
@@ -35,7 +35,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             );
         });
     });
-    group(ui, &tk, &t("group.add"), |ui| {
+    group(ui, &tk, Icon::Reason, &t("group.add"), |ui| {
         let adds = [
             (Icon::Reason, "home.add_reason"),
             (Icon::Objection, "home.add_objection"),
@@ -58,7 +58,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             }
         });
     });
-    group(ui, &tk, &t("group.editing"), |ui| {
+    group(ui, &tk, Icon::Undo, &t("group.editing"), |ui| {
         ui.vertical(|ui| {
             for (icon, id) in [
                 (Icon::Delete, "home.delete"),
@@ -128,7 +128,7 @@ fn box_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
         (CardKind::Objection, "card_kind.objection"),
     ];
     let current_kind = selected_card(tab).map(|c| tab.doc.cards[&c].kind.clone());
-    group(ui, &tk, &t("group.box"), |ui| {
+    group(ui, &tk, Icon::BoxType, &t("group.box"), |ui| {
         let label = t("action.box_type");
         let resp = large_menu(
             ui,

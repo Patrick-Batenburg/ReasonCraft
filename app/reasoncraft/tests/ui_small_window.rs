@@ -24,16 +24,21 @@ fn right_edge(h: &Harness<'static, ReasonCraftApp>) -> f32 {
     h.ctx.content_rect().right()
 }
 
+/// The View tab overflows even with its groups collapsed: the right
+/// chevron brings the last group into view, and its drop-down runs the
+/// command.
 #[test]
 fn far_ribbon_commands_are_reachable_by_scrolling() {
     let mut h = harness(1.5);
     h.state_mut().ribbon_tab = RibbonTab::View;
     h.run();
-    let shading = t("eval.shading");
+    let mut args = reasoncraft::i18n::FluentArgs::new();
+    args.set("group", t("group.evaluation"));
+    let group = reasoncraft::i18n::t_args("ribbon.group_more", &args);
     let right = t("ribbon.scroll_right");
     assert!(h.query_by_label(&t("ribbon.scroll_left")).is_none());
     let mut clicks = 0;
-    while h.get_by_label(&shading).rect().right() > right_edge(&h) {
+    while h.get_by_label(&group).rect().right() > right_edge(&h) {
         h.get_by_label(&right).click();
         h.run();
         clicks += 1;
@@ -42,8 +47,10 @@ fn far_ribbon_commands_are_reachable_by_scrolling() {
     assert!(clicks > 0, "it started out of view");
     // Scrolled: the way back shows up.
     assert!(h.query_by_label(&t("ribbon.scroll_left")).is_some());
+    h.get_by_label(&group).click();
+    h.run();
     let before = h.state().settings.eval_shading;
-    h.get_by_label(&shading).click();
+    h.get_by_label(&t("eval.shading")).click();
     h.run();
     assert_ne!(h.state().settings.eval_shading, before);
 }

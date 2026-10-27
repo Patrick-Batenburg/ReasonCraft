@@ -17,7 +17,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let enabled = |id: &str| is_enabled(tab, &commands::get(id).action);
     let mut out = Vec::new();
 
-    group(ui, &tk, &t("group.boxes"), |ui| {
+    group(ui, &tk, Icon::Reason, &t("group.boxes"), |ui| {
         for (icon, id) in [
             (Icon::Reason, "home.add_reason"),
             (Icon::Objection, "home.add_objection"),
@@ -34,7 +34,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             }
         });
     });
-    group(ui, &tk, &t("group.whole_card"), |ui| {
+    group(ui, &tk, Icon::Objection, &t("group.whole_card"), |ui| {
         ui.vertical(|ui| {
             for (icon, id) in [
                 (Icon::Reason, "home.whole_card_reason"),
@@ -44,10 +44,10 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             }
         });
     });
-    group(ui, &tk, &t("group.sources"), |ui| {
+    group(ui, &tk, Icon::Source, &t("group.sources"), |ui| {
         source_menu(ui, &tk, tab, &mut out);
     });
-    group(ui, &tk, &t("group.box"), |ui| {
+    group(ui, &tk, Icon::BoxType, &t("group.box"), |ui| {
         ui.vertical(|ui| {
             for (icon, id) in [
                 (Icon::Comment, "home.comment"),

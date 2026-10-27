@@ -67,7 +67,13 @@ fn ribbon_fits_in_dutch_at_1280() {
         // The band of the window between the tab strip and the map.
         let in_ribbon = |r: Rect| r.center().y > strip.bottom() && r.center().y < canvas.top();
         // The Debug group (View tab) exists in debug builds only.
-        let debug = ["group.debug", "action.load_sample", "action.source_icons"].map(t);
+        let mut debug = ["group.debug", "action.load_sample", "action.source_icons"]
+            .map(t)
+            .to_vec();
+        // Collapsed, the Debug group is one button.
+        let mut args = i18n::FluentArgs::new();
+        args.set("group", t("group.debug"));
+        debug.push(i18n::t_args("ribbon.group_more", &args));
         let shown = |name: &String, r: Rect| in_ribbon(r) && !debug.contains(name);
         let buttons: Vec<(String, Rect)> = h
             .query_all_by_role(Role::Button)
@@ -88,13 +94,27 @@ fn ribbon_fits_in_dutch_at_1280() {
             );
         }
         // Each button's label lies within the button. A name may put the
-        // group before the label ("Card: Nil"). The scroll arrows of an
-        // overflowing row are drawn arrows, not text.
+        // group before the label ("Card: Nil"), and a collapsed group's
+        // button shows the group's title ("Zoom (meer)" shows "Zoom"). The
+        // scroll arrows of an overflowing row are drawn arrows, not text,
+        // and a small button of a compact group shows only its icon (its
+        // name is in its tooltip).
         let arrows = ["ribbon.scroll_left", "ribbon.scroll_right"].map(t);
-        for (name, rect) in buttons.iter().filter(|(n, _)| !arrows.contains(n)) {
+        let more = |group: &str| {
+            let mut args = i18n::FluentArgs::new();
+            args.set("group", group.to_owned());
+            i18n::t_args("ribbon.group_more", &args)
+        };
+        let icon_only = |r: Rect| r.width() <= 28.5 && r.height() <= 22.5;
+        for (name, rect) in buttons
+            .iter()
+            .filter(|(n, r)| !arrows.contains(n) && !icon_only(*r))
+        {
             let text = texts
                 .iter()
-                .find(|(text, r)| name.ends_with(text.as_str()) && r.intersects(*rect))
+                .find(|(text, r)| {
+                    (name.ends_with(text.as_str()) || *name == more(text)) && r.intersects(*rect)
+                })
                 .unwrap_or_else(|| panic!("{label}: {name:?} paints its label"));
             assert!(
                 rect.expand(0.5).contains_rect(text.1),

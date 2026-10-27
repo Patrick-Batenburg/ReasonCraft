@@ -17,7 +17,7 @@ use crate::theme::ThemeChoice;
 pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let mut out = Vec::new();
-    group(ui, &tk, &t("group.zoom"), |ui| {
+    group(ui, &tk, Icon::ZoomFit, &t("group.zoom"), |ui| {
         command(
             ui,
             &tk,
@@ -50,7 +50,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             small_command(ui, &tk, Icon::ZoomOut, "view.zoom_out", true, &mut out);
         });
     });
-    group(ui, &tk, &t("group.theme"), |ui| {
+    group(ui, &tk, Icon::ThemeSystem, &t("group.theme"), |ui| {
         let themes = [
             (Icon::ThemeSystem, "view.theme.system", ThemeChoice::System),
             (Icon::ThemeLight, "view.theme.light", ThemeChoice::Light),
@@ -62,7 +62,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         }
     });
     language_group(ui, app, &mut out);
-    group(ui, &tk, &t("group.panels"), |ui| {
+    group(ui, &tk, Icon::PanelLeft, &t("group.panels"), |ui| {
         let panels = [
             (Icon::PanelLeft, "view.panel_left", app.left_panel),
             (Icon::PanelRight, "view.panel_right", app.right_panel),
@@ -73,11 +73,11 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     });
     layout_group(ui, app, &mut out);
     overview_group(ui, app, &mut out);
-    group(ui, &tk, &t("group.evaluation"), |ui| {
+    group(ui, &tk, Icon::Shading, &t("group.evaluation"), |ui| {
         evaluate::display_toggles(ui, app, &mut out);
     });
     #[cfg(debug_assertions)]
-    group(ui, &tk, &t("group.debug"), |ui| {
+    group(ui, &tk, Icon::Open, &t("group.debug"), |ui| {
         command(
             ui,
             &tk,
@@ -106,7 +106,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 fn language_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     let tk = app.tokens;
     let current = app.settings.ui_language_choice();
-    group(ui, &tk, &t("group.language"), |ui| {
+    group(ui, &tk, Icon::Language, &t("group.language"), |ui| {
         let label = t("action.ui_language");
         let resp = large_menu(ui, &tk, Icon::Language, &label, true);
         Popup::menu(&resp).show(|ui| {
@@ -129,37 +129,43 @@ fn layout_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     let tk = app.tokens;
     let current = app.active_tab().doc.layout_direction;
     let style = app.settings.connector_style;
-    group(ui, &tk, &t("group.layout"), |ui| {
-        let label = t("action.layout_direction");
-        let resp = large_menu(ui, &tk, Icon::Direction(current), &label, true);
-        Popup::menu(&resp).show(|ui| {
-            for d in LayoutDirection::ALL {
-                let cmd = commands::get(&format!("view.direction.{}", d.key()));
-                let button = Button::new((direction_atom(d, 16.0), t(cmd.label)));
-                if ui.add(button.selected(d == current)).clicked() {
-                    out.push(cmd.action.clone());
+    group(
+        ui,
+        &tk,
+        Icon::Direction(current),
+        &t("group.layout"),
+        |ui| {
+            let label = t("action.layout_direction");
+            let resp = large_menu(ui, &tk, Icon::Direction(current), &label, true);
+            Popup::menu(&resp).show(|ui| {
+                for d in LayoutDirection::ALL {
+                    let cmd = commands::get(&format!("view.direction.{}", d.key()));
+                    let button = Button::new((direction_atom(d, 16.0), t(cmd.label)));
+                    if ui.add(button.selected(d == current)).clicked() {
+                        out.push(cmd.action.clone());
+                    }
                 }
-            }
-        });
-        let label = t("action.connector_style");
-        let resp = large_menu(ui, &tk, Icon::Connector(style), &label, true);
-        Popup::menu(&resp).show(|ui| {
-            for s in ConnectorStyle::ALL {
-                let cmd = commands::get(&format!("view.connector.{}", s.key()));
-                let button = Button::new((connector_atom(s, 16.0), t(cmd.label)));
-                if ui.add(button.selected(s == style)).clicked() {
-                    out.push(cmd.action.clone());
+            });
+            let label = t("action.connector_style");
+            let resp = large_menu(ui, &tk, Icon::Connector(style), &label, true);
+            Popup::menu(&resp).show(|ui| {
+                for s in ConnectorStyle::ALL {
+                    let cmd = commands::get(&format!("view.connector.{}", s.key()));
+                    let button = Button::new((connector_atom(s, 16.0), t(cmd.label)));
+                    if ui.add(button.selected(s == style)).clicked() {
+                        out.push(cmd.action.clone());
+                    }
                 }
-            }
-        });
-    });
+            });
+        },
+    );
 }
 
 /// "Minimap ▾" (automatic, always or never) and the "Numbers" toggle.
 fn overview_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     let tk = app.tokens;
     let current = app.settings.minimap;
-    group(ui, &tk, &t("group.overview"), |ui| {
+    group(ui, &tk, Icon::Minimap, &t("group.overview"), |ui| {
         let resp = large_menu(ui, &tk, Icon::Minimap, &t("action.minimap"), true);
         Popup::menu(&resp).show(|ui| {
             for m in MinimapMode::ALL {

@@ -5,6 +5,10 @@
 Pure-Rust Hunspell-compatible spell checker, used unmodified from crates.io and confined to the `reasoncraft_spell` crate.
 Source: https://github.com/helix-editor/spellbook. Licence: Mozilla Public License 2.0.
 
+## WordCraft (Apache-2.0)
+
+The ribbon's group fitting (groups shrink to compact, then collapse into a drop-down, from the right; `app/reasoncraft/src/shell/ribbon/fit.rs`) and its scroll edge cues (`app/reasoncraft/src/shell/ribbon/overflow.rs`) are adapted from WordCraft. Source: https://github.com/storytold/wordcraft. Licence: Apache License 2.0.
+
 ## Fonts
 
 Bundled with egui (the `epaint_default_fonts` crate) and used unmodified. Ubuntu Light is also embedded in PDF exports, and its glyph outlines draw the text of outlined SVG exports.

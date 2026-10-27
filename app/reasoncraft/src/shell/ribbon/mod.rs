@@ -1,8 +1,8 @@
 //! The ribbon: a tab strip and, for the active tab, labelled groups of commands.
 
 use eframe::egui::{
-    self, Align, Align2, Color32, FontId, Frame, Layout, Margin, Rect, Response, Role, Sense,
-    Stroke, StrokeKind, Ui, Vec2, WidgetInfo, pos2,
+    self, Align, Align2, Color32, FontId, Frame, Layout, Margin, Popup, PopupCloseBehavior, Rect,
+    Response, Role, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, pos2,
 };
 
 use super::icons::{self, Icon};
@@ -10,11 +10,12 @@ use super::{hover_fill, selected_fill, tab_button};
 use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::commands;
-use crate::i18n::t;
+use crate::i18n::{FluentArgs, t, t_args};
 use crate::theme::Tokens;
 
 mod evaluate;
 mod export;
+mod fit;
 mod help;
 mod home;
 mod insert;
@@ -25,6 +26,8 @@ const STRIP_H: f32 = 30.0;
 const BUTTON_H: f32 = 66.0;
 const SMALL_H: f32 = 22.0;
 const LABEL_H: f32 = 18.0;
+/// Width of a small button without its label (in a compact group).
+const SMALL_COMPACT_W: f32 = 28.0;
 
 const TABS: [(RibbonTab, &str); 7] = [
     (RibbonTab::File, "ribbon.tab.file"),
@@ -49,7 +52,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             tab_strip(ui, app);
             let tab = app.ribbon_tab;
             if tab != RibbonTab::File {
-                overflow::row(ui, &tk, tab, |ui| {
+                overflow::row(ui, &tk, tab, BUTTON_H, |ui| {
                     ui.set_height(BUTTON_H + LABEL_H + 4.0);
                     match tab {
                         RibbonTab::Home => home::show(ui, app),
@@ -128,30 +131,40 @@ fn small_command(
     resp
 }
 
-/// A labelled group: its controls, the label underneath and a separator after it.
-fn group(ui: &mut Ui, tk: &Tokens, label: &str, add: impl FnOnce(&mut Ui)) {
+/// A labelled group: its controls, the label underneath and a separator
+/// after it. Planned to fit the window ([`fit`]), it may draw compact or
+/// collapsed into one drop-down button showing `icon` and the label.
+fn group(ui: &mut Ui, tk: &Tokens, icon: Icon, label: &str, add: impl FnOnce(&mut Ui)) {
+    let ctx = ui.ctx().clone();
+    let level = fit::level(&ctx, label);
+    let start = ui.cursor().left();
     let top = ui.max_rect().top();
-    let label_w = ui
-        .painter()
-        .layout_no_wrap(label.to_owned(), FontId::proportional(11.0), tk.text_muted)
-        .size()
-        .x;
-    let inner = ui
-        .with_layout(Layout::left_to_right(Align::Min), |ui| {
-            ui.spacing_mut().item_spacing.x = 2.0;
-            ui.set_min_width(label_w + 12.0);
-            add(ui);
-        })
-        .response
-        .rect;
-    let label_y = top + BUTTON_H + LABEL_H / 2.0;
-    ui.painter().text(
-        pos2(inner.center().x, label_y),
-        Align2::CENTER_CENTER,
-        label,
-        FontId::proportional(11.0),
-        tk.text_muted,
-    );
+    fit::start_group(&ctx, level == fit::COMPACT);
+    if level == fit::COLLAPSED {
+        collapsed(ui, tk, icon, label, add);
+    } else {
+        let label_w = ui
+            .painter()
+            .layout_no_wrap(label.to_owned(), FontId::proportional(11.0), tk.text_muted)
+            .size()
+            .x;
+        let inner = ui
+            .with_layout(Layout::left_to_right(Align::Min), |ui| {
+                ui.spacing_mut().item_spacing.x = 2.0;
+                ui.set_min_width(label_w + 12.0);
+                add(ui);
+            })
+            .response
+            .rect;
+        let label_y = top + BUTTON_H + LABEL_H / 2.0;
+        ui.painter().text(
+            pos2(inner.center().x, label_y),
+            Align2::CENTER_CENTER,
+            label,
+            FontId::proportional(11.0),
+            tk.text_muted,
+        );
+    }
     ui.add_space(6.0);
     let x = ui.cursor().left();
     let line = Stroke::new(1.0, tk.attachment_line.gamma_multiply(0.6));
@@ -161,6 +174,30 @@ fn group(ui: &mut Ui, tk: &Tokens, label: &str, add: impl FnOnce(&mut Ui)) {
         line,
     );
     ui.add_space(8.0);
+    fit::record(&ctx, label, level, ui.cursor().left() - start);
+    fit::start_group(&ctx, false);
+}
+
+/// A collapsed group: one drop-down button that opens the whole group.
+fn collapsed(ui: &mut Ui, tk: &Tokens, icon: Icon, label: &str, add: impl FnOnce(&mut Ui)) {
+    let mut args = FluentArgs::new();
+    args.set("group", label);
+    let name = t_args("ribbon.group_more", &args);
+    let resp = large_button(ui, tk, icon, label, true, false, true);
+    let resp = crate::a11y::labelled(resp, name);
+    let frame = Frame::popup(ui.style()).fill(tk.ribbon);
+    Popup::menu(&resp)
+        .frame(frame)
+        .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
+        .show(|ui| {
+            fit::set_in_popup(ui.ctx(), true);
+            ui.horizontal(|ui| {
+                ui.set_height(BUTTON_H);
+                ui.spacing_mut().item_spacing.x = 2.0;
+                add(ui);
+            });
+            fit::set_in_popup(ui.ctx(), false);
+        });
 }
 
 /// Paint the hover or "on" background of a ribbon button; returns the colour under the icon.
@@ -232,7 +269,7 @@ fn large_button(
     };
     let (rect, resp) = ui.allocate_exact_size(size, sense);
     resp.widget_info(|| WidgetInfo::selected(Role::Button, enabled, selected, label));
-    overflow::follow_focus(&resp);
+    overflow::follow_focus(ui, &resp);
     if ui.is_rect_visible(rect) {
         let surface = button_bg(ui, tk, rect, &resp, enabled, selected);
         let icon_rect =
@@ -264,22 +301,34 @@ fn small(ui: &mut Ui, tk: &Tokens, icon: Icon, label: &str, enabled: bool) -> Re
     let galley = ui
         .painter()
         .layout_no_wrap(label.to_owned(), FontId::proportional(12.0), colour);
-    let size = Vec2::new(galley.size().x + 34.0, SMALL_H);
+    let full_w = galley.size().x + 34.0;
+    let compact = fit::compact(ui.ctx());
+    if !compact {
+        fit::add_saving(ui.ctx(), ui.scope_id(), full_w - SMALL_COMPACT_W);
+    }
+    let width = if compact { SMALL_COMPACT_W } else { full_w };
     let sense = if enabled {
         Sense::click()
     } else {
         Sense::hover()
     };
-    let (rect, resp) = ui.allocate_exact_size(size, sense);
+    let (rect, resp) = ui.allocate_exact_size(Vec2::new(width, SMALL_H), sense);
     resp.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, label));
-    overflow::follow_focus(&resp);
+    overflow::follow_focus(ui, &resp);
     if ui.is_rect_visible(rect) {
         let surface = button_bg(ui, tk, rect, &resp, enabled, false);
         let icon_rect =
             Rect::from_center_size(rect.left_center() + Vec2::new(14.0, 0.0), Vec2::splat(16.0));
         icons::paint(ui.painter(), icon_rect, icon, colour, surface, tk);
-        let text_pos = pos2(rect.left() + 28.0, rect.center().y - galley.size().y / 2.0);
-        ui.painter().galley(text_pos, galley, colour);
+        if !compact {
+            let text_pos = pos2(rect.left() + 28.0, rect.center().y - galley.size().y / 2.0);
+            ui.painter().galley(text_pos, galley, colour);
+        }
     }
-    resp
+    // Compact, the label is only in the tooltip.
+    if compact {
+        resp.on_hover_text(label)
+    } else {
+        resp
+    }
 }
