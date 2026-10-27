@@ -45,7 +45,7 @@ fn page_id() -> Id {
 
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
-    egui::CentralPanel::default()
+    let shown = egui::CentralPanel::default()
         .frame(Frame::new().fill(tk.panel).inner_margin(Margin::same(24)))
         .show(ui, |ui| {
             let mut page = ui.data(|d| d.get_temp::<Option<Page>>(page_id()).flatten());
@@ -71,6 +71,8 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             });
             ui.data_mut(|d| d.insert_temp(page_id(), page));
         });
+    let pane = crate::shell::panes::Pane::Backstage;
+    app.panes.shown(pane, shown.response.rect);
 }
 
 fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>) {

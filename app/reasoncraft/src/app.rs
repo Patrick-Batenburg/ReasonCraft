@@ -84,8 +84,9 @@ pub struct ReasonCraftApp {
     pub export_dialog: Option<ExportDialog>,
     /// Where the panes are this frame, and an F6 move asked for.
     pub(crate) panes: shell::panes::Panes,
-    /// The context exports measure text in (at one pixel per point, so
-    /// they do not depend on the display or the UI scale), and its cache.
+    /// The context exports measure text in (at the display's pixels per
+    /// point, so they match the screen at 100 % but not the UI scale), and
+    /// its cache.
     pub(crate) export_measure: (egui::Context, MeasureCache),
     /// The egui context of the running frame.
     pub(crate) egui_ctx: Option<egui::Context>,
@@ -265,7 +266,8 @@ impl ReasonCraftApp {
         // Shortcuts are taken out first, so no widget sees (or moves focus
         // with) them, but run after the widgets' own actions (see `handle_keys`).
         // A modal takes all keys (Esc closes it). In the backstage only a
-        // focused field (the document title or author) passes on the file keys.
+        // focused field (the document title or author) passes on the file
+        // keys; F6 / Shift+F6 always move between the panes.
         let modal =
             self.modal.is_some() || self.link_edit.is_some() || self.export_dialog.is_some();
         let keys = if modal {
@@ -274,7 +276,7 @@ impl ReasonCraftApp {
             if ctx.text_edit_focused() {
                 crate::canvas::input::file_keys(&ctx, self)
             } else {
-                Vec::new()
+                shell::panes::pane_keys(&ctx)
             }
         } else {
             crate::canvas::input::handle_keys(&ctx, self)

@@ -111,7 +111,8 @@ fn decoded_lower(s: &str) -> String {
 /// Whether a `mailto:` link has a parameter a mail program could misuse:
 /// one asking to attach a file (`attach` or `attachment`, in any case,
 /// even percent-encoded), which could send local files along with a mail,
-/// or one whose decoded name hides control characters or further `%`
+/// or one whose decoded name hides control characters, invisible marks
+/// (typed, or escaped by [`normalize_link`] or by hand) or further `%`
 /// escapes. The whole rest of the link counts, fragment included: mail
 /// programs differ in where they think the parameters end.
 fn mailto_unsafe_params(s: &str) -> bool {
@@ -120,7 +121,7 @@ fn mailto_unsafe_params(s: &str) -> bool {
     };
     query.split(['&', ';']).any(|param| {
         let name = decoded_lower(param.split('=').next().unwrap_or_default());
-        name.chars().any(|c| c.is_control() || c == '%')
+        name.chars().any(|c| is_hidden_char(c) || c == '%')
             || matches!(name.trim(), "attach" | "attachment")
     })
 }
@@ -272,5 +273,28 @@ mod tests {
         // Visible text in other scripts is fine.
         let fine = "https://example.org/caf\u{E9}/\u{0645}\u{0631}\u{062D}\u{0628}\u{0627}";
         assert_eq!(safe_link(fine), Some(fine.to_owned()));
+    }
+
+    /// An invisible mark in a `mailto:` parameter name cannot hide an
+    /// attachment, typed or escaped.
+    #[test]
+    fn mailto_attach_with_invisible_marks_refused() {
+        for bad in [
+            "mailto:x@y.z?attach\u{FEFF}=/etc/passwd",
+            "mailto:x@y.z?attach\u{200B}=/etc/passwd",
+            "mailto:x@y.z?\u{200B}attach=/x",
+            "mailto:x@y.z?subject=a&attachment\u{FEFF}=/x",
+            "mailto:x@y.z?attach%EF%BB%BF=/etc/passwd",
+            "mailto:x@y.z?attach%E2%80%8B=/etc/passwd",
+            "mailto:x@y.z?%E2%80%8Battach=/x",
+        ] {
+            assert_eq!(normalize_link(bad), Err(InvalidLink), "{bad:?}");
+            assert_eq!(safe_link(bad), None, "{bad:?}");
+        }
+        // In a value the mark is only escaped.
+        assert_eq!(
+            safe_link("mailto:x@y.z?subject=a\u{200B}b").as_deref(),
+            Some("mailto:x@y.z?subject=a%E2%80%8Bb")
+        );
     }
 }

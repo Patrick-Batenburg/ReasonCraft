@@ -176,4 +176,28 @@ fn f6_cycles_through_the_panes() {
     h.run();
     assert_eq!(focused_control(&h).as_ref(), Some(&panes[2]), "skips it");
     assert_eq!(h.state().tabs[0].doc.boxes.len(), boxes, "nothing added");
+
+    // The File tab's backstage is a pane of its own, in the map's place.
+    h.key_press(Key::Escape);
+    h.run();
+    h.get_by_label(&t("ribbon.tab.file")).click();
+    h.run();
+    let back = (Role::Button, t("backstage.back"));
+    // With nothing focused the backstage has the keys, so F6 goes on from it.
+    let backstage = [panes[1].clone(), panes[2].clone(), back, panes[1].clone()];
+    for want in &backstage {
+        h.key_press(Key::F6);
+        h.run();
+        assert_eq!(
+            focused_control(&h).as_ref(),
+            Some(want),
+            "F6 in the backstage"
+        );
+    }
+    h.key_press_modifiers(Modifiers::SHIFT, Key::F6);
+    h.run();
+    assert_eq!(
+        focused_control(&h).as_ref(),
+        Some(&(Role::Button, t("backstage.back")))
+    );
 }

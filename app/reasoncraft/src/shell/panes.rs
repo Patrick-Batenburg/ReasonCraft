@@ -1,10 +1,12 @@
 //! F6 / Shift+F6: move the keyboard focus to the next or previous pane
 //! of the window, from any control: ribbon, Building panel, map, Text
-//! panel, status bar, and round again. Hidden panels are skipped. The
-//! focus lands on the pane's first control (the map itself for the map).
+//! panel, status bar, and round again; with the File tab open, ribbon,
+//! backstage, status bar. Hidden panels are skipped. The focus lands on
+//! the pane's first control (the map itself for the map).
 
-use eframe::egui::{self, LayerId, Rect};
+use eframe::egui::{self, Key, LayerId, Modifiers, Rect};
 
+use crate::actions::Action;
 use crate::canvas::canvas_id;
 
 /// A part of the window F6 moves between.
@@ -13,15 +15,18 @@ pub enum Pane {
     Ribbon,
     Building,
     Map,
+    /// The File tab's page, shown instead of the panels and the map.
+    Backstage,
     Text,
     Status,
 }
 
 /// The order F6 goes in.
-const ORDER: [Pane; 5] = [
+const ORDER: [Pane; 6] = [
     Pane::Ribbon,
     Pane::Building,
     Pane::Map,
+    Pane::Backstage,
     Pane::Text,
     Pane::Status,
 ];
@@ -60,14 +65,17 @@ impl Panes {
             return;
         }
         // The pane holding the focus; with none (or the find bar above the
-        // map), the map has the keys.
+        // map), the map (or the backstage) has the keys.
         let at = ctx
             .memory(|m| m.focused())
             .and_then(|id| ctx.read_response(id))
             .map(|r| r.rect.center());
         let mut i = at
             .and_then(|pos| shown.iter().position(|(_, r)| r.contains(pos)))
-            .or_else(|| shown.iter().position(|(p, _)| *p == Pane::Map))
+            .or_else(|| {
+                let main = |p: &Pane| matches!(p, Pane::Map | Pane::Backstage);
+                shown.iter().position(|(p, _)| main(p))
+            })
             .unwrap_or(n - 1);
         for _ in 0..n {
             i = if forward {
@@ -96,4 +104,21 @@ fn first_control(ctx: &egui::Context, (pane, rect): (Pane, Rect)) -> Option<egui
             .find(|w| w.sense.is_focusable() && w.enabled && rect.contains(w.rect.center()))
             .map(|w| w.id)
     })
+}
+
+/// F6 / Shift+F6 (next / previous pane) taken out of the input, for the
+/// backstage, which has no other keys outside its fields.
+pub fn pane_keys(ctx: &egui::Context) -> Vec<Action> {
+    let mut out = Vec::new();
+    ctx.input_mut(|i| {
+        for (mods, action) in [
+            (Modifiers::SHIFT, Action::PrevPane),
+            (Modifiers::NONE, Action::NextPane),
+        ] {
+            if i.consume_key(mods, Key::F6) {
+                out.push(action);
+            }
+        }
+    });
+    out
 }

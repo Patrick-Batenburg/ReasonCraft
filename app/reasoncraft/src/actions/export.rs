@@ -192,6 +192,7 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
         active,
         settings,
         export_measure: (ctx, cache),
+        egui_ctx,
         ..
     } = app;
     let tab = &tabs[*active];
@@ -209,11 +210,22 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
         let lay = layout(&tab.doc, &measure, &params);
         build_scene(&tab.doc, &lay, &opts, &measure)
     };
-    // Measured in a context of the export's own (same fonts) at one pixel
-    // per point: the window's context rounds text to its pixels, which
-    // follow the display and the UI scale, and an export must not.
+    // Measured in a context of the export's own (same fonts) at the
+    // display's own pixels per point: the window's context rounds text to
+    // its pixels, which also follow the UI scale, and an export must not.
+    // So at 100 % the export matches the screen on any display.
+    let native = egui_ctx
+        .as_ref()
+        .and_then(|c| c.input(|i| i.viewport().native_pixels_per_point))
+        .unwrap_or(1.0);
+    let mut input = egui::RawInput::default();
+    input
+        .viewports
+        .entry(egui::ViewportId::ROOT)
+        .or_default()
+        .native_pixels_per_point = Some(native);
     let mut scene = None;
-    let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+    let mut output = ctx.run_ui(input, |ui| {
         scene = Some(build(ui.ctx(), cache));
     });
     // Nothing is drawn: the font atlas this frame made is not needed.

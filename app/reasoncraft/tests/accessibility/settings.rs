@@ -108,19 +108,38 @@ fn reset_to_defaults_keeps_recent_and_dictionary() {
 }
 
 /// An export of the map comes out the same at every interface size: its
-/// text is measured at one pixel per point, not at the window's.
+/// text is measured at the display's own pixels per point (1.5 here), so
+/// at 100 % it matches the map on screen, and the UI scale changes nothing.
 #[test]
 fn export_does_not_depend_on_ui_scale() {
-    use reasoncraft::export::{ExportFormat, ExportOptions, ExportRequest, PageSetup};
+    use reasoncraft::canvas::measure::{EguiMeasure, MeasureCache};
+    use reasoncraft::export::{
+        ExportFormat, ExportOptions, ExportRequest, PageSetup, SvgOptions, bundled_font_family,
+        scene_to_svg,
+    };
     use reasoncraft::file_ops::FakeDialogs;
+    use reasoncraft::scene::{SceneOptions, build_scene};
+    use reasoncraft::theme::Tokens;
     use std::time::{Duration, Instant};
 
     let dir = tempfile::tempdir().unwrap();
-    let (d, _) = sample();
+    let (mut d, _) = sample();
+    // Text that wraps, in a few sizes: its rows and heights show how it
+    // was measured.
+    let root = Parent::Box(d.root);
+    for words in [7, 13, 29] {
+        let text: Vec<String> = (0..words).map(|i| format!("word{i}il")).collect();
+        d.add_card(root, CardKind::Reason, &text.join(" ")).unwrap();
+    }
     let dialogs = FakeDialogs::default();
     let mut app = ReasonCraftApp::new_for_test_with(Box::new(dialogs.clone()));
     app.tabs[0] = DocTab::from_document(d);
-    let mut h = harness_with(app);
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1400.0, 900.0))
+        .with_pixels_per_point(1.5)
+        .with_max_steps(32)
+        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
+    h.run();
     let export = |h: &mut H, scale: f32, name: &str| -> String {
         act(h, Action::SetUiScale(scale));
         assert!(close(h.ctx.zoom_factor(), scale));
@@ -128,7 +147,10 @@ fn export_does_not_depend_on_ui_scale() {
         dialogs.set_export(file.clone());
         h.state_mut().push(Action::RunExport(ExportRequest {
             format: ExportFormat::Svg,
-            options: ExportOptions::default(),
+            options: ExportOptions {
+                svg_outlines: false,
+                ..ExportOptions::default()
+            },
             page: PageSetup::default(),
         }));
         h.run_steps(2);
@@ -141,8 +163,26 @@ fn export_does_not_depend_on_ui_scale() {
         std::fs::read_to_string(&file).unwrap()
     };
     let at_100 = export(&mut h, 1.0, "100.svg");
+    // The map as the canvas lays it out at 100 % on this display.
+    assert!(close(h.ctx.pixels_per_point(), 1.5));
+    let doc = &h.state().tabs[0].doc;
+    let mut cache = MeasureCache::default();
+    let measure = EguiMeasure::new(&h.ctx, &mut cache);
+    let params = h.state().settings.layout_params();
+    let lay = reasoncraft_core::layout(doc, &measure, &params);
+    let tokens = Tokens::light();
+    let scene = build_scene(doc, &lay, &SceneOptions::export(tokens, "en"), &measure);
+    let opts = SvgOptions {
+        text_as_paths: false,
+        ..SvgOptions::new(&tokens)
+    };
+    let assets = &h.state().tabs[0].assets;
+    let on_screen = scene_to_svg(&scene, assets, &opts, &bundled_font_family());
+    assert!(
+        at_100 == on_screen,
+        "the export at 100 % differs from the screen"
+    );
     let at_150 = export(&mut h, 1.5, "150.svg");
     let at_130 = export(&mut h, 1.3, "130.svg");
-    assert!(at_100.contains("<svg"));
     assert!(at_100 == at_150 && at_100 == at_130, "exports differ");
 }
