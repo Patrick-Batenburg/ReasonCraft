@@ -1,10 +1,11 @@
 //! Many connectors into one premise: their arrowheads and bars stay apart
 //! in every layout direction and connector style.
 
+use eframe::egui::Rect;
 use eframe::egui::{Color32, Pos2, Vec2};
 use reasoncraft_core::{
-    BoxKind, CardKind, ConnectorStyle, Document, LayoutDirection, LayoutParams, Measure, Parent,
-    layout,
+    BoxKind, CardKind, ConnectorStyle, Document, Layout, LayoutDirection, LayoutParams, Measure,
+    Parent, layout,
 };
 
 use super::*;
@@ -45,12 +46,26 @@ fn crowded_premise(n: usize, kind: CardKind, dir: LayoutDirection) -> Document {
 }
 
 fn scene_of(doc: &Document, style: ConnectorStyle) -> Scene {
+    laid_out(doc, style).1
+}
+
+fn laid_out(doc: &Document, style: ConnectorStyle) -> (Layout, Scene) {
     let lay = layout(doc, &Fake, &LayoutParams::default());
     let opts = SceneOptions {
         connector_style: style,
         ..SceneOptions::export(crate::theme::Tokens::dark(), "en")
     };
-    build_scene(doc, &lay, &opts, &Fake)
+    let scene = build_scene(doc, &lay, &opts, &Fake);
+    (lay, scene)
+}
+
+/// The kind of the `i`th child: reasons and objections taking turns.
+fn mixed(i: usize) -> CardKind {
+    if i.is_multiple_of(2) {
+        CardKind::Reason
+    } else {
+        CardKind::Objection
+    }
 }
 
 /// The filled triangles of `colour` (arrowheads).
@@ -173,6 +188,114 @@ fn opposes_bars_do_not_overlap_any_direction() {
                     );
                 }
             }
+        }
+    }
+}
+
+/// In every style: no two arrowheads of `doc` intersect, no two bars come
+/// within a bar's thickness, and no arrowhead or bar corner lies inside a
+/// box or frame whose edge holds its port.
+fn assert_markers_clear(doc: &Document, what: &str) {
+    let tk = crate::theme::Tokens::dark();
+    let thick = super::connectors::BAR_THICKNESS;
+    for style in ConnectorStyle::ALL {
+        let (lay, scene) = laid_out(doc, style);
+        let heads = triangles(&scene, tk.reason);
+        let found = bars(&scene, tk.objection, thick);
+        for (i, t) in heads.iter().enumerate() {
+            for u in &heads[i + 1..] {
+                assert!(!triangles_intersect(t, u), "{what} {style:?}: {t:?} {u:?}");
+            }
+        }
+        for (i, &p) in found.iter().enumerate() {
+            for &q in &found[i + 1..] {
+                let d = segment_distance(p, q);
+                assert!(d > thick, "{what} {style:?}: bars {p:?} {q:?} {d} apart");
+            }
+        }
+        let rects: Vec<Rect> = lay
+            .boxes
+            .values()
+            .chain(lay.cards.values())
+            .copied()
+            .collect();
+        let corners = heads
+            .iter()
+            .map(|t| t.to_vec())
+            .chain(found.iter().map(|&(a, b)| vec![a, b]));
+        for corners in corners {
+            let mid = corners
+                .iter()
+                .fold(Pos2::ZERO, |m, c| m + c.to_vec2() / corners.len() as f32);
+            let port = lay
+                .connectors
+                .iter()
+                .map(|c| c.to)
+                .min_by(|a, b| (*a - mid).length().total_cmp(&(*b - mid).length()))
+                .unwrap();
+            let on_edge =
+                |r: &Rect| r.expand(0.01).contains(port) && !r.shrink(0.01).contains(port);
+            for r in rects.iter().filter(|r| on_edge(r)) {
+                for c in &corners {
+                    assert!(
+                        !r.shrink(1e-3).contains(*c),
+                        "{what} {style:?}: {c:?} inside {r:?} (port {port:?})"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Many connectors into one premise: the premise grows to fit them.
+#[test]
+fn crowded_premise_markers_stay_clear() {
+    for dir in LayoutDirection::ALL {
+        for n in [13, 20] {
+            let mut doc = Document::new("Claim");
+            doc.layout_direction = dir;
+            let (_, premise) = doc
+                .add_card(Parent::Box(doc.root), CardKind::Reason, "Premise")
+                .unwrap();
+            for i in 0..n {
+                doc.add_card(Parent::Box(premise), mixed(i), &format!("Child {i}"))
+                    .unwrap();
+            }
+            assert_markers_clear(&doc, &format!("{dir:?} {n}"));
+        }
+    }
+}
+
+/// Whole-card connectors join the middle premise's ports (an odd number of
+/// premises) or spread about the gap between the middle two (even), and
+/// stay clear of the premises' own.
+#[test]
+fn whole_card_ports_stay_clear_of_premise_ports() {
+    for dir in LayoutDirection::ALL {
+        for (premises, own, whole) in [(3, 1, 8), (2, 9, 5), (2, 1, 3), (4, 3, 2)] {
+            let mut doc = Document::new("Claim");
+            doc.layout_direction = dir;
+            let (card, first) = doc
+                .add_card(Parent::Box(doc.root), CardKind::Reason, "Premise 0")
+                .unwrap();
+            let mut ids = vec![first];
+            for i in 1..premises {
+                ids.push(
+                    doc.add_premise(card, None, &format!("Premise {i}"))
+                        .unwrap(),
+                );
+            }
+            for &p in &ids[(premises - 1) / 2..=premises / 2] {
+                for i in 0..own {
+                    doc.add_card(Parent::Box(p), mixed(i), &format!("Own {i}"))
+                        .unwrap();
+                }
+            }
+            for i in 0..whole {
+                doc.add_card(Parent::Card(card), mixed(i + 1), &format!("Whole {i}"))
+                    .unwrap();
+            }
+            assert_markers_clear(&doc, &format!("{dir:?} {premises}/{own}/{whole}"));
         }
     }
 }

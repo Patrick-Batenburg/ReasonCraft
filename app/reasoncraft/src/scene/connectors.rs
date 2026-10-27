@@ -48,7 +48,8 @@ impl Builder<'_> {
     /// Connector `c`; an elbow turns at main coordinate `turn` (see
     /// [`Self::elbow_turns`]).
     pub(super) fn connector(&mut self, c: &Connector, turn: Option<f32>) {
-        if !self.visible(Rect::from_two_pos(c.from, c.to)) {
+        let start = self.stub_start(c);
+        if !self.visible(Rect::from_two_pos(c.from, c.to).union(Rect::from_pos(start))) {
             return;
         }
         let tk = self.opts.tokens;
@@ -60,7 +61,6 @@ impl Builder<'_> {
         let strength = connector_strength(c.strength, self.opts.eval_shading);
         let zoom = self.opts.zoom;
         let toward = c.dir.toward_parent();
-        let start = self.stub_start(c);
         let marker = end_marker(c.kind);
         let style = self.opts.connector_style;
         if style == ConnectorStyle::Tapered {

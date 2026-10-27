@@ -20,6 +20,9 @@ use crate::doc_tab::RowHeights;
 /// How many rows before and after the focused row stay laid out with it:
 /// enough to reach the next row with a focusable widget past a heading.
 const FOCUS_REACH: usize = 2;
+/// The least height change, in px, of the rows above the view that the
+/// list scrolls along with.
+const MIN_SHIFT: f32 = 0.1;
 
 /// The rows to show, how to draw one, and what they are measured for.
 pub(super) struct Rows<'a, K, D> {
@@ -100,18 +103,27 @@ where
             y += height + gap;
         }
         ui.set_min_height((y - gap).max(0.0));
-
+        if shift.abs() > MIN_SHIFT {
+            // This pass is discarded (below): keep the focus as it was, so
+            // the pass that replaces it sees a move and scrolls to it.
+            heights.focus = last.clone();
+            return shift;
+        }
         // The focus came to a row of this list (Tab, or a click):
         // show it.
-        let moved = last.map(|(_, id)| id) != heights.focus.as_ref().map(|(_, id)| *id);
+        let moved = last.as_ref().map(|(_, id)| *id) != heights.focus.as_ref().map(|(_, id)| *id);
         if let Some(rect) = focused_rect.filter(|_| moved) {
             ui.scroll_to_rect(rect, None);
         }
-        shift
+        0.0
     });
-    if out.inner.abs() > 0.1 {
+    if out.inner != 0.0 {
         // Scroll along with the rows, and lay out this frame again so it
-        // never shows them moved.
+        // never shows them moved. The app's first use of a discarded
+        // pass: egui runs the whole UI again in the same frame, and only
+        // the second pass is painted. What the first pass changed in the
+        // app's own state stays changed, so anything that acts once per
+        // pass must check `will_discard` (the map's autoscroll does).
         heights.scroll_to = Some(out.state.unclamped_offset().y + out.inner);
         ui.ctx()
             .request_discard("virtual rows measured above the view");

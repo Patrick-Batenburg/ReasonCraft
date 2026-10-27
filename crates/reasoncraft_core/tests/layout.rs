@@ -356,11 +356,11 @@ fn image_adds_height() {
     assert!((after - before - expected).abs() < 0.5, "{before} {after}");
 }
 
-/// Too many ports for an edge: they squeeze about its centre and their
-/// stubs fan out, each starting where its port would be at full spacing.
+/// A box with many children grows along the cross axis (wider top-down)
+/// so its ports keep their spacing, and its text is measured at the new
+/// width; no stub needs to fan out.
 #[test]
-fn squeezed_ports_fan_their_stubs() {
-    use reasoncraft_core::connector::STUB_PX;
+fn crowded_box_grows_to_fit_its_ports() {
     let p = LayoutParams::default();
     let mut doc = Document::new("Claim");
     for i in 0..12 {
@@ -369,20 +369,14 @@ fn squeezed_ports_fan_their_stubs() {
     }
     let l = run(&doc);
     let root = l.boxes[&doc.root];
+    assert_eq!(root.width(), 11.0 * p.port_spacing + 2.0 * p.port_margin);
     let mut cs: Vec<_> = l.connectors.iter().collect();
     cs.sort_by(|a, b| a.to.x.total_cmp(&b.to.x));
-    let starts: Vec<f32> = cs.iter().map(|c| (c.to - c.approach * STUB_PX).x).collect();
-    for (w, s) in cs.windows(2).zip(starts.windows(2)) {
-        assert!(w[1].to.x - w[0].to.x < p.port_spacing, "squeezed");
-        assert!((s[1] - s[0] - p.port_spacing).abs() < 1e-3, "fanned: {s:?}");
+    for w in cs.windows(2) {
+        assert!((w[1].to.x - w[0].to.x - p.port_spacing).abs() < 1e-3);
     }
-    let mid = (starts[0] + starts[11]) / 2.0;
-    assert!(
-        (mid - root.center().x).abs() < 1e-3,
-        "about the edge centre"
-    );
     for c in &cs {
-        assert_eq!(c.approach.y, -1.0, "one unit along the main axis");
+        assert_eq!(c.approach, emath::vec2(0.0, -1.0), "straight stubs");
         assert!(c.to.x > root.left() && c.to.x < root.right());
     }
 }

@@ -6,6 +6,9 @@ use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::canvas::measure::{EguiMeasure, MeasureCache};
 use reasoncraft::i18n::t;
+mod common;
+
+use common::glide;
 use reasoncraft_core::{BoxKind, CardKind, Document, Item, Layout, LayoutParams, Parent, layout};
 
 type H = Harness<'static, ReasonCraftApp>;
@@ -43,17 +46,6 @@ fn panel_item(h: &H, label: &str) -> egui::Pos2 {
     args.set("item", label);
     let name = reasoncraft::i18n::t_args("building.item_name", &args);
     h.get_by_label(&name).rect().center()
-}
-
-/// The pointer's way from `from` to `to` over up to eight frames, never
-/// stopping near the map's edge, where a drag scrolls the map.
-fn glide(h: &H, from: egui::Pos2, to: egui::Pos2) -> Vec<egui::Pos2> {
-    let view = h.state().tabs[0].viewport.expect("the map shows");
-    let inner = view.shrink(reasoncraft::canvas::drag::EDGE_PX);
-    (1..=8)
-        .map(|i| from.lerp(to, i as f32 / 8.0))
-        .filter(|p| !view.contains(*p) || inner.contains(*p))
-        .collect()
 }
 
 /// Press at `from`, move to `to` over several frames, release.

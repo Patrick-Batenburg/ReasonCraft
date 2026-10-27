@@ -87,7 +87,7 @@ pub struct ReasonCraftApp {
     /// The export or page setup dialog, when open.
     pub export_dialog: Option<ExportDialog>,
     /// Where the panes are this frame, and an F6 move asked for.
-    pub panes: shell::panes::Panes,
+    pub(crate) panes: shell::panes::Panes,
     /// The context exports measure text in (at the display's pixels per
     /// point, so they match the screen at 100 % but not the UI scale), and
     /// its cache.
@@ -244,6 +244,11 @@ impl ReasonCraftApp {
         crate::recovery::shutdown(self);
         self.close_confirmed = true;
         self.close_now = true;
+    }
+
+    /// Where `pane` was shown in the last frame, if it was.
+    pub fn pane_rect(&self, pane: shell::panes::Pane) -> Option<egui::Rect> {
+        self.panes.rect(pane)
     }
 
     pub fn active_tab(&self) -> &DocTab {

@@ -40,7 +40,8 @@ pub(in crate::canvas) fn autoscroll(ui: &egui::Ui, response: &Response, cam: &mu
     let mut state: Option<DragState> = ui.data(|d| d.get_temp(id));
     let item_drag = state.is_some_and(|s| s.active);
     let panel_drag = DragAndDrop::has_payload_of_type::<Insertable>(ui.ctx());
-    if !(item_drag || panel_drag) {
+    // A pass that will be discarded runs again this frame: pan once.
+    if !(item_drag || panel_drag) || ui.ctx().will_discard() {
         return;
     }
     let (pointer, dt) = ui.input(|i| (i.pointer.latest_pos(), i.stable_dt.min(0.1)));

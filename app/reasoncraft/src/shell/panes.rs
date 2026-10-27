@@ -52,7 +52,7 @@ impl Panes {
     }
 
     /// Where `pane` was shown this frame (so far), if it was.
-    pub fn rect(&self, pane: Pane) -> Option<Rect> {
+    pub(crate) fn rect(&self, pane: Pane) -> Option<Rect> {
         self.rects.iter().find(|(p, _)| *p == pane).map(|(_, r)| *r)
     }
 

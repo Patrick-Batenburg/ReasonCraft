@@ -1,8 +1,10 @@
 //! Tab titles and side panel widths.
 
+mod common;
+
 use std::path::PathBuf;
 
-use eframe::egui::{self, epaint};
+use eframe::egui;
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::shell::panes::Pane;
@@ -22,18 +24,10 @@ fn harness() -> H {
 
 /// The text of every text shape painted in the last frame.
 fn painted_texts(h: &H) -> Vec<String> {
-    fn flatten(s: &epaint::Shape, out: &mut Vec<String>) {
-        match s {
-            epaint::Shape::Vec(v) => v.iter().for_each(|s| flatten(s, out)),
-            epaint::Shape::Text(t) => out.push(t.galley.text().to_owned()),
-            _ => {}
-        }
-    }
-    let mut out = Vec::new();
-    for clipped in &h.output().shapes {
-        flatten(&clipped.shape, &mut out);
-    }
-    out
+    common::painted_texts(h)
+        .into_iter()
+        .map(|(t, _)| t)
+        .collect()
 }
 
 #[test]
@@ -92,7 +86,7 @@ fn side_panel_min_width() {
     for pane in [Pane::Building, Pane::Text] {
         let mut h = harness();
         h.run();
-        let rect = h.state().panes.rect(pane).expect("the panel shows");
+        let rect = h.state().pane_rect(pane).expect("the panel shows");
         let (edge, inward) = match pane {
             Pane::Building => (rect.right(), 1.0),
             _ => (rect.left(), -1.0),
@@ -101,7 +95,7 @@ fn side_panel_min_width() {
         // Just above the minimum: it follows the pointer.
         let fixed = edge - inward * rect.width();
         drag_handle(&mut h, handle, fixed + inward * 225.0);
-        let rect = h.state().panes.rect(pane).expect("still open");
+        let rect = h.state().pane_rect(pane).expect("still open");
         assert!(
             (rect.width() - 225.0).abs() < 2.0,
             "{pane:?}: {}",

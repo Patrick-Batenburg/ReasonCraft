@@ -1,5 +1,8 @@
 //! UI tests for dragging snippet text onto the map.
 
+mod common;
+
+use common::{glide, painted_texts};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
@@ -63,20 +66,13 @@ fn select_all(h: &mut H) {
     h.run();
 }
 
-/// Press at `from`, move to `to` over several frames, release. The
-/// pointer never stops near the map's edge, where a drag scrolls the map.
+/// Press at `from`, move to `to` over several frames, release.
 fn drag(h: &mut H, from: egui::Pos2, to: egui::Pos2) {
-    let view = h.state().tabs[0].viewport.expect("the map shows");
-    let inner = view.shrink(reasoncraft::canvas::drag::EDGE_PX);
     h.event(Event::PointerMoved(from));
     h.run();
     h.drag_at(from);
     h.run();
-    for i in 1..=8 {
-        let at = from.lerp(to, i as f32 / 8.0);
-        if view.contains(at) && !inner.contains(at) {
-            continue;
-        }
+    for at in glide(h, from, to) {
         h.event(Event::PointerMoved(at));
         h.run();
     }
@@ -163,23 +159,6 @@ fn alt_drag_on_handle_carries_whole_snippet() {
     drag(&mut h, handle, to);
     let doc = &h.state().tabs[0].doc;
     assert!(doc.boxes[&doc.root].children.is_empty());
-}
-
-/// Each painted text and where its first line starts.
-fn painted_texts(h: &H) -> Vec<(String, egui::Pos2)> {
-    use eframe::egui::epaint::Shape;
-    fn flatten(s: &Shape, out: &mut Vec<(String, egui::Pos2)>) {
-        match s {
-            Shape::Vec(v) => v.iter().for_each(|s| flatten(s, out)),
-            Shape::Text(t) => out.push((t.galley.text().to_owned(), t.pos)),
-            _ => {}
-        }
-    }
-    let mut out = Vec::new();
-    for clipped in &h.output().shapes {
-        flatten(&clipped.shape, &mut out);
-    }
-    out
 }
 
 /// Whether `text` is painted just below and right of `pointer`.
