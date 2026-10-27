@@ -55,6 +55,9 @@ pub struct RowHeights<K> {
     /// The row holding the keyboard focus in the last frame, and the
     /// focused widget.
     pub(crate) focus: Option<(K, eframe::egui::Id)>,
+    /// The scroll offset the list takes on its next frame, after rows
+    /// above the view were measured at new heights.
+    pub(crate) scroll_to: Option<f32>,
 }
 
 impl<K> Default for RowHeights<K> {
@@ -65,6 +68,7 @@ impl<K> Default for RowHeights<K> {
             estimates: HashMap::new(),
             laid_out: 0,
             focus: None,
+            scroll_to: None,
         }
     }
 }

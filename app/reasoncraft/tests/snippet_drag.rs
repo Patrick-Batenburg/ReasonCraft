@@ -63,14 +63,21 @@ fn select_all(h: &mut H) {
     h.run();
 }
 
-/// Press at `from`, move to `to` over several frames, release.
+/// Press at `from`, move to `to` over several frames, release. The
+/// pointer never stops near the map's edge, where a drag scrolls the map.
 fn drag(h: &mut H, from: egui::Pos2, to: egui::Pos2) {
+    let view = h.state().tabs[0].viewport.expect("the map shows");
+    let inner = view.shrink(reasoncraft::canvas::drag::EDGE_PX);
     h.event(Event::PointerMoved(from));
     h.run();
     h.drag_at(from);
     h.run();
     for i in 1..=8 {
-        h.event(Event::PointerMoved(from.lerp(to, i as f32 / 8.0)));
+        let at = from.lerp(to, i as f32 / 8.0);
+        if view.contains(at) && !inner.contains(at) {
+            continue;
+        }
+        h.event(Event::PointerMoved(at));
         h.run();
     }
     h.drop_at(to);
@@ -156,4 +163,72 @@ fn alt_drag_on_handle_carries_whole_snippet() {
     drag(&mut h, handle, to);
     let doc = &h.state().tabs[0].doc;
     assert!(doc.boxes[&doc.root].children.is_empty());
+}
+
+/// Each painted text and where its first line starts.
+fn painted_texts(h: &H) -> Vec<(String, egui::Pos2)> {
+    use eframe::egui::epaint::Shape;
+    fn flatten(s: &Shape, out: &mut Vec<(String, egui::Pos2)>) {
+        match s {
+            Shape::Vec(v) => v.iter().for_each(|s| flatten(s, out)),
+            Shape::Text(t) => out.push((t.galley.text().to_owned(), t.pos)),
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    for clipped in &h.output().shapes {
+        flatten(&clipped.shape, &mut out);
+    }
+    out
+}
+
+/// Whether `text` is painted just below and right of `pointer`.
+fn ghost_at(h: &H, text: &str, pointer: egui::Pos2) -> bool {
+    painted_texts(h).iter().any(|(t, at)| {
+        let d = *at - pointer;
+        t == text && (0.0..=60.0).contains(&d.x) && (0.0..=40.0).contains(&d.y)
+    })
+}
+
+#[test]
+fn snippet_drag_ghost_follows_pointer() {
+    let text = "Robots save time";
+    let excerpt = reasoncraft::shell::text_panel::excerpt(text);
+    let mut doc = doc_with_snippet(text);
+    doc.add_snippet("Second snippet");
+    // Reordering by the handle, and Alt+dragging it to the map.
+    for alt in [false, true] {
+        let mut h = harness_with(doc.clone());
+        // The first snippet's handle (the topmost).
+        let handle = h
+            .query_all_by_label(&t("snippet.drag"))
+            .map(|n| n.rect().center())
+            .min_by(|a, b| a.y.total_cmp(&b.y))
+            .unwrap();
+        let to = if alt {
+            root_on_screen(&h)
+        } else {
+            handle + egui::vec2(0.0, 90.0)
+        };
+        if alt {
+            h.event(Event::ModifiersChanged(Modifiers::ALT));
+        }
+        h.event(Event::PointerMoved(handle));
+        h.run();
+        h.drag_at(handle);
+        h.run();
+        for i in 1..=4 {
+            let at = handle.lerp(to, i as f32 / 4.0);
+            h.event(Event::PointerMoved(at));
+            h.run();
+            assert!(ghost_at(&h, &excerpt, at), "alt {alt}: no ghost at {at:?}");
+        }
+        h.drop_at(to);
+        h.event(Event::ModifiersChanged(Modifiers::NONE));
+        h.run();
+        assert!(
+            !ghost_at(&h, &excerpt, to),
+            "alt {alt}: the ghost goes on release"
+        );
+    }
 }

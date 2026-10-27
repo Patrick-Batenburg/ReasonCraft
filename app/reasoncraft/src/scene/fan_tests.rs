@@ -1,0 +1,178 @@
+//! Many connectors into one premise: their arrowheads and bars stay apart
+//! in every layout direction and connector style.
+
+use eframe::egui::{Color32, Pos2, Vec2};
+use reasoncraft_core::{
+    BoxKind, CardKind, ConnectorStyle, Document, LayoutDirection, LayoutParams, Measure, Parent,
+    layout,
+};
+
+use super::*;
+
+/// One text row per "|"-separated part, 15 tall.
+struct Fake;
+
+impl Measure for Fake {
+    fn text_height(&self, text: &str, _width: f32, _kind: &BoxKind) -> f32 {
+        text.split('|').count() as f32 * 15.0
+    }
+}
+
+impl TextRows for Fake {
+    fn rows(&self, text: &str, _width: f32, _kind: &BoxKind) -> Vec<String> {
+        text.split('|').map(str::to_owned).collect()
+    }
+    fn line_height(&self, _size: f32) -> f32 {
+        15.0
+    }
+    fn text_width(&self, text: &str, size: f32) -> f32 {
+        text.chars().count() as f32 * size * 0.5
+    }
+}
+
+/// A claim with one reason, whose premise has `n` child cards of `kind`.
+fn crowded_premise(n: usize, kind: CardKind, dir: LayoutDirection) -> Document {
+    let mut doc = Document::new("Claim");
+    doc.layout_direction = dir;
+    let (_, premise) = doc
+        .add_card(Parent::Box(doc.root), CardKind::Reason, "Premise")
+        .unwrap();
+    for i in 0..n {
+        doc.add_card(Parent::Box(premise), kind.clone(), &format!("Child {i}"))
+            .unwrap();
+    }
+    doc
+}
+
+fn scene_of(doc: &Document, style: ConnectorStyle) -> Scene {
+    let lay = layout(doc, &Fake, &LayoutParams::default());
+    let opts = SceneOptions {
+        connector_style: style,
+        ..SceneOptions::export(crate::theme::Tokens::dark(), "en")
+    };
+    build_scene(doc, &lay, &opts, &Fake)
+}
+
+/// The filled triangles of `colour` (arrowheads).
+fn triangles(scene: &Scene, colour: Color32) -> Vec<[Pos2; 3]> {
+    let corner = |el: &PathEl| match *el {
+        PathEl::MoveTo(p) | PathEl::LineTo(p) => Some(p),
+        _ => None,
+    };
+    let mut out = Vec::new();
+    for s in &scene.shapes {
+        if let Shape::Path {
+            points,
+            fill: Some(fill),
+            stroke: None,
+            ..
+        } = s
+            && *fill == colour
+            && let [a, b, c, PathEl::Close] = &points[..]
+            && let (Some(a), Some(b), Some(c)) = (corner(a), corner(b), corner(c))
+        {
+            out.push([a, b, c]);
+        }
+    }
+    out
+}
+
+/// Whether two triangles share interior (separating-axis test).
+fn triangles_intersect(t: &[Pos2; 3], u: &[Pos2; 3]) -> bool {
+    let edges = |tri: &[Pos2; 3]| {
+        (0..3)
+            .map(|i| tri[(i + 1) % 3] - tri[i])
+            .collect::<Vec<_>>()
+    };
+    let range = |tri: &[Pos2; 3], axis: Vec2| {
+        let d = tri.map(|p| p.to_vec2().dot(axis));
+        (d[0].min(d[1]).min(d[2]), d[0].max(d[1]).max(d[2]))
+    };
+    edges(t).into_iter().chain(edges(u)).all(|e| {
+        let axis = e.rot90();
+        let ((a0, a1), (b0, b1)) = (range(t, axis), range(u, axis));
+        a1 > b0 + 1e-3 && b1 > a0 + 1e-3
+    })
+}
+
+/// The end bars of `colour`: thick straight lines.
+fn bars(scene: &Scene, colour: Color32, thickness: f32) -> Vec<(Pos2, Pos2)> {
+    let mut out = Vec::new();
+    for s in &scene.shapes {
+        if let Shape::Path {
+            points,
+            stroke: Some((w, c)),
+            fill: None,
+            ..
+        } = s
+            && *c == colour
+            && (*w - thickness).abs() < 1e-4
+            && let [PathEl::MoveTo(a), PathEl::LineTo(b)] = points[..]
+        {
+            out.push((a, b));
+        }
+    }
+    out
+}
+
+/// The shortest distance between segments `p` and `q` (they do not cross).
+fn segment_distance(p: (Pos2, Pos2), q: (Pos2, Pos2)) -> f32 {
+    let to_segment = |x: Pos2, (a, b): (Pos2, Pos2)| {
+        let ab = b - a;
+        let t = ((x - a).dot(ab) / ab.length_sq()).clamp(0.0, 1.0);
+        (x - (a + ab * t)).length()
+    };
+    [
+        to_segment(p.0, q),
+        to_segment(p.1, q),
+        to_segment(q.0, p),
+        to_segment(q.1, p),
+    ]
+    .into_iter()
+    .fold(f32::MAX, f32::min)
+}
+
+#[test]
+fn nine_arrowheads_do_not_overlap_any_direction() {
+    let reason = crate::theme::Tokens::dark().reason;
+    for dir in LayoutDirection::ALL {
+        let doc = crowded_premise(9, CardKind::Reason, dir);
+        for style in ConnectorStyle::ALL {
+            let scene = scene_of(&doc, style);
+            let heads = triangles(&scene, reason);
+            assert_eq!(heads.len(), 10, "{dir:?} {style:?}: nine and the reason's");
+            for (i, t) in heads.iter().enumerate() {
+                for u in &heads[i + 1..] {
+                    assert!(
+                        !triangles_intersect(t, u),
+                        "{dir:?} {style:?}: {t:?} and {u:?} overlap"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Opposes bars into one premise keep clear of each other too (they once
+/// overlapped left-to-right, about 5.7 units apart).
+#[test]
+fn opposes_bars_do_not_overlap_any_direction() {
+    let objection = crate::theme::Tokens::dark().objection;
+    for dir in LayoutDirection::ALL {
+        for n in [2, 3, 6] {
+            let doc = crowded_premise(n, CardKind::Objection, dir);
+            let scene = scene_of(&doc, ConnectorStyle::Elbow);
+            let found = bars(&scene, objection, super::connectors::BAR_THICKNESS);
+            assert_eq!(found.len(), n, "{dir:?}: {n} bars");
+            for (i, &p) in found.iter().enumerate() {
+                for &q in &found[i + 1..] {
+                    let d = segment_distance(p, q);
+                    assert!(
+                        d > super::connectors::BAR_THICKNESS,
+                        "{dir:?}, {n} bars: {p:?} and {q:?} only {d} apart"
+                    );
+                }
+            }
+        }
+    }
+}

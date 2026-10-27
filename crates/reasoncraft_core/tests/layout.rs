@@ -355,3 +355,34 @@ fn image_adds_height() {
     let expected = (156.0 - 12.0) * 0.5 + 6.0 + IMAGE_GAP;
     assert!((after - before - expected).abs() < 0.5, "{before} {after}");
 }
+
+/// Too many ports for an edge: they squeeze about its centre and their
+/// stubs fan out, each starting where its port would be at full spacing.
+#[test]
+fn squeezed_ports_fan_their_stubs() {
+    use reasoncraft_core::connector::STUB_PX;
+    let p = LayoutParams::default();
+    let mut doc = Document::new("Claim");
+    for i in 0..12 {
+        doc.add_card(Parent::Box(doc.root), CardKind::Reason, &format!("R{i}"))
+            .unwrap();
+    }
+    let l = run(&doc);
+    let root = l.boxes[&doc.root];
+    let mut cs: Vec<_> = l.connectors.iter().collect();
+    cs.sort_by(|a, b| a.to.x.total_cmp(&b.to.x));
+    let starts: Vec<f32> = cs.iter().map(|c| (c.to - c.approach * STUB_PX).x).collect();
+    for (w, s) in cs.windows(2).zip(starts.windows(2)) {
+        assert!(w[1].to.x - w[0].to.x < p.port_spacing, "squeezed");
+        assert!((s[1] - s[0] - p.port_spacing).abs() < 1e-3, "fanned: {s:?}");
+    }
+    let mid = (starts[0] + starts[11]) / 2.0;
+    assert!(
+        (mid - root.center().x).abs() < 1e-3,
+        "about the edge centre"
+    );
+    for c in &cs {
+        assert_eq!(c.approach.y, -1.0, "one unit along the main axis");
+        assert!(c.to.x > root.left() && c.to.x < root.right());
+    }
+}

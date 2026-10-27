@@ -1,9 +1,17 @@
 //! Box sizes: measured text, image and indicator row.
+//!
+//! Left-to-right, the edge a box's children attach to is its height, which
+//! is far shorter than a box is wide. A box there is tall enough for its
+//! ports `port_spacing` apart within `port_margin` of its corners, so their
+//! arrowheads and bars never overlap.
+
+use std::collections::HashMap;
 
 use emath::Vec2;
 
 use super::{BOX_TEXT_PAD, LayoutParams, Measure, image_height, indicators};
-use crate::model::{BoxKind, BoxNode, Document};
+use crate::ids::NodeId;
+use crate::model::{BoxKind, BoxNode, Document, LayoutDirection};
 
 /// Sizes the boxes of one layout.
 pub(super) struct Sizer<'a> {
@@ -11,6 +19,9 @@ pub(super) struct Sizer<'a> {
     p: &'a LayoutParams,
     /// Each box's indicator row and number.
     pub marks: indicators::Marks,
+    /// Left-to-right, how many connectors attach to each box's far edge
+    /// (when more than one); empty in the other directions.
+    ports: HashMap<NodeId, usize>,
 }
 
 impl<'a> Sizer<'a> {
@@ -19,6 +30,11 @@ impl<'a> Sizer<'a> {
             m,
             p,
             marks: indicators::Marks::new(doc, &p.indicators, p.indicator_row),
+            ports: if doc.layout_direction == LayoutDirection::LeftRight {
+                port_counts(doc)
+            } else {
+                HashMap::new()
+            },
         }
     }
 
@@ -47,6 +63,33 @@ impl<'a> Sizer<'a> {
                 .max(text_height + 2.0 * BOX_TEXT_PAD + image_height)
         };
         let row = self.marks.rows.get(&node.id).copied().unwrap_or(0.0);
-        Vec2::new(width, height + row)
+        let ports = self.ports.get(&node.id).copied().unwrap_or(0);
+        let edge = ports.saturating_sub(1) as f32 * p.port_spacing + 2.0 * p.port_margin;
+        let height = if ports > 1 {
+            (height + row).max(edge)
+        } else {
+            height + row
+        };
+        Vec2::new(width, height)
     }
+}
+
+/// How many connectors attach to each box with more than one: its
+/// children, and for a card's only premise also the card's whole-card
+/// children, whose ports join the premise's.
+fn port_counts(doc: &Document) -> HashMap<NodeId, usize> {
+    let mut counts: HashMap<NodeId, usize> = doc
+        .boxes
+        .iter()
+        .map(|(&id, node)| (id, node.children.len()))
+        .collect();
+    for card in doc.cards.values() {
+        if let [only] = card.premises[..]
+            && let Some(n) = counts.get_mut(&only)
+        {
+            *n += card.children.len();
+        }
+    }
+    counts.retain(|_, n| *n > 1);
+    counts
 }

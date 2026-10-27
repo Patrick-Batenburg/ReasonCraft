@@ -51,6 +51,11 @@ impl Panes {
         self.rects.push((pane, rect));
     }
 
+    /// Where `pane` was shown this frame (so far), if it was.
+    pub fn rect(&self, pane: Pane) -> Option<Rect> {
+        self.rects.iter().find(|(p, _)| *p == pane).map(|(_, r)| *r)
+    }
+
     /// Does the move asked for, if any: call once every pane is drawn.
     pub fn finish_frame(&mut self, ctx: &egui::Context) {
         let Some(forward) = self.request.take() else {

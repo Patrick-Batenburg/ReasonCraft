@@ -98,6 +98,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         tab.camera.fit_selection(target, rect);
     }
     let panning = navigate(ui, &response, &mut tab.camera, rect);
+    drag::autoscroll(ui, &response, &mut tab.camera);
 
     if tab.connect_mode.is_none()
         && response.clicked()

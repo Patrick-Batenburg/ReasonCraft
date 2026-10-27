@@ -125,3 +125,27 @@ fn co_premise_sources_stay_apart() {
         );
     }
 }
+
+/// A rated premise has an indicator row; its unrated co-premise reserves
+/// one too, so their texts start at the same offset (side by side, at the
+/// same height).
+#[test]
+fn co_premise_texts_align_when_one_is_rated() {
+    let mut doc = Document::new("Claim");
+    let (card, rated) = doc
+        .add_card(Parent::Box(doc.root), CardKind::Reason, "Rated")
+        .unwrap();
+    let plain = doc.add_premise(card, None, "Plain").unwrap();
+    doc.boxes.get_mut(&rated).unwrap().acceptance = Some(reasoncraft_core::Acceptance::Accept);
+    for dir in LayoutDirection::ALL {
+        let l = run_in(&mut doc, dir);
+        assert!(l.indicator_row(rated) > 0.0, "{dir:?}");
+        assert_eq!(l.indicator_row(plain), l.indicator_row(rated), "{dir:?}");
+        let (a, b) = (l.body(rated).unwrap(), l.body(plain).unwrap());
+        let (ra, rb) = (l.boxes[&rated], l.boxes[&plain]);
+        assert_eq!(a.top() - ra.top(), b.top() - rb.top(), "{dir:?}");
+        if dir != LayoutDirection::LeftRight {
+            assert_eq!(a.top(), b.top(), "{dir:?}: first lines level");
+        }
+    }
+}

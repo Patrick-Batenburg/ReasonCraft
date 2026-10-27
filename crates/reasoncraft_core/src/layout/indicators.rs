@@ -44,7 +44,8 @@ pub fn needs_indicator_row(node: &BoxNode, numbered: bool, opts: &IndicatorOptio
 
 /// The marks of a layout: the indicator row height (`row`) of each box of
 /// `doc` that needs one, and the number of each numbered box (none when
-/// numbers are off).
+/// numbers are off). When one premise of a card needs the row, its
+/// co-premises reserve it too, so their first text lines align.
 pub(super) struct Marks {
     pub rows: HashMap<NodeId, f32>,
     pub numbers: HashMap<NodeId, String>,
@@ -57,12 +58,18 @@ impl Marks {
         } else {
             HashMap::new()
         };
-        let rows = doc
+        let mut rows: HashMap<NodeId, f32> = doc
             .boxes
             .iter()
             .filter(|(id, node)| needs_indicator_row(node, numbers.contains_key(id), opts))
             .map(|(&id, _)| (id, row))
             .collect();
+        for card in doc.cards.values() {
+            if card.premises.iter().any(|p| rows.contains_key(p)) {
+                let present = card.premises.iter().filter(|p| doc.boxes.contains_key(*p));
+                rows.extend(present.map(|&p| (p, row)));
+            }
+        }
         Self { rows, numbers }
     }
 }
@@ -73,7 +80,8 @@ mod tests {
     use crate::NodeId;
     use crate::model::{Acceptance, BoxKind};
 
-    /// Boxes with a mark grow by the row; the others keep their height.
+    /// Boxes with a mark grow by the row, and so do their co-premises;
+    /// the others keep their height.
     #[test]
     fn indicator_row_adds_to_marked_boxes_only() {
         use crate::fixtures::FixedMeasure;
@@ -84,17 +92,21 @@ mod tests {
             .add_card(Parent::Box(doc.root), CardKind::Reason, "A")
             .unwrap();
         let b = doc.add_premise(card, None, "B").unwrap();
+        let (_, c) = doc
+            .add_card(Parent::Box(doc.root), CardKind::Reason, "C")
+            .unwrap();
         let p = LayoutParams::default();
         let before = layout(&doc, &FixedMeasure, &p);
         doc.boxes.get_mut(&a).unwrap().link = Some("https://example.org".into());
         doc.boxes.get_mut(&doc.root).unwrap().acceptance = Some(Acceptance::Accept);
         let after = layout(&doc, &FixedMeasure, &p);
         let h = |l: &crate::Layout, id| l.boxes[&id].height();
-        assert_eq!(h(&after, b), h(&before, b), "plain box");
+        assert_eq!(h(&after, c), h(&before, c), "plain box");
         assert_eq!(h(&after, a), h(&before, a) + p.indicator_row);
+        assert_eq!(h(&after, b), h(&before, b) + p.indicator_row, "co-premise");
         assert_eq!(h(&after, doc.root), h(&before, doc.root) + p.indicator_row);
         assert_eq!(after.indicator_row(a), p.indicator_row);
-        assert_eq!(after.indicator_row(b), 0.0);
+        assert_eq!(after.indicator_row(c), 0.0);
         let body = after.body(a).unwrap();
         assert_eq!(body.height(), h(&before, a));
         // With markers hidden, a rating alone needs no row.

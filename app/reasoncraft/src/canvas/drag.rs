@@ -369,7 +369,10 @@ fn paint_ghost(
     }
 }
 
+mod autoscroll;
 mod panel;
+pub(super) use autoscroll::autoscroll;
+pub use autoscroll::{EDGE_PX, SPEED_PX, autoscroll_pan};
 pub(super) use panel::panel_drop;
 pub use panel::{panel_drop_action, panel_drop_target};
 

@@ -11,6 +11,23 @@ use crate::app::ReasonCraftApp;
 use crate::i18n::{FluentArgs, t, t_args};
 
 const HEIGHT: f32 = 30.0;
+/// The most characters of a document's name a tab shows.
+const TITLE_CHARS: usize = 24;
+/// What follows the name of a document with unsaved changes.
+const DIRTY_MARK: &str = " •";
+
+/// `title` as a tab shows it: a name longer than [`TITLE_CHARS`] is cut
+/// short with "…" (keeping the unsaved-changes mark).
+pub fn short_title(title: &str) -> String {
+    let (name, mark) = match title.strip_suffix(DIRTY_MARK) {
+        Some(name) => (name, DIRTY_MARK),
+        None => (title, ""),
+    };
+    match name.char_indices().nth(TITLE_CHARS) {
+        Some((end, _)) => format!("{}…{mark}", name[..end].trim_end()),
+        None => title.to_owned(),
+    }
+}
 
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
@@ -38,16 +55,20 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
 fn tab_chip(ui: &mut egui::Ui, app: &mut ReasonCraftApp, i: usize) {
     let tk = app.tokens;
     let title = app.tabs[i].title();
+    let shown = short_title(&title);
     let active = i == app.active;
     let font = FontId::proportional(13.0);
     let text_w = ui
         .painter()
-        .layout_no_wrap(title.clone(), font.clone(), tk.box_text)
+        .layout_no_wrap(shown.clone(), font.clone(), tk.box_text)
         .size()
         .x;
     let width = (text_w + 52.0).clamp(120.0, 240.0);
-    let (rect, resp) = ui.allocate_exact_size(Vec2::new(width, HEIGHT - 4.0), Sense::click());
+    let (rect, mut resp) = ui.allocate_exact_size(Vec2::new(width, HEIGHT - 4.0), Sense::click());
     resp.widget_info(|| WidgetInfo::selected(Role::Tab, true, active, &title));
+    if shown != title {
+        resp = resp.on_hover_text(&title);
+    }
 
     let fill = if active {
         tk.ribbon
@@ -67,7 +88,7 @@ fn tab_chip(ui: &mut egui::Ui, app: &mut ReasonCraftApp, i: usize) {
     ui.painter().text(
         rect.left_center() + Vec2::new(12.0, 0.0),
         Align2::LEFT_CENTER,
-        &title,
+        &shown,
         font,
         colour,
     );

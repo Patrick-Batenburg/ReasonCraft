@@ -7,9 +7,13 @@
 //! the tab and no text field has focus; with a snippet's text field
 //! focused, Ctrl+V pastes into that snippet as usual.
 
-use eframe::egui::{Event, Id, Rect, RichText, ScrollArea, Stroke, Ui, ViewportCommand};
-use reasoncraft_core::Uuid;
+use eframe::egui::{
+    Context, Event, FontId, Id, LayerId, Order, Pos2, Rect, RichText, ScrollArea, Stroke,
+    StrokeKind, Ui, ViewportCommand, vec2,
+};
+use reasoncraft_core::{Snippet, Uuid};
 
+use super::drag_chip::excerpt;
 use super::snippet_card::{self, Card};
 use crate::actions::Action;
 use crate::canvas::input::{Os, paste_shortcut, shortcut_text};
@@ -55,7 +59,7 @@ pub fn show(
                 cards.push((snippet.id, card));
                 ui.add_space(6.0);
             }
-            reorder(ui, &cards, tk, out);
+            reorder(ui, &tab.doc.snippets, &cards, tk, out);
         });
 }
 
@@ -115,9 +119,16 @@ fn paste_as_snippet(ui: &mut Ui, area: Rect, out: &mut Vec<Action>) {
     }
 }
 
-/// While a card's handle is dragged, mark where it would land; on release,
-/// move it there. The place counts the other cards above the pointer.
-fn reorder(ui: &Ui, cards: &[(Uuid, Card)], tk: &Tokens, out: &mut Vec<Action>) {
+/// While a card's handle is dragged, show a ghost of it at the pointer and
+/// mark where it would land; on release, move it there. The place counts
+/// the other cards above the pointer.
+fn reorder(
+    ui: &Ui,
+    snippets: &[Snippet],
+    cards: &[(Uuid, Card)],
+    tk: &Tokens,
+    out: &mut Vec<Action>,
+) {
     let Some((dragged, card)) = cards
         .iter()
         .find(|(_, c)| !c.to_map && (c.handle.dragged() || c.handle.drag_stopped()))
@@ -140,6 +151,10 @@ fn reorder(ui: &Ui, cards: &[(Uuid, Card)], tk: &Tokens, out: &mut Vec<Action>) 
         });
         return;
     }
+    if let Some(snippet) = snippets.iter().find(|s| s.id == *dragged) {
+        let width = card.rect.width().min(GHOST_MAX_W);
+        paint_ghost(ui.ctx(), &snippet.text, pointer, width, tk);
+    }
     let y = match (index.checked_sub(1).map(|i| others[i]), others.get(index)) {
         (Some(above), Some(below)) => (above.bottom() + below.top()) / 2.0,
         (Some(above), None) => above.bottom() + 3.0,
@@ -148,4 +163,28 @@ fn reorder(ui: &Ui, cards: &[(Uuid, Card)], tk: &Tokens, out: &mut Vec<Action>) 
     };
     let x = card.rect.x_range();
     ui.painter().hline(x, y, Stroke::new(2.5, tk.accent));
+}
+
+/// The widest a dragged card's ghost gets, in px.
+const GHOST_MAX_W: f32 = 240.0;
+const GHOST_PAD: f32 = 8.0;
+
+/// A dragged snippet's ghost: a card at most `width` wide with the start of
+/// its `text`, just below and right of `pointer`, above everything else.
+fn paint_ghost(ctx: &Context, text: &str, pointer: Pos2, width: f32, tk: &Tokens) {
+    let painter = ctx.layer_painter(LayerId::new(Order::Tooltip, Id::unique("snippet_ghost")));
+    let wrap = (width - 2.0 * GHOST_PAD).max(40.0);
+    let galley = painter.layout(excerpt(text), FontId::proportional(13.0), tk.box_text, wrap);
+    let size = galley.size() + vec2(2.0, 2.0) * GHOST_PAD;
+    let rect = Rect::from_min_size(pointer + vec2(14.0, 12.0), size);
+    let shadow = ctx.global_style().visuals.popup_shadow;
+    painter.add(shadow.as_shape(rect, 6.0));
+    painter.rect(
+        rect,
+        6.0,
+        tk.panel,
+        Stroke::new(1.5, tk.accent),
+        StrokeKind::Outside,
+    );
+    painter.galley(rect.min + vec2(GHOST_PAD, GHOST_PAD), galley, tk.box_text);
 }

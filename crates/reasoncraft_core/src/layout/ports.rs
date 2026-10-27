@@ -14,13 +14,18 @@
 //! Bottom-up, a card's label band lies beyond its premises' far edges, so
 //! premise ports sit on the frame's far edge instead and lines stay clear
 //! of the label.
+//!
+//! When an edge is too short for its ports `port_spacing` apart, the ports
+//! are squeezed together about the edge centre and the stubs fan out: each
+//! stub still ends at its port but approaches at an angle, from where the
+//! port would be at full spacing, so the arrowheads spread apart.
 
 use std::collections::HashMap;
 
-use emath::{Pos2, Rect};
+use emath::{Pos2, Rect, Vec2};
 use indexmap::IndexMap;
 
-use crate::connector::Strength;
+use crate::connector::{STUB_PX, Strength};
 
 use super::axis::Frame;
 use super::{Connector, ConnectorKind, Layout, LayoutParams, TargetKind};
@@ -93,7 +98,10 @@ pub(super) fn assign(
         PortKey::Box(id) => card_of.get(&id).map_or(key, |&c| PortKey::Whole(c)),
         PortKey::Whole(_) => key,
     };
-    let mut ports: Vec<Option<Pos2>> = vec![None; pending.len()];
+    let toward = frame.dir.toward_parent();
+    // The world direction of growing cross coordinates.
+    let cross_axis = frame.point(1.0, 0.0) - frame.point(0.0, 0.0);
+    let mut ports: Vec<Option<(Pos2, Vec2)>> = vec![None; pending.len()];
     for (key, mut members) in groups {
         let Some(parent) = rect_of(key) else {
             continue;
@@ -102,19 +110,23 @@ pub(super) fn assign(
         members.sort_by(|&a, &b| cross_of(a).total_cmp(&cross_of(b)));
         let (lo, hi) = frame.cross_range(*parent);
         let spots = spread((lo + hi) * 0.5, hi - lo, members.len(), p);
-        for (&i, at) in members.iter().zip(spots) {
+        for (&i, (at, full)) in members.iter().zip(spots) {
             let edge = rect_of(edge_of(pending[i].port)).map(|r| frame.main_range(*r).1);
-            ports[i] = edge.map(|main| frame.point(at, main));
+            // A stub STUB_PX long starts across from `full`.
+            let approach = toward + cross_axis * ((at - full) / STUB_PX);
+            ports[i] = edge.map(|main| (frame.point(at, main), approach));
         }
     }
     pending
         .into_iter()
         .zip(ports)
-        .filter_map(|(c, to)| {
+        .filter_map(|(c, port)| {
+            let (to, approach) = port?;
             Some(Connector {
                 child: c.child,
                 from: c.from,
-                to: to?,
+                to,
+                approach,
                 kind: c.kind,
                 strength: c.strength,
                 nil: c.nil,
@@ -129,14 +141,19 @@ pub(super) fn assign(
 }
 
 /// Cross positions of `n` ports centred on `centre`, `port_spacing` apart
-/// but squeezed to fit within `width - 2 * port_margin`.
-fn spread(centre: f32, width: f32, n: usize, p: &LayoutParams) -> impl Iterator<Item = f32> {
+/// but squeezed to fit within `width - 2 * port_margin`, each with where it
+/// would be at full spacing (the same unless squeezed).
+fn spread(centre: f32, width: f32, n: usize, p: &LayoutParams) -> impl Iterator<Item = (f32, f32)> {
     let steps = n.saturating_sub(1) as f32;
     let room = (width - 2.0 * p.port_margin).max(0.0);
-    let span = (steps * p.port_spacing).min(room);
+    let full = steps * p.port_spacing;
+    let span = full.min(room);
     let step = if steps > 0.0 { span / steps } else { 0.0 };
-    let first = centre - span * 0.5;
-    (0..n).map(move |i| first + i as f32 * step)
+    let (first, first_full) = (centre - span * 0.5, centre - full * 0.5);
+    (0..n).map(move |i| {
+        let i = i as f32;
+        (first + i * step, first_full + i * p.port_spacing)
+    })
 }
 
 /// The premise of `card` whose rect spans the frame's cross centre, if any.

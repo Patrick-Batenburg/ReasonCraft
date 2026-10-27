@@ -250,4 +250,6 @@ impl Shape {
 #[cfg(test)]
 mod connector_tests;
 #[cfg(test)]
+mod fan_tests;
+#[cfg(test)]
 mod tests;

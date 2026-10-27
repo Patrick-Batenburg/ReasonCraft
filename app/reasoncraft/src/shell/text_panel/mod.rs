@@ -27,8 +27,8 @@ use crate::spell::SpellFields;
 use crate::theme::Tokens;
 
 const STRIP_H: f32 = 28.0;
-/// Room around each tab label; with the panel's minimum width the four
-/// tabs fit on one line (longer labels wrap).
+/// Room around each tab label; at its default width the panel fits the
+/// four tabs on one line (narrower, they wrap).
 const TAB_PAD: f32 = 14.0;
 
 const TABS: [(TextTab, &str); 4] = [

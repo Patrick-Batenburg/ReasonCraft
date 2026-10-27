@@ -45,13 +45,24 @@ fn panel_item(h: &H, label: &str) -> egui::Pos2 {
     h.get_by_label(&name).rect().center()
 }
 
+/// The pointer's way from `from` to `to` over up to eight frames, never
+/// stopping near the map's edge, where a drag scrolls the map.
+fn glide(h: &H, from: egui::Pos2, to: egui::Pos2) -> Vec<egui::Pos2> {
+    let view = h.state().tabs[0].viewport.expect("the map shows");
+    let inner = view.shrink(reasoncraft::canvas::drag::EDGE_PX);
+    (1..=8)
+        .map(|i| from.lerp(to, i as f32 / 8.0))
+        .filter(|p| !view.contains(*p) || inner.contains(*p))
+        .collect()
+}
+
 /// Press at `from`, move to `to` over several frames, release.
 fn drag(h: &mut H, from: egui::Pos2, to: egui::Pos2) {
     h.event(egui::Event::PointerMoved(from));
     h.drag_at(from);
     h.run();
-    for i in 1..=8 {
-        h.event(egui::Event::PointerMoved(from.lerp(to, i as f32 / 8.0)));
+    for at in glide(h, from, to) {
+        h.event(egui::Event::PointerMoved(at));
         h.run();
     }
     h.drop_at(to);
@@ -103,8 +114,8 @@ fn refused_panel_drop_changes_nothing() {
     h.event(egui::Event::PointerMoved(from));
     h.drag_at(from);
     h.run();
-    for i in 1..=8 {
-        h.event(egui::Event::PointerMoved(from.lerp(to, i as f32 / 8.0)));
+    for at in glide(&h, from, to) {
+        h.event(egui::Event::PointerMoved(at));
         h.run();
     }
     assert_eq!(
@@ -221,8 +232,8 @@ fn drop_web_on(h: &mut H, p: reasoncraft_core::NodeId, to: egui::Pos2) -> usize 
     h.event(egui::Event::PointerMoved(from));
     h.drag_at(from);
     h.run();
-    for i in 1..=8 {
-        h.event(egui::Event::PointerMoved(from.lerp(to, i as f32 / 8.0)));
+    for at in glide(h, from, to) {
+        h.event(egui::Event::PointerMoved(at));
         h.run();
     }
     // Still editing while the item hovers over the box.
@@ -269,4 +280,62 @@ fn panel_drop_onto_a_comment_badge() {
 
     let to = screen(&h, world);
     assert_eq!(drop_web_on(&mut h, p, to), 1);
+}
+
+/// Hold the pointer at `at` for `frames` frames (a button is down); the
+/// camera's pan over them.
+fn hold(h: &mut H, at: egui::Pos2, frames: usize) -> egui::Vec2 {
+    let start = h.state().tabs[0].camera.offset;
+    for _ in 0..frames {
+        h.event(egui::Event::PointerMoved(at));
+        h.step();
+    }
+    h.state().tabs[0].camera.offset - start
+}
+
+#[test]
+fn drag_autoscrolls_near_edge() {
+    let mut doc = Document::new("Claim");
+    let (_, premise) = doc
+        .add_card(Parent::Box(doc.root), CardKind::Reason, "Reason")
+        .unwrap();
+    let mut app = ReasonCraftApp::new_for_test();
+    app.tabs[0] = reasoncraft::doc_tab::DocTab::from_document(doc);
+    let dt = 1.0 / 60.0;
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1400.0, 900.0))
+        .with_step_dt(dt)
+        .with_max_steps(32)
+        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
+    h.run();
+    let view = h.state().tabs[0].viewport.unwrap();
+    let per_frame = 600.0 * dt;
+    let near = |d: f32, want: f32| (d - want).abs() <= 0.5 + want.abs() * 0.05;
+
+    // A box dragged to within 32 px of the right edge: the map scrolls
+    // left at 600 px/s, and stops away from the edge.
+    let from = screen(&h, layout_of(&h).boxes[&premise].center());
+    h.event(egui::Event::PointerMoved(from));
+    h.drag_at(from);
+    h.step();
+    let mid = view.center();
+    hold(&mut h, mid, 3);
+    assert_eq!(hold(&mut h, mid, 5), egui::Vec2::ZERO, "no scroll mid-view");
+    let edge = egui::pos2(view.right() - 20.0, mid.y);
+    let pan = hold(&mut h, edge, 10);
+    assert!(near(pan.x, -10.0 * per_frame) && pan.y == 0.0, "{pan:?}");
+    h.drop_at(edge);
+    h.run();
+
+    // A building-panel item held within 32 px of the bottom edge.
+    let from = panel_item(&h, &t("action.add_note"));
+    h.event(egui::Event::PointerMoved(from));
+    h.drag_at(from);
+    h.step();
+    hold(&mut h, mid, 3);
+    let edge = egui::pos2(mid.x, view.bottom() - 10.0);
+    let pan = hold(&mut h, edge, 10);
+    assert!(near(pan.y, -10.0 * per_frame) && pan.x == 0.0, "{pan:?}");
+    h.drop_at(mid);
+    h.run();
 }

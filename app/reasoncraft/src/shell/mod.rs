@@ -102,6 +102,10 @@ pub fn tab_button(
     resp
 }
 
+/// The narrowest a side panel gets, in px; dragged narrower, it collapses
+/// to its toggle.
+pub const PANEL_MIN_WIDTH: f32 = 220.0;
+
 /// Building panel (left) and Text panel (right).
 /// Hidden while the backstage is open.
 pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
@@ -115,6 +119,7 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let building = egui::Panel::left("building_panel")
         .frame(frame)
         .default_size(220.0)
+        .min_size(PANEL_MIN_WIDTH)
         .show_collapsible(ui, &mut app.left_panel, |ui| {
             building::show(ui, tab, &tk, &mut out);
         });
@@ -124,7 +129,7 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let text = egui::Panel::right("text_panel")
         .frame(frame)
         .default_size(300.0)
-        .min_size(290.0)
+        .min_size(PANEL_MIN_WIDTH)
         .show_collapsible(ui, &mut app.right_panel, |ui| {
             spelling_panel::show(ui, tab, &mut app.spell, &tk, &mut out);
             let lang = tab.doc.meta.language.clone();

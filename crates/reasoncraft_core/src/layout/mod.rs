@@ -119,6 +119,12 @@ pub struct Connector {
     pub from: Pos2,
     /// The parent port.
     pub to: Pos2,
+    /// The direction the stub runs in toward the port, scaled so that its
+    /// component along `dir.toward_parent()` is 1: a stub `s` long along
+    /// the main axis starts at `to - approach * s`. It is
+    /// `dir.toward_parent()` unless the port's edge is too short for its
+    /// ports, when the stubs fan out (see `ports`).
+    pub approach: Vec2,
     pub kind: ConnectorKind,
     pub target: TargetKind,
     /// Evaluated strength of a card's connector; `Normal` for other items.

@@ -87,7 +87,7 @@ pub struct ReasonCraftApp {
     /// The export or page setup dialog, when open.
     pub export_dialog: Option<ExportDialog>,
     /// Where the panes are this frame, and an F6 move asked for.
-    pub(crate) panes: shell::panes::Panes,
+    pub panes: shell::panes::Panes,
     /// The context exports measure text in (at the display's pixels per
     /// point, so they match the screen at 100 % but not the UI scale), and
     /// its cache.

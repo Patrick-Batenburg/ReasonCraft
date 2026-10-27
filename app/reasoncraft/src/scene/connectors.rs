@@ -16,7 +16,7 @@ use crate::theme::Tokens;
 
 /// Opposes/rebuts end bar: length and thickness in screen px.
 const BAR_PX: f32 = 11.0;
-const BAR_THICKNESS: f32 = 2.4;
+pub(super) const BAR_THICKNESS: f32 = 2.4;
 
 fn connector_colour(t: &Tokens, kind: ConnectorKind) -> Color32 {
     match kind {
@@ -40,7 +40,7 @@ impl Builder<'_> {
         }
         let ends: Vec<_> = connectors
             .iter()
-            .map(|c| (c.from, c.to, self.stub_len(c)))
+            .map(|c| (c.from, self.stub_start(c), 0.0))
             .collect();
         elbow_turns(&ends, first.dir)
     }
@@ -60,37 +60,34 @@ impl Builder<'_> {
         let strength = connector_strength(c.strength, self.opts.eval_shading);
         let zoom = self.opts.zoom;
         let toward = c.dir.toward_parent();
-        let stub = self.stub_len(c);
+        let start = self.stub_start(c);
         let marker = end_marker(c.kind);
         let style = self.opts.connector_style;
         if style == ConnectorStyle::Tapered {
             // The band ends at the stub, which is a line as wide as the
             // band's narrow end.
             let (w_child, w_parent) = tapered_widths(c.kind, strength, zoom);
-            let (left, right) = tapered_band(c.from, c.to, stub, w_child, w_parent, c.dir);
+            let (left, right) = tapered_band(c.from, start, 0.0, w_child, w_parent, c.dir);
             self.shapes.push(Shape::Strip {
                 left,
                 right,
                 fill: colour,
             });
-            let start = c.to - toward * stub;
             self.stub(start, c.to, toward, (w_child, colour), marker);
             return;
         }
         let stroke = (line_width(c.kind, strength, zoom), colour);
+        // The path to the stub start, then the stub (which may run at an
+        // angle when its port's stubs fan out).
         let mut path = match style {
             ConnectorStyle::Elbow => {
                 let mid = |p: Pos2| p.to_vec2().dot(toward.abs());
-                let start = c.to - toward * stub;
                 let turn = turn.unwrap_or((mid(c.from) + mid(start)) / 2.0);
-                elbow_path_at(c.from, c.to, stub, ELBOW_RADIUS, turn, c.dir)
+                elbow_path_at(c.from, start, 0.0, ELBOW_RADIUS, turn, c.dir)
             }
-            _ => curved_path(c.from, c.to, stub, c.dir),
+            _ => curved_path(c.from, start, 0.0, c.dir),
         };
-        // Every path ends in its stub (a straight elbow is all stub).
-        let Some(Segment::Line([a, b])) = path.pop() else {
-            return;
-        };
+        path.retain(|seg| !matches!(seg, Segment::Line([a, b]) if (*b - *a).length() < 1e-4));
         if !path.is_empty() {
             let mut points = vec![PathEl::MoveTo(c.from)];
             points.extend(path.into_iter().map(|seg| match seg {
@@ -104,7 +101,13 @@ impl Builder<'_> {
                 dashed: false,
             });
         }
-        self.stub(a, b, toward, stroke, marker);
+        self.stub(start, c.to, toward, stroke, marker);
+    }
+
+    /// Where `c`'s stub starts: [`Self::stub_len`] back from the port along
+    /// the main axis, along `c.approach`.
+    fn stub_start(&self, c: &Connector) -> Pos2 {
+        c.to - c.approach * self.stub_len(c)
     }
 
     /// The length of `c`'s stub: a full one when there is room, otherwise

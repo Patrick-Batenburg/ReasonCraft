@@ -2,6 +2,9 @@
 //! the view: the others are placed from their cached heights (see
 //! [`RowHeights`]), so a large map scrolls smoothly.
 //!
+//! When rows above the view are measured at heights other than assumed,
+//! the list scrolls by the difference, so what is in view stays put.
+//!
 //! The keyboard still reaches every row: the row holding the keyboard
 //! focus stays laid out wherever it is, with its neighbours, so Tab and
 //! Shift+Tab go on to the next row; and when the focus moves to a row,
@@ -55,46 +58,66 @@ where
         .filter(|_| focus.is_some())
         .and_then(|(key, _)| keys.iter().position(|k| k == key));
     let keep = focus_at.map(|i| i.saturating_sub(FOCUS_REACH)..=i + FOCUS_REACH);
-    ScrollArea::vertical()
-        .auto_shrink([false, false])
-        .show_viewport(ui, |ui, viewport| {
-            let area = ui.max_rect();
-            heights.start_frame(revision, area.width());
-            let gap = ui.spacing().item_spacing.y;
-            let screen = viewport.height();
-            let near = (viewport.top() - screen)..=(viewport.bottom() + screen);
-            let mut focused_rect = None;
-            let mut y = 0.0;
-            for (i, key) in keys.iter().enumerate() {
-                let known = heights.get(key).unwrap_or(estimate);
-                let in_view = y + known >= *near.start() && y <= *near.end();
-                let height = if in_view || keep.as_ref().is_some_and(|k| k.contains(&i)) {
-                    let top = area.top() + y;
-                    let rect = Rect::from_x_y_ranges(area.x_range(), top..=top + known.max(1.0));
-                    let builder = UiBuilder::new().max_rect(rect).id_salt(key);
-                    let had_focus = focus.is_some_and(|id| shown(ui, id));
-                    let height = ui
-                        .scope_builder(builder, |ui| draw(ui, i))
-                        .response
-                        .rect
-                        .height();
-                    if let Some(id) = focus.filter(|&id| !had_focus && shown(ui, id)) {
-                        heights.focus = Some((key.clone(), id));
-                        focused_rect = ui.ctx().read_response(id).map(|r| r.rect);
-                    }
-                    heights.measured(key.clone(), height);
-                    height
-                } else {
-                    known
-                };
-                y += height + gap;
-            }
-            ui.set_min_height((y - gap).max(0.0));
-            // The focus came to a row of this list (Tab, or a click):
-            // show it.
-            let moved = last.map(|(_, id)| id) != heights.focus.as_ref().map(|(_, id)| *id);
-            if let Some(rect) = focused_rect.filter(|_| moved) {
-                ui.scroll_to_rect(rect, None);
-            }
-        });
+    let mut area = ScrollArea::vertical().auto_shrink([false, false]);
+    if let Some(y) = heights.scroll_to.take() {
+        area = area.vertical_scroll_offset(y);
+    }
+    let out = area.show_viewport(ui, |ui, viewport| {
+        let area = ui.max_rect();
+        heights.start_frame(revision, area.width());
+        let gap = ui.spacing().item_spacing.y;
+        let screen = viewport.height();
+        let near = (viewport.top() - screen)..=(viewport.bottom() + screen);
+        let mut focused_rect = None;
+        let mut y = 0.0;
+        // How much the rows wholly above the view grew when measured.
+        let mut shift = 0.0;
+        for (i, key) in keys.iter().enumerate() {
+            let known = heights.get(key).unwrap_or(estimate);
+            let in_view = y + known >= *near.start() && y <= *near.end();
+            let height = if in_view || keep.as_ref().is_some_and(|k| k.contains(&i)) {
+                let top = area.top() + y;
+                let rect = Rect::from_x_y_ranges(area.x_range(), top..=top + known.max(1.0));
+                let builder = UiBuilder::new().max_rect(rect).id_salt(key);
+                let had_focus = focus.is_some_and(|id| shown(ui, id));
+                let height = ui
+                    .scope_builder(builder, |ui| draw(ui, i))
+                    .response
+                    .rect
+                    .height();
+                if let Some(id) = focus.filter(|&id| !had_focus && shown(ui, id)) {
+                    heights.focus = Some((key.clone(), id));
+                    focused_rect = ui.ctx().read_response(id).map(|r| r.rect);
+                }
+                heights.measured(key.clone(), height);
+                if y + known <= viewport.top() + shift {
+                    shift += height - known;
+                }
+                height
+            } else {
+                known
+            };
+            y += height + gap;
+        }
+        ui.set_min_height((y - gap).max(0.0));
+
+        // The focus came to a row of this list (Tab, or a click):
+        // show it.
+        let moved = last.map(|(_, id)| id) != heights.focus.as_ref().map(|(_, id)| *id);
+        if let Some(rect) = focused_rect.filter(|_| moved) {
+            ui.scroll_to_rect(rect, None);
+        }
+        shift
+    });
+    if out.inner.abs() > 0.1 {
+        // Scroll along with the rows, and lay out this frame again so it
+        // never shows them moved.
+        heights.scroll_to = Some(out.state.unclamped_offset().y + out.inner);
+        ui.ctx()
+            .request_discard("virtual rows measured above the view");
+    }
 }
+
+#[cfg(test)]
+#[path = "virtual_rows_tests.rs"]
+mod tests;
