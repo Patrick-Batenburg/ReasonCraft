@@ -5,8 +5,11 @@ Its configuration is `[package.metadata.packager]` in `app/reasoncraft/Cargo.tom
 Each platform's installers are built on that platform.
 
 ```sh
-cargo install cargo-packager --locked
+cargo install cargo-packager --version 0.11.8 --locked
 ```
+
+The version is pinned in this file, in `.github/workflows/release.yml` and in `packaging/linux/Dockerfile`.
+The Windows installer's NSIS script is vendored from this version (see below), so bumping it means re-vendoring `packaging/windows/installer.nsi` from the new version's template, with the marked changes, and changing all three places together.
 
 ## App icon
 
@@ -39,7 +42,7 @@ The installer:
 
 The NSIS script is cargo-packager's own template, kept as `packaging/windows/installer.nsi` with a few marked changes:
 the ProgID is `<product>.<ext>`; the uninstaller removes the file association (the upstream template never does), also after a reinstall, and the publisher and product registry keys; the exe path in the association is quoted; the per-user install goes under `Programs`; and the ApplicationID plugin is not used.
-When you upgrade cargo-packager, compare that file with the upstream template.
+It is vendored from cargo-packager 0.11.8: when you upgrade cargo-packager, re-vendor it from the new version's template and carry the marked changes over.
 The installer uses zlib compression, whose decompressor is under the zlib licence.
 
 ### Checking the installer in the test VM

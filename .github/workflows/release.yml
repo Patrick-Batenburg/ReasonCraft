@@ -50,7 +50,7 @@ jobs:
             libxcb-shape0-dev libxcb-xfixes0-dev libssl-dev
 
       - name: Install cargo-packager
-        run: cargo install cargo-packager --locked
+        run: cargo install cargo-packager --version 0.11.8 --locked
 
       # The AppImage tools run without FUSE when they unpack themselves.
       - name: Build the installers

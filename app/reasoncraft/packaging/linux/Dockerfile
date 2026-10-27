@@ -21,6 +21,6 @@ COPY rust-toolchain.toml /tmp/toolchain/
 RUN cd /tmp/toolchain && rustup toolchain install \
     && rm -rf /tmp/toolchain
 
-RUN cargo install cargo-packager --locked
+RUN cargo install cargo-packager --version 0.11.8 --locked
 
 WORKDIR /src
