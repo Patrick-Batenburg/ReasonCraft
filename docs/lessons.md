@@ -13,3 +13,6 @@ Patterns learned from corrections during this project. Review at session start.
 
 ## Agent safety
 - **Never inject OS-level keyboard/mouse input (SendKeys, SendInput, xdotool) into the desktop for manual checks.** Focus can change to another application and keystrokes land there. Drive the app through kittests, debug-only scenario loaders, or `--scenario` style startup flags; screenshots of the app window are fine.
+
+## Build machine
+- **Always run workspace builds and tests with `-j 4`.** Linking ~30 app test binaries in parallel with MSVC `link.exe` (~2.7 GB each) once exhausted the machine's memory.

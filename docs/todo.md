@@ -1,8 +1,8 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** [docs/plans/2026-10-27-step6-release-readiness.md](plans/2026-10-27-step6-release-readiness.md) — step 6, release readiness
-**Merged:** steps 1–5 (step 6 is complete on branch `step6-release-readiness`)
+**Active plan:** none — steps 1–6 merged; see "Carry-over after step 6"
+**Merged:** steps 1–6 (step 6 is complete on branch `step6-release-readiness`)
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
 ## Step 1 — Core editor
