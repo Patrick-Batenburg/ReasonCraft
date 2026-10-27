@@ -58,7 +58,9 @@ pub(in crate::canvas) fn show(
     spell: &mut SpellFields,
     pending: &mut Vec<Action>,
 ) {
+    let focused_for = tab.widget_id("comment_popover_focused_for");
     let Some(node) = tab.comments_open else {
+        ui.ctx().data_mut(|d| d.remove::<NodeId>(focused_for));
         return;
     };
     let (Some(&world), Some(data)) = (layout.boxes.get(&node), tab.doc.boxes.get(&node)) else {
@@ -92,6 +94,10 @@ pub(in crate::canvas) fn show(
     let draft_id = tab.widget_id(("comment_draft", node));
     let field_id = tab.widget_id(("comment_field", node));
     let mut draft: Draft = ctx.data(|d| d.get_temp(draft_id)).unwrap_or_default();
+    // Just opened (by the ribbon, the badge or Ctrl+Shift+M): the field
+    // takes the keyboard, so typing writes the comment.
+    let focus = ctx.data(|d| d.get_temp::<NodeId>(focused_for)) != Some(node);
+    ctx.data_mut(|d| d.insert_temp(focused_for, node));
 
     Area::new(id)
         .order(Order::Foreground)
@@ -112,6 +118,7 @@ pub(in crate::canvas) fn show(
                         id: field_id,
                         draft: &mut draft,
                         spell,
+                        focus,
                     };
                     contents(ui, node, &data.comments, field, tk, pending);
                 });
@@ -119,11 +126,13 @@ pub(in crate::canvas) fn show(
     ctx.data_mut(|d| d.insert_temp(draft_id, draft));
 }
 
-/// The popover's comment field: its id, what is typed and the underlines.
+/// The popover's comment field: its id, what is typed, the underlines and
+/// whether it takes the keyboard focus now.
 struct Field<'a, 'b> {
     id: Id,
     draft: &'a mut Draft,
     spell: &'a mut SpellFields<'b>,
+    focus: bool,
 }
 
 fn contents(
@@ -138,6 +147,7 @@ fn contents(
         id: field_id,
         draft,
         spell,
+        focus,
     } = field;
     ui.horizontal(|ui| {
         ui.label(
@@ -183,6 +193,9 @@ fn contents(
             .desired_rows(3)
             .desired_width(f32::INFINITY),
     );
+    if focus {
+        field.request_focus();
+    }
     // Named by its hint, which shows only while it is empty.
     crate::a11y::labelled(field, t("comment.hint"));
     ui.horizontal_wrapped(|ui| {

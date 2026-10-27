@@ -174,3 +174,28 @@ fn long_paste_is_cut_with_notice() {
     assert_eq!(text.chars().count(), 50_000);
     assert_eq!(h.state().status_note, Some(t("status.text_cut")));
 }
+
+/// Opening the popover (here with Ctrl+Shift+M) puts the keyboard in its
+/// field: what is typed next is the comment, not new text for the box.
+#[test]
+fn opened_popover_takes_the_typing() {
+    use reasoncraft_core::{Document, Item};
+    let doc = Document::new("Claim");
+    let root = doc.root;
+    let mut h = harness_with(doc);
+    h.state_mut().tabs[0].selection = Some(Item::Box(root));
+    h.run();
+    let mods = egui::Modifiers::COMMAND | egui::Modifiers::SHIFT;
+    h.key_press_modifiers(mods, egui::Key::M);
+    h.run();
+    assert_eq!(h.state().tabs[0].comments_open, Some(root));
+    type_text(&mut h, "Check this");
+    let tab = &h.state().tabs[0];
+    assert_eq!(tab.doc.boxes[&root].text, "Claim", "box text untouched");
+    assert!(tab.editing().is_none(), "the box is not being edited");
+    h.get_by_label(&t("comment.add")).click();
+    h.run();
+    let comments = &h.state().tabs[0].doc.boxes[&root].comments;
+    assert_eq!(comments.len(), 1);
+    assert_eq!(comments[0].text, "Check this");
+}
