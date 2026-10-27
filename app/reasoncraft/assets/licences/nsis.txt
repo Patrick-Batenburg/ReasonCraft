@@ -5,8 +5,8 @@ NSIS
 Copyright (C) 1999-2023 Contributors
 
 NSIS, including the installer code it puts into every installer and its
-zlib decompressor (zlib: Copyright (C) 1995-2005 Jean-loup Gailly and Mark
-Adler), is licensed under the zlib/libpng licence:
+zlib decompressor (zlib: see the NSIS source distribution), is licensed
+under the zlib/libpng licence:
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -33,9 +33,13 @@ installer uses the nsis_tauri_utils plugin
 (https://github.com/tauri-apps/nsis-tauri-utils). Both are licensed under
 MIT OR Apache-2.0; ReasonCraft uses them under the MIT licence:
 
-Copyright (c) 2023 CrabNebula Ltd. (cargo-packager)
-Copyright (c) 2017 - Present Tauri Programme within The Commons
-Conservancy (nsis_tauri_utils)
+cargo-packager:
+Copyright (c) 2023 - Present CrabNebula Ltd.
+Copyright (c) 2019 - 2023 Tauri Programme within The Commons Conservancy
+Copyright (c) 2017 - 2019 Cargo-Bundle developers
+
+nsis_tauri_utils: by the Tauri Programme within The Commons Conservancy;
+see https://github.com/tauri-apps/nsis-tauri-utils.
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the

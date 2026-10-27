@@ -47,7 +47,7 @@ pub const BUNDLED: [(&str, &str); 7] = [
 pub const CRATES: &str = include_str!("../../../assets/licences/crates.txt");
 
 /// The line that opens each licence text in [`CRATES`].
-const RULE: &str = "\n========================================================================\n";
+const RULE: &str = "========================================================================";
 
 /// One licence text of [`CRATES`]: its name, the crates under it, and the
 /// whole entry as written (name, crates and text).
@@ -59,24 +59,43 @@ pub struct CrateLicence {
 
 /// [`CRATES`] split into its licence texts, once.
 pub fn crate_licences() -> &'static [CrateLicence] {
-    static SPLIT: LazyLock<Vec<CrateLicence>> = LazyLock::new(|| {
-        CRATES
-            .split(RULE)
-            .skip(1)
-            .map(|entry| {
-                let mut lines = entry.lines();
-                let name = lines.next().unwrap_or_default();
-                let used_by = lines.next().unwrap_or_default();
-                let used_by = used_by.strip_prefix("Used by: ").unwrap_or(used_by);
-                CrateLicence {
-                    name,
-                    used_by,
-                    entry,
-                }
-            })
-            .collect()
-    });
+    static SPLIT: LazyLock<Vec<CrateLicence>> = LazyLock::new(|| split_crates(CRATES));
     &SPLIT
+}
+
+/// `text` split into its licence texts, each opened by a [`RULE`] line.
+/// Lines may end in `\n` or `\r\n` (a checkout that converts line endings).
+fn split_crates(text: &'static str) -> Vec<CrateLicence> {
+    // Where each rule line starts, and where the line after it starts.
+    let mut rules = Vec::new();
+    let mut at = 0;
+    for line in text.split_inclusive('\n') {
+        if line.trim_end_matches(['\r', '\n']) == RULE {
+            rules.push((at, at + line.len()));
+        }
+        at += line.len();
+    }
+    let ends = rules
+        .iter()
+        .skip(1)
+        .map(|&(rule, _)| rule)
+        .chain([text.len()]);
+    rules
+        .iter()
+        .zip(ends)
+        .map(|(&(_, start), end)| {
+            let entry = &text[start..end];
+            let mut lines = entry.lines();
+            let name = lines.next().unwrap_or_default();
+            let used_by = lines.next().unwrap_or_default();
+            let used_by = used_by.strip_prefix("Used by: ").unwrap_or(used_by);
+            CrateLicence {
+                name,
+                used_by,
+                entry,
+            }
+        })
+        .collect()
 }
 
 /// The section: a heading, a hint, and one closed header per licence.
@@ -161,6 +180,28 @@ mod tests {
                 .iter()
                 .any(|c| c.name == "Mozilla Public License 2.0")
         );
+    }
+
+    #[test]
+    fn crate_notices_split_with_either_line_ending() {
+        let lf = format!(
+            "Intro\n\n{RULE}\nMIT License\nUsed by: a 1.0, b 2.0\n\nText one\n\n\
+             {RULE}\nISC License\nUsed by: c 3.0\n\nText two\n"
+        );
+        let crlf = lf.replace('\n', "\r\n");
+        for text in [lf, crlf] {
+            let text: &'static str = Box::leak(text.into_boxed_str());
+            let split = split_crates(text);
+            assert_eq!(split.len(), 2, "{text:?}");
+            let first = (split[0].name, split[0].used_by);
+            assert_eq!(first, ("MIT License", "a 1.0, b 2.0"));
+            assert_eq!((split[1].name, split[1].used_by), ("ISC License", "c 3.0"));
+            assert!(split[0].entry.contains("Text one") && !split[0].entry.contains("ISC"));
+            assert!(split[1].entry.trim_end().ends_with("Text two"));
+        }
+        // The real file with converted line endings gives every entry.
+        let converted: &'static str = Box::leak(CRATES.replace('\n', "\r\n").into_boxed_str());
+        assert_eq!(split_crates(converted).len(), crate_licences().len());
     }
 
     #[test]

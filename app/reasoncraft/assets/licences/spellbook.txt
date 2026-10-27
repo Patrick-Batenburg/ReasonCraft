@@ -1,5 +1,5 @@
 spellbook 0.4.2
-Copyright Michael Davis and the spellbook contributors.
+spellbook by Michael Davis.
 
 ReasonCraft's spell checking uses spellbook, a Hunspell-compatible spell
 checker written in Rust, unmodified, as published on crates.io.

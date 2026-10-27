@@ -1,1 +1,2 @@
 crates/reasoncraft_spell/dict/** -text
+app/reasoncraft/assets/licences/*.txt text eol=lf
