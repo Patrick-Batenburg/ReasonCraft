@@ -72,7 +72,7 @@
   - [x] Task 12: Argdown export
   - [x] Task 13: Argdown import
   - [x] Task 14: Check carry-overs
-  - [ ] Task 15: Export and panel carry-overs
+  - [x] Task 15: Export and panel carry-overs
   - [ ] Task 16: End-to-end verification and docs
 - [ ] Step 6 — Release readiness: Dutch, accessibility, help, examples, templates, installers
 
