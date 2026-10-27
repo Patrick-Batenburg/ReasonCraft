@@ -6,7 +6,12 @@
 //! other headings and lists, and links to anything but a topic, is plain
 //! text. Nothing is ever fetched or opened outside the app.
 
-use eframe::egui::{self, FontSelection, Label, RichText, Ui, text::LayoutJob};
+use std::ops::Range;
+
+use eframe::egui::{
+    Align, CursorIcon, FontSelection, Galley, Label, Pos2, Rangef, Rect, RichText, Role, Sense,
+    StrokeKind, Ui, WidgetInfo, text::LayoutJob, vec2,
+};
 
 use crate::theme::Tokens;
 
@@ -191,56 +196,91 @@ fn rich(span: &Span, tk: &Tokens) -> RichText {
     }
 }
 
-/// A paragraph: one wrapped label (one name for screen readers), or, when
-/// it holds links, its spans and links in a wrapping row.
+/// A paragraph: one wrapped text, its bold, code and links in it, so the
+/// words wrap as one text (a bold word never leaves a line starting with
+/// a space) and never spill past the width it is given. Each link is a
+/// named, focusable link over its first line; a click anywhere on its
+/// lines opens its topic.
 fn paragraph(ui: &mut Ui, spans: &[Span], tk: &Tokens) -> Option<&'static str> {
-    if !spans.iter().any(|s| matches!(s, Span::Link { .. })) {
-        let mut job = LayoutJob::default();
-        for span in spans {
-            rich(span, tk).append_to(
-                &mut job,
-                ui.style(),
-                FontSelection::Default,
-                egui::Align::Center,
-            );
+    let mut job = LayoutJob::default();
+    // Each link's characters in the text, its text and its topic.
+    let mut links = Vec::new();
+    for span in spans {
+        let text = match span {
+            Span::Link { text, .. } => RichText::new(text)
+                .size(BODY)
+                .underline()
+                .color(ui.visuals().hyperlink_color),
+            other => rich(other, tk),
+        };
+        let start = job.text.chars().count();
+        text.append_to(&mut job, ui.style(), FontSelection::Default, Align::Center);
+        if let Span::Link { text, topic } = span {
+            links.push((start..job.text.chars().count(), text, *topic));
         }
-        ui.add(Label::new(job).wrap().selectable(false));
-        return None;
     }
+    let width = ui.available_width();
+    job.wrap.max_width = width;
+    job.halign = Align::Min;
+    let galley = ui.fonts_mut(|f| f.layout_job(job));
+    let size = vec2(galley.size().x.min(width), galley.size().y);
+    // As a label senses: focusable for a screen reader; clicks for links.
+    let mut sense = if ui.memory(|m| m.options.screen_reader) {
+        Sense::focusable_noninteractive()
+    } else {
+        Sense::hover()
+    };
+    if !links.is_empty() {
+        sense |= Sense::CLICK;
+    }
+    let (rect, response) = ui.allocate_exact_size(size, sense);
+    response.widget_info(|| WidgetInfo::labeled(Role::Label, true, galley.text()));
     let mut clicked = None;
-    ui.horizontal_wrapped(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
-        for span in spans {
-            match span {
-                Span::Link { text, topic } => {
-                    // A link stays on one line: the rows of a wrapped one
-                    // would be separate, nameless click targets. One wider
-                    // than a whole row (a very narrow panel) wraps all the
-                    // same rather than push the panel wider.
-                    let wrap = ui.style().wrap_mode;
-                    let link = RichText::new(text).size(BODY).underline();
-                    let width = egui::WidgetText::from(link.clone())
-                        .into_galley(
-                            ui,
-                            Some(egui::TextWrapMode::Extend),
-                            f32::INFINITY,
-                            egui::TextStyle::Body,
-                        )
-                        .size()
-                        .x;
-                    if width <= ui.max_rect().width() {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                    }
-                    if ui.link(link).clicked() {
-                        clicked = Some(*topic);
-                    }
-                    ui.style_mut().wrap_mode = wrap;
-                }
-                other => {
-                    ui.add(Label::new(rich(other, tk)).wrap().selectable(false));
-                }
+    let pointer = response.hover_pos();
+    for (chars, text, topic) in links {
+        let rows = char_rects(&galley, chars, rect.min);
+        let Some(&first) = rows.first() else {
+            continue;
+        };
+        let link = ui.interact(first, response.id.with(text), Sense::click());
+        link.widget_info(|| WidgetInfo::labeled(Role::Link, true, text));
+        let on_rows = |at: Option<Pos2>| at.is_some_and(|p| rows.iter().any(|r| r.contains(p)));
+        if link.hovered() || on_rows(pointer) {
+            ui.set_cursor_icon(CursorIcon::PointingHand);
+        }
+        if link.clicked() || (response.clicked() && on_rows(response.interact_pointer_pos())) {
+            clicked = Some(topic);
+        }
+        if link.has_focus() {
+            let stroke = ui.visuals().selection.stroke;
+            for r in &rows {
+                ui.painter()
+                    .rect_stroke(r.expand(1.0), 2.0, stroke, StrokeKind::Outside);
             }
         }
-    });
+    }
+    ui.painter().galley(rect.min, galley, tk.text_muted);
     clicked
+}
+
+/// The rects, one per visual line, of the characters `chars` of `galley`
+/// painted at `origin`.
+fn char_rects(galley: &Galley, chars: Range<usize>, origin: Pos2) -> Vec<Rect> {
+    let mut rects = Vec::new();
+    let mut at = 0;
+    for row in &galley.rows {
+        let mut x = Rangef::NOTHING;
+        for (i, glyph) in row.glyphs.iter().enumerate() {
+            if chars.contains(&(at + i)) {
+                x.min = x.min.min(glyph.pos.x);
+                x.max = x.max.max(glyph.max_x());
+            }
+        }
+        if x.min < x.max {
+            let y = row.rect().y_range();
+            rects.push(Rect::from_x_y_ranges(x, y).translate(origin.to_vec2()));
+        }
+        at += row.char_count_including_newline().0;
+    }
+    rects
 }

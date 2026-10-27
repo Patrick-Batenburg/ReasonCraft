@@ -50,7 +50,10 @@ pub(super) fn keep_chosen(ui: &egui::Ui, salt: &str, side: Side, range: Rangef, 
     // not forget it.
     ctx.data_mut(|d| d.insert_persisted(chosen_id, chosen));
     let want = range.clamp(chosen);
-    if (want - width).abs() < 0.5 {
+    // Exactly: egui widens a panel to contents a fraction too wide and
+    // stores that width; laid out at it, the text may wrap otherwise and
+    // be a different fraction too wide, and so on, frame after frame.
+    if want == width {
         return;
     }
     let r = state.outer_rect;
