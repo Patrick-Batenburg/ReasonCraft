@@ -241,7 +241,20 @@ fn keyboard_reaches_every_command_in_collapsed_groups() {
                 let mut walked = Vec::new();
                 for _ in 0..40 {
                     match focused_under(&h, menu) {
-                        Some(name) if !walked.contains(&name) => walked.push(name),
+                        Some(name) if !walked.contains(&name) => {
+                            // Scrolled into the window (a long menu scrolls).
+                            let rect = h
+                                .query_all_by_role_and_label(Role::Button, &name)
+                                .find(|n| under(n, menu))
+                                .expect("the item")
+                                .rect();
+                            let window = h.ctx.content_rect();
+                            assert!(
+                                window.expand(0.5).contains_rect(rect),
+                                "{key}: {name:?} of {menu:?} at {rect:?} is outside {window:?}"
+                            );
+                            walked.push(name);
+                        }
                         _ => break,
                     }
                     h.key_press(Key::ArrowDown);

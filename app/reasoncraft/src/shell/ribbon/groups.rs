@@ -4,7 +4,7 @@
 
 use eframe::egui::{
     Align, Align2, FontId, Frame, Id, Key, Layout, Order, Popup, PopupCloseBehavior, RectAlign,
-    Response, Stroke, Ui, Widget, containers::menu, pos2,
+    Response, ScrollArea, Stroke, Ui, Widget, containers::menu, pos2,
 };
 
 use super::{BUTTON_H, LABEL_H, fit, large_button};
@@ -73,8 +73,10 @@ fn collapsed(ui: &mut Ui, tk: &Tokens, icon: Icon, label: &str, add: impl FnOnce
     Popup::menu(&resp)
         .frame(Frame::popup(ui.style()).fill(tk.ribbon))
         .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
+        // Under the button from its left edge; a drop-down wider than
+        // the room there is moved left only as far as the window needs.
         .align(RectAlign::BOTTOM_START)
-        .align_alternatives(&[RectAlign::BOTTOM_END, RectAlign::BOTTOM])
+        .align_alternatives(&[])
         .show(|ui| {
             fit::set_in_popup(ui.ctx(), true);
             ui.horizontal(|ui| {
@@ -115,18 +117,34 @@ fn keep_focus(ui: &Ui, button: &Response, popup_id: Id) {
 /// the ribbon, or a submenu beside it in a collapsed group's drop-down
 /// (egui keeps one popup open at a time, so a second popup would close
 /// the drop-down).
+///
+/// A menu taller than the window scrolls; an item the keyboard moves to
+/// is scrolled into view.
 pub(super) fn menu_popup(ui: &Ui, resp: &Response, add: impl FnOnce(&mut Ui)) {
+    let scrolled = |ui: &mut Ui| {
+        // The window's height less the menu frame's margins.
+        let margins = Frame::menu(ui.style()).total_margin().sum().y;
+        let max = ui.ctx().content_rect().height() - 2.0 * margins;
+        ScrollArea::vertical()
+            .max_height(max.max(40.0))
+            .show(ui, add);
+    };
     if menu::is_in_menu(ui) {
-        menu::SubMenu::new().show(ui, resp, add);
+        menu::SubMenu::new().show(ui, resp, scrolled);
     } else {
-        Popup::menu(resp).show(add);
+        Popup::menu(resp).show(scrolled);
     }
 }
 
 /// An item of a ribbon menu, enabled or not; true when clicked, which
 /// closes the menu (and a collapsed group's drop-down it is in).
 pub(super) fn menu_item(ui: &mut Ui, enabled: bool, item: impl Widget) -> bool {
-    let clicked = ui.add_enabled(enabled, item).clicked();
+    let resp = ui.add_enabled(enabled, item);
+    // The keyboard moving onto it scrolls a long menu.
+    if resp.gained_focus() {
+        resp.scroll_to_me(None);
+    }
+    let clicked = resp.clicked();
     if clicked {
         ui.close();
     }

@@ -221,3 +221,78 @@ fn small_buttons_end_above_the_group_label() {
         assert!(found, "{label:?} on the ribbon");
     }
 }
+
+/// The source types make a menu taller than the smallest window: it
+/// scrolls, and its last item can be reached and clicked by mouse, in a
+/// collapsed group (Home) and on the ribbon (Insert).
+#[test]
+fn the_last_item_of_a_long_menu_is_clickable() {
+    let st = SourceType::ALL.last().unwrap().clone();
+    let last = t(&format!("source.{}", st.key()));
+    for tab in [RibbonTab::Home, RibbonTab::Insert] {
+        let mut h = harness(tab);
+        let boxes = h.state().tabs[0].doc.boxes.len();
+        if tab == RibbonTab::Home {
+            h.get_by_label(&more("group.add")).click();
+            h.run();
+            click_inside(&h, "group.add", &t("action.add_source"));
+        } else {
+            h.get_by_role_and_label(Role::Button, &t("action.add_source"))
+                .click();
+        }
+        h.run();
+        let window = h.ctx.content_rect();
+        // Scroll the menu with the wheel until its last item shows.
+        for _ in 0..20 {
+            let rect = h.get_by_role_and_label(Role::Button, &last).rect();
+            if window.contains_rect(rect) {
+                break;
+            }
+            // Over the menu, halfway down the window.
+            h.hover_at(egui::pos2(rect.right() - 8.0, window.center().y));
+            h.event(egui::Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Point,
+                delta: egui::vec2(0.0, -60.0),
+                phase: egui::TouchPhase::Move,
+                source: egui::MouseWheelSource::Unknown,
+                modifiers: egui::Modifiers::NONE,
+            });
+            h.run();
+        }
+        let rect = h.get_by_role_and_label(Role::Button, &last).rect();
+        assert!(window.contains_rect(rect), "{tab:?}: {last:?} at {rect:?}");
+        h.get_by_role_and_label(Role::Button, &last).click();
+        h.run();
+        assert_eq!(h.state().tabs[0].doc.boxes.len(), boxes + 1, "{tab:?}");
+    }
+}
+
+/// A collapsed drop-down wider than the room right of its button starts
+/// under the button and moves left only as far as the window needs.
+#[test]
+fn a_wide_drop_down_moves_left_only_as_needed() {
+    let mut h = harness(RibbonTab::Home);
+    let button = h.get_by_label(&more("group.add")).rect();
+    h.get_by_label(&more("group.add")).click();
+    h.run();
+    let window = h.ctx.content_rect();
+    let reason = h
+        .query_all_by_role_and_label(Role::Button, &t("action.add_reason"))
+        .map(|n| n.rect())
+        .find(|r| r.top() > button.bottom())
+        .expect("Reason in the drop-down");
+    let comment = h
+        .query_all_by_role_and_label(Role::Button, &t("action.comment"))
+        .map(|n| n.rect())
+        .find(|r| r.top() > button.bottom())
+        .expect("Comment in the drop-down");
+    // Its right edge is at the window's (less the frame), or it starts
+    // under the button.
+    let starts_under = reason.left() >= button.left() - 12.0;
+    let at_right = comment.right() >= window.right() - 24.0;
+    assert!(
+        starts_under || at_right,
+        "drop-down {reason:?}..{comment:?} for button {button:?} in {window:?}"
+    );
+    assert!(comment.right() <= window.right());
+}

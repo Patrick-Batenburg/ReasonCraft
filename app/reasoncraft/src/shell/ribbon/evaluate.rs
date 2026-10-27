@@ -4,7 +4,7 @@
 use eframe::egui::Ui;
 use reasoncraft_core::{Acceptance, CardStrength, ClearScope, SourceRating};
 
-use super::{command, group, large};
+use super::{close_drop_down, command, group, large};
 use crate::a11y::{in_group, labelled};
 use crate::actions::{Action, Rate, Rated, is_enabled, rated};
 use crate::app::ReasonCraftApp;
@@ -102,6 +102,9 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         .on_hover_text(tip("eval.tip.clear_selection"))
         .clicked()
         {
+            if let Some(clear) = &selection {
+                close_drop_down(ui, clear);
+            }
             out.extend(selection);
         }
         let id = "evaluate.clear_map";
