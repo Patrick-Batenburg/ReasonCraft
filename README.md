@@ -213,7 +213,9 @@ Dragging also reorders: drop an item between its siblings (an insertion bar show
 
 - A box with many connectors attached grows so that their arrowheads stay apart: wider top-down and bottom-up, taller left-to-right. A box therefore can't be narrower than its connectors need, even when its width is set in the file.
 
-- The ribbon does not wrap or scroll: in a window narrower than about 1280 points (for example at 150 % interface size on a laptop screen), the groups at its right end are cut off. Every command stays reachable through Search commands (Alt+Q; Shift+Cmd+A on a Mac).
+- In a narrow window (for example at 150 % interface size on a laptop screen) a ribbon tab does not fit at once: arrows at its ends scroll it, as does the mouse wheel over it. The side panels then get narrower so the map keeps room.
+
+- The spelling box above the Text panel closes with its Close button; Esc does not close it.
 
 - macOS: the app has no app menu (About, Hide, Quit), so that Cmd+Q reaches the window and asks about unsaved changes first. Quitting from the Dock, or logging out or shutting down, still quits without asking; with autosave on, the next start offers to recover the work up to the last autosave.
 

@@ -357,7 +357,8 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 **Also in this task:** `release.yml` names its artifacts after the tag, or after the commit for a run by hand (a branch name may hold a "/"); both workflows install `pkg-config` explicitly; `docs/release.md` notes that the Docker memory cap can be changed. The Linux release binary opens no libXrandr (ruling S6-T13-3), so the `.deb` dependencies are unchanged. `THIRD-PARTY.md` now lists egui's bundled fonts (Ubuntu Light, which PDF exports embed, Hack and egui-icons). The README gained install instructions per OS and a Languages section; `CHANGELOG.md`, `docs/user-guide.md` and `docs/glossary-nl.md` are new.
 
 **Known limitations:**
-- The ribbon neither wraps nor scrolls. In a window narrower than about 1280 points (for example at 150 % UI scale on a laptop screen) its right-hand groups are cut off; Search commands (Alt+Q) still reaches every command (Shift+Cmd+A on a Mac).
+- In a narrow window a ribbon tab scrolls sideways (arrows at its ends, or the wheel) rather than collapsing its groups to icons (Task 14).
+- Task 14 findings left open (see `task-14-findings.md`): Esc does not close the spelling box (its Close button does); the backstage entry "Export…" opens the Export ribbon tab rather than a dialog; the File backstage opens with no page selected; after a resize the box being edited may lie outside the view (it stays in edit mode); Print was not exercised end to end on the host (it hands a PDF to the system viewer).
 - macOS is configured but unverified: no Mac was available, and CI runs only once a remote exists (ruling M3). Double-clicking a `.rcraft` file starts the app without opening the file (ruling S6-T11-2). There is no app menu, and quitting from the Dock, logging out or shutting down does not ask about unsaved changes (ruling S6-T6-2).
 - The installers are not code-signed, so SmartScreen and Gatekeeper warn (ruling L3).
 - Word files have not been opened in Word or LibreOffice here, and the real Linux clipboard has not been tried; both are on the release checklist.
@@ -368,7 +369,6 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 - Two instances started at the same instant can both offer the same crashed session (no data is lost).
 - From step 5, still open: the official Argdown map view may show a redundant relation for whole-card conclusions (could not be checked offline); comment dates, the links and comments of notes, where notes sit among their siblings, images and the layout direction are not carried in Argdown; Find does not search comments (ruling B3); ignoring the "not rated yet" hint holds only while the number of unrated items stays the same; in exports, a box with only a link or comments keeps a blank indicator band (ruling T6-4); in the PDF the bold outline is not selectable text (ruling T15-1).
 - A box with many connectors grows to keep their arrowheads apart, so it can be wider (or taller, left to right) than its text needs (ruling S6-T7-2).
-- An interactive pass with real input on several window sizes is still to come (Task 14).
 
 ## Carry-over from step 4 reviews
 - [x] Step 5 (Tasks 1, 15): draw PDF bold once (no duplicate text on copy); non-PNG assets in exports; split `crates/reasoncraft_core/src/edit.rs` (916 lines) and `file.rs` (603 lines)
