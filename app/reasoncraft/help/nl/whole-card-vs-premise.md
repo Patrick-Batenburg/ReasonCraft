@@ -15,7 +15,7 @@ Een blok kan ook op een ander blok als geheel gericht zijn. Dan zegt het niet da
 - Een bezwaar tegen het hele blok zegt: "ook als deze premissen kloppen, volgt dat er niet uit". Het valt het verband aan.
 - Een reden voor het hele blok zegt: "uit deze premissen volgt dat echt". Het versterkt het verband.
 
-De lijn loopt naar de onderrand van het kader van het blok, niet naar een van de premissen.
+De lijn loopt naar de rand van het kader van het blok, niet naar een van de premissen.
 
 Voorbeeld: de reden "Veel leerlingen in onze klas hebben een bijbaan" steunt de bewering "Huiswerk moet vrijwillig zijn". Een bezwaar tegen het hele blok kan zijn: "Een bijbaan verandert niets aan hoeveel oefening leerlingen nodig hebben." De premisse kan best kloppen; het bezwaar zegt dat de bewering er niet uit volgt.
 

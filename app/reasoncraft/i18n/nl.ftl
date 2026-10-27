@@ -631,7 +631,7 @@ text-tab-help = Help
 group-help = Help
 help-cmd-topics = Helponderwerpen
 help-cmd-keyboard = Sneltoetsen
-help-cmd-about = Over
+help-cmd-about = Over ReasonCraft
 help-back = Terug
 help-contents = Inhoud
 help-contents-concepts = Begrippen
@@ -680,7 +680,7 @@ help-key-help = Hulp bij het deel waar je bent
 backstage-about = Over
 about-tagline = Een gratis opensource-app voor argumentkaarten en groeperingskaarten. Hij werkt volledig offline.
 about-licence = Licentie: { $licence }, naar keuze.
-about-credits = De spellingcontrole gebruikt het Engelse Hunspell-woordenboek uit SCOWL van Kevin Atkinson en het Nederlandse woordenboek van OpenTaal, zoals gebundeld door de verzameling dictionaries. Dank aan iedereen die eraan werkt.
+about-credits = De spellingcontrole gebruikt het Engelse Hunspell-woordenboek uit SCOWL van Kevin Atkinson en het Nederlandse woordenboek van OpenTaal, zoals gebundeld in het project dictionaries. Dank aan iedereen die eraan werkt.
 
 ## Accessibility: names screen readers announce
 a11y-in_group = { $group }: { $name }

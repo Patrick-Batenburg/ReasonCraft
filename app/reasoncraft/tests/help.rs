@@ -70,6 +70,8 @@ fn f1_opens_contextual_topic() {
     // From a control in the Check or Essay tab: that tab's topic.
     for (tab, key, topic) in [
         (TextTab::Check, "text.tab.check", "checks"),
+        (TextTab::Snippets, "text.tab.snippets", "snippets"),
+        (TextTab::Outline, "text.tab.outline", "outline-and-essay"),
         (TextTab::Essay, "text.tab.essay", "outline-and-essay"),
     ] {
         act(&mut h, Action::SetTextTab(tab));
@@ -89,6 +91,8 @@ fn f1_opens_contextual_topic() {
     // Back returns to the topic shown before.
     click_button(&mut h, "help.back");
     assert!(shows_topic(&h, "outline-and-essay"));
+    click_button(&mut h, "help.back");
+    assert!(shows_topic(&h, "snippets"));
 }
 
 #[test]
@@ -171,4 +175,23 @@ fn about_shows_third_party_notices() {
     }
     // The dictionary projects are credited.
     assert!(has("OpenTaal") && has("SCOWL"));
+}
+
+/// At the panel's default width the five Text panel tabs fit on one line.
+#[test]
+fn text_tabs_fit_on_one_line() {
+    let h = harness();
+    let keys = [
+        "text.tab.outline",
+        "text.tab.essay",
+        "text.tab.check",
+        "text.tab.snippets",
+    ];
+    let mut tops: Vec<f32> = keys
+        .iter()
+        .map(|k| h.get_by_role_and_label(Role::Tab, &t(k)).rect().top())
+        .collect();
+    let help = reasoncraft::a11y::in_group(&t("action.panel_right"), &t("text.tab.help"));
+    tops.push(h.get_by_role_and_label(Role::Tab, &help).rect().top());
+    assert!(tops.iter().all(|y| *y == tops[0]), "{tops:?}");
 }

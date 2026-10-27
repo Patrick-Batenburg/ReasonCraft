@@ -12,7 +12,7 @@ Als je een kaart bouwt, zie je welke argumenten er zijn. Als je hem beoordeelt, 
 
 - Kies een vak, blok of bron en gebruik het tabblad Beoordelen: de knoppen staan in de groepen **Beweringen en premissen**, **Blokken** en **Bronnen**.
 - Of gebruik de toetsen: **Alt+1** beoordeelt hoog (aanvaarden, sterk, solide), **Alt+2** midden (betwijfelen, zwak, wankel), **Alt+3** laag (verwerpen, geen) en **Alt+0** wist de beoordeling. Op een Mac zijn dat Option+Cmd+1, 2, 3 en 0.
-- **Wissen** > Selectie haalt de beoordeling van het gekozen onderdeel weg; Wissen > Kaart (Alt+Shift+0) wist alle beoordelingen op de kaart.
+- **Wissen** > Selectie haalt de beoordeling van het gekozen onderdeel weg; Wissen > Kaart (Alt+Shift+0, of Option+Shift+Cmd+0 op een Mac) wist alle beoordelingen op de kaart.
 
 ## Wat je ziet
 
@@ -25,7 +25,7 @@ Beoordeel van onder naar boven. Vraag eerst of de bronnen solide zijn, dan of de
 Het tabblad Controle helpt je daarbij:
 
 - Ben je eenmaal begonnen met beoordelen, dan herinnert het je aan wat nog niet beoordeeld is.
-- Het wijst op beoordelingen die botsen: een blok dat sterk heet terwijl al zijn premissen verworpen zijn, een solide bron onder een verworpen premisse, of een blok met "Geen" terwijl zijn premissen aanvaard zijn en niets het tegenspreekt.
+- Het wijst op beoordelingen die botsen: een blok dat als sterk beoordeeld is terwijl al zijn premissen verworpen zijn, een solide bron onder een verworpen premisse, of een blok met "Geen" terwijl zijn premissen aanvaard zijn en niets het tegenspreekt.
 
 Zie [Controles](checks).
 

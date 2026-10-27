@@ -28,9 +28,13 @@ fn every_topic_exists_in_both_languages() {
     }
     // No pages in other languages, and each language's pages are its own.
     assert!(index::FILES.iter().all(|(l, ..)| UI_LANGUAGES.contains(l)));
+    // Titles that are a proper name may read the same in both languages.
+    const PROPER_NAMES: [&str; 1] = ["argdown"];
     for topic in TOPICS {
         assert_ne!(source("en", topic), source("nl", topic), "{topic}");
-        assert_ne!(title("en", topic), title("nl", topic), "{topic}'s title");
+        if !PROPER_NAMES.contains(&topic) {
+            assert_ne!(title("en", topic), title("nl", topic), "{topic}'s title");
+        }
     }
 }
 

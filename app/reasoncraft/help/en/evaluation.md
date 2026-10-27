@@ -12,7 +12,7 @@ Building a map shows what the arguments are. Rating it shows what you think of t
 
 - Select a box, card or source and use the Evaluate tab: the groups **Claims and premises**, **Cards** and **Sources** hold the buttons.
 - Or use the keys: **Alt+1** rates high (accept, strong, solid), **Alt+2** mid (unsure, weak, shaky), **Alt+3** low (reject, nil) and **Alt+0** clears the rating. On a Mac these are Option+Cmd+1, 2, 3 and 0.
-- **Clear** > Selection removes the rating of the selected item; Clear > Map (Alt+Shift+0) removes every rating in the map.
+- **Clear** > Selection removes the rating of the selected item; Clear > Map (Alt+Shift+0, or Option+Shift+Cmd+0 on a Mac) removes every rating in the map.
 
 ## What you see
 

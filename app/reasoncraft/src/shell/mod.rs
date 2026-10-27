@@ -129,7 +129,7 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     let text = egui::Panel::right("text_panel")
         .frame(frame)
-        .default_size(300.0)
+        .default_size(320.0)
         .min_size(PANEL_MIN_WIDTH)
         .show_collapsible(ui, &mut app.right_panel, |ui| {
             spelling_panel::show(ui, tab, &mut app.spell, &tk, &mut out);

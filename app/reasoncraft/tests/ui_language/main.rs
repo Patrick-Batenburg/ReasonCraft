@@ -23,6 +23,7 @@ use reasoncraft_core::{
     BoxKind, CardKind, CardStrength, Document, Item, NewLoose, Parent, SourceType,
 };
 
+mod help;
 mod ribbon_fit;
 
 static LANGUAGE: Mutex<()> = Mutex::new(());
@@ -365,28 +366,4 @@ fn empty_comment_author_reads_in_the_ui_language() {
         h.query_by_label(&t_lang("en", "comment.anonymous"))
             .is_none()
     );
-}
-
-/// The help shows the pages of the UI language, and switches with it.
-#[test]
-fn help_follows_the_ui_language() {
-    use reasoncraft::help::{HelpPage, title};
-    let _lang = lock();
-    let mut h = harness_with(ReasonCraftApp::new_for_test());
-    h.state_mut()
-        .push(Action::OpenHelp(HelpPage::Topic("checks")));
-    h.run();
-    let shown = |h: &Harness<'static, ReasonCraftApp>, lang: &str| {
-        h.query_all_by_label(&title(lang, "checks"))
-            .any(|n| n.accesskit_node().role() == Role::Label)
-    };
-    assert!(shown(&h, "en") && !shown(&h, "nl"));
-    h.state_mut()
-        .push(Action::SetUiLanguage(Some("nl".to_owned())));
-    h.run();
-    assert!(shown(&h, "nl") && !shown(&h, "en"));
-    // The tab and the ribbon's Help tab keep names of their own.
-    let panel = in_group(&t("action.panel_right"), &t("text.tab.help"));
-    h.get_by_role_and_label(Role::Tab, &panel);
-    h.get_by_role_and_label(Role::Tab, &t("ribbon.tab.help"));
 }

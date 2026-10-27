@@ -3,7 +3,7 @@
 ## Opslaan en openen
 
 - Een kaart wordt bewaard als één `.rcraft`-bestand. Daarin staan de kaart, de afbeeldingen, de fragmenten en het betoog.
-- Bestand > **Opslaan** (Ctrl+S) bewaart de kaart; de eerste keer vraagt het waar. **Opslaan als** (Ctrl+Shift+S) bewaart een kopie onder een nieuwe naam.
+- Bestand > **Opslaan** (Ctrl+S) bewaart de kaart; de eerste keer vraagt het waar. **Opslaan als** (Ctrl+Shift+S) bewaart de kaart onder een nieuwe naam; daarna werk je in dat bestand.
 - Bestand > **Openen** (Ctrl+O) opent een kaart in een nieuw tabblad. Bestand > **Nieuw** (Ctrl+N) begint een lege kaart.
 - Elke open kaart heeft een eigen tabblad boven het lint. Sluit je een tabblad, of het venster, met niet-opgeslagen wijzigingen, dan wordt eerst gevraagd of je ze wilt opslaan.
 - Bestand > **Document** bevat de titel, de auteur en de taal van de open kaart.
@@ -20,7 +20,7 @@ Sluit ReasonCraft niet normaal af, bijvoorbeeld na een crash of een stroomstorin
 - **Alles weggooien** gooit de kopieën weg.
 - **Later beslissen** bewaart ze voor de volgende start.
 
-Is het oorspronkelijke bestand intussen veranderd, dan wordt je gevraagd voordat het wordt vervangen.
+Is het oorspronkelijke bestand intussen veranderd, dan word je gevraagd voordat het wordt vervangen.
 
 In Bestand > Instellingen stel je in hoe vaak automatisch opslaan gebeurt: van 30 tot 600 seconden, of uit.
 

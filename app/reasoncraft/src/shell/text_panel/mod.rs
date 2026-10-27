@@ -1,7 +1,7 @@
 //! The Text panel on the right: a tab strip (Outline, Essay, Check,
 //! Snippets, Help) and the active tab's body.
 
-use eframe::egui::{self, Role, Stroke, Ui, WidgetInfo};
+use eframe::egui::{self, Color32, Role, Stroke, Ui, WidgetInfo};
 
 mod check;
 mod drag_chip;
@@ -29,9 +29,13 @@ use crate::spell::SpellFields;
 use crate::theme::Tokens;
 
 const STRIP_H: f32 = 28.0;
-/// Room around each tab label; at its default width the panel fits the
-/// English tabs on one line (narrower, or with longer labels, they wrap).
+/// Room around each tab label, at most and at least: the room shrinks so
+/// the tabs fit on one line (at the panel's default width in English and
+/// Dutch); in a narrower panel they wrap.
 const TAB_PAD: f32 = 14.0;
+const TAB_PAD_MIN: f32 = 6.0;
+/// The gap between two tabs.
+const TAB_GAP: f32 = 2.0;
 
 const TABS: [(TextTab, &str); 5] = [
     (TextTab::Outline, "text.tab.outline"),
@@ -71,11 +75,12 @@ pub fn show(
 }
 
 fn tab_strip(ui: &mut Ui, active: TextTab, tk: &Tokens, out: &mut Vec<Action>) {
+    let labels = TABS.map(|(_, key)| t(key));
+    let pad = tab_pad(ui, &labels);
     let strip = ui.horizontal_wrapped(|ui| {
-        ui.spacing_mut().item_spacing = egui::vec2(2.0, 0.0);
-        for (tab, key) in TABS {
-            let label = t(key);
-            let resp = tab_button(ui, tk, &label, tab == active, tk.panel, TAB_PAD, STRIP_H);
+        ui.spacing_mut().item_spacing = egui::vec2(TAB_GAP, 0.0);
+        for ((tab, _), label) in TABS.into_iter().zip(labels) {
+            let resp = tab_button(ui, tk, &label, tab == active, tk.panel, pad, STRIP_H);
             if tab == TextTab::Help {
                 // Named apart from the ribbon's Help tab.
                 let name = crate::a11y::in_group(&t("action.panel_right"), &label);
@@ -89,4 +94,23 @@ fn tab_strip(ui: &mut Ui, active: TextTab, tk: &Tokens, out: &mut Vec<Action>) {
     let bottom = strip.response.rect.bottom();
     let line = Stroke::new(1.0, tk.attachment_line.gamma_multiply(0.5));
     ui.painter().hline(ui.max_rect().x_range(), bottom, line);
+}
+
+/// The room around each tab label that fits all of `labels` on one line,
+/// within [`TAB_PAD_MIN`]..=[`TAB_PAD`] (as [`tab_button`] measures them).
+fn tab_pad(ui: &Ui, labels: &[String]) -> f32 {
+    let font = egui::FontId::proportional(13.0);
+    let text: f32 = labels
+        .iter()
+        .map(|l| {
+            let galley = ui
+                .painter()
+                .layout_no_wrap(l.clone(), font.clone(), Color32::PLACEHOLDER);
+            galley.size().x
+        })
+        .sum();
+    let n = labels.len() as f32;
+    let room = ui.available_width() - text - TAB_GAP * (n - 1.0);
+    // A little slack, so rounding never pushes the last tab to a new line.
+    ((room - 1.0) / n).clamp(TAB_PAD_MIN, TAB_PAD)
 }

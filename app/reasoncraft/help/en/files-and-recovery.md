@@ -3,7 +3,7 @@
 ## Saving and opening
 
 - A map is saved as one `.rcraft` file. It holds the map, its images, the snippets and the essay.
-- File > **Save** (Ctrl+S) saves the map; the first time, it asks where. **Save As** (Ctrl+Shift+S) saves a copy under a new name.
+- File > **Save** (Ctrl+S) saves the map; the first time, it asks where. **Save As** (Ctrl+Shift+S) saves the map under a new name; from then on you work in that file.
 - File > **Open** (Ctrl+O) opens a map in a new tab. File > **New** (Ctrl+N) starts an empty map.
 - Each open map has its own tab above the ribbon. Closing a tab, or the window, with unsaved changes asks whether to save them first.
 - File > **Document** holds the title, the author and the language of the open map.

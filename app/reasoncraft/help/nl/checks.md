@@ -6,14 +6,14 @@ Controles geven alleen tips: ze houden je nooit tegen. Wijs de kop van een contr
 
 ## De controle op kernwoorden
 
-Dit is de nuttigste controle, ook wel de **kernwoordregel** genoemd: elk kernwoord van een uitspraak hoort terug te komen in de premissen van het blok eronder. Komt een woord van de bewering in geen enkele premisse voor, dan verklaren de premissen het nog niet, en ontbreekt er waarschijnlijk een medepremisse.
+Deze controle volgt de **kernwoordregel**: elk kernwoord van een uitspraak hoort terug te komen in de premissen van het blok eronder. Komt een woord van de bewering in geen enkele premisse voor, dan verklaren de premissen het nog niet, en ontbreekt er waarschijnlijk een medepremisse.
 
 Een voorbeeld. Bewering: "Scholen moeten telefoons in de klas verbieden." Reden: "Telefoons leiden leerlingen af." De controle meldt de ontbrekende kernwoorden **scholen**, **klas** en **verbieden**: niets in de reden zegt dat scholen in de klas moeten verbieden wat leerlingen afleidt. Voeg een medepremisse toe zoals "Scholen moeten in de klas verbieden wat leerlingen afleidt", en de tip verdwijnt. Zie [Medepremissen](co-premises).
 
 Zo worden de woorden vergeleken:
 
 - Korte woorden (minder dan vier letters) en veelvoorkomende woorden zoals "de", "moeten" of "met" tellen niet mee.
-- Woorden die erg op elkaar lijken, tellen als hetzelfde woord, zoals "robot" en "robots". Korte woorden in enkelvoud en meervoud kunnen toch gemeld worden als ze gedekt zijn.
+- Woorden die erg op elkaar lijken, tellen als hetzelfde woord, zoals "robot" en "robots". Woorden van minder dan vier letters worden overgeslagen, zo kan "banen" gemeld worden terwijl een premisse "baan" zegt.
 - De controle kijkt naar redenen en bezwaren die op een bewering of premisse gericht zijn, niet naar blokken die op een heel blok gericht zijn.
 - Ze gebruikt de taal van het document (Engels of Nederlands). Zie [Talen en spelling](languages).
 

@@ -6,14 +6,14 @@ Checks are hints only: they never stop you from doing anything. Hover over a che
 
 ## The key-word check
 
-This is the most useful check, also known as the **key-word rule**: every key word of a statement should come back in the premises of the card under it. If a word of the claim appears in none of the premises, the premises do not yet explain it, and a co-premise is probably missing.
+This check follows the **key-word rule**: every key word of a statement should come back in the premises of the card under it. If a word of the claim appears in none of the premises, the premises do not yet explain it, and a co-premise is probably missing.
 
 An example. Claim: "Schools should forbid phones in class." Reason: "Phones distract students." The check reports the missing key words **schools**, **forbid** and **class**: nothing in the reason says that schools should forbid what distracts students. Add a co-premise such as "Schools should forbid what distracts students in class", and the hint goes away. See [Co-premises](co-premises).
 
 How the words are compared:
 
 - Short words (fewer than four letters) and common words such as "the", "should" or "with" do not count.
-- Close forms count as the same word, such as "robot" and "robots". Short words in singular and plural can still be reported when they are covered.
+- Close forms count as the same word, such as "robot" and "robots". Words under four letters are skipped, so "jobs" in the claim can be reported even when a premise says "job".
 - The check looks at reasons and objections aimed at a claim or premise, not at cards aimed at a whole card.
 - It uses the language of the document (English or Dutch). See [Languages and spelling](languages).
 

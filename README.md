@@ -63,7 +63,7 @@ Everything is on the **Export** tab of the ribbon. Exports run in the background
 - **Copy as image** puts a 2× PNG of the map, in the colours you see, on the clipboard (up to 64 megapixels).
 - **Print** makes a PDF with the page setup and opens it in your PDF viewer, where you print it.
 - **Outline** (menu): the outline as Markdown, plain text or a Word document, with the numbering and switches of the Outline tab.
-- **Essay** (menu): the essay as Markdown or a Word document, with the document's title and author and a heading for each part.
+- **Essay** (menu): the essay as Markdown, plain text or a Word document, with the document's title and author and a heading for each part.
 - **Argdown** saves the whole map, with the parking area, as [Argdown](https://argdown.org) text that other Argdown tools can read. Images are left out. The mapping is described in [docs/argdown.md](docs/argdown.md).
 
 Exports show exactly what the map shows (layout, wrapped lines, colours, ratings, source icons and images) without the screen-only parts: the selection, the "+" button, comment badges, link glyphs, find highlights, the minimap and the dot grid. In the outline and essay, the linking words ("because"/"omdat", "but"/"maar") and source names follow the document language (English or Dutch). Word files use the built-in Title and Heading styles, so they open in Word and LibreOffice and pick up their styles.
