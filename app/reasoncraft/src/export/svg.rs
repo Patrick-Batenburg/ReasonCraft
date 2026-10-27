@@ -9,9 +9,11 @@ use eframe::egui::{Align, Color32, Pos2, Rect};
 use reasoncraft_core::Assets;
 use resvg::usvg;
 
+use super::assets::export_png_bytes;
+use super::svg_bold::{BOLD_STROKE, stroke_outline};
 use super::{TEXT_FACE, shared_fontdb};
 use crate::canvas::images::MAX_STORED_SIDE;
-use crate::scene::{DASH_LEN, GAP_LEN, Scene, Shape, StrokeSpec, bold_offset, missing_image};
+use crate::scene::{DASH_LEN, GAP_LEN, Scene, Shape, StrokeSpec, missing_image};
 use crate::theme::Tokens;
 
 pub(super) use super::svg_attr::num;
@@ -20,7 +22,7 @@ use super::svg_attr::{escape, paint, path_data, strip_data};
 /// Default space around the map, in world px.
 pub const DEFAULT_MARGIN: f32 = 24.0;
 
-const PNG_SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
+pub(super) const PNG_SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
 
 /// The width and height in a PNG's header (`IHDR`, the first chunk);
 /// `None` when `bytes` do not start like a PNG.
@@ -50,6 +52,10 @@ pub struct SvgOptions {
     pub margin: f32,
     /// The colour of the placeholder for a missing image.
     pub muted: Color32,
+    /// Draw the stroke that makes faux-bold text bold as glyph outlines
+    /// under the text, not on it. A PDF converter writes stroked text as
+    /// two text runs (fill and stroke), which would copy twice.
+    pub bold_stroke_as_path: bool,
 }
 
 impl SvgOptions {
@@ -61,6 +67,16 @@ impl SvgOptions {
             background: tokens.canvas,
             margin: DEFAULT_MARGIN,
             muted: tokens.text_muted,
+            bold_stroke_as_path: false,
+        }
+    }
+
+    /// Live text, each word written once, for [`svg_to_pdf`](super::svg_to_pdf).
+    pub fn for_pdf(tokens: &Tokens) -> Self {
+        Self {
+            text_as_paths: false,
+            bold_stroke_as_path: true,
+            ..Self::new(tokens)
         }
     }
 }
@@ -142,7 +158,12 @@ fn live_svg(scene: &Scene, assets: &Assets, opts: &SvgOptions, font_family: &str
         out.push_str("/>\n");
     }
     let _ = writeln!(out, "<g font-family=\"{}\">", escape(font_family));
-    let mut w = Writer { out, opts, assets };
+    let mut w = Writer {
+        out,
+        opts,
+        assets,
+        font_family,
+    };
     for shape in &scene.shapes {
         w.shape(shape);
     }
@@ -155,6 +176,7 @@ struct Writer<'a> {
     out: String,
     opts: &'a SvgOptions,
     assets: &'a Assets,
+    font_family: &'a str,
 }
 
 impl Writer<'_> {
@@ -238,34 +260,58 @@ impl Writer<'_> {
         }
     }
 
-    /// One row of text whose top is at `at.y`.
+    /// One row of text whose top is at `at.y`, drawn once. Bold uses the
+    /// font's bold face, or (the bundled fonts have none) a thin stroke
+    /// painted under the fill.
     fn text_row(&mut self, at: Pos2, row: &str, size: f32, bold: bool, c: Color32, align: Align) {
         let anchor = match align {
             Align::Min => "start",
             Align::Center => "middle",
             Align::Max => "end",
         };
-        let _ = write!(
-            self.out,
+        let mut open = format!(
             "<text x=\"{}\" y=\"{}\" font-size=\"{}\" text-anchor=\"{anchor}\"",
             num(at.x),
             num(at.y + TEXT_FACE.baseline(size)),
             num(size),
         );
-        paint(&mut self.out, "fill", c);
-        if bold {
-            // The screen draws bold text twice, `bold_offset` apart; a
-            // stroke that wide thickens the glyphs the same amount.
-            self.stroke(Some((bold_offset(1.0), c)));
-            self.out.push_str(" stroke-linejoin=\"round\"");
+        let body = format!(" xml:space=\"preserve\">{}</text>", escape(row));
+        if bold && TEXT_FACE.has_bold {
+            open.push_str(" font-weight=\"bold\"");
         }
-        let _ = writeln!(self.out, " xml:space=\"preserve\">{}</text>", escape(row));
+        let mut stroke = bold && !TEXT_FACE.has_bold;
+        if stroke
+            && self.opts.bold_stroke_as_path
+            && let Some(d) = stroke_outline(&format!("{open}{body}"), self.font_family)
+        {
+            let _ = write!(self.out, "<path d=\"{d}\" fill=\"none\"");
+            self.bold_stroke(c);
+            self.out.push_str("/>\n");
+            stroke = false;
+        }
+        self.out.push_str(&open);
+        paint(&mut self.out, "fill", c);
+        if stroke {
+            self.bold_stroke(c);
+            self.out.push_str(" paint-order=\"stroke\"");
+        }
+        self.out.push_str(&body);
+        self.out.push('\n');
     }
 
-    /// An embedded PNG, or the missing-image placeholder (also for one
-    /// the canvas refuses to draw as too large).
+    /// The stroke that makes text bold, in its colour `c`.
+    fn bold_stroke(&mut self, c: Color32) {
+        self.stroke(Some((BOLD_STROKE, c)));
+        self.out.push_str(" stroke-linejoin=\"round\"");
+    }
+
+    /// An embedded PNG (JPEG and WebP assets converted), or the
+    /// missing-image placeholder (also for one the canvas refuses to draw
+    /// as too large).
     fn image(&mut self, r: Rect, asset: &str) {
-        match self.assets.get(asset) {
+        let asset = self.assets.get(asset);
+        let png = asset.as_deref().and_then(export_png_bytes);
+        match png {
             Some(bytes) if png_size(&bytes).is_some_and(drawable) => {
                 let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
                 let _ = writeln!(

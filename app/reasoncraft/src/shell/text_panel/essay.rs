@@ -6,16 +6,18 @@
 //! The order is cached per document revision (see [`DocTab::essay`]).
 
 use eframe::egui::{
-    self, CollapsingHeader, Frame, Margin, Response, RichText, Role, ScrollArea, Sense, Stroke, Ui,
-    WidgetInfo, pos2, text::LayoutJob, vec2,
+    self, CollapsingHeader, Frame, Margin, Response, RichText, Role, Sense, Stroke, Ui, WidgetInfo,
+    pos2, text::LayoutJob, vec2,
 };
 use reasoncraft_core::essay::{ElementRole, EssayElement, EssaySection, EssaySlot};
 use reasoncraft_core::{BoxKind, Document, Item, Role as CardRole};
 
-use super::essay_slot::{self, Paragraph, Statement};
+use super::essay_rows::{Part, parts};
+use super::essay_slot::{self, Paragraph, Statement, paragraph_id};
+use super::virtual_rows::{self, Rows};
 use crate::actions::Action;
 use crate::canvas::rating::{Mark, card_colour, mark_for, rating_label, split_dots};
-use crate::doc_tab::{DocTab, EssayView};
+use crate::doc_tab::{DocTab, EssayRow, EssayView};
 use crate::i18n::{FluentArgs, t, t_args};
 use crate::settings::Settings;
 use crate::spell::SpellFields;
@@ -35,7 +37,12 @@ struct Ctx<'a> {
     tk: &'a Tokens,
 }
 
+/// The height assumed for a row not laid out yet: a statement with its
+/// paragraph field.
+const ROW_ESTIMATE: f32 = 70.0;
+
 /// Draw the Essay tab for `tab` and queue the user's commands in `out`.
+/// Only the rows near the view are laid out.
 pub fn show(
     ui: &mut Ui,
     tab: &mut DocTab,
@@ -45,39 +52,65 @@ pub fn show(
     out: &mut Vec<Action>,
 ) {
     tab.essay();
-    let tab = &*tab;
-    let Some((_, view)) = &tab.essay_cache else {
-        return;
-    };
-    let cx = Ctx {
-        tab,
-        doc: &tab.doc,
-        view,
-        selection: tab.selection,
-        settings,
-        tk,
-    };
-    ScrollArea::vertical()
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            help(ui, tk);
-            ui.add_space(6.0);
-            end_slot(ui, &cx, EssaySlot::Intro, spell, out);
-            if view.sections.is_empty() {
-                ui.label(RichText::new(t("essay.no_sections")).color(tk.text_muted));
-            }
-            for (n, section) in view.sections.iter().enumerate() {
-                ui.add_space(10.0);
-                section_heading(ui, &cx, n + 1, section);
-                for e in &section.elements {
-                    element(ui, &cx, e, spell, out);
-                }
-            }
-            ui.add_space(10.0);
-            end_slot(ui, &cx, EssaySlot::Conclusion, spell, out);
-            inactive(ui, &cx, out);
-            unplaced(ui, &cx, out);
+    let mut heights = std::mem::take(&mut tab.essay_heights);
+    let tab_ref = &*tab;
+    if let Some((_, view)) = &tab_ref.essay_cache {
+        let cx = Ctx {
+            tab: tab_ref,
+            doc: &tab_ref.doc,
+            view,
+            selection: tab_ref.selection,
+            settings,
+            tk,
+        };
+        let parts = parts(&tab_ref.doc, view);
+        let keys: Vec<EssayRow> = parts.iter().map(Part::key).collect();
+        // The row whose field has the keyboard focus stays laid out.
+        let focused = ui.memory(|m| m.focused());
+        let keep = focused.and_then(|id| {
+            keys.iter().find(|k| match k {
+                EssayRow::Slot(slot) => paragraph_id(tab_ref, *slot) == id,
+                _ => false,
+            })
         });
+        let rows = Rows {
+            keys: &keys,
+            estimate: ROW_ESTIMATE,
+            revision: tab_ref.revision(),
+            keep,
+            draw: |ui: &mut Ui, i: usize| part(ui, &cx, &parts[i], spell, out),
+        };
+        virtual_rows::show(ui, &mut heights, rows);
+    }
+    tab.essay_heights = heights;
+}
+
+/// Draws one row of the tab.
+fn part(ui: &mut Ui, cx: &Ctx, part: &Part, spell: &mut SpellFields, out: &mut Vec<Action>) {
+    match *part {
+        Part::Help => {
+            help(ui, cx.tk);
+            ui.add_space(6.0);
+        }
+        Part::End(slot) => {
+            if slot == EssaySlot::Conclusion {
+                ui.add_space(10.0);
+            }
+            end_slot(ui, cx, slot, spell, out);
+        }
+        Part::NoSections => {
+            ui.label(RichText::new(t("essay.no_sections")).color(cx.tk.text_muted));
+        }
+        Part::Section(n, section) => {
+            ui.add_space(10.0);
+            section_heading(ui, cx, n, section);
+        }
+        Part::Element(e) => element(ui, cx, e, spell, out),
+        Part::InactiveHeading => list_heading(ui, cx.tk, "essay.inactive"),
+        Part::Inactive(item, label, text) => inactive(ui, cx, item, label, text, out),
+        Part::UnplacedHeading => list_heading(ui, cx.tk, "essay.unplaced"),
+        Part::Unplaced(i, label, text) => unplaced(ui, cx, i, label, text, out),
+    }
 }
 
 /// The "How to use" note: the structure the essay follows.
@@ -277,54 +310,39 @@ fn list_heading(ui: &mut Ui, tk: &Tokens, key: &str) {
     ui.add_space(4.0);
 }
 
-/// Paragraphs of parked items and of items no longer in an argument:
-/// read-only, with Copy. They count again when the item returns.
-fn inactive(ui: &mut Ui, cx: &Ctx, out: &mut Vec<Action>) {
-    if cx.view.inactive.is_empty() {
-        return;
-    }
-    list_heading(ui, cx.tk, "essay.inactive");
-    for (item, label) in &cx.view.inactive {
-        let Some(text) = cx.doc.essay.text(EssaySlot::Item(*item)) else {
-            continue;
+/// The paragraph of a parked item, or of one no longer in an argument:
+/// read-only, with Copy. It counts again when the item returns.
+fn inactive(ui: &mut Ui, cx: &Ctx, item: Item, label: &str, text: &str, out: &mut Vec<Action>) {
+    note_frame(ui, cx.tk, |ui| {
+        let s = Statement {
+            item,
+            text: label,
+            depth: 0,
+            bar: None,
+            source: None,
+            mark: None,
+            selected: cx.selection == Some(item),
         };
-        note_frame(ui, cx.tk, |ui| {
-            let s = Statement {
-                item: *item,
-                text: label,
-                depth: 0,
-                bar: None,
-                source: None,
-                mark: None,
-                selected: cx.selection == Some(*item),
-            };
-            essay_slot::statement(ui, &s, cx.tk, out);
-            ui.label(text);
+        essay_slot::statement(ui, &s, cx.tk, out);
+        ui.label(text);
+        if ui.button(t("essay.copy")).clicked() {
+            ui.ctx().copy_text(text.to_owned());
+        }
+    });
+}
+
+/// The `i`th note whose item was deleted, with Copy and Remove.
+fn unplaced(ui: &mut Ui, cx: &Ctx, i: usize, label: &str, text: &str, out: &mut Vec<Action>) {
+    note_frame(ui, cx.tk, |ui| {
+        ui.label(RichText::new(label).strong().color(cx.tk.text_muted));
+        ui.label(text);
+        ui.horizontal(|ui| {
             if ui.button(t("essay.copy")).clicked() {
                 ui.ctx().copy_text(text.to_owned());
             }
+            if ui.button(t("essay.remove")).clicked() {
+                out.push(Action::RemoveUnplaced(i));
+            }
         });
-    }
-}
-
-/// Notes whose item was deleted, with Copy and Remove.
-fn unplaced(ui: &mut Ui, cx: &Ctx, out: &mut Vec<Action>) {
-    if cx.doc.essay.unplaced.is_empty() {
-        return;
-    }
-    list_heading(ui, cx.tk, "essay.unplaced");
-    for (i, (label, text)) in cx.doc.essay.unplaced.iter().enumerate() {
-        note_frame(ui, cx.tk, |ui| {
-            ui.label(RichText::new(label).strong().color(cx.tk.text_muted));
-            ui.label(text);
-            ui.horizontal(|ui| {
-                if ui.button(t("essay.copy")).clicked() {
-                    ui.ctx().copy_text(text.clone());
-                }
-                if ui.button(t("essay.remove")).clicked() {
-                    out.push(Action::RemoveUnplaced(i));
-                }
-            });
-        });
-    }
+    });
 }

@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 
 use eframe::egui::{self, ColorImage, TextureFilter, TextureHandle, TextureOptions};
+use image::DynamicImage;
 use image::imageops::FilterType;
 use reasoncraft_core::{Assets, Document};
 
@@ -22,10 +23,17 @@ const LOADS_PER_FRAME: usize = 2;
 /// never shows an image larger, and exports read the full-size asset.
 pub const MAX_TEXTURE_SIDE: u32 = 1024;
 
+/// A stored asset decoded, under the limits above; `None` when it does
+/// not decode or is larger than this build ever stores. Exports decode
+/// with it too, so they refuse what the canvas refuses.
+pub fn decode_stored(bytes: &[u8]) -> Option<DynamicImage> {
+    decode(bytes, MAX_STORED_SIDE, MAX_STORED_ALLOC).ok()
+}
+
 /// [`MAX_TEXTURE_SIDE`] px on the longest side; `None` when it does not
 /// decode or is larger than this build ever stores.
 fn color_image(bytes: &[u8]) -> Option<ColorImage> {
-    let mut img = decode(bytes, MAX_STORED_SIDE, MAX_STORED_ALLOC).ok()?;
+    let mut img = decode_stored(bytes)?;
     if img.width().max(img.height()) > MAX_TEXTURE_SIDE {
         img = img.resize(MAX_TEXTURE_SIDE, MAX_TEXTURE_SIDE, FilterType::Triangle);
     }

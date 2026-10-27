@@ -6,10 +6,12 @@ use eframe::egui::{self, Stroke, Ui};
 mod check;
 mod drag_chip;
 mod essay;
+mod essay_rows;
 mod essay_slot;
 mod outline;
 mod snippet_card;
 mod snippets;
+mod virtual_rows;
 
 pub use check::{check_key, item_text};
 pub use drag_chip::{chip_label, excerpt};

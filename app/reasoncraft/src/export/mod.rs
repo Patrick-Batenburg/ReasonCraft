@@ -2,6 +2,7 @@
 //! with the fonts the screen uses, so a file looks like the canvas on any
 //! machine.
 
+mod assets;
 mod docx;
 mod docx_props;
 mod job;
@@ -10,6 +11,7 @@ mod raster;
 mod request;
 mod svg;
 mod svg_attr;
+mod svg_bold;
 
 use std::sync::{Arc, LazyLock};
 
@@ -17,6 +19,7 @@ use eframe::egui::FontDefinitions;
 use eframe::egui::emath::GuiRounding as _;
 use resvg::usvg::fontdb;
 
+pub use assets::export_png_bytes;
 pub use docx::{essay_docx, outline_docx};
 pub use job::{ExportJobs, ExportWork, Notice, Outcome, SharedClipboard, Snapshot, Target};
 pub use pdf::{
@@ -139,6 +142,8 @@ struct TextFace {
     ascent: f32,
     descent: f32,
     gap: f32,
+    /// Whether the bundled fonts have a bold face of this family.
+    has_bold: bool,
 }
 
 impl TextFace {
@@ -161,7 +166,11 @@ impl TextFace {
             .and_then(|f| f.families.first())
             .map(|(name, _)| name.clone())
             .expect("egui's text font has a family name");
+        let has_bold = FONTS.faces().any(|f| {
+            f.weight.0 >= fontdb::Weight::SEMIBOLD.0 && f.families.iter().any(|(n, _)| *n == family)
+        });
         Self {
+            has_bold,
             family,
             ascent: m.ascent / em,
             descent: m.descent / em,
@@ -190,6 +199,10 @@ impl TextFace {
     }
 }
 
+#[cfg(test)]
+mod assets_tests;
+#[cfg(test)]
+mod bold_tests;
 #[cfg(test)]
 mod docx_tests;
 #[cfg(test)]

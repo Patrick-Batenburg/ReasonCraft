@@ -151,7 +151,7 @@ fn shown_strings(content: &[u8]) -> Vec<Vec<u8>> {
 
 /// The text shown with two-byte (Identity-H) fonts, decoded through the
 /// ToUnicode maps, in drawing order.
-fn extract_text(pdf: &[u8]) -> String {
+pub(super) fn extract_text(pdf: &[u8]) -> String {
     let streams = streams(pdf);
     let map = to_unicode(&streams);
     let mut text = String::new();

@@ -3,15 +3,15 @@
 //! clicking one selects its item and shows it on the map.
 
 use eframe::egui::{
-    self, FontId, Frame, Label, Margin, Response, RichText, Role, ScrollArea, Sense, Shape, Ui,
-    WidgetInfo,
+    self, FontId, Frame, Label, Margin, Response, RichText, Role, Sense, Shape, Ui, WidgetInfo,
 };
 use reasoncraft_core::checks::{CheckKind, Issue};
 use reasoncraft_core::{CardKind, CardStrength, Document, Item};
 
 use super::outline::one_line;
+use super::virtual_rows::{self, Rows};
 use crate::actions::Action;
-use crate::doc_tab::DocTab;
+use crate::doc_tab::{CheckRow, DocTab};
 use crate::i18n::{FluentArgs, t, t_args};
 use crate::settings::Settings;
 use crate::shell::{hover_fill, selected_fill};
@@ -25,7 +25,61 @@ pub fn check_key(kind: CheckKind) -> &'static str {
     kind.key()
 }
 
+/// One row of the tab, with what it draws.
+enum Part<'a> {
+    /// A check's heading with its count; the first heading has no space
+    /// above it.
+    Heading(CheckKind, usize, bool),
+    /// The `n`th issue of its check.
+    Issue(usize, &'a Issue),
+    /// "Show ignored hints", with the number ignored.
+    Footer(usize),
+}
+
+impl Part<'_> {
+    fn key(&self) -> CheckRow {
+        match *self {
+            Part::Heading(kind, ..) => CheckRow::Heading(kind),
+            Part::Issue(n, issue) => CheckRow::Issue(issue.kind, n),
+            Part::Footer(_) => CheckRow::Footer,
+        }
+    }
+}
+
+/// The rows of the tab: the issues grouped by check, then the footer.
+fn parts(issues: &[Issue], ignored: usize) -> Vec<Part<'_>> {
+    let mut parts = Vec::with_capacity(issues.len() + CheckKind::ALL.len() + 1);
+    for kind in CheckKind::ALL {
+        let group: Vec<&Issue> = issues.iter().filter(|i| i.kind == kind).collect();
+        if group.is_empty() {
+            continue;
+        }
+        // "Not rated yet" is one row standing for many items.
+        let count = match group.as_slice() {
+            [one] if kind == CheckKind::IncompleteEvaluation => {
+                one.terms.first().and_then(|n| n.parse().ok()).unwrap_or(1)
+            }
+            _ => group.len(),
+        };
+        parts.push(Part::Heading(kind, count, parts.is_empty()));
+        parts.extend(
+            group
+                .into_iter()
+                .enumerate()
+                .map(|(n, i)| Part::Issue(n, i)),
+        );
+    }
+    if ignored > 0 {
+        parts.push(Part::Footer(ignored));
+    }
+    parts
+}
+
+/// The height assumed for an issue row not laid out yet.
+const ROW_ESTIMATE: f32 = 44.0;
+
 /// Draw the Check tab for `tab`, with the checks turned on in `settings`.
+/// Only the rows near the view are laid out.
 pub fn show(
     ui: &mut Ui,
     tab: &mut DocTab,
@@ -34,43 +88,47 @@ pub fn show(
     out: &mut Vec<Action>,
 ) {
     tab.issues(&settings.checks);
-    let tab = &*tab;
-    let issues = tab.issue_cache.as_ref().map_or(&[][..], |(_, _, i)| i);
-    let ignored = tab.doc.ignored_hints.len();
+    let mut heights = std::mem::take(&mut tab.check_heights);
+    let tab_ref = &*tab;
+    let issues = tab_ref.issue_cache.as_ref().map_or(&[][..], |(_, _, i)| i);
+    let ignored = tab_ref.doc.ignored_hints.len();
     if issues.is_empty() {
         ui.label(RichText::new(t("check.all_clear")).color(tk.text_muted));
         footer(ui, ignored, out);
         ui.take_available_space();
-        return;
-    }
-    ScrollArea::vertical()
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            for kind in CheckKind::ALL {
-                let group: Vec<&Issue> = issues.iter().filter(|i| i.kind == kind).collect();
-                if group.is_empty() {
-                    continue;
+    } else {
+        let parts = parts(issues, ignored);
+        let keys: Vec<CheckRow> = parts.iter().map(Part::key).collect();
+        let draw = |ui: &mut Ui, i: usize| match parts[i] {
+            Part::Heading(kind, count, first) => {
+                if !first {
+                    ui.add_space(10.0);
                 }
-                // "Not rated yet" is one row standing for many items.
-                let count = match group.as_slice() {
-                    [one] if kind == CheckKind::IncompleteEvaluation => {
-                        one.terms.first().and_then(|n| n.parse().ok()).unwrap_or(1)
-                    }
-                    _ => group.len(),
-                };
                 heading(ui, kind, count, tk);
-                for (n, issue) in group.into_iter().enumerate() {
-                    let selected = tab.selection == Some(issue.item);
-                    let id = ui.scope_id().with((check_key(kind), n));
-                    if row(ui, id, &tab.doc, issue, selected, tk, out).clicked() {
-                        out.push(Action::Select(Some(issue.item)));
-                        out.push(Action::RevealSelection);
-                    }
-                }
-                ui.add_space(10.0);
             }
-            footer(ui, ignored, out);
-        });
+            Part::Issue(n, issue) => {
+                let selected = tab_ref.selection == Some(issue.item);
+                let id = ui.scope_id().with((check_key(issue.kind), n));
+                if row(ui, id, &tab_ref.doc, issue, selected, tk, out).clicked() {
+                    out.push(Action::Select(Some(issue.item)));
+                    out.push(Action::RevealSelection);
+                }
+            }
+            Part::Footer(ignored) => {
+                ui.add_space(10.0);
+                footer(ui, ignored, out);
+            }
+        };
+        let rows = Rows {
+            keys: &keys,
+            estimate: ROW_ESTIMATE,
+            revision: tab_ref.revision(),
+            keep: None,
+            draw,
+        };
+        virtual_rows::show(ui, &mut heights, rows);
+    }
+    tab.check_heights = heights;
 }
 
 /// "Show ignored hints (n)", when the document ignores any.

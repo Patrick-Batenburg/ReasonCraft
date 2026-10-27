@@ -20,10 +20,12 @@ use crate::jobs::JobId;
 mod essay_edit;
 mod find_state;
 mod meta_edit;
+mod row_heights;
 mod session;
 mod snippet_edit;
 pub use essay_edit::EssayView;
 pub use find_state::FindState;
+pub use row_heights::{CheckRow, EssayRow, RowHeights};
 pub use session::EditSession;
 pub use snippet_edit::{cap_snippet, tidy_source};
 
@@ -91,6 +93,11 @@ pub struct DocTab {
     /// The Essay tab's view, with the revision it was built for (see
     /// [`Self::essay`]).
     pub essay_cache: Option<(u64, EssayView)>,
+    /// The heights of the Essay tab's rows, so it lays out only those in
+    /// view; [`RowHeights::laid_out`] counts the rows of the last frame.
+    pub essay_heights: RowHeights<EssayRow>,
+    /// The same for the Check tab.
+    pub check_heights: RowHeights<CheckRow>,
     /// The boxes whose inserted image is being prepared, with the job
     /// preparing it; a newer insert for the same box replaces the entry,
     /// so the older result is dropped when it arrives.
@@ -178,6 +185,8 @@ impl DocTab {
             outline_cache: None,
             issue_cache: None,
             essay_cache: None,
+            essay_heights: RowHeights::default(),
+            check_heights: RowHeights::default(),
             pending_images: HashMap::new(),
             find: FindState::default(),
             spelling: None,

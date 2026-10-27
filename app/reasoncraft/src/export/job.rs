@@ -113,20 +113,23 @@ impl ExportWork {
                     copy_scene_to_clipboard(scene, assets, tokens, &opts, &fonts, &mut *sink)?;
                     return Ok(Outcome::Copied);
                 }
-                let svg = |outlines| {
-                    let opts = SvgOptions {
-                        text_as_paths: outlines,
-                        ..SvgOptions::new(tokens)
-                    };
-                    scene_to_svg(scene, assets, &opts, &bundled_font_family())
-                };
                 match format {
                     ExportFormat::Png => {
                         scene_to_png(scene, assets, tokens, &png_options(&self.options), &fonts)?
                     }
-                    ExportFormat::Svg => svg(self.options.svg_outlines).into_bytes(),
+                    ExportFormat::Svg => {
+                        let opts = SvgOptions {
+                            text_as_paths: self.options.svg_outlines,
+                            ..SvgOptions::new(tokens)
+                        };
+                        scene_to_svg(scene, assets, &opts, &bundled_font_family()).into_bytes()
+                    }
                     // The PDF embeds the fonts and keeps text selectable.
-                    ExportFormat::Pdf => svg_to_pdf(&svg(false), &self.page, &fonts)?,
+                    ExportFormat::Pdf => {
+                        let opts = SvgOptions::for_pdf(tokens);
+                        let svg = scene_to_svg(scene, assets, &opts, &bundled_font_family());
+                        svg_to_pdf(&svg, &self.page, &fonts)?
+                    }
                     other => return Err(ExportError::Unsupported(other)),
                 }
             }
