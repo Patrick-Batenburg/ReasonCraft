@@ -79,6 +79,8 @@ fn licence() -> Result<()> {
     let mit = fs::read_to_string(root.join("LICENSE-MIT"))?;
     let apache = fs::read_to_string(root.join("LICENSE-APACHE"))?;
     let text = [
+        "ReasonCraft
+Copyright (c) 2026 Patrick van Batenburg and ReasonCraft contributors",
         "ReasonCraft is licensed under either of the following licences, at your option.",
         "==================== MIT License ====================",
         mit.trim_end(),

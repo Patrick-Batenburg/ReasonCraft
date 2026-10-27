@@ -215,8 +215,12 @@ Dragging also reorders: drop an item between its siblings (an insertion bar show
 
 - In a narrow window (for example at 150 % interface size on a laptop screen) a ribbon tab does not fit at once: arrows at its ends scroll it, as does the mouse wheel over it. The side panels then get narrower so the map keeps room.
 
+- In Dutch, at 150 % interface size in the smallest window (800 × 500), the Text panel's tabs wrap onto a second line.
+
 - macOS: the app has no app menu (About, Hide, Quit), so that Cmd+Q reaches the window and asks about unsaved changes first. Quitting from the Dock, or logging out or shutting down, still quits without asking; with autosave on, the next start offers to recover the work up to the last autosave.
 
 ## Licence
+
+Copyright (c) 2026 Patrick van Batenburg and ReasonCraft contributors.
 
 Licensed under either of MIT or Apache-2.0, at your option.
