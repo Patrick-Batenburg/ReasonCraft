@@ -1,15 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <!-- ReasonCraft app icon (original design): a claim box above a reason
-       box, linked by an arrow that points from the reason to the claim. -->
-  <rect x="8" y="8" width="240" height="240" rx="52" fill="#1A5CC8"/>
-  <rect x="32" y="36" width="152" height="68" rx="16" fill="#FFFFFF"/>
-  <rect x="50" y="56" width="96" height="10" rx="5" fill="#1A5CC8"/>
-  <rect x="50" y="76" width="64" height="10" rx="5" fill="#8AB4FF"/>
-  <rect x="72" y="152" width="152" height="68" rx="16" fill="#DCE8FF"/>
-  <rect x="90" y="172" width="96" height="10" rx="5" fill="#1A5CC8"/>
-  <rect x="90" y="192" width="64" height="10" rx="5" fill="#8AB4FF"/>
-  <path d="M148 150 V132 H108 V124" fill="none" stroke="#FFFFFF" stroke-width="10"
-        stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M95 126 L108 110 L121 126 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="4"
-        stroke-linejoin="round"/>
+  <!-- ReasonCraft app icon (original design, in the ArtCraft family style):
+       balance scales weighing two speech bubbles, a reason (+) against an
+       objection (-). Cream shapes with black outlines on a teal tile. -->
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="#127C80"/>
+  <g transform="translate(8 8) scale(1.2)" stroke="#141414" stroke-linejoin="round" stroke-linecap="round">
+    <!-- strings -->
+    <path d="M42 66 L26 108 M42 66 L58 108 M158 56 L142 94 M158 56 L174 94" fill="none" stroke-width="3.5"/>
+    <!-- post and foot -->
+    <rect x="93" y="44" width="14" height="114" rx="4" fill="#F3EEDF" stroke-width="6"/>
+    <rect x="66" y="156" width="68" height="16" rx="5" fill="#F3EEDF" stroke-width="6"/>
+    <!-- beam, tipped toward the reason -->
+    <path d="M36 61 L164 50 L165 61 L37 72 Z" fill="#F3EEDF" stroke-width="6"/>
+    <circle cx="100" cy="52" r="10" fill="#F3EEDF" stroke-width="6"/>
+    <!-- left pan: a reason bubble (+), heavier, lower -->
+    <path d="M14 108 L66 108 C70 108 72 110 72 114 L72 136 C72 140 70 142 66 142 L40 142 L28 154 L30 142 L20 142 C16 142 14 140 14 136 Z" fill="#F3EEDF" stroke-width="6"/>
+    <path d="M33 125 L53 125 M43 115 L43 135" fill="none" stroke-width="6"/>
+    <!-- right pan: an objection bubble (-), lighter, higher -->
+    <path d="M134 94 L186 94 C190 94 192 96 192 100 L192 122 C192 126 190 128 186 128 L176 128 L174 140 L162 128 L140 128 C136 128 134 126 134 122 Z" fill="#F3EEDF" stroke-width="6"/>
+    <path d="M153 111 L173 111" fill="none" stroke-width="6"/>
+  </g>
 </svg>
