@@ -193,7 +193,15 @@ fn about_shows_the_licence_texts() {
     // Each licence is a closed header; opening one shows its text.
     for (key, text) in BUNDLED {
         assert!(has(&h, &t(key)), "{key}");
-        let first = text.lines().find(|l| !l.trim().is_empty()).unwrap().trim();
+        // The longest of its first lines: a bare title like "MIT License"
+        // is also quoted on the page (the third-party notes).
+        let first = text
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .take(3)
+            .max_by_key(|l| l.len())
+            .unwrap();
         assert!(!has(&h, first), "{key} starts closed");
     }
     h.get_by_label(&t("about.licences.ubuntu")).click();

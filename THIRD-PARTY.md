@@ -5,9 +5,14 @@
 Pure-Rust Hunspell-compatible spell checker, used unmodified from crates.io and confined to the `reasoncraft_spell` crate.
 Source: https://github.com/helix-editor/spellbook. Licence: Mozilla Public License 2.0.
 
-## WordCraft (Apache-2.0)
+## WordCraft (MIT OR Apache-2.0; used under Apache-2.0)
 
-The ribbon's group fitting (groups shrink to compact, then collapse into a drop-down, from the right; `app/reasoncraft/src/shell/ribbon/fit.rs`) and its scroll edge cues (`app/reasoncraft/src/shell/ribbon/overflow.rs`) are adapted from WordCraft. Source: https://github.com/storytold/wordcraft. Licence: Apache License 2.0.
+The ribbon's group fitting (groups shrink to compact, then collapse into a drop-down, from the right; `app/reasoncraft/src/shell/ribbon/fit.rs`) and its scroll edge cues (`app/reasoncraft/src/shell/ribbon/overflow.rs`) are adapted from WordCraft, and changed. Source: https://github.com/storytold/wordcraft. Its NOTICE reads:
+
+> WordCraft
+> Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.
+> Licensed under the MIT License or the Apache License, Version 2.0, at your option
+> (LICENSE-MIT, LICENSE-APACHE).
 
 ## Fonts
 

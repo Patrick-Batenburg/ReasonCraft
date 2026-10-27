@@ -1,10 +1,12 @@
 //! The Home ribbon tab: clipboard, adding items, editing and the
 //! selected box's type, link and image.
 
-use eframe::egui::{Button, Popup, Ui};
+use eframe::egui::{Button, Ui};
 use reasoncraft_core::{BoxKind, CardKind, Item, SourceType};
 
-use super::{command, group, large, large_menu, small, small_command};
+use super::{
+    command, group, large, large_menu, menu_item, menu_popup, small, small_column, small_command,
+};
 use crate::actions::{Action, is_enabled, selected_card};
 use crate::app::ReasonCraftApp;
 use crate::canvas::plus_menu::source_button;
@@ -22,7 +24,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 
     group(ui, &tk, Icon::Paste, &t("group.clipboard"), |ui| {
         large(ui, &tk, Icon::Paste, &t("action.paste"), false, false);
-        ui.vertical(|ui| {
+        small_column(ui, |ui| {
             small(ui, &tk, Icon::Cut, &t("action.cut"), false);
             small(ui, &tk, Icon::Copy, &t("action.copy"), false);
             small_command(
@@ -47,7 +49,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         source_menu(ui, &tk, tab, &mut out);
         // The other items in a column of small buttons, so that the Home
         // tab fits 1280 px in the longer Dutch labels too.
-        ui.vertical(|ui| {
+        small_column(ui, |ui| {
             let others = [
                 (Icon::Category, "home.add_category"),
                 (Icon::Note, "home.add_note"),
@@ -59,7 +61,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         });
     });
     group(ui, &tk, Icon::Undo, &t("group.editing"), |ui| {
-        ui.vertical(|ui| {
+        small_column(ui, |ui| {
             for (icon, id) in [
                 (Icon::Delete, "home.delete"),
                 (Icon::DeleteBranch, "home.delete_branch"),
@@ -78,12 +80,12 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
                 connect.action.clone()
             });
         }
-        ui.vertical(|ui| {
+        small_column(ui, |ui| {
             for (icon, id) in [(Icon::Undo, "home.undo"), (Icon::Redo, "home.redo")] {
                 small_command(ui, &tk, icon, id, enabled(id), &mut out);
             }
         });
-        ui.vertical(|ui| {
+        small_column(ui, |ui| {
             for (icon, id) in [(Icon::Find, "home.find"), (Icon::Replace, "home.replace")] {
                 small_command(ui, &tk, icon, id, true, &mut out);
             }
@@ -100,11 +102,11 @@ pub(super) fn source_menu(ui: &mut Ui, tk: &Tokens, tab: &DocTab, out: &mut Vec<
     let generic = Action::AddSource(SourceType::Source);
     let label = t("action.add_source");
     let resp = large_menu(ui, tk, Icon::Source, &label, is_enabled(tab, &generic));
-    Popup::menu(&resp).show(|ui| {
+    menu_popup(ui, &resp, |ui| {
         for st in SourceType::ALL {
             let cmd = commands::get(&commands::add_source_id(&st));
             let on = is_enabled(tab, &cmd.action);
-            if ui.add_enabled(on, source_button(&st)).clicked() {
+            if menu_item(ui, on, source_button(&st)) {
                 out.push(cmd.action.clone());
             }
         }
@@ -137,24 +139,24 @@ fn box_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
             &label,
             current_kind.is_some() || source.is_some(),
         );
-        Popup::menu(&resp).show(|ui| {
+        menu_popup(ui, &resp, |ui| {
             if let Some(current) = &source {
                 for st in SourceType::ALL {
                     let button = source_button(&st).selected(&st == current);
-                    if ui.add(button).clicked() {
+                    if menu_item(ui, true, button) {
                         out.push(Action::SetSourceType(st));
                     }
                 }
             } else {
                 for (kind, key) in card_kinds {
                     let selected = current_kind.as_ref() == Some(&kind);
-                    if ui.add(Button::selectable(selected, t(key))).clicked() {
+                    if menu_item(ui, true, Button::selectable(selected, t(key))) {
                         out.push(Action::SetCardKind(kind));
                     }
                 }
             }
         });
-        ui.vertical(|ui| {
+        small_column(ui, |ui| {
             let buttons = [
                 (Icon::Link, "home.link"),
                 (Icon::Image, "home.image"),

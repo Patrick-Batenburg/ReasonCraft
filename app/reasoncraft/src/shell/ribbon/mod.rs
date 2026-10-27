@@ -1,8 +1,8 @@
 //! The ribbon: a tab strip and, for the active tab, labelled groups of commands.
 
 use eframe::egui::{
-    self, Align, Align2, Color32, FontId, Frame, Layout, Margin, Popup, PopupCloseBehavior, Rect,
-    Response, Role, Sense, Stroke, StrokeKind, Ui, Vec2, WidgetInfo, pos2,
+    self, Color32, FontId, Frame, Margin, Rect, Response, Role, Sense, Stroke, StrokeKind, Ui,
+    Vec2, WidgetInfo, pos2,
 };
 
 use super::icons::{self, Icon};
@@ -10,17 +10,20 @@ use super::{hover_fill, selected_fill, tab_button};
 use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::commands;
-use crate::i18n::{FluentArgs, t, t_args};
+use crate::i18n::t;
 use crate::theme::Tokens;
 
 mod evaluate;
 mod export;
 mod fit;
+mod groups;
 mod help;
 mod home;
 mod insert;
 mod overflow;
 mod view;
+
+use groups::{group, keeps_open, menu_item, menu_popup, small_column};
 
 const STRIP_H: f32 = 30.0;
 const BUTTON_H: f32 = 66.0;
@@ -110,8 +113,17 @@ fn command(
     let resp = large(ui, tk, icon, &t(cmd.label), enabled, selected);
     if resp.clicked() {
         out.push(cmd.action.clone());
+        close_drop_down(ui, &cmd.action);
     }
     resp
+}
+
+/// In a collapsed group's drop-down, a command that is done once (unlike
+/// a toggle or a zoom step) closes the drop-down.
+fn close_drop_down(ui: &Ui, action: &Action) {
+    if fit::in_popup(ui.ctx()) && !keeps_open(action) {
+        ui.close();
+    }
 }
 
 /// Like [`command`], as a small button.
@@ -127,77 +139,9 @@ fn small_command(
     let resp = small(ui, tk, icon, &t(cmd.label), enabled);
     if resp.clicked() {
         out.push(cmd.action.clone());
+        close_drop_down(ui, &cmd.action);
     }
     resp
-}
-
-/// A labelled group: its controls, the label underneath and a separator
-/// after it. Planned to fit the window ([`fit`]), it may draw compact or
-/// collapsed into one drop-down button showing `icon` and the label.
-fn group(ui: &mut Ui, tk: &Tokens, icon: Icon, label: &str, add: impl FnOnce(&mut Ui)) {
-    let ctx = ui.ctx().clone();
-    let level = fit::level(&ctx, label);
-    let start = ui.cursor().left();
-    let top = ui.max_rect().top();
-    fit::start_group(&ctx, level == fit::COMPACT);
-    if level == fit::COLLAPSED {
-        collapsed(ui, tk, icon, label, add);
-    } else {
-        let label_w = ui
-            .painter()
-            .layout_no_wrap(label.to_owned(), FontId::proportional(11.0), tk.text_muted)
-            .size()
-            .x;
-        let inner = ui
-            .with_layout(Layout::left_to_right(Align::Min), |ui| {
-                ui.spacing_mut().item_spacing.x = 2.0;
-                ui.set_min_width(label_w + 12.0);
-                add(ui);
-            })
-            .response
-            .rect;
-        let label_y = top + BUTTON_H + LABEL_H / 2.0;
-        ui.painter().text(
-            pos2(inner.center().x, label_y),
-            Align2::CENTER_CENTER,
-            label,
-            FontId::proportional(11.0),
-            tk.text_muted,
-        );
-    }
-    ui.add_space(6.0);
-    let x = ui.cursor().left();
-    let line = Stroke::new(1.0, tk.attachment_line.gamma_multiply(0.6));
-    ui.painter().vline(
-        x,
-        egui::Rangef::new(top + 6.0, top + BUTTON_H + LABEL_H - 2.0),
-        line,
-    );
-    ui.add_space(8.0);
-    fit::record(&ctx, label, level, ui.cursor().left() - start);
-    fit::start_group(&ctx, false);
-}
-
-/// A collapsed group: one drop-down button that opens the whole group.
-fn collapsed(ui: &mut Ui, tk: &Tokens, icon: Icon, label: &str, add: impl FnOnce(&mut Ui)) {
-    let mut args = FluentArgs::new();
-    args.set("group", label);
-    let name = t_args("ribbon.group_more", &args);
-    let resp = large_button(ui, tk, icon, label, true, false, true);
-    let resp = crate::a11y::labelled(resp, name);
-    let frame = Frame::popup(ui.style()).fill(tk.ribbon);
-    Popup::menu(&resp)
-        .frame(frame)
-        .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
-        .show(|ui| {
-            fit::set_in_popup(ui.ctx(), true);
-            ui.horizontal(|ui| {
-                ui.set_height(BUTTON_H);
-                ui.spacing_mut().item_spacing.x = 2.0;
-                add(ui);
-            });
-            fit::set_in_popup(ui.ctx(), false);
-        });
 }
 
 /// Paint the hover or "on" background of a ribbon button; returns the colour under the icon.

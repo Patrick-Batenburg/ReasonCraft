@@ -1,8 +1,8 @@
 //! The Export ribbon tab: images of the map, text exports and printing.
 
-use eframe::egui::{Button, Popup, Ui};
+use eframe::egui::{Button, Ui};
 
-use super::{command, group, large_menu};
+use super::{command, group, large_menu, menu_item, menu_popup};
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::commands;
@@ -63,10 +63,10 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 /// A dropdown of text formats (registry command ids).
 fn menu(ui: &mut Ui, tk: &Tokens, icon: Icon, key: &str, ids: &[&str], out: &mut Vec<Action>) {
     let resp = large_menu(ui, tk, icon, &t(key), true);
-    Popup::menu(&resp).show(|ui| {
+    menu_popup(ui, &resp, |ui| {
         for &id in ids {
             let cmd = commands::get(id);
-            if ui.add(Button::new(t(cmd.label))).clicked() {
+            if menu_item(ui, true, Button::new(t(cmd.label))) {
                 out.push(cmd.action.clone());
             }
         }

@@ -192,3 +192,28 @@ fn the_keyboard_opens_a_collapsed_group() {
     h.run();
     assert_eq!(h.state().tabs[0].doc.boxes.len(), boxes + 1);
 }
+
+/// Clicking the right chevron by keyboard until it goes leaves the focus
+/// on the row's last button, not nowhere.
+#[test]
+fn the_focus_moves_on_when_its_chevron_goes() {
+    let mut h = small();
+    let right = t("ribbon.scroll_right");
+    h.get_by_label(&right).focus();
+    h.run();
+    let mut presses = 0;
+    while right_arrow(&h) {
+        h.key_press(egui::Key::Enter);
+        h.run();
+        presses += 1;
+        assert!(presses < 30, "never reached the end");
+    }
+    let focused = h
+        .root()
+        .children_recursive()
+        .find(|n| n.accesskit_node().is_focused())
+        .and_then(|n| n.accesskit_node().label());
+    let last = buttons(&h).last().map(|(name, _)| name.clone());
+    assert!(focused.is_some(), "the focus went somewhere");
+    assert_eq!(focused, last);
+}

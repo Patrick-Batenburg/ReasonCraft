@@ -4,7 +4,7 @@
 
 use eframe::egui::Ui;
 
-use super::{command, group, home::source_menu, small_command};
+use super::{command, group, home::source_menu, small_column, small_command};
 use crate::actions::is_enabled;
 use crate::app::ReasonCraftApp;
 use crate::commands;
@@ -25,7 +25,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         ] {
             command(ui, &tk, icon, id, enabled(id), false, &mut out);
         }
-        ui.vertical(|ui| {
+        small_column(ui, |ui| {
             for (icon, id) in [
                 (Icon::Category, "home.add_category"),
                 (Icon::Note, "home.add_note"),
@@ -35,7 +35,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         });
     });
     group(ui, &tk, Icon::Objection, &t("group.whole_card"), |ui| {
-        ui.vertical(|ui| {
+        small_column(ui, |ui| {
             for (icon, id) in [
                 (Icon::Reason, "home.whole_card_reason"),
                 (Icon::Objection, "home.whole_card_objection"),
@@ -48,7 +48,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         source_menu(ui, &tk, tab, &mut out);
     });
     group(ui, &tk, Icon::BoxType, &t("group.box"), |ui| {
-        ui.vertical(|ui| {
+        small_column(ui, |ui| {
             for (icon, id) in [
                 (Icon::Comment, "home.comment"),
                 (Icon::Link, "home.link"),

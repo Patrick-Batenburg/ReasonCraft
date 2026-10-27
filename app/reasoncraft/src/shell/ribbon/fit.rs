@@ -11,7 +11,8 @@
 //! ([`add_saving`]). Widths are measured again when the interface language
 //! or scale changes.
 //!
-//! Adapted from WordCraft (github.com/storytold/wordcraft), Apache-2.0.
+//! Adapted from WordCraft (github.com/storytold/wordcraft), Copyright (c)
+//! 2026 ArtCraft Team and the WordCraft contributors, Apache-2.0.
 
 use std::collections::HashMap;
 
@@ -48,7 +49,12 @@ pub fn plan(groups: &[Widths], avail: f32) -> Vec<u8> {
             if total <= avail {
                 break;
             }
-            total += width(g, target) - width(g, *level);
+            // A group that would be no narrower (a single button) stays.
+            let saved = width(g, *level) - width(g, target);
+            if saved.is_nan() || saved <= 0.5 {
+                continue;
+            }
+            total -= saved;
             *level = target;
         }
     }
@@ -291,6 +297,20 @@ mod tests {
             g(60.0, Some(60.0), Some(60.0)),
         ];
         assert_eq!(plan(&gs, 800.0), vec![FULL, COLLAPSED, FULL, FULL]);
+    }
+
+    #[test]
+    fn a_group_that_saves_nothing_stays_as_designed() {
+        // B is one button: collapsed it is no narrower, so it stays and
+        // A collapses instead.
+        let gs = [
+            g(200.0, Some(200.0), Some(70.0)),
+            g(60.0, Some(60.0), Some(70.0)),
+        ];
+        assert_eq!(plan(&gs, 200.0), vec![COLLAPSED, FULL]);
+        // An unmeasured collapsed width is never estimated wider than the group.
+        let gs = [g(200.0, None, None), g(60.0, None, None)];
+        assert_eq!(plan(&gs, 200.0), vec![COLLAPSED, FULL]);
     }
 
     #[test]

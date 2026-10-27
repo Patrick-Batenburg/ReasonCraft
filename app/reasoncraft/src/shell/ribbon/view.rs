@@ -2,10 +2,12 @@
 //! layout direction and connector style, the minimap and numbering,
 //! evaluation display and (debug builds) the sample map.
 
-use eframe::egui::{Button, Popup, Ui};
+use eframe::egui::{Button, Ui};
 use reasoncraft_core::{ConnectorStyle, LayoutDirection};
 
-use super::{command, evaluate, group, large_menu, small_command};
+use super::{
+    command, evaluate, group, large_menu, menu_item, menu_popup, small_column, small_command,
+};
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::commands;
@@ -45,7 +47,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             false,
             &mut out,
         );
-        ui.vertical(|ui| {
+        small_column(ui, |ui| {
             small_command(ui, &tk, Icon::ZoomIn, "view.zoom_in", true, &mut out);
             small_command(ui, &tk, Icon::ZoomOut, "view.zoom_out", true, &mut out);
         });
@@ -109,12 +111,12 @@ fn language_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     group(ui, &tk, Icon::Language, &t("group.language"), |ui| {
         let label = t("action.ui_language");
         let resp = large_menu(ui, &tk, Icon::Language, &label, true);
-        Popup::menu(&resp).show(|ui| {
+        menu_popup(ui, &resp, |ui| {
             let langs = UI_LANGUAGES.map(|l| (l, Some(l)));
             for (key, lang) in std::iter::once(("system", None)).chain(langs) {
                 let cmd = commands::get(&format!("view.language.{key}"));
                 let on = lang == current;
-                if ui.add(Button::new(t(cmd.label)).selected(on)).clicked() && !on {
+                if menu_item(ui, true, Button::new(t(cmd.label)).selected(on)) && !on {
                     out.push(cmd.action.clone());
                 }
             }
@@ -137,22 +139,22 @@ fn layout_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
         |ui| {
             let label = t("action.layout_direction");
             let resp = large_menu(ui, &tk, Icon::Direction(current), &label, true);
-            Popup::menu(&resp).show(|ui| {
+            menu_popup(ui, &resp, |ui| {
                 for d in LayoutDirection::ALL {
                     let cmd = commands::get(&format!("view.direction.{}", d.key()));
                     let button = Button::new((direction_atom(d, 16.0), t(cmd.label)));
-                    if ui.add(button.selected(d == current)).clicked() {
+                    if menu_item(ui, true, button.selected(d == current)) {
                         out.push(cmd.action.clone());
                     }
                 }
             });
             let label = t("action.connector_style");
             let resp = large_menu(ui, &tk, Icon::Connector(style), &label, true);
-            Popup::menu(&resp).show(|ui| {
+            menu_popup(ui, &resp, |ui| {
                 for s in ConnectorStyle::ALL {
                     let cmd = commands::get(&format!("view.connector.{}", s.key()));
                     let button = Button::new((connector_atom(s, 16.0), t(cmd.label)));
-                    if ui.add(button.selected(s == style)).clicked() {
+                    if menu_item(ui, true, button.selected(s == style)) {
                         out.push(cmd.action.clone());
                     }
                 }
@@ -167,13 +169,10 @@ fn overview_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     let current = app.settings.minimap;
     group(ui, &tk, Icon::Minimap, &t("group.overview"), |ui| {
         let resp = large_menu(ui, &tk, Icon::Minimap, &t("action.minimap"), true);
-        Popup::menu(&resp).show(|ui| {
+        menu_popup(ui, &resp, |ui| {
             for m in MinimapMode::ALL {
                 let cmd = commands::get(&format!("view.minimap.{}", m.key()));
-                if ui
-                    .add(Button::new(t(cmd.label)).selected(m == current))
-                    .clicked()
-                {
+                if menu_item(ui, true, Button::new(t(cmd.label)).selected(m == current)) {
                     out.push(cmd.action.clone());
                 }
             }
