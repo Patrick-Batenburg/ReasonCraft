@@ -81,7 +81,9 @@ pub enum ExportTheme {
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 #[serde(default)]
 pub struct ExportOptions {
+    #[serde(deserialize_with = "crate::settings::deserialize_or_default")]
     pub scope: ExportScope,
+    #[serde(deserialize_with = "crate::settings::deserialize_or_default")]
     pub theme: ExportTheme,
     /// PNG pixels per world px: 1 to 4.
     pub png_scale: u8,

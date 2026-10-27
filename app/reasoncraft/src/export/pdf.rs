@@ -58,9 +58,10 @@ pub enum Orientation {
 }
 
 /// How the drawing is put on paper.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Default)]
 pub enum Fit {
     /// Scaled to fit one page, centred.
+    #[default]
     OnePage,
     /// Split over pages at `scale`, where 1.0 is 1 world px = 0.25 mm.
     Tile { scale: f32 },
@@ -70,8 +71,11 @@ pub enum Fit {
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 #[serde(default)]
 pub struct PageSetup {
+    #[serde(deserialize_with = "crate::settings::deserialize_or_default")]
     pub paper: Paper,
+    #[serde(deserialize_with = "crate::settings::deserialize_or_default")]
     pub orientation: Orientation,
+    #[serde(deserialize_with = "crate::settings::deserialize_or_default")]
     pub fit: Fit,
     /// Blank space on each side of the page, in mm.
     pub margin_mm: f32,

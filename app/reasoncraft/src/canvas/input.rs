@@ -379,3 +379,5 @@ fn neighbour<T>(list: &[T], i: usize, step: isize) -> Option<&T> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_alt;

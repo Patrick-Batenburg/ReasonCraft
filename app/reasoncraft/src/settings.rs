@@ -17,6 +17,7 @@ pub const SETTINGS_KEY: &str = "settings";
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(default)]
 pub struct Settings {
+    #[serde(deserialize_with = "deserialize_or_default")]
     pub theme: ThemeChoice,
     /// The name put on new comments.
     pub author: String,
@@ -25,12 +26,15 @@ pub struct Settings {
     /// Tint boxes and connectors by their rating.
     pub eval_shading: bool,
     /// How connectors are drawn, on screen and in exports.
+    #[serde(deserialize_with = "deserialize_or_default")]
     pub connector_style: ConnectorStyle,
     /// When the overview minimap shows in the canvas corner.
+    #[serde(deserialize_with = "deserialize_or_default")]
     pub minimap: MinimapMode,
     /// Show each box's outline number on the map (and in exports).
     pub show_numbers: bool,
     /// The tab the Text panel shows.
+    #[serde(deserialize_with = "deserialize_or_default")]
     pub text_tab: TextTab,
     /// What the outline shows: numbers, linking words, notes.
     pub outline: OutlineOptions,
@@ -53,6 +57,21 @@ pub struct Settings {
     /// Seconds between autosaves to the recovery folder; 0 turns autosave
     /// off. Used clamped to [`AUTOSAVE_MIN`]..=[`AUTOSAVE_MAX`].
     pub autosave_secs: u32,
+}
+
+/// Read a field, taking its default when the saved value is not one this
+/// build knows (an enum variant added or renamed by another version).
+/// Works for every format the settings are saved in (RON and JSON): a
+/// refused unit variant has been consumed by then, so the rest of the file
+/// is read on as usual. An unknown variant that carries data (`Name(..)`)
+/// is not skipped and still fails the load; none of the settings enums
+/// has such a variant today beyond the known [`Fit::Tile`](crate::export::Fit).
+pub fn deserialize_or_default<'de, D, T>(d: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Ok(T::deserialize(d).unwrap_or_default())
 }
 
 /// The default seconds between autosaves.

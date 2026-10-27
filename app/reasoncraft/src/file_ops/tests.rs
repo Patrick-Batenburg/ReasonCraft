@@ -1,6 +1,6 @@
 use super::*;
 use crate::actions::{Action, apply, is_enabled, wait_for_images};
-use reasoncraft_core::{CardKind, NodeId, Parent};
+use reasoncraft_core::{CardKind, NodeId, Package, Parent};
 
 #[test]
 fn rcraft_extension_is_forced() {
