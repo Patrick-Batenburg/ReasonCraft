@@ -88,7 +88,7 @@
   - [x] Task 11: App identity and the Windows installer
   - [x] Task 12: Linux and macOS builds and CI
   - [x] Task 13: End-to-end check and release docs
-  - [ ] Task 14: Interactive UX pass (real keyboard and mouse, user-authorised) and fixes
+  - [x] Task 14: Interactive UX pass (real keyboard and mouse, user-authorised) and fixes
 
 ## Review
 
