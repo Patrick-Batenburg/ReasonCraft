@@ -358,7 +358,7 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 
 **Known limitations:**
 - In a narrow window a ribbon tab scrolls sideways (arrows at its ends, or the wheel) rather than collapsing its groups to icons (Task 14).
-- Task 14 findings left open (see `task-14-findings.md`): Esc does not close the spelling box (its Close button does); the backstage entry "Export…" opens the Export ribbon tab rather than a dialog; the File backstage opens with no page selected; after a resize the box being edited may lie outside the view (it stays in edit mode); Print was not exercised end to end on the host (it hands a PDF to the system viewer).
+- Task 14: Print was not exercised end to end on the host (it hands a PDF to the system viewer). The other findings were fixed in the review round (see `task-14-findings.md`).
 - macOS is configured but unverified: no Mac was available, and CI runs only once a remote exists (ruling M3). Double-clicking a `.rcraft` file starts the app without opening the file (ruling S6-T11-2). There is no app menu, and quitting from the Dock, logging out or shutting down does not ask about unsaved changes (ruling S6-T6-2).
 - The installers are not code-signed, so SmartScreen and Gatekeeper warn (ruling L3).
 - Word files have not been opened in Word or LibreOffice here, and the real Linux clipboard has not been tried; both are on the release checklist.
