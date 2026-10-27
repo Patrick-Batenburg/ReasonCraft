@@ -11,6 +11,7 @@ use reasoncraft_core::{
 use super::{Insertable, Rate};
 use crate::canvas::images::ImageResult;
 use crate::export::{ExportFormat, ExportRequest, PageSetup};
+use crate::help::HelpPage;
 use crate::jobs::JobId;
 use crate::recovery::RecoveryChoice;
 use crate::settings::{MinimapMode, OutlineToggle, TextTab};
@@ -349,6 +350,15 @@ pub enum Action {
     ConfirmResetSettings,
     /// The answer to the recovery prompt shown after a crash.
     ResolveRecovery(RecoveryChoice),
+    /// Show a help page in the Text panel's Help tab, opening the panel.
+    OpenHelp(HelpPage),
+    /// The help topic for the part of the window that has the keyboard
+    /// focus (F1): the Check tab's, the Essay tab's, or Getting started.
+    ContextHelp,
+    /// Back to the help page shown before.
+    HelpBack,
+    /// The About page of the File backstage.
+    ShowAbout,
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,

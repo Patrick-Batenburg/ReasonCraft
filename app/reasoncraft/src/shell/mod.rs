@@ -1,5 +1,6 @@
 //! The window chrome around the map: title bar, tabs, ribbon, panels, status bar.
 
+pub mod about;
 pub mod backstage;
 pub mod building;
 pub mod command_search;
@@ -134,7 +135,12 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             spelling_panel::show(ui, tab, &mut app.spell, &tk, &mut out);
             let lang = tab.doc.meta.language.clone();
             let mut spell = SpellFields::new(&mut app.spell, &app.settings, &lang, &tk);
-            text_panel::show(ui, tab, &app.settings, app.os, &tk, &mut spell, &mut out);
+            let cx = text_panel::PanelContext {
+                settings: &app.settings,
+                os: app.os,
+                help: &app.help,
+            };
+            text_panel::show(ui, tab, cx, &tk, &mut spell, &mut out);
         });
     if let Some(shown) = text {
         app.panes.shown(panes::Pane::Text, shown.response.rect);

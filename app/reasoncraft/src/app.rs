@@ -86,6 +86,8 @@ pub struct ReasonCraftApp {
     pub(crate) recovery_offer: Option<Vec<crate::recovery::RecoveredDoc>>,
     /// The export or page setup dialog, when open.
     pub export_dialog: Option<ExportDialog>,
+    /// The page the Text panel's Help tab shows.
+    pub help: crate::help::HelpState,
     /// Where the panes are this frame, and an F6 move asked for.
     pub(crate) panes: shell::panes::Panes,
     /// The context exports measure text in (at the display's pixels per
@@ -139,6 +141,7 @@ impl ReasonCraftApp {
             autosave_clock: None,
             recovery_offer: None,
             export_dialog: None,
+            help: crate::help::HelpState::default(),
             panes: shell::panes::Panes::default(),
             export_measure: (egui::Context::default(), MeasureCache::default()),
             egui_ctx: None,

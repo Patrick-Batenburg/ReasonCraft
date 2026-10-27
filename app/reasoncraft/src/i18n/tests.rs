@@ -174,6 +174,8 @@ const SAME_IN_DUTCH: &[&str] = &[
     "key-backspace",
     "key-delete",
     "ribbon-tab-help",
+    "text-tab-help",
+    "group-help",
     "backstage-document",
     "document-title",
     "group-debug",

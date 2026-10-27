@@ -12,6 +12,7 @@ mod direction;
 mod evaluate;
 mod export;
 mod find;
+mod help;
 mod pen;
 mod view;
 pub use connector::connector_atom;
@@ -111,6 +112,11 @@ pub enum Icon {
     Replace,
     /// A word with a wavy underline (spelling).
     Spelling,
+    /// A question mark in a circle (help topics).
+    Help,
+    Keyboard,
+    /// An "i" in a circle (About).
+    About,
 }
 
 /// Draw `icon` in `rect` (a square). `fg` is the main colour, `bg` the
@@ -381,6 +387,7 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
             view::paint(&pen, icon, fg, t)
         }
         Icon::Find | Icon::Replace | Icon::Spelling => find::paint(&pen, icon, fg, t),
+        Icon::Help | Icon::Keyboard | Icon::About => help::paint(&pen, icon, fg, t),
         Icon::Direction(dir) => direction::paint_direction(painter, rect, dir, fg),
         Icon::Connector(style) => connector::paint_connector(painter, rect, style, fg),
     }

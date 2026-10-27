@@ -10,7 +10,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Use the building panel.** View → Building panel lists boxes, sources and preset comments. Click an entry to insert it at the selection, or drag it onto the map. Targets that cannot take it show red, and the drop does nothing.
 - **Evaluate.** On the Evaluate tab (or with Alt+1/2/3/0, and Alt+Shift+0 to clear the whole map), accept, doubt or reject claims and premises, rate cards strong, weak or nil, and rate sources solid, shaky or nil. Ratings tint boxes, colour borders, label cards and set connector weight. Markers and shading can be switched off, and you can clear one rating or all of them.
 - **Comment.** Add your own comments or one of twelve presets (positive, needs work, problem) to any box. A badge shows the count, and Ctrl+Shift+M opens them. Set the name shown on your comments in File → Settings.
-- **Write from the Text panel.** View → Text panel opens the panel on the right, with four tabs (see [The Text panel](#the-text-panel)): an **Outline** of the map, an **Essay** written along the map (see [The Essay tab](#the-essay-tab)), a **Check** tab with course-rule hints, and **Snippets** of source text to build the map from.
+- **Write from the Text panel.** View → Text panel opens the panel on the right, with five tabs (see [The Text panel](#the-text-panel)): an **Outline** of the map, an **Essay** written along the map (see [The Essay tab](#the-essay-tab)), a **Check** tab with course-rule hints, **Snippets** of source text to build the map from, and **Help**.
 - **Set the document language.** File → Document holds the title, author and language (English or Dutch) of the open map. The language drives the "and"/"or" and key-term checks; File → Settings sets the language new documents start with.
 - **Lay the map out your way.** View → Layout direction draws the map top-down (the default), bottom-up or left to right; the direction is saved with the map, and changing it is one undo step. In a left-to-right map the co-premises of a card stack vertically. View → Connectors draws the lines curved, as elbows or as tapered bands that widen toward the parent; this is your own preference, kept for every map. Exports use the direction and style you see.
 - **Keep your bearings.** View → Minimap shows an overview of the whole map in the corner of the canvas, with the part in view outlined; click or drag in it to move there. By default it appears only when the map does not fit the window, and it can also be always on or off. View → Numbers puts the Outline's numbers (1, 1a, 1.w1, P1) on the boxes, on screen and in exports.
@@ -26,6 +26,7 @@ ReasonCraft is a free, open-source desktop app for argument mapping. It lets you
 - **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
 - **Add images.** Put a PNG, JPEG or WebP image in a box. The image is prepared in the background, so a large photo never freezes the window: the box shows "Preparing image…" until it is ready. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.
 - **Export and print.** The Export tab saves the map as PNG, SVG or PDF, copies it to the clipboard as an image, prints it, saves the outline or the essay as Markdown, plain text or Word, and saves the whole map as Argdown text (see [Export and print](#export-and-print)).
+- **Get help offline.** The Help tab of the Text panel explains the concepts (claims, premises, co-premises, objections, rebuttals, sources, rating, the checks) and how to do things, in English and Dutch, following the interface language. F1 opens the topic for the part you are in (the Outline, Essay, Check or Snippets tab, otherwise Getting started); the Help ribbon tab opens the topics, the keyboard shortcuts of your platform and **About** (version, licence and the third-party notices), which is also in the File backstage. The pages are Markdown files in `app/reasoncraft/help/<language>/`, built into the app.
 - **Import Argdown.** File → Import Argdown… reads an [Argdown](https://argdown.org) file into a new, unsaved tab and lays it out. Argdown the map cannot hold (contradictions, tags, inference rules, a statement used in two places, and so on) is changed or left out, and a report lists each case with its line. The file itself is never written; use Save As to keep the map. See [docs/argdown.md](docs/argdown.md#reading-argdown).
 
 Files from older versions open unchanged, and files from newer versions keep any parts this version does not understand when you save them.
@@ -88,7 +89,7 @@ A debug build (`cargo run -p reasoncraft`) adds **View → Load sample map (debu
 
 ## Keyboard shortcuts
 
-macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, and Control is a key of its own. On a Mac keyboard Backspace is the key labelled delete, Delete is Fn+delete, and the F-keys (F2, F3, F6, F7) need Fn unless they are set to work as standard function keys. Typing while a box is selected starts editing that box. Keys marked (context) only work where the table says: elsewhere, for example in a text field, they type or move the focus as usual.
+macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, and Control is a key of its own. On a Mac keyboard Backspace is the key labelled delete, Delete is Fn+delete, and the F-keys (F1, F2, F3, F6, F7) need Fn unless they are set to work as standard function keys. Typing while a box is selected starts editing that box. Keys marked (context) only work where the table says: elsewhere, for example in a text field, they type or move the focus as usual.
 
 | Windows / Linux | macOS | Action |
 | --- | --- | --- |
@@ -98,6 +99,7 @@ macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, a
 | F3 / Shift+F3 | F3 / Shift+F3 | Go to the next / previous hit |
 | F7 | F7 | Spelling, also while typing in a box or field: check the spelling of box text, sources and notes from the selection, one misspelling at a time |
 | F6 / Shift+F6 | F6 / Shift+F6 | Move the keyboard focus to the next / previous pane, from any control: ribbon, Building panel, map, Text panel, status bar (hidden panels are skipped) |
+| F1 | F1 | Help, also while typing in a box or field: the topic of the Text panel tab that has the focus (Outline, Essay, Check, Snippets), otherwise Getting started, in the Text panel's Help tab |
 
 ### While a box or card is selected
 

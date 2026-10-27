@@ -15,7 +15,7 @@ pub use shortcuts::{
 };
 #[cfg(test)]
 pub(crate) use shortcuts::{
-    MAC_GLYPHS, MAC_SYMBOLS, format_shortcut, key_name, mac_ctrl, types_with_opt,
+    MAC_GLYPHS, MAC_SYMBOLS, format_shortcut, key_name, mac_ctrl, types_with_opt, ui_font_has,
 };
 
 /// The command bound to `key` with `mods` on `os`, if any: an entry of
@@ -188,7 +188,7 @@ fn allowed(app: &ReasonCraftApp, tab: &crate::doc_tab::DocTab, action: &Action) 
 /// essay paragraph, the find bar):
 /// Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N, the find keys (Ctrl+F,
 /// Ctrl+H, F3, Shift+F3), the same subset that works while editing a box,
-/// Search commands (Alt+Q) and F6 / Shift+F6, or their macOS keys. They
+/// Search commands (Alt+Q), F6 / Shift+F6 and F1, or their macOS keys. They
 /// are taken out of the input; every other key stays with the field.
 /// Applying the action first ends the field's editing session, so its
 /// typing becomes a history step before the save.
@@ -223,7 +223,8 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                     | Action::FindPrev
                     | Action::OpenSpelling
                     | Action::NextPane
-                    | Action::PrevPane),
+                    | Action::PrevPane
+                    | Action::ContextHelp),
                 ) => {
                     alt_text = modifiers.alt;
                     out.push(a);

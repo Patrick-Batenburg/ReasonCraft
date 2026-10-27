@@ -83,6 +83,9 @@ pub(super) fn end_unless_kept(tab: &mut DocTab, action: &Action) {
             | Action::SetTextTab(_)
             | Action::SetOutlineOption(..)
             | Action::SetCheckEnabled(..)
+            | Action::OpenHelp(_)
+            | Action::ContextHelp
+            | Action::HelpBack
     );
     if !keeps {
         tab.connect_mode = None;

@@ -39,6 +39,7 @@ impl Command {
             Some("evaluate") => "ribbon.tab.evaluate",
             Some("view") => "ribbon.tab.view",
             Some("export") => "ribbon.tab.export",
+            Some("help") => "ribbon.tab.help",
             _ => panic!("command `{}` names no ribbon tab", self.id),
         }
     }

@@ -56,6 +56,10 @@ pub(super) fn keeps_notes(action: &Action) -> bool {
             | Action::CloseSpelling
             | Action::SpellIgnore
             | Action::SpellIgnoreAll(_)
+            | Action::OpenHelp(_)
+            | Action::ContextHelp
+            | Action::HelpBack
+            | Action::ShowAbout
     )
 }
 

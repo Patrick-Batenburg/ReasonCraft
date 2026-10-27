@@ -148,6 +148,7 @@ const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     (Shortcut::new(Key::F3, NONE), || Action::FindNext),
     (Shortcut::new(Key::F3, SHIFT), || Action::FindPrev),
     (Shortcut::new(Key::F7, NONE), || Action::OpenSpelling),
+    (Shortcut::new(Key::F1, NONE), || Action::ContextHelp),
     (Shortcut::new(Key::F6, NONE), || Action::NextPane),
     (Shortcut::new(Key::F6, SHIFT), || Action::PrevPane),
 ];
@@ -213,6 +214,7 @@ pub(super) fn works_while_editing(action: &Action) -> bool {
             | Action::OpenSpelling
             | Action::NextPane
             | Action::PrevPane
+            | Action::ContextHelp
     )
 }
 
@@ -252,7 +254,7 @@ pub(crate) static MAC_GLYPHS: LazyLock<bool> =
     LazyLock::new(|| MAC_SYMBOLS.chars().all(ui_font_has));
 
 /// Whether a font of the bundled proportional family maps `c`.
-fn ui_font_has(c: char) -> bool {
+pub(crate) fn ui_font_has(c: char) -> bool {
     use skrifa::MetadataProvider as _;
     let defs = FontDefinitions::default();
     defs.families[&FontFamily::Proportional].iter().any(|name| {

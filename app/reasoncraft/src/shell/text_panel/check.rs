@@ -13,6 +13,7 @@ use super::virtual_rows::{self, Rows};
 use crate::a11y::labelled;
 use crate::actions::Action;
 use crate::doc_tab::{CheckRow, DocTab};
+use crate::help::HelpPage;
 use crate::i18n::{FluentArgs, t, t_args};
 use crate::settings::Settings;
 use crate::shell::{hover_fill, selected_fill};
@@ -119,7 +120,7 @@ pub fn show(
                 if !first {
                     ui.add_space(10.0);
                 }
-                heading(ui, kind, count, &tab_ref.doc.meta.language, tk);
+                heading(ui, kind, count, &tab_ref.doc.meta.language, tk, out);
             }
             Part::Issue(n, issue) => {
                 let selected = tab_ref.selection == Some(issue.item);
@@ -158,17 +159,38 @@ fn footer(ui: &mut Ui, ignored: usize, out: &mut Vec<Action>) {
 }
 
 /// The group heading, "Questions (2)", with the rule (for a document in
-/// `doc_lang`) as its tooltip.
-fn heading(ui: &mut Ui, kind: CheckKind, count: usize, doc_lang: &str, tk: &Tokens) {
-    let key = check_key(kind);
+/// `doc_lang`) as its tooltip, and a "?" that opens the checks' help topic.
+fn heading(
+    ui: &mut Ui,
+    kind: CheckKind,
+    count: usize,
+    doc_lang: &str,
+    tk: &Tokens,
+    out: &mut Vec<Action>,
+) {
+    let name = t(&format!("check.kind.{}", check_key(kind)));
     let mut args = FluentArgs::new();
-    args.set("kind", t(&format!("check.kind.{key}")));
+    args.set("kind", name.as_str());
     args.set("count", count);
     let text = RichText::new(t_args("check.heading", &args))
         .strong()
         .color(tk.box_text);
-    ui.add(Label::new(text).wrap().selectable(false))
-        .on_hover_text(check_help(kind, doc_lang));
+    ui.horizontal_top(|ui| {
+        let help = egui::Button::new(RichText::new("?").size(EXPLAIN)).small();
+        let help_w = 22.0;
+        ui.scope(|ui| {
+            ui.set_max_width(ui.available_width() - help_w);
+            ui.add(Label::new(text).wrap().selectable(false))
+                .on_hover_text(check_help(kind, doc_lang));
+        });
+        let mut args = FluentArgs::new();
+        args.set("kind", name.as_str());
+        let help_name = t_args("help.check_link", &args);
+        let resp = labelled(ui.add(help), help_name.clone()).on_hover_text(help_name);
+        if resp.clicked() {
+            out.push(Action::OpenHelp(HelpPage::Topic("checks")));
+        }
+    });
     ui.add_space(2.0);
 }
 

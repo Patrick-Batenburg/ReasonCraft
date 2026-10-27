@@ -20,12 +20,14 @@ use reasoncraft_core::checks::CheckKind;
 mod document;
 
 /// A page beside the entries.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum Page {
     /// Title, author and language of the document.
     Document,
     /// Personal preferences.
     Settings,
+    /// The app's version, licence and third-party notices.
+    About,
 }
 
 /// What a backstage entry does.
@@ -43,6 +45,11 @@ fn page_id() -> Id {
     Id::unique("backstage_page")
 }
 
+/// Show the About page the next time the backstage is drawn.
+pub(crate) fn open_about(ctx: &egui::Context) {
+    ctx.data_mut(|d| d.insert_temp(page_id(), Some(Page::About)));
+}
+
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let shown = egui::CentralPanel::default()
@@ -52,7 +59,10 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                 ui.vertical(|ui| {
                     ui.set_width(220.0);
-                    entries(ui, app, &mut page);
+                    // The entries scroll too when they do not fit (at a
+                    // large UI scale), apart from the page.
+                    let scroll = egui::ScrollArea::vertical().id_salt("backstage_entries");
+                    scroll.show(ui, |ui| entries(ui, app, &mut page));
                 });
                 if let Some(page) = page {
                     ui.add_space(24.0);
@@ -60,11 +70,12 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     ui.add_space(24.0);
                     // Scrolls when it does not fit (at a large UI scale),
                     // each page on its own.
-                    let scroll = egui::ScrollArea::vertical().id_salt(page == Page::Settings);
+                    let scroll = egui::ScrollArea::vertical().id_salt(page);
                     scroll.show(ui, |ui| {
                         ui.vertical(|ui| match page {
                             Page::Document => document::page(ui, app),
                             Page::Settings => settings_page(ui, app),
+                            Page::About => super::about::page(ui, app),
                         })
                     });
                 }
@@ -106,6 +117,7 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
             "backstage.settings",
             Entry::Page(Page::Settings),
         ),
+        (Icon::About, "backstage.about", Entry::Page(Page::About)),
     ];
     for (icon, key, entry) in items {
         let label = t(key);

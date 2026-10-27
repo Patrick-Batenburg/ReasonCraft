@@ -8,6 +8,7 @@ pub mod commands;
 pub mod doc_tab;
 pub mod export;
 pub mod file_ops;
+pub mod help;
 pub mod i18n;
 pub mod jobs;
 pub mod recovery;

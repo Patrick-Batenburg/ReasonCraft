@@ -5,6 +5,7 @@ use crate::actions::Action;
 
 mod evaluate;
 mod export;
+mod help;
 mod home;
 mod view;
 
@@ -26,6 +27,7 @@ pub(super) fn build() -> Vec<Command> {
     out.extend(evaluate::commands());
     out.extend(view::commands());
     out.extend(export::commands());
+    out.extend(help::commands());
     out
 }
 

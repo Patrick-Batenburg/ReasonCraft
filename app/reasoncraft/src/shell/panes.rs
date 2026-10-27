@@ -56,6 +56,19 @@ impl Panes {
         self.rects.iter().find(|(p, _)| *p == pane).map(|(_, r)| *r)
     }
 
+    /// The pane drawn this frame that holds the keyboard focus, if any.
+    pub(crate) fn focused(&self, ctx: &egui::Context) -> Option<Pane> {
+        let at = ctx
+            .memory(|m| m.focused())
+            .and_then(|id| ctx.read_response(id))?
+            .rect
+            .center();
+        self.rects
+            .iter()
+            .find(|(_, r)| r.contains(at))
+            .map(|(p, _)| *p)
+    }
+
     /// Does the move asked for, if any: call once every pane is drawn.
     pub fn finish_frame(&mut self, ctx: &egui::Context) {
         let Some(forward) = self.request.take() else {
@@ -71,12 +84,9 @@ impl Panes {
         }
         // The pane holding the focus; with none (or the find bar above the
         // map), the map (or the backstage) has the keys.
-        let at = ctx
-            .memory(|m| m.focused())
-            .and_then(|id| ctx.read_response(id))
-            .map(|r| r.rect.center());
-        let mut i = at
-            .and_then(|pos| shown.iter().position(|(_, r)| r.contains(pos)))
+        let mut i = self
+            .focused(ctx)
+            .and_then(|pane| shown.iter().position(|(p, _)| *p == pane))
             .or_else(|| {
                 let main = |p: &Pane| matches!(p, Pane::Map | Pane::Backstage);
                 shown.iter().position(|(p, _)| main(p))

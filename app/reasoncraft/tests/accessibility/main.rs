@@ -15,6 +15,7 @@ use reasoncraft::app::RibbonTab;
 use reasoncraft::doc_tab::DocTab;
 use reasoncraft::export::ExportFormat;
 use reasoncraft::file_ops::Modal;
+use reasoncraft::help::HelpPage;
 use reasoncraft::i18n::{FluentArgs, t, t_args};
 use reasoncraft::settings::{MinimapMode, SETTINGS_KEY, Settings, TextTab};
 use reasoncraft::theme::ThemeChoice;
@@ -183,6 +184,13 @@ fn every_interactive_widget_has_a_name() {
         act(&mut h, Action::SetTextTab(tab));
         all.extend(problems(&h, &format!("{tab:?} tab")));
     }
+    // Every help page, with its links.
+    act(&mut h, Action::OpenHelp(HelpPage::Contents));
+    all.extend(problems(&h, "help contents"));
+    for topic in reasoncraft::help::TOPICS {
+        act(&mut h, Action::OpenHelp(HelpPage::Topic(topic)));
+        all.extend(problems(&h, &format!("help {topic}")));
+    }
     for (tab, key) in [
         (RibbonTab::Insert, "insert"),
         (RibbonTab::Evaluate, "evaluate"),
@@ -222,7 +230,11 @@ fn every_interactive_widget_has_a_name() {
     act(&mut h, Action::DismissModal);
     h.state_mut().ribbon_tab = RibbonTab::File;
     h.run();
-    for page in ["backstage.document", "backstage.settings"] {
+    for page in [
+        "backstage.document",
+        "backstage.settings",
+        "backstage.about",
+    ] {
         h.get_by_label(&t(page)).click();
         h.run();
         all.extend(problems(&h, page));

@@ -15,6 +15,7 @@ use crate::theme::Tokens;
 
 mod evaluate;
 mod export;
+mod help;
 mod home;
 mod view;
 
@@ -52,6 +53,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
                         RibbonTab::Evaluate => evaluate::show(ui, app),
                         RibbonTab::View => view::show(ui, app),
                         RibbonTab::Export => export::show(ui, app),
+                        RibbonTab::Help => help::show(ui, app),
                         _ => {
                             ui.add_space(8.0);
                             ui.label(

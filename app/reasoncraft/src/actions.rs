@@ -23,6 +23,7 @@ mod essay;
 mod evaluate;
 mod export;
 mod find;
+mod help;
 pub(crate) use export::close_after_exports;
 pub use export::poll_exports;
 pub(crate) use find::cap_box;
@@ -133,6 +134,9 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             app.apply_ui_language();
         }
         Action::ResolveRecovery(choice) => crate::recovery::resolve(app, choice),
+        Action::OpenHelp(_) | Action::ContextHelp | Action::HelpBack | Action::ShowAbout => {
+            help::apply(app, action)
+        }
         Action::AddComment { .. }
         | Action::RemoveComment { .. }
         | Action::OpenComments(_)
@@ -329,7 +333,11 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::ConfirmResetSettings
         | Action::NextPane
         | Action::PrevPane
-        | Action::ResolveRecovery(_) => unreachable!("app-level action"),
+        | Action::ResolveRecovery(_)
+        | Action::OpenHelp(_)
+        | Action::ContextHelp
+        | Action::HelpBack
+        | Action::ShowAbout => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

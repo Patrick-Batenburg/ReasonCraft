@@ -249,6 +249,8 @@ pub enum TextTab {
     Essay,
     Check,
     Snippets,
+    /// The offline help (see [`crate::help`]).
+    Help,
 }
 
 impl Default for Settings {
