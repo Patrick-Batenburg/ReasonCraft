@@ -323,7 +323,7 @@ fn backstage_has_export_and_print() {
     h.state_mut().link_opener = Box::new(opener.clone());
     h.state_mut().export.print_dir = dir.path().to_owned();
     h.run();
-    // Export… opens the Export ribbon tab and closes the backstage.
+    // "Export formats" opens the Export ribbon tab and closes the backstage.
     h.get_by_label(&t("ribbon.tab.file")).click();
     h.run();
     h.get_by_label(&t("backstage.export")).click();
@@ -344,4 +344,41 @@ fn backstage_has_export_and_print() {
     assert_eq!(h.state().ribbon_tab, RibbonTab::Home);
     let printed = std::path::PathBuf::from(&opener.opened.borrow()[0]);
     assert_eq!(printed.parent().unwrap(), dir.path());
+}
+
+/// The backstage opens on a page: New while there are no recent maps,
+/// Recent once there are; clicking the page's entry again keeps it.
+#[test]
+fn backstage_opens_on_a_page() {
+    let mut h = harness();
+    h.get_by_label(&t("ribbon.tab.file")).click();
+    h.run();
+    assert!(h.query_by_label(&t("backstage.new.blank")).is_some(), "New");
+    h.get_by_label(&t("backstage.back")).click();
+    h.run();
+    h.state_mut().settings.recent_files = vec!["maps/a.rcraft".into()];
+    h.get_by_label(&t("ribbon.tab.file")).click();
+    h.run();
+    let title = t("backstage.recent.title");
+    assert!(h.query_by_label(&title).is_some(), "Recent");
+    h.get_by_label(&t("backstage.recent")).click();
+    h.run();
+    assert!(h.query_by_label(&title).is_some(), "still Recent");
+}
+
+#[test]
+fn backstage_keeps_the_page_picked() {
+    let mut h = harness();
+    h.get_by_label(&t("ribbon.tab.file")).click();
+    h.run();
+    h.get_by_label(&t("backstage.settings")).click();
+    h.run();
+    h.get_by_label(&t("backstage.recent")).click();
+    h.run();
+    assert!(h.query_by_label(&t("backstage.recent.title")).is_some());
+    h.get_by_label(&t("backstage.back")).click();
+    h.run();
+    h.get_by_label(&t("ribbon.tab.file")).click();
+    h.run();
+    assert!(h.query_by_label(&t("backstage.recent.title")).is_some());
 }

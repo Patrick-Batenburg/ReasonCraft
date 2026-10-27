@@ -1,15 +1,10 @@
 //! The File backstage: a full-window page with file commands and settings.
 
-use eframe::egui::{
-    self, Align, Align2, FontId, Frame, Id, Layout, Margin, Rect, RichText, Role, Sense, TextEdit,
-    Vec2, WidgetInfo,
-};
+use eframe::egui::{self, Align, Frame, Id, Layout, Margin, RichText, Role, TextEdit, WidgetInfo};
 
-use super::hover_fill;
-use super::icons::{self, Icon};
 use crate::a11y::{in_group, labelled};
 use crate::actions::Action;
-use crate::app::{ReasonCraftApp, RibbonTab};
+use crate::app::ReasonCraftApp;
 use crate::commands;
 use crate::i18n::{UI_LANGUAGES, t};
 use crate::settings::{AUTOSAVE_DEFAULT, AUTOSAVE_MAX, AUTOSAVE_MIN, UI_SCALE_MAX, UI_SCALE_MIN};
@@ -19,8 +14,11 @@ use reasoncraft_core::checks::CheckKind;
 
 mod choice;
 mod document;
+mod entries;
 mod new_page;
 mod recent;
+
+use entries::{entries, entry_width};
 
 /// A page beside the entries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -37,17 +35,8 @@ enum Page {
     About,
 }
 
-/// What a backstage entry does.
-enum Entry {
-    /// Back to the map, running the action (if any).
-    Command(Option<Action>),
-    /// Back to the map, on this ribbon tab.
-    Ribbon(RibbonTab),
-    /// Show (or hide) a page.
-    Page(Page),
-}
-
-/// The page showing, if any (view state, kept in egui memory).
+/// The page chosen, if any (view state, kept in egui memory); with none,
+/// the backstage shows [`default_page`].
 fn page_id() -> Id {
     Id::unique("backstage_page")
 }
@@ -67,12 +56,24 @@ const PAGE_MAX_WIDTH: f32 = 680.0;
 /// Kept free right of a page for the scroll bar floating over it.
 const SCROLL_BAR_ROOM: f32 = 14.0;
 
+/// The page the backstage opens on: the recent maps, or New while there
+/// are none.
+fn default_page(app: &ReasonCraftApp) -> Page {
+    if app.settings.recent_files.is_empty() {
+        Page::New
+    } else {
+        Page::Recent
+    }
+}
+
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let shown = egui::CentralPanel::default()
         .frame(Frame::new().fill(tk.panel).inner_margin(Margin::same(24)))
         .show(ui, |ui| {
-            let mut page = ui.data(|d| d.get_temp::<Option<Page>>(page_id()).flatten());
+            let chosen = ui.data(|d| d.get_temp::<Option<Page>>(page_id()).flatten());
+            let opened_on = chosen.unwrap_or_else(|| default_page(app));
+            let mut page = opened_on;
             let compact = ui.available_width() < COMPACT_BELOW;
             let gap = if compact { 8.0 } else { 24.0 };
             let left = ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
@@ -83,7 +84,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     let scroll = egui::ScrollArea::vertical().id_salt("backstage_entries");
                     scroll.show(ui, |ui| entries(ui, app, &mut page, compact));
                 });
-                if let Some(page) = page {
+                {
                     ui.add_space(gap);
                     ui.separator();
                     ui.add_space(gap);
@@ -109,103 +110,20 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                         .inner
                     });
                     chosen.inner
-                } else {
-                    false
                 }
             });
+            // A page picked is kept; the default follows the recent list.
             // After choosing a map, the backstage opens afresh next time.
-            let page = if left.inner { None } else { page };
+            let picked = if page == opened_on {
+                chosen
+            } else {
+                Some(page)
+            };
+            let page = if left.inner { None } else { picked };
             ui.data_mut(|d| d.insert_temp(page_id(), page));
         });
     let pane = crate::shell::panes::Pane::Backstage;
     app.panes.shown(pane, shown.response.rect);
-}
-
-/// The width of an entry: icon and label, or (`compact`) the icon alone.
-fn entry_width(compact: bool) -> f32 {
-    if compact { 44.0 } else { 220.0 }
-}
-
-/// The entries down the left; `compact` shows their icons only, each
-/// label then in its tooltip (and still its accessible name).
-fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>, compact: bool) {
-    let tk = app.tokens;
-    ui.spacing_mut().item_spacing.y = 4.0;
-    // File commands take their label and action from the registry.
-    let command = |icon, id| {
-        let cmd = commands::get(id);
-        (icon, cmd.label, Entry::Command(Some(cmd.action.clone())))
-    };
-    let items = [
-        (Icon::Back, "backstage.back", Entry::Command(None)),
-        (
-            Icon::New,
-            commands::get("file.new").label,
-            Entry::Page(Page::New),
-        ),
-        command(Icon::Open, "file.open"),
-        (Icon::Recent, "backstage.recent", Entry::Page(Page::Recent)),
-        command(Icon::Open, "file.import_argdown"),
-        command(Icon::Save, "file.save"),
-        command(Icon::SaveAs, "file.save_as"),
-        (
-            Icon::ExportPng,
-            "backstage.export",
-            Entry::Ribbon(RibbonTab::Export),
-        ),
-        command(Icon::Print, "export.print"),
-        (
-            Icon::Note,
-            "backstage.document",
-            Entry::Page(Page::Document),
-        ),
-        (
-            Icon::Settings,
-            "backstage.settings",
-            Entry::Page(Page::Settings),
-        ),
-        (Icon::About, "backstage.about", Entry::Page(Page::About)),
-    ];
-    for (icon, key, entry) in items {
-        let label = t(key);
-        let on = matches!(entry, Entry::Page(p) if Some(p) == *page);
-        let size = Vec2::new(entry_width(compact), 40.0);
-        let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
-        resp.widget_info(|| WidgetInfo::selected(Role::Button, true, on, &label));
-        if resp.hovered() || on {
-            ui.painter()
-                .rect_filled(rect, 4.0, hover_fill(&tk, tk.panel));
-        }
-        let icon_rect =
-            Rect::from_center_size(rect.left_center() + Vec2::new(22.0, 0.0), Vec2::splat(20.0));
-        icons::paint(ui.painter(), icon_rect, icon, tk.box_text, tk.panel, &tk);
-        let resp = if compact {
-            resp.on_hover_text(&label)
-        } else {
-            ui.painter().text(
-                rect.left_center() + Vec2::new(44.0, 0.0),
-                Align2::LEFT_CENTER,
-                &label,
-                FontId::proportional(14.0),
-                tk.box_text,
-            );
-            resp
-        };
-        if resp.clicked() {
-            match entry {
-                Entry::Page(p) => *page = if *page == Some(p) { None } else { Some(p) },
-                // Every file command returns to the map.
-                Entry::Command(action) => {
-                    app.ribbon_tab = RibbonTab::Home;
-                    if let Some(action) = action {
-                        app.push(action);
-                    }
-                }
-                Entry::Ribbon(tab) => app.ribbon_tab = tab,
-            }
-            ui.ctx().request_repaint();
-        }
-    }
 }
 
 /// The interface language, the author name, the theme and interface
