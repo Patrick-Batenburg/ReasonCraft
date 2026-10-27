@@ -163,7 +163,13 @@ fn shortcut_text_uses_translated_key_names() {
         let mac = |s| format_shortcut(s, Os::Mac, false, lang);
         assert_eq!(mac(left), joined("key.opt", "key.left"));
         assert_eq!(mac(co_premise), joined("key.cmd", "key.enter"));
-        assert_eq!(mac(rate), format!("{}+1", k("key.ctrl")));
+        let rate_keys = format!("{}+{}+1", k("key.opt"), k("key.cmd"));
+        assert_eq!(mac(rate), rate_keys);
+        let control_q = crate::canvas::input::Shortcut {
+            key: Key::Q,
+            mods: Modifiers::CTRL,
+        };
+        assert_eq!(mac(control_q), format!("{}+Q", k("key.control")));
         for (key, name) in [(Key::Escape, "key.esc"), (Key::Space, "key.space")] {
             assert_eq!(key_name(key, lang), k(name));
             assert_ne!(k(name), name, "`{name}` has a text");

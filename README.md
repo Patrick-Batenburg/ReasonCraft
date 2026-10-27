@@ -88,13 +88,13 @@ A debug build (`cargo run -p reasoncraft`) adds **View → Load sample map (debu
 
 ## Keyboard shortcuts
 
-macOS has its own column: there Cmd takes the place of Ctrl, Opt of Alt, and Control (Ctrl) is a key of its own; Backspace is the key labelled delete, Delete is Fn+delete. Typing while a box is selected starts editing that box. Keys marked (context) only work where the table says: elsewhere, for example in a text field, they type or move the focus as usual.
+macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, and Control is a key of its own. On a Mac keyboard Backspace is the key labelled delete, Delete is Fn+delete, and the F-keys (F2, F3, F6, F7) need Fn unless they are set to work as standard function keys. Typing while a box is selected starts editing that box. Keys marked (context) only work where the table says: elsewhere, for example in a text field, they type or move the focus as usual.
 
 | Windows / Linux | macOS | Action |
 | --- | --- | --- |
 | Alt+Q | Shift+Cmd+A | Search commands, also while typing in a box or field: type part of a command's name, pick it with the arrow keys and press Enter (Esc closes the list) |
 | Ctrl+F | Cmd+F | Find in box text, sources and notes, also while typing in a box or field: the find bar opens above the map (in its field Enter / Shift+Enter go to the next / previous hit, Esc closes it) |
-| Ctrl+H | Opt+Cmd+F | Find and replace |
+| Ctrl+H | Option+Cmd+F | Find and replace |
 | F3 / Shift+F3 | F3 / Shift+F3 | Go to the next / previous hit |
 | F7 | F7 | Spelling, also while typing in a box or field: check the spelling of box text, sources and notes from the selection, one misspelling at a time |
 | F6 / Shift+F6 | F6 / Shift+F6 | Move the keyboard focus to the next / previous pane, from any control: ribbon, Building panel, map, Text panel, status bar (hidden panels are skipped) |
@@ -115,16 +115,17 @@ macOS has its own column: there Cmd takes the place of Ctrl, Opt of Alt, and Con
 | Delete | Delete | Delete (items under it move to the parking area) |
 | – | Backspace | Delete, like Delete (context) |
 | Shift+Delete | Shift+Delete | Delete with everything under it |
+| – | Shift+Backspace | Delete with everything under it, like Shift+Delete (context) |
 | Arrow keys | Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise). The arrows follow the layout direction: bottom-up, Down goes to the parent; left-to-right, Left goes to the parent and Up/Down move between siblings (context) |
 | Ctrl+Shift+P | Shift+Cmd+P | Jump between the main map and the parking area |
 | Ctrl+Shift+M | Shift+Cmd+M | Open the comments of the selected box (Esc closes them) |
 | Ctrl+Shift+K | Shift+Cmd+K | Connect to…: pick where the selected parked item goes (see below) |
-| Alt+Left / Alt+Right / Alt+Up / Alt+Down | Opt+Left / Opt+Right / Opt+Up / Opt+Down | Move the selection one place among its siblings (a premise within its card): Left / Right in top-down and bottom-up maps, Up / Down in left-to-right maps, where siblings stack vertically |
-| Alt+1 | Ctrl+1 | Rate the selection high: accept a claim or premise, strong card, solid source |
-| Alt+2 | Ctrl+2 | Rate the selection mid: unsure, weak card, shaky source |
-| Alt+3 | Ctrl+3 | Rate the selection low: reject a claim or premise, nil card or source |
-| Alt+0 | Ctrl+0 | Clear the selection's rating |
-| Alt+Shift+0 | Ctrl+Shift+0 | Clear every rating in the map |
+| Alt+Left / Alt+Right / Alt+Up / Alt+Down | Option+Left / Option+Right / Option+Up / Option+Down | Move the selection one place among its siblings (a premise within its card): Left / Right in top-down and bottom-up maps, Up / Down in left-to-right maps, where siblings stack vertically |
+| Alt+1 | Option+Cmd+1 | Rate the selection high: accept a claim or premise, strong card, solid source |
+| Alt+2 | Option+Cmd+2 | Rate the selection mid: unsure, weak card, shaky source |
+| Alt+3 | Option+Cmd+3 | Rate the selection low: reject a claim or premise, nil card or source |
+| Alt+0 | Option+Cmd+0 | Clear the selection's rating |
+| Alt+Shift+0 | Option+Shift+Cmd+0 | Clear every rating in the map |
 | Ctrl+Z | Cmd+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Cmd+Y or Shift+Cmd+Z | Redo |
 | Ctrl+S | Cmd+S | Save |
@@ -181,6 +182,10 @@ Connect to… works on an item at the top of the parking area (or a premise of a
 Other keys do nothing until you connect or cancel.
 
 Dragging also reorders: drop an item between its siblings (an insertion bar shows where), or a premise between the premises of its card.
+
+## Known limitations
+
+- macOS: the app has no app menu (About, Hide, Quit), so that Cmd+Q reaches the window and asks about unsaved changes first. Quitting from the Dock, or logging out or shutting down, still quits without asking; with autosave on, the next start offers to recover the work up to the last autosave.
 
 ## Licence
 

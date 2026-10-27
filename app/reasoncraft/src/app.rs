@@ -40,7 +40,8 @@ pub struct ReasonCraftApp {
     /// Reads the OS locale, for a UI language that follows the OS: the
     /// platform's own in the app; none in tests, which then read English.
     pub os_locale: fn() -> Option<String>,
-    /// The platform whose keys apply: this one, or another in tests.
+    /// The platform whose keys apply: this one; Windows in tests, unless a
+    /// test picks another.
     pub os: Os,
     pub left_panel: bool,
     pub right_panel: bool,
@@ -203,21 +204,24 @@ impl ReasonCraftApp {
     }
 
     /// Build the app with default settings, no storage, no OS locale (so
-    /// the interface is English), file dialogs that always cancel, and a
-    /// link opener and clipboard that only record.
+    /// the interface is English), file dialogs that always cancel, a link
+    /// opener and clipboard that only record, and the Windows keys.
     pub fn new_for_test() -> Self {
         Self::new_for_test_with(Box::new(FakeDialogs::default()))
     }
 
     /// Like [`Self::new_for_test`], with the given file dialogs.
     pub fn new_for_test_with(dialogs: Box<dyn FileDialogs>) -> Self {
-        Self::with_settings(
+        let mut app = Self::with_settings(
             Settings::default(),
             || None,
             dialogs,
             Box::new(FakeOpener::default()),
             Arc::new(Mutex::new(FakeClipboard::default())),
-        )
+        );
+        // The same keys whatever the test runs on.
+        app.os = Os::Windows;
+        app
     }
 
     /// Like [`Self::new_for_test`], with autosave to the recovery folder

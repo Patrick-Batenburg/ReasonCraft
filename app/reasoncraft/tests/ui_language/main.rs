@@ -59,7 +59,7 @@ fn search_for(h: &mut Harness<'static, ReasonCraftApp>, query: &str) {
     h.key_press_modifiers(Modifiers::ALT, Key::Q);
     h.run();
     let mut args = FluentArgs::new();
-    let os = Os::current();
+    let os = Os::Windows;
     let keys = shortcut_for(&Action::OpenCommandSearch, os).map(|s| shortcut_text(s, os));
     args.set("keys", keys.unwrap());
     h.get_by_label(&t_args("titlebar.search", &args))

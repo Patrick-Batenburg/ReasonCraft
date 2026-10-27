@@ -167,6 +167,7 @@ const SAME_IN_DUTCH: &[&str] = &[
     "key-alt",
     "key-cmd",
     "key-opt",
+    "key-control",
     "key-esc",
     "key-enter",
     "key-tab",

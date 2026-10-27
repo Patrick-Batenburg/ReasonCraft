@@ -28,7 +28,7 @@ fn harness() -> Harness<'static, ReasonCraftApp> {
 /// The search field's accessible name: its hint text.
 fn field_label() -> String {
     let mut args = FluentArgs::new();
-    let os = Os::current();
+    let os = Os::Windows;
     let keys = shortcut_for(&Action::OpenCommandSearch, os).map(|s| shortcut_text(s, os));
     args.set("keys", keys.unwrap());
     t_args("titlebar.search", &args)

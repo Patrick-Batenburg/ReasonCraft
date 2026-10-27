@@ -6,8 +6,9 @@ use eframe::egui::{self, Key};
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::Action;
+use reasoncraft::canvas::input::{Os, paste_shortcut, shortcut_text};
 use reasoncraft::doc_tab::DocTab;
-use reasoncraft::i18n::t;
+use reasoncraft::i18n::{FluentArgs, t, t_args};
 use reasoncraft::settings::TextTab;
 use reasoncraft::shell::text_panel::capped_notice;
 use reasoncraft_core::{CardKind, Document, Item, MAX_SNIPPET_CHARS, Parent};
@@ -227,11 +228,18 @@ fn delete_key_in_snippet_keeps_selected_box() {
     assert_eq!(texts(&h).len(), 1);
 }
 
+/// The empty Snippets tab's text (tests run with the Windows keys).
+fn empty_label() -> String {
+    let mut keys = FluentArgs::new();
+    keys.set("paste", shortcut_text(paste_shortcut(), Os::Windows));
+    t_args("snippet.empty", &keys)
+}
+
 #[test]
 fn new_snippet_takes_focus_and_ctrl_v_pastes_into_it() {
     let mut h = harness_with(doc_with(&[]));
     h.run();
-    h.get_by_label(&t("snippet.empty"));
+    h.get_by_label(&empty_label());
     h.get_by_label(&t("snippet.new")).click();
     h.run();
     assert_eq!(texts(&h), [""]);
@@ -250,7 +258,7 @@ fn paste_over_tab_adds_snippet() {
     let mut h = harness_with(doc_with(&[]));
     h.run();
     // Ctrl+V with the pointer over the tab and no text field focused.
-    let over = h.get_by_label(&t("snippet.empty")).rect().center();
+    let over = h.get_by_label(&empty_label()).rect().center();
     h.event(egui::Event::PointerMoved(over));
     h.event(egui::Event::Paste("First".into()));
     h.run();

@@ -129,7 +129,7 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             spelling_panel::show(ui, tab, &mut app.spell, &tk, &mut out);
             let lang = tab.doc.meta.language.clone();
             let mut spell = SpellFields::new(&mut app.spell, &app.settings, &lang, &tk);
-            text_panel::show(ui, tab, &app.settings, &tk, &mut spell, &mut out);
+            text_panel::show(ui, tab, &app.settings, app.os, &tk, &mut spell, &mut out);
         });
     if let Some(shown) = text {
         app.panes.shown(panes::Pane::Text, shown.response.rect);

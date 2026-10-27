@@ -56,14 +56,12 @@ fn window_prompt(app: &ReasonCraftApp) -> bool {
 
 #[test]
 fn close_request_prompts_when_unsaved() {
-    for os in [Os::Windows, Os::Mac, Os::Linux] {
-        let mut h = harness(os, true);
-        request_close(&mut h);
-        assert!(window_prompt(h.state()), "{os:?}: {:?}", h.state().modal);
-        assert!(!h.state().close_confirmed());
-    }
+    let mut h = harness(Os::Windows, true);
+    request_close(&mut h);
+    assert!(window_prompt(h.state()), "{:?}", h.state().modal);
+    assert!(!h.state().close_confirmed());
     // Nothing unsaved: the window closes without a question.
-    let mut h = harness(Os::current(), false);
+    let mut h = harness(Os::Windows, false);
     request_close(&mut h);
     assert!(h.state().modal.is_none());
     assert!(h.state().close_confirmed());

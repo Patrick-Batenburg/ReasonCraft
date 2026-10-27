@@ -7,23 +7,30 @@ use super::*;
 const ALL: [Os; 3] = [Os::Windows, Os::Mac, Os::Linux];
 
 /// Opt with a letter or digit types a character on macOS (Opt+1 is "¡",
-/// Opt+Q "œ"), so the macOS table has no such shortcut without Cmd.
+/// Opt+Q "œ"), so the macOS table has no such shortcut without Cmd; and no
+/// Control+digit, which Mission Control can take ("Switch to Desktop").
 #[test]
 fn mac_table_has_no_alt_letter_or_digit() {
     for (s, _) in shortcuts(Os::Mac) {
         let opt = s.mods.alt && !s.mods.command;
         assert!(!(opt && types_with_opt(s.key)), "{s:?}");
+        let digit = s.key.name().chars().all(|c| c.is_ascii_digit());
+        assert!(!(mac_ctrl(s.mods) && digit), "{s:?}");
     }
-    // They moved to Control, which is free on macOS.
-    let ctrl = Modifiers::CTRL;
+    // The ratings take Cmd+Opt, which types nothing.
+    let cmd = Modifiers::MAC_CMD | Modifiers::COMMAND;
+    let cmd_opt = cmd | Modifiers::ALT;
     assert_eq!(
-        key_to_action(Os::Mac, Key::Num1, ctrl, false),
+        key_to_action(Os::Mac, Key::Num1, cmd_opt, false),
         Some(Action::Rate(crate::actions::Rate::High))
     );
+    assert_eq!(key_to_action(Os::Mac, Key::Num1, cmd_opt, true), None);
     assert_eq!(
-        key_to_action(Os::Mac, Key::Num0, ctrl | Modifiers::SHIFT, false),
+        key_to_action(Os::Mac, Key::Num0, cmd_opt | Modifiers::SHIFT, false),
         Some(Action::ClearEvaluation(reasoncraft_core::ClearScope::Map))
     );
+    let ctrl = Modifiers::CTRL;
+    assert_eq!(key_to_action(Os::Mac, Key::Num1, ctrl, false), None);
     // Opt+digit is text, as is Opt+Q; Search commands is Cmd+Shift+A, also
     // while editing.
     assert_eq!(
@@ -44,7 +51,6 @@ fn mac_table_has_no_alt_letter_or_digit() {
         Some(Action::Reorder(Dir::Left))
     );
     // Cmd+1 is still Zoom to fit, not a rating.
-    let cmd = Modifiers::MAC_CMD | Modifiers::COMMAND;
     assert_eq!(
         key_to_action(Os::Mac, Key::Num1, cmd, false),
         Some(Action::ZoomFit)
@@ -102,8 +108,9 @@ fn tables_have_unique_shortcuts_per_os() {
     assert_eq!(changed, 7, "5 Alt+digit, Alt+Q and Ctrl+H");
 }
 
-/// Backspace, like Delete, deletes the selected box on macOS, but not
-/// while editing (then it is text editing) and not elsewhere.
+/// Backspace and Shift+Backspace, like Delete and Shift+Delete, delete on
+/// macOS, but not while editing (then it is text editing), not with
+/// Control held, and not elsewhere.
 #[test]
 fn backspace_deletes_on_mac() {
     let none = Modifiers::NONE;
@@ -112,6 +119,22 @@ fn backspace_deletes_on_mac() {
         Some(Action::Delete)
     );
     assert_eq!(key_to_action(Os::Mac, Key::Backspace, none, true), None);
+    assert_eq!(
+        key_to_action(Os::Mac, Key::Backspace, Modifiers::SHIFT, false),
+        Some(Action::DeleteBranch)
+    );
+    // Control+key is never a context key on macOS.
+    for key in [Key::Backspace, Key::Tab, Key::Enter, Key::ArrowLeft] {
+        assert_eq!(
+            key_to_action(Os::Mac, key, Modifiers::CTRL, false),
+            None,
+            "{key:?}"
+        );
+    }
+    assert_eq!(
+        key_to_action(Os::Windows, Key::Tab, Modifiers::NONE, false),
+        Some(Action::AddReason)
+    );
     for os in [Os::Windows, Os::Linux] {
         assert_eq!(key_to_action(os, Key::Backspace, none, false), None);
     }
@@ -140,7 +163,8 @@ fn mac_glyphs_only_if_font_has_them() {
     assert_eq!(format_shortcut(s, Os::Mac, false, "en"), "Shift+Cmd+S");
     assert_eq!(format_shortcut(s, Os::Mac, true, "en"), "⇧⌘S");
     let rate = shortcut_for(&Action::Rate(crate::actions::Rate::Low), Os::Mac).unwrap();
-    assert_eq!(format_shortcut(rate, Os::Mac, true, "en"), "⌃3");
+    assert_eq!(format_shortcut(rate, Os::Mac, true, "en"), "⌥⌘3");
+    assert_eq!(format_shortcut(rate, Os::Mac, false, "en"), "Option+Cmd+3");
     // Never on the other platforms.
     let s = shortcut_for(&Action::SaveAs, Os::Windows).unwrap();
     assert_eq!(shortcut_text(s, Os::Windows), "Ctrl+Shift+S");

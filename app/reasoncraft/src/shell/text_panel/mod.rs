@@ -19,6 +19,7 @@ pub use snippet_card::capped_notice;
 
 use super::tab_button;
 use crate::actions::Action;
+use crate::canvas::input::Os;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::settings::{Settings, TextTab};
@@ -42,6 +43,7 @@ pub fn show(
     ui: &mut Ui,
     tab: &mut DocTab,
     settings: &Settings,
+    os: Os,
     tk: &Tokens,
     spell: &mut SpellFields,
     out: &mut Vec<Action>,
@@ -51,7 +53,7 @@ pub fn show(
     match settings.text_tab {
         TextTab::Outline => outline::show(ui, tab, settings, tk, out),
         TextTab::Check => check::show(ui, tab, settings, tk, out),
-        TextTab::Snippets => snippets::show(ui, tab, tk, spell, out),
+        TextTab::Snippets => snippets::show(ui, tab, os, tk, spell, out),
         TextTab::Essay => essay::show(ui, tab, settings, tk, spell, out),
     }
 }

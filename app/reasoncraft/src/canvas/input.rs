@@ -2,16 +2,21 @@
 //! navigation.
 
 use eframe::egui::{self, Event, FocusDirection, Key, Modifiers, Popup};
-use reasoncraft_core::{Document, Item, LayoutDirection, Parent, SourceType};
+use reasoncraft_core::{Document, Item, LayoutDirection, Parent};
 
 use super::editor::editor_id;
 use crate::actions::{Action, Dir, is_enabled};
 use crate::app::ReasonCraftApp;
+use shortcuts::works_while_editing;
 
 mod shortcuts;
-pub use shortcuts::{ActionCtor, Os, Shortcut, shortcut_for, shortcut_text, shortcuts};
+pub use shortcuts::{
+    ActionCtor, Os, Shortcut, paste_shortcut, shortcut_for, shortcut_text, shortcuts,
+};
 #[cfg(test)]
-pub(crate) use shortcuts::{MAC_GLYPHS, MAC_SYMBOLS, format_shortcut, key_name, types_with_opt};
+pub(crate) use shortcuts::{
+    MAC_GLYPHS, MAC_SYMBOLS, format_shortcut, key_name, mac_ctrl, types_with_opt,
+};
 
 /// The command bound to `key` with `mods` on `os`, if any: an entry of
 /// [`shortcuts`]`(os)`, or one of the context keys below.
@@ -19,7 +24,9 @@ pub(crate) use shortcuts::{MAC_GLYPHS, MAC_SYMBOLS, format_shortcut, key_name, t
 ///
 /// - Tab / Shift+Tab add a reason / objection, Enter or F2 edits the
 ///   selected box, Esc stops editing and the arrows move the selection.
-///   On macOS Backspace deletes the selected box like Delete.
+///   On macOS Backspace / Shift+Backspace delete like Delete / Shift+Delete.
+///   On macOS none of these work with Control held: Control+key is only
+///   ever a table entry.
 /// - While a box is being edited only Esc (finish), Tab / Shift+Tab (finish
 ///   and add a reason / objection) and the table's whole-card, source,
 ///   co-premise, file and find keys (finish, then the command) are commands;
@@ -40,6 +47,9 @@ pub fn key_to_action(os: Os, key: Key, mods: Modifiers, editing: bool) -> Option
             Os::Windows | Os::Linux => *a == A::OpenCommandSearch,
         };
         return shortcuts::lookup(os, key, mods).filter(|a| !editing || editable(a));
+    }
+    if shortcuts::mac_ctrl(mods) {
+        return shortcuts::lookup(os, key, mods).filter(|a| !editing || works_while_editing(a));
     }
     let (cmd, shift) = (mods.command, mods.shift);
     let context = match (key, cmd, shift) {
@@ -64,29 +74,10 @@ pub fn key_to_action(os: Os, key: Key, mods: Modifiers, editing: bool) -> Option
         (Key::ArrowRight, false, false) => Some(A::Navigate(Dir::Right)),
         (Key::Equals | Key::Plus, true, true) => Some(A::ZoomIn),
         (Key::Backspace, false, false) if os == Os::Mac => Some(A::Delete),
+        (Key::Backspace, false, true) if os == Os::Mac => Some(A::DeleteBranch),
         _ => None,
     };
     context.or_else(|| shortcuts::lookup(os, key, mods))
-}
-
-/// The table's commands that also end an inline edit.
-fn works_while_editing(action: &Action) -> bool {
-    matches!(
-        action,
-        Action::TargetWholeCard(_)
-            | Action::AddSource(SourceType::Source)
-            | Action::Save
-            | Action::SaveAs
-            | Action::Open
-            | Action::New
-            | Action::OpenCommandSearch
-            | Action::OpenFind { .. }
-            | Action::FindNext
-            | Action::FindPrev
-            | Action::OpenSpelling
-            | Action::NextPane
-            | Action::PrevPane
-    )
 }
 
 /// Take this frame's command keys out of the input before any widget sees
@@ -250,12 +241,12 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
 }
 
 /// The key [`key_to_action`] looks up for a key event, `None` for none.
-/// Alt+Shift (Control+Shift on macOS) goes by the physical key: a shifted
-/// digit arrives as the symbol it types (")" for Shift+0 on a US layout,
-/// which egui has no key for, "=" on a German one).
+/// Alt+Shift goes by the physical key: a shifted digit arrives as the
+/// symbol it types (")" for Shift+0 on a US layout, which egui has no key
+/// for, "=" on a German one).
 /// Plain Alt drops the keys of a Windows Alt-code (see [`is_alt_code_key`]).
 pub fn shortcut_key(key: Key, physical: Option<Key>, mods: Modifiers) -> Option<Key> {
-    if (mods.alt || shortcuts::mac_ctrl(mods)) && mods.shift {
+    if mods.alt && mods.shift {
         Some(physical.unwrap_or(key))
     } else if mods.alt && is_alt_code_key(key, physical) {
         None

@@ -3,7 +3,7 @@
 //!
 //! "Paste as snippet" asks the window for a paste (`RequestPaste`); the
 //! clipboard text then arrives as a paste event on the next frame and
-//! becomes a new snippet. Ctrl+V does the same while the pointer is over
+//! becomes a new snippet. Ctrl+V (Cmd+V on macOS) does the same while the pointer is over
 //! the tab and no text field has focus; with a snippet's text field
 //! focused, Ctrl+V pastes into that snippet as usual.
 
@@ -12,8 +12,9 @@ use reasoncraft_core::Uuid;
 
 use super::snippet_card::{self, Card};
 use crate::actions::Action;
+use crate::canvas::input::{Os, paste_shortcut, shortcut_text};
 use crate::doc_tab::DocTab;
-use crate::i18n::t;
+use crate::i18n::{FluentArgs, t, t_args};
 use crate::spell::SpellFields;
 use crate::theme::Tokens;
 
@@ -24,16 +25,19 @@ const PASTE_WAIT_PASSES: u64 = 3;
 pub fn show(
     ui: &mut Ui,
     tab: &mut DocTab,
+    os: Os,
     tk: &Tokens,
     spell: &mut SpellFields,
     out: &mut Vec<Action>,
 ) {
     let area = ui.max_rect();
     paste_as_snippet(ui, area, out);
-    toolbar(ui, out);
+    let mut keys = FluentArgs::new();
+    keys.set("paste", shortcut_text(paste_shortcut(), os));
+    toolbar(ui, &keys, out);
     ui.add_space(6.0);
     if tab.doc.snippets.is_empty() {
-        ui.label(RichText::new(t("snippet.empty")).color(tk.text_muted));
+        ui.label(RichText::new(t_args("snippet.empty", &keys)).color(tk.text_muted));
         ui.take_available_space();
         return;
     }
@@ -55,7 +59,7 @@ pub fn show(
         });
 }
 
-fn toolbar(ui: &mut Ui, out: &mut Vec<Action>) {
+fn toolbar(ui: &mut Ui, keys: &FluentArgs, out: &mut Vec<Action>) {
     ui.horizontal_wrapped(|ui| {
         if ui
             .button(t("snippet.new"))
@@ -66,7 +70,7 @@ fn toolbar(ui: &mut Ui, out: &mut Vec<Action>) {
         }
         if ui
             .button(t("snippet.paste"))
-            .on_hover_text(t("snippet.tip.paste"))
+            .on_hover_text(t_args("snippet.tip.paste", keys))
             .clicked()
         {
             let pass = ui.ctx().cumulative_pass_nr();
