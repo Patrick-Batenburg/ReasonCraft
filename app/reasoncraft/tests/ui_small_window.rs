@@ -48,6 +48,49 @@ fn far_ribbon_commands_are_reachable_by_scrolling() {
     assert_ne!(h.state().settings.eval_shading, before);
 }
 
+/// On every tab, clicking the right arrow until it goes brings the last
+/// button fully into the window.
+#[test]
+fn every_tab_scrolls_to_its_last_button() {
+    use egui_kittest::kittest::NodeT;
+    let tabs = [
+        RibbonTab::Home,
+        RibbonTab::Insert,
+        RibbonTab::Evaluate,
+        RibbonTab::View,
+        RibbonTab::Export,
+        RibbonTab::Help,
+    ];
+    let arrows = [t("ribbon.scroll_left"), t("ribbon.scroll_right")];
+    for tab in tabs {
+        let mut h = harness(1.5);
+        h.state_mut().ribbon_tab = tab;
+        h.run();
+        let (top, bottom) = (110.0, 200.0);
+        let last = |h: &Harness<'static, ReasonCraftApp>| {
+            h.query_all_by_role(egui::accesskit::Role::Button)
+                .map(|n| (n.accesskit_node().label().unwrap_or_default(), n.rect()))
+                .filter(|(name, r)| {
+                    r.center().y > top && r.center().y < bottom && !arrows.contains(name)
+                })
+                .max_by(|a, b| a.1.right().total_cmp(&b.1.right()))
+                .expect("ribbon buttons")
+        };
+        let mut clicks = 0;
+        while let Some(arrow) = h.query_by_label(&arrows[1]) {
+            arrow.click();
+            h.run();
+            clicks += 1;
+            assert!(clicks < 30, "{tab:?}: never reached the end");
+        }
+        let (name, rect) = last(&h);
+        assert!(
+            rect.right() <= right_edge(&h),
+            "{tab:?}: {name:?} at {rect:?} still past the window"
+        );
+    }
+}
+
 #[test]
 fn a_ribbon_that_fits_has_no_scroll_buttons() {
     let mut app = ReasonCraftApp::new_for_test();

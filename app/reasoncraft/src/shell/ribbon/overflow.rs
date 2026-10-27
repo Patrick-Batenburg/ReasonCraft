@@ -30,30 +30,45 @@ pub(super) fn row(ui: &mut Ui, tk: &Tokens, tab: RibbonTab, add: impl FnOnce(&mu
     if let Some(x) = jump {
         area = area.horizontal_scroll_offset(x);
     }
-    let out = area.show(ui, |ui| {
-        ui.with_layout(Layout::left_to_right(Align::Min), add);
-    });
+    // While the row overflows (as found last frame), a gutter at each end
+    // holds its arrow, so no button lies under one.
+    let over_id = Id::unique(("ribbon_overflows", format!("{tab:?}")));
+    let overflows = ui.ctx().data(|d| d.get_temp::<bool>(over_id)) == Some(true);
+    let full = ui.available_width();
+    let gutter = if overflows { ARROW_W } else { 0.0 };
+    let out = ui
+        .horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 0.0;
+            ui.add_space(gutter);
+            let out = area.max_width(full - 2.0 * gutter).show(ui, |ui| {
+                ui.with_layout(Layout::left_to_right(Align::Min), add);
+            });
+            ui.add_space(gutter);
+            out
+        })
+        .inner;
     let view = out.inner_rect;
+    let now_overflows = out.content_size.x > full + 0.5;
+    if now_overflows != overflows {
+        ui.ctx().data_mut(|d| d.insert_temp(over_id, now_overflows));
+        ui.ctx().request_repaint();
+    }
     let hidden = out.content_size.x - view.width();
-    if hidden <= 0.5 {
+    if !overflows || hidden <= 0.5 {
         return;
     }
     let x = out.state.clamped_offset().x;
-    let page = (view.width() - 2.0 * ARROW_W).max(ARROW_W) * 0.75;
+    let page = view.width().max(ARROW_W) * 0.75;
     let ends = [
-        (x > 0.5, view.left(), -1.0, "ribbon.scroll_left"),
-        (
-            x < hidden - 0.5,
-            view.right() - ARROW_W,
-            1.0,
-            "ribbon.scroll_right",
-        ),
+        (x > 0.5, view.left() - ARROW_W, -1.0, "ribbon.scroll_left"),
+        (x < hidden - 0.5, view.right(), 1.0, "ribbon.scroll_right"),
     ];
     for (shown, left, dir, key) in ends {
         if !shown {
             continue;
         }
-        let rect = Rect::from_min_size(pos2(left, view.top()), Vec2::new(ARROW_W, view.height()));
+        let height = view.height().max(out.content_size.y);
+        let rect = Rect::from_min_size(pos2(left, view.top()), Vec2::new(ARROW_W, height));
         if arrow(ui, tk, rect, dir, &t(key)) {
             let to = (x + dir * page).clamp(0.0, hidden);
             ui.ctx().data_mut(|d| d.insert_temp(jump_id, to));

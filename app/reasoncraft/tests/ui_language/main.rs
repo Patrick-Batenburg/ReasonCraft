@@ -27,6 +27,7 @@ mod examples;
 mod help;
 mod release;
 mod ribbon_fit;
+mod ribbon_reach;
 
 static LANGUAGE: Mutex<()> = Mutex::new(());
 
