@@ -36,6 +36,9 @@ pub struct ReasonCraftApp {
     pub active: usize,
     /// Personal preferences (theme, author, evaluation display).
     pub settings: Settings,
+    /// Reads the OS locale, for a UI language that follows the OS: the
+    /// platform's own in the app; none in tests, which then read English.
+    pub os_locale: fn() -> Option<String>,
     pub left_panel: bool,
     pub right_panel: bool,
     /// Actions queued by widgets this frame, applied at the end of the frame.
@@ -95,16 +98,18 @@ pub struct ReasonCraftApp {
 impl ReasonCraftApp {
     fn with_settings(
         settings: Settings,
+        os_locale: fn() -> Option<String>,
         dialogs: Box<dyn FileDialogs>,
         link_opener: Box<dyn LinkOpener>,
         clipboard: SharedClipboard,
     ) -> Self {
-        Self {
+        let app = Self {
             tabs: vec![DocTab::with_language(&settings.default_doc_language)],
             active: 0,
             tokens: theme::resolve(settings.theme, true),
             spell: SpellService::new(&settings.spell_words),
             settings,
+            os_locale,
             left_panel: true,
             right_panel: true,
             pending: Vec::new(),
@@ -130,12 +135,30 @@ impl ReasonCraftApp {
             close_now: false,
             #[cfg(debug_assertions)]
             show_source_icons: false,
-        }
+        };
+        app.apply_ui_language();
+        app
+    }
+
+    /// Show the interface in the language the settings ask for. The OS
+    /// locale is read only when they follow the OS.
+    pub(crate) fn apply_ui_language(&self) {
+        let lang = match &self.settings.ui_language {
+            Some(lang) => lang.as_str(),
+            None => crate::i18n::os_ui_language((self.os_locale)().as_deref()),
+        };
+        crate::i18n::set_ui_language(lang);
     }
 
     /// Build the app, restoring settings from eframe storage, with autosave
-    /// to `recovery_dir` (see [`crate::recovery`]).
-    pub fn new(cc: &eframe::CreationContext<'_>, recovery_dir: Option<PathBuf>) -> Self {
+    /// to `recovery_dir` (see [`crate::recovery`]). `os_locale` reads the
+    /// OS locale (a BCP 47 tag such as `nl-NL`), called only while the UI
+    /// language follows the OS.
+    pub fn new(
+        cc: &eframe::CreationContext<'_>,
+        recovery_dir: Option<PathBuf>,
+        os_locale: fn() -> Option<String>,
+    ) -> Self {
         let settings = cc
             .storage
             .and_then(|s| eframe::get_value::<Settings>(s, SETTINGS_KEY))
@@ -145,6 +168,7 @@ impl ReasonCraftApp {
         std::thread::spawn(crate::export::clean_old_print_files);
         let mut app = Self::with_settings(
             settings,
+            os_locale,
             Box::new(RfdDialogs),
             Box::new(SystemOpener),
             Arc::new(Mutex::new(SystemClipboard::default())),
@@ -166,8 +190,9 @@ impl ReasonCraftApp {
         }
     }
 
-    /// Build the app with default settings, no storage, file dialogs that
-    /// always cancel, and a link opener and clipboard that only record.
+    /// Build the app with default settings, no storage, no OS locale (so
+    /// the interface is English), file dialogs that always cancel, and a
+    /// link opener and clipboard that only record.
     pub fn new_for_test() -> Self {
         Self::new_for_test_with(Box::new(FakeDialogs::default()))
     }
@@ -176,6 +201,7 @@ impl ReasonCraftApp {
     pub fn new_for_test_with(dialogs: Box<dyn FileDialogs>) -> Self {
         Self::with_settings(
             Settings::default(),
+            || None,
             dialogs,
             Box::new(FakeOpener::default()),
             Arc::new(Mutex::new(FakeClipboard::default())),

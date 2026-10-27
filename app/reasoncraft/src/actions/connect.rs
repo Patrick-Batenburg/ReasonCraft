@@ -69,6 +69,7 @@ pub(super) fn end_unless_kept(tab: &mut DocTab, action: &Action) {
             | Action::StartConnect
             | Action::StopEditing
             | Action::SetTheme(_)
+            | Action::SetUiLanguage(_)
             | Action::SetConnectorStyle(_)
             | Action::TogglePanel(_)
             | Action::ShowPanel(_)

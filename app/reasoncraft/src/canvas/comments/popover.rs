@@ -230,7 +230,11 @@ fn comment_row(ui: &mut Ui, node: NodeId, c: &Comment, tk: &Tokens, pending: &mu
             verdict_colour(c.verdict, tk),
             c.verdict.is_none(),
         );
-        ui.label(RichText::new(&c.author).strong().color(tk.box_text));
+        let author = match c.author.as_str() {
+            "" => t("comment.anonymous"),
+            name => name.to_owned(),
+        };
+        ui.label(RichText::new(author).strong().color(tk.box_text));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let label = t("comment.delete");
             if icon_button(ui, Icon::Close, &label, 16.0, true, tk, tk.panel).clicked() {

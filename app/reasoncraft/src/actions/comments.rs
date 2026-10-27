@@ -5,7 +5,6 @@ use reasoncraft_core::{Item, NodeId};
 use super::Action;
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
-use crate::i18n::t;
 
 /// The box that "Comment" (ribbon, Ctrl+Shift+M) opens comments for.
 fn selected_box(tab: &DocTab) -> Option<NodeId> {
@@ -49,10 +48,8 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
         }
         _ => {}
     }
-    let author = match app.settings.author.trim() {
-        "" => t("comment.anonymous"),
-        name => name.to_owned(),
-    };
+    // No name: stored empty, shown as "Anonymous" in the reader's language.
+    let author = app.settings.author.trim().to_owned();
     let Some(tab) = app.tabs.get_mut(app.active) else {
         return;
     };

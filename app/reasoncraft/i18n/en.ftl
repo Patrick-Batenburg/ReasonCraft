@@ -256,6 +256,31 @@ document-language_hint = Checks such as "and"/"or" in one statement use this lan
 lang-en = English
 lang-nl = Dutch
 
+## Interface language (View ribbon, Language menu; settings page).
+## Each language is named in its own language.
+group-language = Language
+action-ui_language = Language
+ui_language-system = System
+ui_language-en = English
+ui_language-nl = Nederlands
+settings-ui_language = Language of the interface
+settings-ui_language_hint = System follows the language of your computer.
+
+## Key names in shortcuts (Ctrl+Shift+R, Alt+Left)
+key-ctrl = Ctrl
+key-shift = Shift
+key-alt = Alt
+key-esc = Esc
+key-enter = Enter
+key-space = Space
+key-tab = Tab
+key-backspace = Backspace
+key-delete = Delete
+key-left = Left
+key-right = Right
+key-up = Up
+key-down = Down
+
 ## Themes
 theme-system = System
 theme-light = Light
@@ -387,12 +412,12 @@ role-opposes = opposes
 role-rebuts = rebuts
 
 ## Card rating labels
-rating-strong-supports = ●● strongly supports
-rating-strong-opposes = ●● strongly opposes
-rating-strong-rebuts = ●● strongly rebuts
-rating-weak-supports = ● weakly supports
-rating-weak-opposes = ● weakly opposes
-rating-weak-rebuts = ● weakly rebuts
+rating-strong-supports = strongly supports
+rating-strong-opposes = strongly opposes
+rating-strong-rebuts = strongly rebuts
+rating-weak-supports = weakly supports
+rating-weak-opposes = weakly opposes
+rating-weak-rebuts = weakly rebuts
 rating-nil-supports = does not support
 rating-nil-opposes = does not oppose
 rating-nil-rebuts = does not rebut

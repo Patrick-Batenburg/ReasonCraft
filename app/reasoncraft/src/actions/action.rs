@@ -177,6 +177,10 @@ pub enum Action {
     /// Set the zoom factor directly (status-bar slider), clamped to the zoom range.
     SetZoom(f32),
     SetTheme(ThemeChoice),
+    /// Show the interface in this language, or the OS language for `None`
+    /// (a personal setting: no history). A language that is not one of
+    /// [`crate::i18n::UI_LANGUAGES`] is refused.
+    SetUiLanguage(Option<String>),
     /// Draw connectors in this style (a personal setting: no history).
     SetConnectorStyle(ConnectorStyle),
     /// Lay the document out in this direction (one history step; none

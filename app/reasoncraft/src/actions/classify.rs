@@ -26,6 +26,7 @@ pub(super) fn keeps_notes(action: &Action) -> bool {
             | Action::ShowPanel(_)
             | Action::SetTextTab(_)
             | Action::SetTheme(_)
+            | Action::SetUiLanguage(_)
             | Action::SetConnectorStyle(_)
             | Action::ToggleMarkers
             | Action::SetMinimap(_)

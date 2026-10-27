@@ -3,7 +3,6 @@ use reasoncraft_core::{Item, NodeId, Verdict};
 use crate::actions::{Action, apply, is_enabled};
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
-use crate::i18n::t;
 
 fn tab(app: &ReasonCraftApp) -> &DocTab {
     &app.tabs[app.active]
@@ -24,15 +23,15 @@ fn add(text: &str, node: NodeId, verdict: Option<Verdict>) -> Action {
 }
 
 #[test]
-fn add_comment_uses_author_or_anonymous() {
+fn add_comment_uses_author_or_stores_none() {
     let (mut a, root) = app_and_root();
     apply(
         &mut a,
         add("Needs a source", root, Some(Verdict::NeedsWork)),
     );
     let c = &tab(&a).doc.boxes[&root].comments[0];
-    assert_eq!(c.author, t("comment.anonymous"));
-    assert_ne!(c.author, "comment.anonymous", "the key has a text");
+    // No author name: stored empty, shown translated (see the popover).
+    assert_eq!(c.author, "");
     assert_eq!(c.text, "Needs a source");
     assert_eq!(c.verdict, Some(Verdict::NeedsWork));
     assert_eq!(tab(&a).history.undo.len(), 1);
@@ -48,10 +47,7 @@ fn add_comment_uses_author_or_anonymous() {
     apply(&mut a, Action::SetAuthor("   ".to_owned()));
     assert_eq!(a.settings.author, "");
     apply(&mut a, add("Third", root, None));
-    assert_eq!(
-        tab(&a).doc.boxes[&root].comments[2].author,
-        t("comment.anonymous")
-    );
+    assert_eq!(tab(&a).doc.boxes[&root].comments[2].author, "");
 }
 
 #[test]

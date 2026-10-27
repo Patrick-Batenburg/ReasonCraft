@@ -3,7 +3,9 @@ use std::collections::BTreeSet;
 use eframe::egui::{Key, Modifiers};
 
 use super::*;
-use crate::canvas::input::{SHORTCUTS, format_shortcut, key_to_action, shortcut_for};
+use crate::canvas::input::{
+    SHORTCUTS, format_shortcut, key_name, key_to_action, shortcut_for, shortcut_text,
+};
 use crate::i18n::t;
 
 #[test]
@@ -20,6 +22,15 @@ fn command_ids_unique() {
     for d in reasoncraft_core::LayoutDirection::ALL {
         let cmd = get(&format!("view.direction.{}", d.key()));
         assert_eq!(cmd.action, Action::SetLayoutDirection(d));
+    }
+    assert_eq!(count("view.language."), 1 + crate::i18n::UI_LANGUAGES.len());
+    assert_eq!(
+        get("view.language.system").action,
+        Action::SetUiLanguage(None)
+    );
+    for lang in crate::i18n::UI_LANGUAGES {
+        let cmd = get(&format!("view.language.{lang}"));
+        assert_eq!(cmd.action, Action::SetUiLanguage(Some(lang.to_owned())));
     }
     assert_eq!(count("view.connector."), 3);
     for s in reasoncraft_core::ConnectorStyle::ALL {
@@ -108,7 +119,7 @@ fn shortcut_table_round_trips() {
     assert_eq!(key_to_action(Key::Num1, alt, true), None);
     // The first entry for an action is the one shown.
     assert_eq!(
-        shortcut_for(&Action::Redo).map(|s| format_shortcut(s, false)),
+        shortcut_for(&Action::Redo).map(|s| format_shortcut(s, false, "en")),
         Some("Ctrl+Y".to_owned())
     );
 }
@@ -116,10 +127,46 @@ fn shortcut_table_round_trips() {
 #[test]
 fn shortcut_text_per_platform() {
     let s = shortcut_for(&Action::TargetWholeCard(reasoncraft_core::CardKind::Reason)).unwrap();
-    assert_eq!(format_shortcut(s, false), "Ctrl+Shift+R");
-    assert_eq!(format_shortcut(s, true), "⌘⇧R");
+    assert_eq!(format_shortcut(s, false, "en"), "Ctrl+Shift+R");
+    assert_eq!(format_shortcut(s, true, "en"), "⌘⇧R");
     let q = shortcut_for(&Action::OpenCommandSearch).unwrap();
-    assert_eq!(format_shortcut(q, false), "Alt+Q");
+    assert_eq!(format_shortcut(q, false, "en"), "Alt+Q");
+}
+
+#[test]
+fn shortcut_text_uses_translated_key_names() {
+    use crate::actions::Dir;
+    use crate::i18n::{UI_LANGUAGES, t_lang};
+    let left = shortcut_for(&Action::Reorder(Dir::Left)).unwrap();
+    let co_premise = shortcut_for(&Action::AddCoPremise).unwrap();
+    let branch = shortcut_for(&Action::DeleteBranch).unwrap();
+    for lang in UI_LANGUAGES {
+        let k = |key: &str| t_lang(lang, key);
+        let joined = |a: &str, b: &str| format!("{}+{}", k(a), k(b));
+        assert_eq!(
+            format_shortcut(left, false, lang),
+            joined("key.alt", "key.left")
+        );
+        assert_eq!(
+            format_shortcut(co_premise, false, lang),
+            joined("key.ctrl", "key.enter")
+        );
+        assert_eq!(
+            format_shortcut(branch, false, lang),
+            joined("key.shift", "key.delete")
+        );
+        for (key, name) in [(Key::Escape, "key.esc"), (Key::Space, "key.space")] {
+            assert_eq!(key_name(key, lang), k(name));
+            assert_ne!(k(name), name, "`{name}` has a text");
+        }
+    }
+    assert_eq!(key_name(Key::Space, "nl"), "Spatie");
+    assert_eq!(key_name(Key::R, "nl"), "R");
+    // macOS keeps its modifier symbols.
+    assert_eq!(format_shortcut(left, true, "en"), "⌥Left");
+    // What menus show follows the UI language (English in this binary).
+    let mac = cfg!(target_os = "macos");
+    assert_eq!(shortcut_text(left), format_shortcut(left, mac, "en"));
 }
 
 /// README's keyboard tables list exactly the shortcuts of [`SHORTCUTS`];
@@ -148,7 +195,7 @@ fn readme_shortcuts_match_table() {
     }
     let table: BTreeSet<String> = SHORTCUTS
         .iter()
-        .map(|(s, _)| format_shortcut(*s, false))
+        .map(|(s, _)| format_shortcut(*s, false, "en"))
         .collect();
     let missing: Vec<_> = table.difference(&listed).collect();
     let extra: Vec<_> = listed.difference(&table).collect();

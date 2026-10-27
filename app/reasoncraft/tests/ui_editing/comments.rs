@@ -34,7 +34,7 @@ fn preset_adds_comment_and_badge_shows_count() {
         assert_eq!(comments.len(), 1);
         assert_eq!(comments[0].text, t("comment.preset.great_work"));
         assert_eq!(comments[0].verdict, Some(Verdict::Positive));
-        assert_eq!(comments[0].author, t("comment.anonymous"));
+        assert_eq!(comments[0].author, "", "no author name: stored empty");
         assert_eq!(tab.history.undo.len(), 1);
         // Picking from the menu keeps the popover open.
         assert_eq!(tab.comments_open, Some(root));
@@ -63,6 +63,29 @@ fn preset_adds_comment_and_badge_shows_count() {
     let corner = tab.viewport.unwrap().min + egui::vec2(4.0, 4.0);
     click_at(&mut h, corner);
     assert_eq!(h.state().tabs[0].comments_open, None);
+}
+
+#[test]
+fn empty_author_shown_translated() {
+    use reasoncraft_core::Document;
+    let mut doc = Document::new("Claim");
+    let root = doc.root;
+    doc.add_comment(root, "", "New style", None).unwrap();
+    // Files from before step 6 hold the English word: kept as it is.
+    doc.add_comment(root, "Anonymous", "Old style", None)
+        .unwrap();
+    doc.add_comment(root, "Ann", "Named", None).unwrap();
+    let h = comments_harness(doc);
+    let anonymous = t("comment.anonymous");
+    assert_ne!(anonymous, "comment.anonymous", "the key has a text");
+    assert_eq!(h.query_all_by_label(&anonymous).count(), 2);
+    assert!(h.query_by_label("Ann").is_some());
+    let authors: Vec<_> = h.state().tabs[0].doc.boxes[&root]
+        .comments
+        .iter()
+        .map(|c| c.author.clone())
+        .collect();
+    assert_eq!(authors, ["", "Anonymous", "Ann"], "data is not rewritten");
 }
 
 #[test]

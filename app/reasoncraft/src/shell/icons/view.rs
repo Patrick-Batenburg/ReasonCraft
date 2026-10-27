@@ -1,4 +1,5 @@
-//! View tab icons: fit selection, the minimap and map numbering.
+//! View tab icons: fit selection, the minimap, map numbering and the
+//! interface language.
 
 use eframe::egui::Color32;
 
@@ -40,6 +41,21 @@ pub(super) fn paint(pen: &Pen, icon: Icon, fg: Color32, t: &Tokens) {
                     muted(t.accent),
                 );
                 pen.line(&[(0.36, y), (0.9, y)]);
+            }
+        }
+        // A globe: its outline, a meridian, the equator and two parallels.
+        Icon::Language => {
+            pen.circle(0.5, 0.5, 0.4);
+            let meridian: Vec<(f32, f32)> = (0..=24)
+                .map(|i| {
+                    let a = std::f32::consts::TAU * i as f32 / 24.0;
+                    (0.5 + 0.17 * a.cos(), 0.5 + 0.4 * a.sin())
+                })
+                .collect();
+            pen.line(&meridian);
+            pen.line(&[(0.1, 0.5), (0.9, 0.5)]);
+            for y in [0.3, 0.7] {
+                pen.line_c(&[(0.18, y), (0.82, y)], muted(t.accent));
             }
         }
         _ => {}

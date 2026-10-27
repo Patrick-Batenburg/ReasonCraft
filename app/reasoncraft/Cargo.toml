@@ -13,6 +13,8 @@ reasoncraft_spell = { path = "../../crates/reasoncraft_spell" }
 eframe.workspace = true
 serde.workspace = true
 fluent-bundle = "0.16"
+# The OS language, the default UI language.
+sys-locale = "0.3"
 unic-langid = "0.9"
 rfd = "0.17"
 open = "5"

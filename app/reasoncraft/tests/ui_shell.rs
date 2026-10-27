@@ -202,6 +202,7 @@ fn settings_from_old_storage_fill_defaults() {
     // The whole struct round-trips.
     let custom = Settings {
         theme: ThemeChoice::System,
+        ui_language: Some("nl".to_owned()),
         author: "Ann".to_owned(),
         show_markers: false,
         eval_shading: true,

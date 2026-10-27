@@ -68,7 +68,8 @@ pub fn card_colour(t: &Tokens, role: Role, strength: Option<CardStrength>) -> Co
     }
 }
 
-/// The label inside a card frame, e.g. "●● strongly supports".
+/// The label inside a card frame, e.g. "strongly supports". Its strength
+/// dots ([`rating_dots`]) are drawn beside it.
 pub fn rating_label(role: Role, strength: Option<CardStrength>) -> String {
     let role = match role {
         Role::Supports => "supports",
@@ -84,12 +85,14 @@ pub fn rating_label(role: Role, strength: Option<CardStrength>) -> String {
     t(&format!("{prefix}.{role}"))
 }
 
-/// The strength dots ("●") leading `label`, and the text after them. The
-/// dots are drawn as shapes: the UI font has no glyph for them.
-pub fn split_dots(label: &str) -> (usize, &str) {
-    let rest = label.trim_start_matches('●');
-    let dots = (label.len() - rest.len()) / '●'.len_utf8();
-    (dots, rest.trim_start())
+/// How many strength dots lead a card's rating label: two for strong, one
+/// for weak. They are drawn as shapes: the UI font has no glyph for them.
+pub fn rating_dots(strength: Option<CardStrength>) -> usize {
+    match strength {
+        Some(CardStrength::Strong) => 2,
+        Some(CardStrength::Weak) => 1,
+        Some(CardStrength::Nil) | None => 0,
+    }
 }
 
 /// The marker on a rated box.
@@ -212,12 +215,12 @@ mod tests {
     fn rating_label_variants() {
         use CardStrength::*;
         let cases = [
-            (Role::Supports, Some(Strong), "●● strongly supports"),
-            (Role::Opposes, Some(Strong), "●● strongly opposes"),
-            (Role::Rebuts, Some(Strong), "●● strongly rebuts"),
-            (Role::Supports, Some(Weak), "● weakly supports"),
-            (Role::Opposes, Some(Weak), "● weakly opposes"),
-            (Role::Rebuts, Some(Weak), "● weakly rebuts"),
+            (Role::Supports, Some(Strong), "strongly supports"),
+            (Role::Opposes, Some(Strong), "strongly opposes"),
+            (Role::Rebuts, Some(Strong), "strongly rebuts"),
+            (Role::Supports, Some(Weak), "weakly supports"),
+            (Role::Opposes, Some(Weak), "weakly opposes"),
+            (Role::Rebuts, Some(Weak), "weakly rebuts"),
             (Role::Supports, None, "supports"),
             (Role::Opposes, None, "opposes"),
             (Role::Rebuts, None, "rebuts"),
@@ -231,10 +234,19 @@ mod tests {
     }
 
     #[test]
-    fn dots_split_from_label() {
-        assert_eq!(split_dots("●● strongly supports"), (2, "strongly supports"));
-        assert_eq!(split_dots("● weakly rebuts"), (1, "weakly rebuts"));
-        assert_eq!(split_dots("opposes"), (0, "opposes"));
+    fn rating_dots_drawn_by_count_not_parsed() {
+        use CardStrength::*;
+        assert_eq!(rating_dots(Some(Strong)), 2);
+        assert_eq!(rating_dots(Some(Weak)), 1);
+        assert_eq!(rating_dots(Some(Nil)), 0);
+        assert_eq!(rating_dots(None), 0);
+        let ftl = [
+            include_str!("../../i18n/en.ftl"),
+            include_str!("../../i18n/nl.ftl"),
+        ];
+        for text in ftl {
+            assert!(!text.contains('●'), "the dots are drawn, not translated");
+        }
     }
 
     #[test]

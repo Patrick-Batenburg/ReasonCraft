@@ -103,6 +103,8 @@ pub enum Icon {
     Minimap,
     /// Numbered rows (numbering on the map).
     Numbers,
+    /// A globe (the interface language).
+    Language,
     /// A magnifying glass (find).
     Find,
     /// A line of text, an arrow and its replacement.
@@ -375,7 +377,9 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         | Icon::Argdown
         | Icon::PageSetup
         | Icon::Print => export::paint(&pen, icon, fg, t),
-        Icon::ZoomFitSelection | Icon::Minimap | Icon::Numbers => view::paint(&pen, icon, fg, t),
+        Icon::ZoomFitSelection | Icon::Minimap | Icon::Numbers | Icon::Language => {
+            view::paint(&pen, icon, fg, t)
+        }
         Icon::Find | Icon::Replace | Icon::Spelling => find::paint(&pen, icon, fg, t),
         Icon::Direction(dir) => direction::paint_direction(painter, rect, dir, fg),
         Icon::Connector(style) => connector::paint_connector(painter, rect, style, fg),

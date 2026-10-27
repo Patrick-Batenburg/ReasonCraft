@@ -19,6 +19,9 @@ pub const SETTINGS_KEY: &str = "settings";
 pub struct Settings {
     #[serde(deserialize_with = "deserialize_or_default")]
     pub theme: ThemeChoice,
+    /// The interface language, one of [`crate::i18n::UI_LANGUAGES`];
+    /// `None` follows the OS. Another value shows English.
+    pub ui_language: Option<String>,
     /// The name put on new comments.
     pub author: String,
     /// Show rating markers on boxes and cards.
@@ -190,6 +193,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: ThemeChoice::Dark,
+            ui_language: None,
             author: String::new(),
             show_markers: true,
             eval_shading: true,

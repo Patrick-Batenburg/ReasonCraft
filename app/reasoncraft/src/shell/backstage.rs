@@ -10,7 +10,7 @@ use super::icons::{self, Icon};
 use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::commands;
-use crate::i18n::t;
+use crate::i18n::{UI_LANGUAGES, t};
 use crate::settings::{AUTOSAVE_DEFAULT, AUTOSAVE_MAX, AUTOSAVE_MIN};
 use crate::shell::text_panel::check_key;
 use crate::theme::{ThemeChoice, Tokens};
@@ -135,8 +135,8 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
     }
 }
 
-/// The author name, the theme, the default language, spellcheck, autosave
-/// and which checks run.
+/// The interface language, the author name, the theme, the default
+/// language, spellcheck, autosave and which checks run.
 fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -146,6 +146,8 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             .size(18.0)
             .color(tk.box_text),
     );
+    ui.add_space(8.0);
+    ui_language(ui, app, &tk);
     ui.add_space(8.0);
     author_field(ui, app, &tk);
     ui.add_space(8.0);
@@ -185,6 +187,25 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     autosave(ui, app, &tk);
     ui.add_space(8.0);
     checks(ui, app, &tk);
+}
+
+/// The interface language: System (the OS language) or one of the UI
+/// languages, each named in its own language. Same commands as View →
+/// Language.
+fn ui_language(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
+    ui.label(RichText::new(t("settings.ui_language")).color(tk.box_text));
+    let current = app.settings.ui_language.clone();
+    ui.horizontal(|ui| {
+        let langs = UI_LANGUAGES.map(|l| (l, Some(l)));
+        for (key, lang) in std::iter::once(("system", None)).chain(langs) {
+            let cmd = commands::get(&format!("view.language.{key}"));
+            let on = current.as_deref() == lang;
+            if ui.selectable_label(on, t(cmd.label)).clicked() && !on {
+                app.push(cmd.action.clone());
+            }
+        }
+    });
+    ui.label(RichText::new(t("settings.ui_language_hint")).color(tk.text_muted));
 }
 
 /// Autosave on or off, and its interval in seconds. Turning it back on

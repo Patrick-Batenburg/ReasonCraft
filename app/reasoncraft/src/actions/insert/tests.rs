@@ -134,7 +134,7 @@ fn comment_preset_at_selection_and_on_node() {
     assert_eq!(c.len(), 1);
     assert_eq!(c[0].text, t(PRESETS[8].0));
     assert_eq!(c[0].verdict, Some(Verdict::Problem));
-    assert_eq!(c[0].author, t("comment.anonymous"));
+    assert_eq!(c[0].author, "");
     let c = &tb.doc.boxes[&root].comments;
     assert_eq!(c[0].verdict, Some(Verdict::Positive));
     assert_eq!(tb.selection, Some(Item::Box(root)));

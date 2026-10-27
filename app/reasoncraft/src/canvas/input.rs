@@ -9,9 +9,9 @@ use crate::actions::{Action, Dir, is_enabled};
 use crate::app::ReasonCraftApp;
 
 mod shortcuts;
-#[cfg(test)]
-pub(crate) use shortcuts::format_shortcut;
 pub use shortcuts::{ActionCtor, SHORTCUTS, Shortcut, shortcut_for, shortcut_text};
+#[cfg(test)]
+pub(crate) use shortcuts::{format_shortcut, key_name};
 
 /// The command bound to `key` with `mods`, if any: an entry of
 /// [`SHORTCUTS`], or one of the context keys below. `Modifiers::command`

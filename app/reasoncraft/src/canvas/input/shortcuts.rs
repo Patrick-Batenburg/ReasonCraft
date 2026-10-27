@@ -6,6 +6,7 @@ use eframe::egui::{Key, Modifiers};
 use reasoncraft_core::{CardKind, ClearScope, SourceType};
 
 use crate::actions::{Action, Dir, Rate};
+use crate::i18n;
 
 /// A key with its modifiers. `Modifiers::command` is Ctrl, or Cmd on macOS.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -126,39 +127,57 @@ pub fn shortcut_for(action: &Action) -> Option<Shortcut> {
         .map(|(s, _)| *s)
 }
 
-/// How a shortcut is written: "Ctrl+Shift+R", or "⌘⇧R" on macOS.
+/// How a shortcut is written in the UI language: "Ctrl+Shift+R", or
+/// "⌘⇧R" on macOS.
 pub fn shortcut_text(s: Shortcut) -> String {
-    format_shortcut(s, cfg!(target_os = "macos"))
+    format_shortcut(s, cfg!(target_os = "macos"), i18n::ui_language())
 }
 
-/// [`shortcut_text`] for either platform (README lists the non-Mac form).
-pub(crate) fn format_shortcut(s: Shortcut, mac: bool) -> String {
+/// [`shortcut_text`] for either platform, with key names in `lang`
+/// (README lists the non-Mac form in English).
+pub(crate) fn format_shortcut(s: Shortcut, mac: bool, lang: &str) -> String {
     let mods = [
-        (s.mods.command, "Ctrl", "⌘"),
-        (s.mods.alt, "Alt", "⌥"),
-        (s.mods.shift, "Shift", "⇧"),
+        (s.mods.command, "key.ctrl", "⌘"),
+        (s.mods.alt, "key.alt", "⌥"),
+        (s.mods.shift, "key.shift", "⇧"),
     ];
-    let mut parts: Vec<&str> = mods
+    let mut parts: Vec<String> = mods
         .iter()
         .filter(|(on, ..)| *on)
-        .map(|&(_, pc, mac_sym)| if mac { mac_sym } else { pc })
+        .map(|&(_, key, mac_sym)| {
+            if mac {
+                mac_sym.to_owned()
+            } else {
+                i18n::t_lang(lang, key)
+            }
+        })
         .collect();
-    parts.push(key_name(s.key));
+    parts.push(key_name(s.key, lang));
     parts.join(if mac { "" } else { "+" })
 }
 
-fn key_name(key: Key) -> &'static str {
-    match key {
-        Key::Num0 => "0",
-        Key::Num1 => "1",
-        Key::Num2 => "2",
-        Key::Num3 => "3",
-        Key::Equals => "=",
-        Key::Plus => "+",
-        Key::Minus => "-",
-        Key::ArrowLeft => "Left",
-        Key::ArrowRight => "Right",
-        Key::Escape => "Esc",
-        other => other.name(),
-    }
+/// The name of `key` in `lang`: named keys are translated, letters,
+/// digits and function keys are written as they are.
+pub(crate) fn key_name(key: Key, lang: &str) -> String {
+    let named = match key {
+        Key::Escape => "key.esc",
+        Key::Enter => "key.enter",
+        Key::Space => "key.space",
+        Key::Tab => "key.tab",
+        Key::Backspace => "key.backspace",
+        Key::Delete => "key.delete",
+        Key::ArrowLeft => "key.left",
+        Key::ArrowRight => "key.right",
+        Key::ArrowUp => "key.up",
+        Key::ArrowDown => "key.down",
+        Key::Num0 => return "0".into(),
+        Key::Num1 => return "1".into(),
+        Key::Num2 => return "2".into(),
+        Key::Num3 => return "3".into(),
+        Key::Equals => return "=".into(),
+        Key::Plus => return "+".into(),
+        Key::Minus => return "-".into(),
+        other => return other.name().into(),
+    };
+    i18n::t_lang(lang, named)
 }

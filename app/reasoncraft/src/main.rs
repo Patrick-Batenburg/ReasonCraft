@@ -35,7 +35,7 @@ fn main() -> eframe::Result {
         options,
         Box::new(|cc| {
             let recovery_dir = reasoncraft::recovery::RecoveryStore::default_dir();
-            let mut app = ReasonCraftApp::new(cc, recovery_dir);
+            let mut app = ReasonCraftApp::new(cc, recovery_dir, sys_locale::get_locale);
             // Files given on the command line (this is also how a
             // double-clicked `.rcraft` file arrives on Windows and Linux).
             reasoncraft::file_ops::open_paths(&mut app, std::env::args_os().skip(1));

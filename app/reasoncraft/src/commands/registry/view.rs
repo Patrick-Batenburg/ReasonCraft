@@ -1,4 +1,5 @@
-//! The View tab's commands: zoom, theme, panels, layout and overview.
+//! The View tab's commands: zoom, theme, language, panels, layout and
+//! overview.
 
 use reasoncraft_core::{ConnectorStyle, LayoutDirection};
 
@@ -11,6 +12,10 @@ use crate::theme::ThemeChoice;
 pub(super) fn commands() -> Vec<Command> {
     use Action as A;
     let (zoom, theme, panels) = ("group.zoom", "group.theme", "group.panels");
+    let language = |id, label, lang: Option<&str>| {
+        let action = A::SetUiLanguage(lang.map(str::to_owned));
+        cmd(id, label, "group.language", action)
+    };
     let direction = |id, d: LayoutDirection| {
         let label = match d {
             LayoutDirection::TopDown => "layout_direction.top_down",
@@ -66,6 +71,9 @@ pub(super) fn commands() -> Vec<Command> {
             theme,
             A::SetTheme(ThemeChoice::Dark),
         ),
+        language("view.language.system", "ui_language.system", None),
+        language("view.language.en", "ui_language.en", Some("en")),
+        language("view.language.nl", "ui_language.nl", Some("nl")),
         cmd(
             "view.panel_left",
             "action.panel_left",

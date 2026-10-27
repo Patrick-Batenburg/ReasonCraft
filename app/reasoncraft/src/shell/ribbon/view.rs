@@ -1,6 +1,6 @@
-//! The View ribbon tab: zoom, theme, panels, the layout direction and
-//! connector style, the minimap and numbering, evaluation display and
-//! (debug builds) the sample map.
+//! The View ribbon tab: zoom, theme, the interface language, panels, the
+//! layout direction and connector style, the minimap and numbering,
+//! evaluation display and (debug builds) the sample map.
 
 use eframe::egui::{Button, Popup, Ui};
 use reasoncraft_core::{ConnectorStyle, LayoutDirection};
@@ -9,7 +9,7 @@ use super::{command, evaluate, group, large_menu, small_command};
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::commands;
-use crate::i18n::t;
+use crate::i18n::{UI_LANGUAGES, t};
 use crate::settings::MinimapMode;
 use crate::shell::icons::{Icon, connector_atom, direction_atom};
 use crate::theme::ThemeChoice;
@@ -61,6 +61,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             command(ui, &tk, icon, id, true, on, &mut out);
         }
     });
+    language_group(ui, app, &mut out);
     group(ui, &tk, &t("group.panels"), |ui| {
         let panels = [
             (Icon::PanelLeft, "view.panel_left", app.left_panel),
@@ -98,6 +99,29 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         );
     });
     app.pending.extend(out);
+}
+
+/// "Language ▾": follow the OS, or one of the UI languages, each named in
+/// its own language.
+fn language_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
+    let tk = app.tokens;
+    let current = app.settings.ui_language.as_deref();
+    group(ui, &tk, &t("group.language"), |ui| {
+        let label = t("action.ui_language");
+        let resp = large_menu(ui, &tk, Icon::Language, &label, true);
+        Popup::menu(&resp).show(|ui| {
+            let langs = UI_LANGUAGES.map(|l| (l, Some(l)));
+            for (key, lang) in std::iter::once(("system", None)).chain(langs) {
+                let cmd = commands::get(&format!("view.language.{key}"));
+                if ui
+                    .add(Button::new(t(cmd.label)).selected(lang == current))
+                    .clicked()
+                {
+                    out.push(cmd.action.clone());
+                }
+            }
+        });
+    });
 }
 
 /// "Direction ▾": the active document's layout direction, with a menu of

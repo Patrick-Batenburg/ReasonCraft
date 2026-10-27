@@ -108,6 +108,7 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             }
         }
         Action::SetTheme(_)
+        | Action::SetUiLanguage(_)
         | Action::SetConnectorStyle(_)
         | Action::ToggleMarkers
         | Action::SetMinimap(_)
@@ -258,6 +259,7 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::DismissModal
         | Action::ActivateTab(_)
         | Action::SetTheme(_)
+        | Action::SetUiLanguage(_)
         | Action::SetConnectorStyle(_)
         | Action::ToggleMarkers
         | Action::SetMinimap(_)

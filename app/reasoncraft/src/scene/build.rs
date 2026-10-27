@@ -14,7 +14,7 @@ use super::{PathEl, Scene, SceneOptions, Shape, StrokeSpec, TextRows};
 use crate::canvas::paint::{FRAME_RADIUS, parking_frame, screen_font};
 use crate::canvas::rating::{
     MARKER_MIN_ZOOM, Mark, card_colour, frame_alpha, frame_border, mark_for, mark_shapes,
-    marker_circle, rating_label, split_dots,
+    marker_circle, rating_dots, rating_label,
 };
 use crate::i18n::t;
 
@@ -241,7 +241,7 @@ impl Builder<'_> {
     }
 
     /// The rating label, right-aligned and vertically centred on `anchor`,
-    /// its leading "●" dots drawn as circles (the UI font has no glyph).
+    /// led by its strength dots drawn as circles.
     fn card_label(&mut self, anchor: Pos2, role: Role, strength: Option<CardStrength>) {
         if let Some(view) = self.opts.view
             && !view.expand(LABEL_MARGIN * self.px).contains(anchor)
@@ -252,13 +252,13 @@ impl Builder<'_> {
             return;
         }
         let colour = card_colour(&self.opts.tokens, role, strength);
-        let label = rating_label(role, strength);
-        let (dots, text) = split_dots(&label);
+        let text = rating_label(role, strength);
+        let dots = rating_dots(strength);
         let line_height = self.fonts.line_height(LABEL_SIZE);
-        let width = self.text_width(text, LABEL_SIZE);
+        let width = self.text_width(&text, LABEL_SIZE);
         self.shapes.push(Shape::Text {
             origin: anchor - vec2(0.0, self.row_height(LABEL_SIZE) / 2.0),
-            rows: vec![text.to_owned()],
+            rows: vec![text],
             size: LABEL_SIZE,
             bold: false,
             color: colour,

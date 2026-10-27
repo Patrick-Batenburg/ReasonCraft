@@ -1,8 +1,8 @@
-//! View preferences: theme, connector style, rating display, minimap,
-//! numbering, panels, the Text panel tab,
-//! the outline's switches and which checks run; moving around the map:
-//! zooming, keyboard navigation, revealing the selection; and the
-//! document's layout direction, the only one that changes the document.
+//! View preferences: theme, interface language, connector style, rating
+//! display, minimap, numbering, panels, the Text panel tab, the outline's
+//! switches and which checks run; moving around the map: zooming, keyboard
+//! navigation, revealing the selection; and the document's layout
+//! direction, the only one that changes the document.
 
 use reasoncraft_core::Item;
 use reasoncraft_core::meta::LANGUAGES;
@@ -11,6 +11,7 @@ use super::{Action, Panel};
 use crate::app::ReasonCraftApp;
 use crate::canvas::input::{nav_dir, navigate, parking_jump};
 use crate::doc_tab::DocTab;
+use crate::i18n::UI_LANGUAGES;
 use crate::settings::Settings;
 
 const ZOOM_STEP: f32 = 1.25;
@@ -19,6 +20,12 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
     let s = &mut app.settings;
     match action {
         Action::SetTheme(choice) => s.theme = choice,
+        Action::SetUiLanguage(lang) => {
+            if lang.as_deref().is_none_or(|l| UI_LANGUAGES.contains(&l)) {
+                s.ui_language = lang;
+                app.apply_ui_language();
+            }
+        }
         Action::SetConnectorStyle(style) => s.connector_style = style,
         Action::ToggleMarkers => s.show_markers = !s.show_markers,
         Action::SetMinimap(mode) => s.minimap = mode,
