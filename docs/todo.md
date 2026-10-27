@@ -70,7 +70,7 @@
   - [x] Task 10: Spellcheck in the app
   - [x] Task 11: Autosave and crash recovery
   - [x] Task 12: Argdown export
-  - [ ] Task 13: Argdown import
+  - [x] Task 13: Argdown import
   - [ ] Task 14: Check carry-overs
   - [ ] Task 15: Export and panel carry-overs
   - [ ] Task 16: End-to-end verification and docs
