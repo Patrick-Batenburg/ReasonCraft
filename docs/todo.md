@@ -1,8 +1,8 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** [docs/plans/2026-10-25-step5-interchange-polish.md](plans/2026-10-25-step5-interchange-polish.md) — step 5, interchange and polish
-**Merged:** steps 1–4
+**Active plan:** [docs/plans/2026-10-27-step6-release-readiness.md](plans/2026-10-27-step6-release-readiness.md) — step 6, release readiness
+**Merged:** steps 1–5
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
 ## Step 1 — Core editor
@@ -74,7 +74,20 @@
   - [x] Task 14: Check carry-overs
   - [x] Task 15: Export and panel carry-overs
   - [x] Task 16: End-to-end verification and docs
-- [ ] Step 6 — Release readiness: Dutch, accessibility, help, examples, templates, installers
+- [ ] Step 6 — Release readiness ([plan](plans/2026-10-27-step6-release-readiness.md))
+  - [ ] Task 1: Housekeeping: file splits and tolerant settings
+  - [ ] Task 2: Swappable i18n and the UI language
+  - [ ] Task 3: Labels in the document's language
+  - [ ] Task 4: Dutch translation
+  - [ ] Task 5: Accessibility, UI scale and reset to defaults
+  - [ ] Task 6: OS-correct keyboard shortcuts
+  - [ ] Task 7: Map and panel polish
+  - [ ] Task 8: Robustness and performance carry-overs
+  - [ ] Task 9: Offline help and About
+  - [ ] Task 10: Example maps, templates and recent files
+  - [ ] Task 11: App identity and the Windows installer
+  - [ ] Task 12: Linux and macOS builds and CI
+  - [ ] Task 13: End-to-end check and release docs
 
 ## Review
 
