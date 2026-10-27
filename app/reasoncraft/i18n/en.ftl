@@ -216,7 +216,7 @@ argdown-note-empty_argument = An argument without premises or text was left out.
 argdown-note-moved_to_parking = An item could not go where the file puts it and is in the parking area.
 argdown-note-relation_dropped = A relation to a conclusion that was left out was left out too; its statement is in the parking area.
 argdown-note-link_dropped = A link that is not a safe web or mail link was left out.
-argdown-note-text_cut = Text longer than 50,000 characters was cut to fit a box.
+argdown-note-text_cut = Text longer than { $max } characters was cut to fit a box.
 
 ## Backstage
 backstage-back = Back
@@ -551,7 +551,7 @@ image-error-read = The file could not be read: { $detail }
 image-error-stopped = Preparing the image stopped unexpectedly. Please try again.
 image-preparing = Preparing image…
 image-discarded = The image was not added: its box was deleted or can no longer hold an image.
-export-error-too_large = This map is too large to export as an image ({ $detail } pixels). Use a lower scale, or export as SVG or PDF.
+export-error-too_large = This map is too large to export as an image ({ $detail } pixels). An image can have at most about 134 million pixels (512 MiB) and 16,384 pixels on a side. Use a lower scale, or export as SVG or PDF.
 export-error-io = The file could not be written: { $detail }
 export-error-render = The image could not be drawn: { $detail }
 export-error-clipboard = The image could not be copied: { $detail }

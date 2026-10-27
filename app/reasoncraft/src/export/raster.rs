@@ -16,10 +16,12 @@ use crate::theme::Tokens;
 
 /// The longest side of an exported image, in pixels.
 pub const MAX_SIDE_PX: u32 = 16_384;
-/// The most pixels an exported image may have.
+/// The most pixels an exported image may have. [`MAX_RGBA_BYTES`] is
+/// checked first and is the stricter of the two: in effect an image has
+/// at most 134 217 728 pixels (about 134 million).
 pub const MAX_PIXELS: u64 = 256_000_000;
 /// The most memory an image's RGBA pixels may take (4 bytes a pixel),
-/// checked before [`MAX_PIXELS`]: 512 MiB.
+/// checked before [`MAX_PIXELS`]: 512 MiB, so 134 217 728 pixels.
 pub const MAX_RGBA_BYTES: u64 = 512 * 1024 * 1024;
 
 /// The most pixels an image put on the clipboard may have. The clipboard

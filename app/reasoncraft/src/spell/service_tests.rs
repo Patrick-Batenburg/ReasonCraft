@@ -76,16 +76,34 @@ fn typing_rechecks_one_line() {
 }
 
 #[test]
-fn cache_keeps_the_last_256_texts() {
+fn cache_keeps_the_lines_used_last() {
+    use super::super::line_cache::LINE_CACHE;
     let mut s = SpellService::new(&[]);
     wait(&mut s, "en");
-    for i in 0..300 {
+    let n = LINE_CACHE + 500;
+    for i in 0..n {
         s.misspelled("en", &format!("teh {i}"));
     }
-    assert_eq!(s.checks_run(), 300);
-    assert!(s.cache.len() <= CACHE_SIZE);
-    s.misspelled("en", "teh 299");
-    assert_eq!(s.checks_run(), 300, "recent text is cached");
+    assert_eq!(s.checks_run(), n as u64);
+    assert!(s.cache.len() <= LINE_CACHE);
+    s.misspelled("en", &format!("teh {}", n - 1));
+    assert_eq!(s.checks_run(), n as u64, "a recent line is cached");
     s.misspelled("en", "teh 0");
-    assert_eq!(s.checks_run(), 301, "the oldest was dropped");
+    assert_eq!(s.checks_run(), n as u64 + 1, "the oldest was dropped");
+}
+
+#[test]
+fn long_text_is_checked_once() {
+    // More lines than the old cache held: the second look checks none.
+    let mut s = SpellService::new(&[]);
+    wait(&mut s, "en");
+    let text: Vec<String> = (0..300)
+        .map(|i| format!("line {i} with teh typo"))
+        .collect();
+    let text = text.join("\n");
+    let first = s.misspelled("en", &text).unwrap();
+    assert_eq!((first.len(), s.checks_run()), (300, 300));
+    let again = s.misspelled("en", &text).unwrap();
+    assert_eq!(again, first);
+    assert_eq!(s.checks_run(), 300, "no new checks");
 }

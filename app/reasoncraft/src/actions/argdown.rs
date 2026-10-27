@@ -94,8 +94,10 @@ fn read(
 /// The text of one note kind.
 pub fn note_text(kind: &ImportNoteKind) -> String {
     let mut args = FluentArgs::new();
-    if let ImportNoteKind::UnknownReference(title) = kind {
-        args.set("title", title.clone());
+    match kind {
+        ImportNoteKind::UnknownReference(title) => args.set("title", title.clone()),
+        ImportNoteKind::TextCut => args.set("max", reasoncraft_core::MAX_BOX_CHARS),
+        _ => {}
     }
     t_args(&format!("argdown.note.{}", kind.key()), &args)
 }

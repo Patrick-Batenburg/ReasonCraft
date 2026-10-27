@@ -74,9 +74,14 @@ fn print_name_retries_on_permission_denied() {
     assert_eq!(tried.len(), 2);
     // A folder that refuses every name gives up instead of trying forever.
     let endless = (0u64..).map(|n| dir.path().join(format!("x-{n}")));
-    let err = create_first_new_with(endless, |_| Err(Error::from(ErrorKind::PermissionDenied)))
-        .unwrap_err();
+    let mut denied = 0;
+    let err = create_first_new_with(endless, |_| {
+        denied += 1;
+        Err(Error::from(ErrorKind::PermissionDenied))
+    })
+    .unwrap_err();
     assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+    assert_eq!(denied, 16, "sixteen names, then it gives up");
     // Other errors are not retried.
     let mut calls = 0;
     let other = (0..3).map(|n| dir.path().join(format!("y-{n}")));

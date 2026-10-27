@@ -143,6 +143,10 @@ impl RecoveryStore {
                     }
                     write = Some((*tab_key, then_discard.clone()));
                 }
+                // A tab whose copy goes no longer replaces its orphan.
+                if let Op::Remove { tab_key, .. } = &op {
+                    kept_discards.remove(tab_key);
+                }
                 match (run(op), write) {
                     (Ok(()), _) => {}
                     (Err(err), Some((tab_key, discard))) => {
@@ -275,11 +279,17 @@ impl RecoveryStore {
         } = self;
         drop(ops);
         let _ = worker.join();
-        // Every file is tried, even after one fails.
+        // Every file is tried, even after one fails; an entry that cannot
+        // be read counts as a failure too.
         let all_deleted = fs::read_dir(&folder).is_ok_and(|files| {
-            (files.flatten().map(|f| f.path()))
-                .filter(|path| !is_lock_file(path))
-                .filter(|path| fs::remove_file(path).is_err())
+            files
+                .filter(|entry| match entry {
+                    Ok(entry) => {
+                        let path = entry.path();
+                        !is_lock_file(&path) && fs::remove_file(path).is_err()
+                    }
+                    Err(_) => true,
+                })
                 .count()
                 == 0
         });

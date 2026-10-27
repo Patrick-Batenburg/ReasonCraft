@@ -5,6 +5,7 @@
 //! painted map and exports never show them.
 
 mod layouter;
+mod line_cache;
 mod pass;
 mod service;
 

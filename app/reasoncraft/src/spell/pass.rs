@@ -143,7 +143,11 @@ fn walk_on(tab: &mut DocTab, service: &mut SpellService, started: Instant) {
     let first = i;
     while i < order.len() {
         let node = order[i];
-        if i > first && started.elapsed() >= SLICE {
+        let slice_over = match service.slice_boxes {
+            Some(boxes) => i - first >= boxes,
+            None => started.elapsed() >= SLICE,
+        };
+        if i > first && slice_over {
             pass.at = Place {
                 node: Some(node),
                 index: i,

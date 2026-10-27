@@ -361,36 +361,21 @@ fn suggestions_never_block_ui() {
 }
 
 #[test]
-fn f7_pass_slices_work() {
-    // 500 Dutch boxes, the only misspelling in the last one.
-    // Each text differs (its number), so none comes from the cache.
-    let line = "Dit is een fietsenstalling bij het station, vlak naast de ingang";
-    let mut reasons: Vec<String> = (0..499).map(|i| format!("{line} {i}")).collect();
-    reasons.push("Een fietz bij het station".to_owned());
-    let reasons: Vec<&str> = reasons.iter().map(String::as_str).collect();
-    let (mut d, ids) = map(line, &reasons);
-    d.meta.language = "nl".to_owned();
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(d);
+fn abandoned_suggestions_leave_the_service_idle() {
+    let (d, _) = map("I recieve mail", &[]);
+    let mut h = harness_with(d, |_| {});
+    wait_dictionary(&mut h, "en");
+    h.state_mut().spell.delay = Some(Duration::from_millis(200));
+    apply(h.state_mut(), Action::OpenSpelling);
+    assert_eq!(current_word(&h).as_deref(), Some("recieve"));
+    // Ignored before its suggestions arrive: nobody asks for them again.
+    apply(h.state_mut(), Action::SpellIgnore);
+    assert!(h.state().tabs[0].spelling.as_ref().unwrap().done);
+    assert!(h.state().spell.busy());
     let start = Instant::now();
-    while app.spell.get("nl").is_none() {
-        assert!(start.elapsed() < Duration::from_secs(20), "nl never loaded");
+    while h.state().spell.busy() {
+        assert!(start.elapsed() < Duration::from_secs(20), "busy for ever");
+        h.step();
         std::thread::sleep(Duration::from_millis(5));
     }
-    apply(&mut app, Action::OpenSpelling);
-    let mut frames = 1;
-    while app.tabs[0].spelling.as_ref().unwrap().current.is_none() {
-        assert!(frames < 10_000, "the pass never got there");
-        reasoncraft::spell::poll(&mut app);
-        frames += 1;
-    }
-    let pass = app.tabs[0].spelling.clone().unwrap();
-    assert_eq!(pass.word, "fietz");
-    assert_eq!(pass.current.as_ref().unwrap().node, ids[500]);
-    let longest = pass.longest_slice();
-    assert!(
-        longest <= Duration::from_millis(10),
-        "{longest:?} in one frame"
-    );
-    eprintln!("f7 pass: {frames} frames, longest {longest:?}");
 }

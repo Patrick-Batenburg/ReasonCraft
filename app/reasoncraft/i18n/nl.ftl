@@ -217,7 +217,7 @@ argdown-note-empty_argument = Een argument zonder premissen of tekst is weggelat
 argdown-note-moved_to_parking = Een onderdeel kon niet op de plek uit het bestand komen en staat nu bij Niet verbonden.
 argdown-note-relation_dropped = Een relatie naar een weggelaten conclusie is ook weggelaten; de uitspraak staat nu bij Niet verbonden.
 argdown-note-link_dropped = Een link die geen veilige web- of e-maillink is, is weggelaten.
-argdown-note-text_cut = Tekst van meer dan 50.000 tekens is ingekort zodat hij in een vak past.
+argdown-note-text_cut = Tekst van meer dan { $max } tekens is ingekort zodat hij in een vak past.
 
 ## Backstage
 backstage-back = Terug
@@ -552,7 +552,7 @@ image-error-read = Het bestand kon niet worden gelezen: { $detail }
 image-error-stopped = Het voorbereiden van de afbeelding is onverwacht gestopt. Probeer het opnieuw.
 image-preparing = Afbeelding voorbereiden…
 image-discarded = De afbeelding is niet toegevoegd: het vak is verwijderd of kan geen afbeelding meer bevatten.
-export-error-too_large = Deze kaart is te groot om als afbeelding te exporteren ({ $detail } pixels). Kies een kleinere schaal, of exporteer als SVG of PDF.
+export-error-too_large = Deze kaart is te groot om als afbeelding te exporteren ({ $detail } pixels). Een afbeelding mag hooguit ongeveer 134 miljoen pixels (512 MiB) hebben en 16.384 pixels per zijde. Kies een kleinere schaal, of exporteer als SVG of PDF.
 export-error-io = Het bestand kon niet worden geschreven: { $detail }
 export-error-render = De afbeelding kon niet worden getekend: { $detail }
 export-error-clipboard = De afbeelding kon niet worden gekopieerd: { $detail }

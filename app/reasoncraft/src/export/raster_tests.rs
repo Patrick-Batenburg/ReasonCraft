@@ -103,9 +103,9 @@ fn png_export_capped() {
         svg_to_png(&svg, &opts(4.0), &fonts),
         Err(ExportError::TooLarge { w, .. }) if w > MAX_SIDE_PX
     ));
-    // Within the side cap but over the pixel cap: 12 000 x 12 000 at 2x
-    // is 576 MP.
-    let svg = svg_for(&rect_scene(12_000.0, 12_000.0), true);
+    // Within the side cap but over the memory guard: 8 000 x 8 000 at 2x
+    // is about 16 000 px a side, 256 MP (1 GB of RGBA).
+    let svg = svg_for(&rect_scene(8_000.0, 8_000.0), true);
     let err = svg_to_png(&svg, &opts(2.0), &fonts).unwrap_err();
     assert!(matches!(err, ExportError::TooLarge { .. }), "{err}");
     assert_eq!(err.key(), "export-error-too_large");

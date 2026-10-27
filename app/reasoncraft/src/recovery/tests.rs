@@ -214,3 +214,24 @@ fn failed_shutdown_delete_keeps_lock() {
     assert!(b.orphaned().is_empty());
     assert!(!folder.exists());
 }
+
+#[test]
+fn removed_copy_drops_its_kept_discard() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    write(&a, "Robots");
+    drop(a);
+    let mut b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    let found = b.orphaned();
+    let key = Uuid::new_v4();
+    let pkg = || Package::new(Document::new("Robots"));
+    b.set_fail_writes(true);
+    b.write_then_discard(key, pkg(), meta("Robots"), &found[0]);
+    b.set_fail_writes(false);
+    // The tab's copy goes (say, it was closed): a later write under the
+    // same key does not delete the orphan.
+    b.remove(key);
+    b.write(key, pkg(), meta("Robots"));
+    b.wait_idle();
+    assert!(found[0].package.is_file());
+}

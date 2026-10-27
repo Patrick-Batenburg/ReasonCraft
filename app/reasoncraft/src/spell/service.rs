@@ -12,10 +12,9 @@ use std::time::Duration;
 use reasoncraft_spell::Speller;
 
 use super::MAX_SUGGESTIONS;
+use super::line_cache::LineCache;
 use crate::jobs::{Job, JobState};
 
-/// How many lines keep their misspellings cached.
-const CACHE_SIZE: usize = 256;
 /// How many words keep their suggestions.
 const SUGGESTION_CACHE: usize = 64;
 
@@ -49,11 +48,10 @@ pub struct SpellService {
     personal: Vec<String>,
     /// "Ignore all" words, until the app closes.
     ignored: HashSet<String>,
-    /// Misspellings per (language, line hash), with when each was last used.
-    cache: HashMap<(String, u64), (u64, Ranges)>,
+    /// Misspellings per (language, line hash).
+    cache: LineCache,
     /// Suggestions per (language, word).
     suggestions: HashMap<(String, String), Suggestions>,
-    tick: u64,
     /// How many lines have been checked (cache misses).
     checks: u64,
     /// Load failures not reported yet.
@@ -61,6 +59,9 @@ pub struct SpellService {
     /// Wait this long before each dictionary load and each suggestion
     /// job (tests only).
     pub delay: Option<Duration>,
+    /// Let the spelling pass check this many boxes a frame instead of
+    /// going by time (tests only).
+    pub slice_boxes: Option<usize>,
 }
 
 impl SpellService {
@@ -71,12 +72,12 @@ impl SpellService {
             dicts: HashMap::new(),
             personal: personal.to_vec(),
             ignored: HashSet::new(),
-            cache: HashMap::new(),
+            cache: LineCache::default(),
             suggestions: HashMap::new(),
-            tick: 0,
             checks: 0,
             errors: Vec::new(),
             delay: None,
+            slice_boxes: None,
         }
     }
 
@@ -126,11 +127,20 @@ impl SpellService {
         self.dicts.values().any(loading) || self.suggestions.values().any(pending)
     }
 
-    /// Pick up every dictionary that finished loading.
+    /// Pick up every dictionary that finished loading, and every
+    /// suggestion job that ended (also those for words no longer on
+    /// show, so none keeps the service busy).
     pub fn poll_all(&mut self) {
         let langs: Vec<String> = self.dicts.keys().cloned().collect();
         for lang in langs {
             self.poll(&lang);
+        }
+        for entry in self.suggestions.values_mut() {
+            if let Suggestions::Pending(job) = entry
+                && let Some(found) = finished(job)
+            {
+                *entry = Suggestions::Ready(found);
+            }
         }
     }
 
@@ -187,10 +197,8 @@ impl SpellService {
         let mut h = DefaultHasher::new();
         line.hash(&mut h);
         let key = (lang.to_owned(), h.finish());
-        self.tick += 1;
-        if let Some((used, ranges)) = self.cache.get_mut(&key) {
-            *used = self.tick;
-            return ranges.clone();
+        if let Some(ranges) = self.cache.get(&key) {
+            return ranges;
         }
         self.checks += 1;
         let ranges: Ranges = Arc::new(
@@ -200,16 +208,7 @@ impl SpellService {
                 .filter(|r| !self.ignored.contains(&line[r.clone()]))
                 .collect(),
         );
-        if self.cache.len() >= CACHE_SIZE
-            && let Some(oldest) = self
-                .cache
-                .iter()
-                .min_by_key(|(_, (used, _))| *used)
-                .map(|(k, _)| k.clone())
-        {
-            self.cache.remove(&oldest);
-        }
-        self.cache.insert(key, (self.tick, ranges.clone()));
+        self.cache.insert(key, ranges.clone());
         ranges
     }
 
@@ -220,11 +219,7 @@ impl SpellService {
         let key = (lang.to_owned(), word.to_owned());
         if let Some(entry) = self.suggestions.get_mut(&key) {
             if let Suggestions::Pending(job) = entry {
-                *entry = Suggestions::Ready(match job.poll() {
-                    JobState::Running => return None,
-                    JobState::Done(found) => found,
-                    JobState::Lost => Vec::new(),
-                });
+                *entry = Suggestions::Ready(finished(job)?);
             }
             return match entry {
                 Suggestions::Ready(found) => Some(found.clone()),
@@ -281,6 +276,15 @@ impl SpellService {
     /// cache miss counts once).
     pub fn checks_run(&self) -> u64 {
         self.checks
+    }
+}
+
+/// A suggestion job's result once it ended (none when it was lost).
+fn finished(job: &Job<Vec<String>>) -> Option<Vec<String>> {
+    match job.poll() {
+        JobState::Running => None,
+        JobState::Done(found) => Some(found),
+        JobState::Lost => Some(Vec::new()),
     }
 }
 
