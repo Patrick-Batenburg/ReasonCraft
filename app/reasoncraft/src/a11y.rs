@@ -51,3 +51,27 @@ pub fn in_group(group: &str, name: &str) -> String {
     args.set("name", name);
     t_args("a11y.in_group", &args)
 }
+
+/// Where to outline the control that has the keyboard focus: most of the
+/// app's controls are drawn by hand and get no focus look from egui. A
+/// text field (its caret) and the map (its selection) show focus their own
+/// way, so they get none; nor does anything when no control has focus.
+pub fn focus_ring_rect(ctx: &egui::Context) -> Option<egui::Rect> {
+    let id = ctx.memory(|m| m.focused())?;
+    if id == crate::canvas::canvas_id() || ctx.text_edit_focused() {
+        return None;
+    }
+    let rect = ctx.read_response(id)?.interact_rect;
+    rect.is_positive().then_some(rect)
+}
+
+/// Outline the focused control (see [`focus_ring_rect`]) in `colour`,
+/// above everything else.
+pub fn paint_focus_ring(ctx: &egui::Context, colour: egui::Color32) {
+    if let Some(rect) = focus_ring_rect(ctx) {
+        let layer = egui::LayerId::new(egui::Order::Tooltip, Id::unique("focus_ring"));
+        let stroke = egui::Stroke::new(2.0, colour);
+        ctx.layer_painter(layer)
+            .rect_stroke(rect, 4.0, stroke, egui::StrokeKind::Inside);
+    }
+}

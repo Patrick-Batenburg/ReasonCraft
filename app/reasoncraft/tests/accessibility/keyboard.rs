@@ -201,3 +201,31 @@ fn f6_cycles_through_the_panes() {
         Some(&(Role::Button, t("backstage.back")))
     );
 }
+
+/// F6 into the ribbon lands on a hand-drawn button: it gets a focus
+/// outline, which a click with the mouse does not leave behind.
+#[test]
+fn keyboard_focus_is_outlined_on_hand_drawn_controls() {
+    use reasoncraft::a11y::focus_ring_rect;
+    let mut h = harness_with(ReasonCraftApp::new_for_test());
+    h.run();
+    assert_eq!(focus_ring_rect(&h.ctx), None, "nothing focused");
+    // F6 walks the panes; the ribbon comes round.
+    for _ in 0..4 {
+        h.key_press(Key::F6);
+        h.run();
+        if focus_ring_rect(&h.ctx).is_some_and(|r| r.top() < 200.0) {
+            break;
+        }
+    }
+    let ring = focus_ring_rect(&h.ctx).expect("a ring on the focused control");
+    let name = focused_name(&h).expect("a control has the focus");
+    let node = h.get_by_label(&name).rect();
+    assert!(ring.contains(node.center()), "{name}: {ring:?} vs {node:?}");
+    // A mouse click on a ribbon button leaves no ring.
+    h.get_by_label(&t("ribbon.tab.view")).click();
+    h.run();
+    h.get_by_label(&t("action.zoom_fit")).click();
+    h.run();
+    assert_eq!(focus_ring_rect(&h.ctx), None, "no ring after a click");
+}
