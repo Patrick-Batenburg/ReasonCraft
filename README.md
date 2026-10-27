@@ -107,7 +107,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ### Separate profile (portable use and testing)
 
-Set the environment variable `REASONCRAFT_PROFILE_DIR` to an absolute folder to keep the settings file (`app.ron`) and the recovery folder there instead of in your user profile. This is useful for running from a USB stick or for trying things out without touching your own settings, for example in PowerShell: `$env:REASONCRAFT_PROFILE_DIR = "$env:TEMP\rc-test"; reasoncraft`. An empty or relative value is ignored.
+Set the environment variable `REASONCRAFT_PROFILE_DIR` to an absolute folder to keep the settings file (`app.ron`) and the recovery folder there instead of in your user profile. This is useful for running from a USB stick or for trying things out without touching your own settings, for example in PowerShell: `$env:REASONCRAFT_PROFILE_DIR = "$env:TEMP\rc-test"; reasoncraft`. An empty or relative value is ignored (with a warning on stderr).
 
 A debug build (`cargo run -p reasoncraft`) adds **View → Load sample map (debug)**, which opens a generated map of 117 boxes.
 
