@@ -168,10 +168,10 @@ mod tests {
             "//host.example/x",
             "user@host",
             "https://a.b/x\ny",
-            "https://a.b/\u{202E}exe.txt",
-            "a.b/\u{200B}x",
+            "https://a\u{202E}b.example/exe.txt",
+            "a\u{200B}.b/x",
             "\u{FEFF}https://a.b",
-            "https://a.b/\u{2066}x",
+            "https://a.b\u{2066}/x",
             "mailto:x@y.z?attach=/etc/passwd",
             "mailto:x@y.z?subject=hi&Attachment=C:/secret.txt",
             "MAILTO:x@y.z?ATTACH=a",
@@ -183,6 +183,11 @@ mod tests {
             assert_eq!(safe_link(bad), None, "{bad:?}");
         }
         assert_eq!(normalize_link("Https://a.b"), ok("Https://a.b"));
+        // After the host, invisible marks are escaped, not refused.
+        assert_eq!(
+            normalize_link("https://a.b/\u{202E}exe.txt"),
+            ok("https://a.b/%E2%80%AEexe.txt")
+        );
         // Only a parameter named attach/attachment is refused.
         for fine in [
             "mailto:x@y.z?subject=attach&body=attachment",

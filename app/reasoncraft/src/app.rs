@@ -82,7 +82,12 @@ pub struct ReasonCraftApp {
     pub(crate) recovery_offer: Option<Vec<crate::recovery::RecoveredDoc>>,
     /// The export or page setup dialog, when open.
     pub export_dialog: Option<ExportDialog>,
-    /// The egui context of the running frame: exports measure text with it.
+    /// Where the panes are this frame, and an F6 move asked for.
+    pub(crate) panes: shell::panes::Panes,
+    /// The context exports measure text in (at one pixel per point, so
+    /// they do not depend on the display or the UI scale), and its cache.
+    pub(crate) export_measure: (egui::Context, MeasureCache),
+    /// The egui context of the running frame.
     pub(crate) egui_ctx: Option<egui::Context>,
     applied: Option<Tokens>,
     window_title: String,
@@ -128,6 +133,8 @@ impl ReasonCraftApp {
             autosave_clock: None,
             recovery_offer: None,
             export_dialog: None,
+            panes: shell::panes::Panes::default(),
+            export_measure: (egui::Context::default(), MeasureCache::default()),
             egui_ctx: None,
             applied: None,
             window_title: String::new(),
@@ -273,12 +280,14 @@ impl ReasonCraftApp {
             crate::canvas::input::handle_keys(&ctx, self)
         };
 
+        self.panes.start_frame();
         shell::titlebar::show(ui, self);
         shell::tabs::show(ui, self);
         shell::ribbon::show(ui, self);
         shell::statusbar::show(ui, self);
         shell::show_side_panels(ui, self);
         shell::show_central(ui, self);
+        self.panes.finish_frame(&ctx);
         shell::link_modal::show(&ctx, self);
         shell::export_dialog::show(&ctx, self);
         shell::modal::show(&ctx, self);

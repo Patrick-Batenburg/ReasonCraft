@@ -35,7 +35,7 @@ const TABS: [(RibbonTab, &str); 7] = [
 
 pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
-    egui::Panel::top("ribbon")
+    let shown = egui::Panel::top("ribbon")
         .frame(
             Frame::new()
                 .fill(tk.ribbon)
@@ -66,6 +66,8 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             ui.painter()
                 .hline(r.x_range().expand(8.0), r.bottom(), line);
         });
+    let pane = crate::shell::panes::Pane::Ribbon;
+    app.panes.shown(pane, shown.response.rect);
 }
 
 fn tab_strip(ui: &mut Ui, app: &mut ReasonCraftApp) {

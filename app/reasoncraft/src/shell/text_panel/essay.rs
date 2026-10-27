@@ -321,7 +321,12 @@ fn inactive(ui: &mut Ui, cx: &Ctx, item: Item, label: &str, text: &str, out: &mu
         };
         essay_slot::statement(ui, &s, cx.tk, out);
         ui.label(text);
-        if labelled(ui.button(t("essay.copy")), named("essay.copy_name", label)).clicked() {
+        // Named as the statement above it reads, "(empty)" for none.
+        let shown = Some(one_line(label))
+            .filter(|l| !l.is_empty())
+            .unwrap_or_else(|| t("outline.empty"));
+        let copy = ui.button(t("essay.copy"));
+        if labelled(copy, named("essay.copy_name", &shown)).clicked() {
             ui.ctx().copy_text(text.to_owned());
         }
     });
@@ -335,12 +340,24 @@ fn named(key: &str, name: &str) -> String {
 }
 
 /// The `i`th note whose item was deleted, with Copy and Remove. A note
-/// without a label is called by its number.
+/// without a label is called by its number, and so is one whose label
+/// another note has too.
 fn unplaced(ui: &mut Ui, cx: &Ctx, i: usize, label: &str, text: &str, out: &mut Vec<Action>) {
+    let mut args = FluentArgs::new();
+    args.set("n", i + 1);
+    let shared = cx
+        .doc
+        .essay
+        .unplaced
+        .iter()
+        .filter(|(l, _)| l == label)
+        .count()
+        > 1;
     let label = if label.trim().is_empty() {
-        let mut args = FluentArgs::new();
-        args.set("n", i + 1);
         t_args("essay.unplaced_note", &args)
+    } else if shared {
+        args.set("label", label);
+        t_args("essay.unplaced_numbered", &args)
     } else {
         label.to_owned()
     };

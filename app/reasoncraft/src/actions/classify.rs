@@ -30,6 +30,9 @@ pub(super) fn keeps_notes(action: &Action) -> bool {
             | Action::SetTheme(_)
             | Action::SetUiScale(_)
             | Action::ResetSettings
+            | Action::ConfirmResetSettings
+            | Action::NextPane
+            | Action::PrevPane
             | Action::SetConnectorStyle(_)
             | Action::ToggleMarkers
             | Action::SetMinimap(_)

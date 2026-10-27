@@ -32,10 +32,56 @@ const FORMAT_CHARS: &[(char, char)] = &[
     ('\u{E0020}', '\u{E007F}'),
 ];
 
-/// Control characters and invisible format characters (see
-/// [`FORMAT_CHARS`]).
+/// An invisible mark: a format character (see [`FORMAT_CHARS`]) or a
+/// variation selector.
+fn is_invisible_mark(c: char) -> bool {
+    FORMAT_CHARS.iter().any(|&(lo, hi)| (lo..=hi).contains(&c))
+        || matches!(c, '\u{FE00}'..='\u{FE0F}' | '\u{E0100}'..='\u{E01EF}')
+}
+
+/// Control characters and invisible marks.
 fn is_hidden_char(c: char) -> bool {
-    c.is_control() || FORMAT_CHARS.iter().any(|&(lo, hi)| (lo..=hi).contains(&c))
+    c.is_control() || is_invisible_mark(c)
+}
+
+/// Where the host of `s` (the address of a `mailto:` link) ends: at the
+/// first `/`, `?` or `#` after the scheme (`?` or `#` for `mailto:`).
+fn host_end(s: &str) -> usize {
+    let lower = s.to_ascii_lowercase();
+    let start = ["http://", "https://", "mailto:"]
+        .iter()
+        .find(|p| lower.starts_with(**p))
+        .map_or(0, |p| p.len());
+    let stops: &[char] = if lower.starts_with("mailto:") {
+        &['?', '#']
+    } else {
+        &['/', '?', '#']
+    };
+    s[start..].find(stops).map_or(s.len(), |i| start + i)
+}
+
+/// `s` with the invisible marks after its host percent-encoded, so they
+/// show as escapes and cannot reorder or hide what the link reads; in
+/// the host itself they are refused. Words in scripts that need them
+/// (the zero-width non-joiner of Persian, say) still work in a path.
+fn encode_marks(s: &str) -> Result<String, InvalidLink> {
+    let end = host_end(s);
+    if s[..end].chars().any(is_invisible_mark) {
+        return Err(InvalidLink);
+    }
+    let mut out = String::with_capacity(s.len());
+    out.push_str(&s[..end]);
+    for c in s[end..].chars() {
+        if is_invisible_mark(c) {
+            let mut buf = [0; 4];
+            for b in c.encode_utf8(&mut buf).bytes() {
+                out.push_str(&format!("%{b:02X}"));
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    Ok(out)
 }
 
 /// `s` with `%XX` escapes decoded, ASCII-lowercased.
@@ -81,18 +127,22 @@ fn mailto_unsafe_params(s: &str) -> bool {
 
 /// Check a typed link. `http://`, `https://` and `mailto:` links are kept;
 /// a bare domain such as `example.org/x` gets `https://`; empty means no
-/// link. Anything else (other schemes, UNC paths and backslashes, spaces,
-/// control or invisible format characters, `mailto:` links that attach a
-/// file or hide escapes in a parameter name) is refused.
+/// link. Invisible marks (format characters, variation selectors) after
+/// the host are percent-encoded. Anything else (other schemes, UNC paths
+/// and backslashes, spaces, control characters, invisible marks in the
+/// host, `mailto:` links that attach a file or hide escapes in a
+/// parameter name) is refused.
 pub fn normalize_link(s: &str) -> Result<Option<String>, InvalidLink> {
     let s = s.trim();
     if s.is_empty() {
         return Ok(None);
     }
-    let bad = |c: char| c.is_whitespace() || is_hidden_char(c) || c == '\\';
+    let bad = |c: char| c.is_whitespace() || c.is_control() || c == '\\';
     if s.chars().any(bad) {
         return Err(InvalidLink);
     }
+    let encoded = encode_marks(s)?;
+    let s = encoded.as_str();
     let lower = s.to_ascii_lowercase();
     for scheme in ["http://", "https://", "mailto:"] {
         if lower.starts_with(scheme) {
@@ -147,9 +197,10 @@ pub fn visible_link(s: &str) -> String {
 mod tests {
     use super::*;
 
-    /// Every invisible format character (Unicode category Cf) is refused:
-    /// bidi controls, zero-width marks, the soft hyphen, Arabic and
-    /// Mongolian marks, interlinear annotations and tag characters.
+    /// Every invisible format character (Unicode category Cf) and
+    /// variation selector: bidi controls, zero-width marks, the soft
+    /// hyphen, Arabic and Mongolian marks, interlinear annotations and tag
+    /// characters. Refused in the host, percent-encoded after it.
     #[test]
     fn cf_characters_refused_in_links() {
         for c in [
@@ -173,12 +224,51 @@ mod tests {
             '\u{1D173}',
             '\u{E0001}',
             '\u{E0041}',
+            '\u{FE0F}',
+            '\u{E0100}',
         ] {
+            let code = format!("U+{:04X}", c as u32);
+            for host in [
+                format!("https://exa{c}mple.org/x"),
+                format!("exa{c}mple.org/x"),
+                format!("mailto:a{c}b@example.org"),
+                format!("{c}https://example.org"),
+            ] {
+                assert_eq!(normalize_link(&host), Err(InvalidLink), "{code} {host:?}");
+                assert_eq!(safe_link(&host), None, "{code}");
+            }
+            let mut escaped = String::new();
+            for b in c.to_string().bytes() {
+                escaped.push_str(&format!("%{b:02X}"));
+            }
+            for (url, want) in [
+                ("https://example.org/a{c}b", "https://example.org/a{e}b"),
+                (
+                    "example.org/a?q={c}#f{c}",
+                    "https://example.org/a?q={e}#f{e}",
+                ),
+                (
+                    "mailto:a@example.org?subject={c}",
+                    "mailto:a@example.org?subject={e}",
+                ),
+            ] {
+                let url = url.replace("{c}", &c.to_string());
+                let want = want.replace("{e}", &escaped);
+                assert_eq!(safe_link(&url).as_deref(), Some(want.as_str()), "{code}");
+            }
             let url = format!("https://example.org/a{c}b");
-            assert_eq!(normalize_link(&url), Err(InvalidLink), "U+{:04X}", c as u32);
-            assert_eq!(safe_link(&url), None, "U+{:04X}", c as u32);
             assert_eq!(visible_link(&url), "https://example.org/a\u{FFFD}b");
         }
+        // A Persian word with a zero-width non-joiner keeps working in a
+        // path; a bidi override in the host is refused.
+        let persian = "https://fa.example.org/\u{0645}\u{06CC}\u{200C}\u{062E}\u{0648}\u{0627}\u{0647}\u{0645}";
+        assert_eq!(
+            safe_link(persian).as_deref(),
+            Some(
+                "https://fa.example.org/\u{0645}\u{06CC}%E2%80%8C\u{062E}\u{0648}\u{0627}\u{0647}\u{0645}"
+            )
+        );
+        assert_eq!(safe_link("https://evil\u{202E}gro.example/"), None);
         // Visible text in other scripts is fine.
         let fine = "https://example.org/caf\u{E9}/\u{0645}\u{0631}\u{062D}\u{0628}\u{0627}";
         assert_eq!(safe_link(fine), Some(fine.to_owned()));

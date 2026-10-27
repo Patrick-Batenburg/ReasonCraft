@@ -114,7 +114,7 @@ const STORED: [&str; 6] = [
     "javascript:alert(1)",
     r"\server\share\x",
     "JAVASCRIPT:x",
-    "https://a.b/\u{202E}exe.txt",
+    "https://a\u{202E}b.example/exe.txt",
     "https://ok.example",
 ];
 
@@ -154,7 +154,7 @@ fn set_link_refuses_invalid_links() {
         "file:///C:/x.exe",
         r"\server\share",
         "javascript:x",
-        "a.b/\u{202E}x",
+        "a\u{202E}.b/x",
     ] {
         let set = Action::SetLink(Some(bad.to_owned()));
         assert!(!is_enabled(&a.tabs[0], &set), "{bad:?}");

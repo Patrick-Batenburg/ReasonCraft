@@ -199,7 +199,9 @@ mod tests {
         // Close glyphs: on the tabs (also hovered), the panels, and the
         // window's Close button, hovered on its danger fill.
         for t in [Tokens::dark(), Tokens::light()] {
-            let surfaces = [t.bg, t.ribbon, t.panel].map(|s| [s, crate::shell::hover_fill(&t, s)]);
+            // A hovered close button on a hovered tab is hovered twice.
+            let hover = |s| crate::shell::hover_fill(&t, s);
+            let surfaces = [t.bg, t.ribbon, t.panel].map(|s| [s, hover(s), hover(hover(s))]);
             for bg in surfaces.into_iter().flatten() {
                 let c = contrast(t.box_text, bg);
                 assert!(

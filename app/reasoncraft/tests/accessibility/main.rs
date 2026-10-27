@@ -127,6 +127,7 @@ fn sample() -> (Document, NodeId) {
         .unplaced
         .push((String::new(), "An old paragraph".into()));
     d.essay.unplaced.push(("Gone".into(), "Another one".into()));
+    d.essay.unplaced.push(("Gone".into(), "A third one".into()));
     d.add_snippet("A quote from a book");
     (d, reason)
 }

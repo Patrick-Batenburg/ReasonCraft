@@ -106,3 +106,43 @@ fn reset_to_defaults_keeps_recent_and_dictionary() {
     assert_eq!(h.ctx.zoom_factor(), 1.0);
     assert!(h.ctx.global_style().visuals.dark_mode, "the default theme");
 }
+
+/// An export of the map comes out the same at every interface size: its
+/// text is measured at one pixel per point, not at the window's.
+#[test]
+fn export_does_not_depend_on_ui_scale() {
+    use reasoncraft::export::{ExportFormat, ExportOptions, ExportRequest, PageSetup};
+    use reasoncraft::file_ops::FakeDialogs;
+    use std::time::{Duration, Instant};
+
+    let dir = tempfile::tempdir().unwrap();
+    let (d, _) = sample();
+    let dialogs = FakeDialogs::default();
+    let mut app = ReasonCraftApp::new_for_test_with(Box::new(dialogs.clone()));
+    app.tabs[0] = DocTab::from_document(d);
+    let mut h = harness_with(app);
+    let export = |h: &mut H, scale: f32, name: &str| -> String {
+        act(h, Action::SetUiScale(scale));
+        assert!(close(h.ctx.zoom_factor(), scale));
+        let file = dir.path().join(name);
+        dialogs.set_export(file.clone());
+        h.state_mut().push(Action::RunExport(ExportRequest {
+            format: ExportFormat::Svg,
+            options: ExportOptions::default(),
+            page: PageSetup::default(),
+        }));
+        h.run_steps(2);
+        let start = Instant::now();
+        while h.state().export.busy() {
+            assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
+            h.step();
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        std::fs::read_to_string(&file).unwrap()
+    };
+    let at_100 = export(&mut h, 1.0, "100.svg");
+    let at_150 = export(&mut h, 1.5, "150.svg");
+    let at_130 = export(&mut h, 1.3, "130.svg");
+    assert!(at_100.contains("<svg"));
+    assert!(at_100 == at_150 && at_100 == at_130, "exports differ");
+}

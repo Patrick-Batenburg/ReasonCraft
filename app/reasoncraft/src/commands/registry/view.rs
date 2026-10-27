@@ -86,6 +86,8 @@ pub(super) fn commands() -> Vec<Command> {
             panels,
             A::TogglePanel(Panel::Right),
         ),
+        cmd("view.pane.next", "action.next_pane", panels, A::NextPane),
+        cmd("view.pane.prev", "action.prev_pane", panels, A::PrevPane),
         direction("view.direction.top_down", LayoutDirection::TopDown),
         direction("view.direction.bottom_up", LayoutDirection::BottomUp),
         direction("view.direction.left_right", LayoutDirection::LeftRight),

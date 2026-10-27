@@ -8,6 +8,7 @@ pub mod find_bar;
 pub mod icons;
 pub mod link_modal;
 pub mod modal;
+pub mod panes;
 pub mod resize;
 pub mod ribbon;
 pub mod source_icons;
@@ -111,13 +112,16 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let frame = Frame::new().fill(tk.panel).inner_margin(Margin::same(12));
     let tab = &mut app.tabs[app.active];
     let mut out = Vec::new();
-    egui::Panel::left("building_panel")
+    let building = egui::Panel::left("building_panel")
         .frame(frame)
         .default_size(220.0)
         .show_collapsible(ui, &mut app.left_panel, |ui| {
             building::show(ui, tab, &tk, &mut out);
         });
-    egui::Panel::right("text_panel")
+    if let Some(shown) = building {
+        app.panes.shown(panes::Pane::Building, shown.response.rect);
+    }
+    let text = egui::Panel::right("text_panel")
         .frame(frame)
         .default_size(300.0)
         .min_size(290.0)
@@ -127,7 +131,13 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             let mut spell = SpellFields::new(&mut app.spell, &app.settings, &lang, &tk);
             text_panel::show(ui, tab, &app.settings, &tk, &mut spell, &mut out);
         });
-    // egui names both resize handles "Resize panel".
+    if let Some(shown) = text {
+        app.panes.shown(panes::Pane::Text, shown.response.rect);
+    }
+    // egui names both resize handles "Resize panel". The handle's id is
+    // built the way egui builds it; the names test in
+    // tests/accessibility guards it (a changed id leaves two "Resize
+    // panel" nodes).
     for (salt, key) in [
         ("building_panel", "a11y.resize_building"),
         ("text_panel", "a11y.resize_text"),
@@ -147,8 +157,9 @@ pub fn show_central(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     find_bar::show(ui, app);
     let tk = app.tokens;
-    egui::CentralPanel::default()
+    let map = egui::CentralPanel::default()
         .frame(Frame::new().fill(tk.canvas))
         .show(ui, |ui| crate::canvas::show(ui, app));
+    app.panes.shown(panes::Pane::Map, map.response.rect);
     building::paint_ghost(ui.ctx(), &tk);
 }

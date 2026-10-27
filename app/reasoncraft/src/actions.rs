@@ -124,6 +124,9 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         | Action::SetAutosaveSecs(_)
         | Action::SetUiScale(_) => view::apply(app, action),
         Action::ResetSettings => app.modal = Some(file_ops::Modal::ResetSettings),
+        Action::NextPane | Action::PrevPane => {
+            app.panes.request = Some(action == Action::NextPane);
+        }
         Action::ConfirmResetSettings => {
             app.modal = None;
             app.settings.reset_to_defaults();
@@ -324,6 +327,8 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetUiScale(_)
         | Action::ResetSettings
         | Action::ConfirmResetSettings
+        | Action::NextPane
+        | Action::PrevPane
         | Action::ResolveRecovery(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),

@@ -191,8 +191,7 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
         tabs,
         active,
         settings,
-        measure_cache,
-        egui_ctx,
+        export_measure: (ctx, cache),
         ..
     } = app;
     let tab = &tabs[*active];
@@ -210,24 +209,19 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
         let lay = layout(&tab.doc, &measure, &params);
         build_scene(&tab.doc, &lay, &opts, &measure)
     };
-    let scene = match egui_ctx {
-        Some(ctx) => build(ctx, measure_cache),
-        // Outside a frame (actions applied directly): measure with a
-        // context of our own, which has the same fonts.
-        None => {
-            let ctx = egui::Context::default();
-            let mut scene = None;
-            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
-                scene = Some(build(ui.ctx(), &mut MeasureCache::default()));
-            });
-            // Nothing is drawn: the font atlas this frame made is not needed.
-            output.textures_delta.clear();
-            scene.unwrap_or(Scene {
-                shapes: Vec::new(),
-                bounds: egui::Rect::ZERO,
-            })
-        }
-    };
+    // Measured in a context of the export's own (same fonts) at one pixel
+    // per point: the window's context rounds text to its pixels, which
+    // follow the display and the UI scale, and an export must not.
+    let mut scene = None;
+    let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+        scene = Some(build(ui.ctx(), cache));
+    });
+    // Nothing is drawn: the font atlas this frame made is not needed.
+    output.textures_delta.clear();
+    let scene = scene.unwrap_or(Scene {
+        shapes: Vec::new(),
+        bounds: egui::Rect::ZERO,
+    });
     Snapshot::Scene {
         scene,
         assets: tab.assets.clone(),

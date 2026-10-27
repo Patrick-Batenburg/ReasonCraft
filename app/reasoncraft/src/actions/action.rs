@@ -338,6 +338,10 @@ pub enum Action {
     /// Set the interface scale (1.0 for 100 %), rounded to a step of 10 %
     /// within the allowed range. The map's zoom is separate.
     SetUiScale(f32),
+    /// Move the keyboard focus to the next (previous) pane: ribbon,
+    /// Building panel, map, Text panel, status bar (F6, Shift+F6).
+    NextPane,
+    PrevPane,
     /// Ask whether to put every setting back to its default.
     ResetSettings,
     /// Put every setting back to its default, but the personal dictionary

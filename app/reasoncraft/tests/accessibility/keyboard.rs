@@ -60,7 +60,11 @@ fn panel_view(h: &H) -> (f32, f32) {
         .rect()
         .bottom();
     // The status bar's zoom slider.
-    let bottom = h.get_by_role(accesskit::Role::Slider).rect().top();
+    let zoom = t("status.zoom");
+    let bottom = h
+        .get_by_role_and_label(accesskit::Role::Slider, &zoom)
+        .rect()
+        .top();
     (top, bottom)
 }
 
@@ -115,4 +119,61 @@ fn virtual_rows_reachable_by_keyboard() {
     // Shift+Tab goes back the same way.
     tab_to(&mut h, Modifiers::SHIFT, &last);
     assert_eq!(h.state().tabs[0].doc.boxes.len(), 401, "nothing added");
+}
+
+/// The role and name of the control with the keyboard focus.
+fn focused_control(h: &H) -> Option<(accesskit::Role, String)> {
+    h.root()
+        .children_recursive()
+        .map(|n| n.accesskit_node())
+        .find(|n| n.is_focused())
+        .map(|n| (n.role(), name(&n)))
+}
+
+/// F6 and Shift+F6 go round the panes from any control, landing on each
+/// pane's first control; a hidden panel is skipped.
+#[test]
+fn f6_cycles_through_the_panes() {
+    use accesskit::Role;
+    let (d, _) = sample();
+    let mut app = ReasonCraftApp::new_for_test();
+    app.tabs[0] = DocTab::from_document(d);
+    let mut h = harness_with(app);
+    let issues = h
+        .query_all_by_role(Role::Button)
+        .map(|n| name(&n.accesskit_node()))
+        .find(|n| n.ends_with("issues"))
+        .unwrap();
+    let panes = [
+        (Role::Tab, t("text.tab.outline")),
+        (Role::Button, issues),
+        (Role::Tab, t("ribbon.tab.file")),
+        (Role::DisclosureTriangle, t("building.boxes")),
+        (Role::Canvas, t("canvas.label")),
+    ];
+    let boxes = h.state().tabs[0].doc.boxes.len();
+    // Nothing has the focus: the map has the keys, so F6 goes on from it.
+    for want in panes.iter().chain(&panes) {
+        h.key_press(Key::F6);
+        h.run();
+        assert_eq!(focused_control(&h).as_ref(), Some(want), "F6");
+    }
+    for want in panes.iter().rev().skip(1).chain(panes.iter().rev()) {
+        h.key_press_modifiers(Modifiers::SHIFT, Key::F6);
+        h.run();
+        assert_eq!(focused_control(&h).as_ref(), Some(want), "Shift+F6");
+    }
+    // From a field too, and without the Building panel.
+    h.state_mut().left_panel = false;
+    h.key_press_modifiers(Modifiers::COMMAND, Key::F);
+    h.run();
+    h.key_press(Key::F6);
+    h.run();
+    assert_eq!(focused_control(&h).as_ref(), Some(&panes[0]), "map to text");
+    h.key_press_modifiers(Modifiers::SHIFT, Key::F6);
+    h.run();
+    h.key_press_modifiers(Modifiers::SHIFT, Key::F6);
+    h.run();
+    assert_eq!(focused_control(&h).as_ref(), Some(&panes[2]), "skips it");
+    assert_eq!(h.state().tabs[0].doc.boxes.len(), boxes, "nothing added");
 }

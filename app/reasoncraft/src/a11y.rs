@@ -10,13 +10,27 @@ use crate::i18n::{FluentArgs, t_args};
 /// glyph-only button is named through this.
 pub fn labelled(response: Response, name: impl Into<String>) -> Response {
     let name = name.into();
-    let role = response
+    let (role, toggled) = response
         .ctx
-        .accesskit_node_builder(response.id, |node| node.role())
-        .filter(|role| *role != accesskit::Role::Unknown)
-        .unwrap_or(Role::Button);
+        .accesskit_node_builder(response.id, |node| (node.role(), node.toggled()))
+        .unwrap_or((Role::Unknown, None));
+    let role = if role == Role::Unknown {
+        Role::Button
+    } else {
+        role
+    };
+    // On or off as the widget said (a mixed check box stays mixed).
+    let selected = match toggled {
+        Some(accesskit::Toggled::True) => Some(true),
+        Some(accesskit::Toggled::False) => Some(false),
+        _ => None,
+    };
     let enabled = response.enabled();
-    response.widget_info(|| WidgetInfo::labeled(role, enabled, &name));
+    response.widget_info(|| {
+        let mut info = WidgetInfo::labeled(role, enabled, &name);
+        info.selected = selected;
+        info
+    });
     response
 }
 

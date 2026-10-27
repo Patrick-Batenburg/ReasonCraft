@@ -18,7 +18,7 @@ use crate::theme::{ThemeChoice, Tokens};
 
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
-    egui::Panel::bottom("statusbar")
+    let shown = egui::Panel::bottom("statusbar")
         .frame(
             Frame::new()
                 .fill(tk.panel)
@@ -89,6 +89,8 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                 });
             });
         });
+    let pane = crate::shell::panes::Pane::Status;
+    app.panes.shown(pane, shown.response.rect);
 }
 
 /// How long a status note or export notice stays, in seconds.

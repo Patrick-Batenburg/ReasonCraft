@@ -77,6 +77,8 @@ fn works_while_editing(action: &Action) -> bool {
             | Action::FindNext
             | Action::FindPrev
             | Action::OpenSpelling
+            | Action::NextPane
+            | Action::PrevPane
     )
 }
 
@@ -188,7 +190,7 @@ fn allowed(app: &ReasonCraftApp, tab: &crate::doc_tab::DocTab, action: &Action) 
 /// essay paragraph, the find bar):
 /// Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N, the find keys (Ctrl+F,
 /// Ctrl+H, F3, Shift+F3), the same subset that works while editing a box,
-/// and Alt+Q. They are taken out of the input; every other key
+/// Alt+Q and F6 / Shift+F6. They are taken out of the input; every other key
 /// stays with the field. Applying the action first ends the field's
 /// editing session, so its typing becomes a history step before the save.
 pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
@@ -220,7 +222,9 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                     | Action::OpenFind { .. }
                     | Action::FindNext
                     | Action::FindPrev
-                    | Action::OpenSpelling),
+                    | Action::OpenSpelling
+                    | Action::NextPane
+                    | Action::PrevPane),
                 ) => {
                     alt_text = a == Action::OpenCommandSearch;
                     out.push(a);
