@@ -12,6 +12,11 @@ use super::UI_LANGUAGES;
 pub(super) const EN: &str = include_str!("../../i18n/en.ftl");
 pub(super) const NL: &str = include_str!("../../i18n/nl.ftl");
 
+/// See [`bundle`]: added to the English bundle in tests only.
+#[cfg(test)]
+pub(super) const TEST_ONLY_ENGLISH: &str = "test-only_english = Only in English
+";
+
 /// Each UI language's Fluent locale (for plural rules) and messages, in
 /// [`UI_LANGUAGES`] order.
 const SOURCES: [(&str, &str); UI_LANGUAGES.len()] = [("en-US", EN), ("nl-NL", NL)];
@@ -37,6 +42,13 @@ fn bundle(lang: &str) -> &'static Bundle {
         bundle
             .add_resource(resource)
             .unwrap_or_else(|errors| panic!("{lang}.ftl has duplicate keys: {errors:?}"));
+        // A message only English has, so the fallback can be tested while
+        // nl.ftl has every key of en.ftl.
+        #[cfg(test)]
+        if lang == UI_LANGUAGES[0] {
+            let extra = FluentResource::try_new(TEST_ONLY_ENGLISH.to_owned()).expect("parses");
+            bundle.add_resource(extra).expect("a new key");
+        }
         bundle
     })
 }

@@ -32,6 +32,14 @@ fn unknown_language_reads_english_and_unknown_key_itself() {
 }
 
 #[test]
+fn missing_dutch_key_falls_back_to_english() {
+    // The English bundle of test builds has one message nl.ftl lacks.
+    assert!(!bundles::NL.contains("test-only_english"));
+    assert_eq!(t_lang("nl", "test.only_english"), "Only in English");
+    assert_eq!(t_lang("en", "test.only_english"), "Only in English");
+}
+
+#[test]
 fn source_names_single_source() {
     // Source-type names live in the ftl files only: the core's words
     // file names none of them, and Dutch has its own for each type.

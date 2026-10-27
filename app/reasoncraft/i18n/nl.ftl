@@ -74,8 +74,8 @@ action-delete_branch = Tak verwijderen
 action-find = Zoeken…
 action-replace = Vervangen…
 action-spelling = Spelling
-action-zoom_fit = Passend
-action-zoom_fit_selection = Selectie passend
+action-zoom_fit = Alles tonen
+action-zoom_fit_selection = Selectie tonen
 action-zoom_100 = 100%
 action-zoom_in = Inzoomen
 action-zoom_out = Uitzoomen
@@ -95,12 +95,12 @@ command-disabled = Nu niet beschikbaar
 command-whole_card_reason = Reden voor het hele blok
 command-whole_card_objection = Bezwaar tegen het hele blok
 command-edit = Tekst bewerken
-command-jump_parking = Naar de parkeerplaats en terug
+command-jump_parking = Naar Niet verbonden en terug
 command-move_left = Eén plek naar links
 command-move_right = Eén plek naar rechts
-command-rate_high = Hoog beoordelen
-command-rate_mid = Middel beoordelen
-command-rate_low = Laag beoordelen
+command-rate_high = Beoordeling: hoog
+command-rate_mid = Beoordeling: midden
+command-rate_low = Beoordeling: laag
 command-rate_clear = Beoordeling van de selectie wissen
 command-find_next = Volgende zoeken
 command-find_prev = Vorige zoeken
@@ -138,7 +138,7 @@ spell-load_failed = De woordenlijst kon niet worden geladen ({ $error }). Bewerk
 
 ## Evaluation
 eval-accept = Aanvaarden
-eval-unsure = Twijfelen
+eval-unsure = Betwijfelen
 eval-reject = Verwerpen
 eval-strong = Sterk
 eval-weak = Zwak
@@ -153,7 +153,7 @@ eval-tip-claim = Aanvaard, betwijfel of verwerp de gekozen bewering of premisse 
 eval-tip-card = Beoordeel hoe sterk de premissen van het gekozen blok de conclusie dragen (Alt+1, Alt+2, Alt+3; Alt+0 wist)
 eval-tip-source = Beoordeel hoe betrouwbaar de gekozen bron is (Alt+1, Alt+2, Alt+3; Alt+0 wist)
 eval-tip-clear_selection = Wis de beoordeling van het gekozen onderdeel (Alt+0)
-eval-tip-clear_map = Wis alle beoordelingen in de kaart (Alt+Shift+0)
+eval-tip-clear_map = Wis alle beoordelingen op de kaart (Alt+Shift+0)
 
 ## Files
 file-filter = ReasonCraft-kaart
@@ -180,7 +180,7 @@ error-save-title = { $file } kon niet worden opgeslagen
 error-open-not_a_file = Dit is geen ReasonCraft-kaart.
 error-open-missing_document = Dit ReasonCraft-bestand bevat geen kaart.
 error-open-malformed = Dit ReasonCraft-bestand is beschadigd en kan niet worden gelezen. ({ $detail })
-error-open-newer_version = Deze kaart is gemaakt met een nieuwere versie van ReasonCraft (bestandsversie { $found }; deze versie leest tot en met versie { $supported }). Werk ReasonCraft bij om haar te openen.
+error-open-newer_version = Deze kaart is gemaakt met een nieuwere versie van ReasonCraft (bestandsversie { $found }; deze versie leest tot en met versie { $supported }). Werk ReasonCraft bij om hem te openen.
 error-open-io = Het bestand kon niet worden gelezen: { $detail }
 error-save-io = Het bestand kon niet worden geschreven: { $detail }. Je wijzigingen staan nog open en zijn niet opgeslagen.
 error-save-other = De kaart kon niet worden opgeslagen: { $detail }. Je wijzigingen staan nog open en zijn niet opgeslagen.
@@ -209,8 +209,8 @@ argdown-note-inference_rule_dropped = Een afleidingsregel is weggelaten.
 argdown-note-tags_dropped = Tags (#…) zijn weggelaten.
 argdown-note-undercut_on_statement = Een ondermijning van een uitspraak is gelezen als bezwaar.
 argdown-note-empty_argument = Een argument zonder premissen of tekst is weggelaten.
-argdown-note-moved_to_parking = Een onderdeel kon niet op de plek uit het bestand komen en staat op de parkeerplaats.
-argdown-note-relation_dropped = Een relatie naar een weggelaten conclusie is ook weggelaten; de uitspraak staat op de parkeerplaats.
+argdown-note-moved_to_parking = Een onderdeel kon niet op de plek uit het bestand komen en staat nu bij Niet verbonden.
+argdown-note-relation_dropped = Een relatie naar een weggelaten conclusie is ook weggelaten; de uitspraak staat nu bij Niet verbonden.
 argdown-note-link_dropped = Een link die geen veilige web- of e-maillink is, is weggelaten.
 
 ## Backstage
@@ -297,7 +297,7 @@ layout_direction-left_right = Van links naar rechts
 action-connector_style = Lijnen
 connector_style-curved = Gebogen
 connector_style-elbow = Haaks
-connector_style-tapered = Taps
+connector_style-tapered = Taps toelopend
 
 ## Side panels
 panel-building = Bouwstenen
@@ -307,7 +307,7 @@ text-tab-essay = Betoog
 text-tab-check = Controle
 text-tab-snippets = Fragmenten
 essay-help-title = Zo werkt het
-essay-help = Het betoog volgt je kaart. De inleiding noemt de bewering. Dan volgt één deel per tak, met het sterkste argument eerst: de redenen en hun onderbouwing, daarna de tegenargumenten en hoe die worden weerlegd. De conclusie herhaalt de bewering en de belangrijkste redenen. Schrijf een alinea onder elke uitspraak; klik op een uitspraak om haar op de kaart te vinden.
+essay-help = Het betoog volgt je kaart. De inleiding noemt de bewering. Dan volgt één deel per tak, met het sterkste argument eerst: de redenen en hun onderbouwing, daarna de bezwaren en hoe die worden weerlegd. De conclusie herhaalt de bewering en de belangrijkste redenen. Schrijf een alinea onder elke uitspraak; klik op een uitspraak om hem op de kaart te vinden.
 essay-intro = Inleiding
 essay-intro-field = Alinea van de inleiding
 essay-intro-hint = Noem de bewering die je gaat verdedigen
@@ -320,7 +320,7 @@ essay-no_sections = Zet redenen of bezwaren onder de bewering: elk wordt een dee
 essay-paragraph_for = Alinea bij: { $statement }
 essay-hint = Schrijf dit deel van het betoog
 essay-inactive = Nu niet in het betoog
-essay-inactive-hint = Tekst bij onderdelen die geparkeerd zijn of niet meer bij een argument horen. Hij blijft bewaard en telt weer mee als het onderdeel terugkomt in het betoog.
+essay-inactive-hint = Tekst bij onderdelen die niet verbonden zijn of niet meer bij een argument horen. Hij blijft bewaard en telt weer mee als het onderdeel terugkomt in het betoog.
 essay-unplaced = Losse aantekeningen
 essay-unplaced-hint = Tekst bij delen van de kaart die zijn verwijderd. Kopieer hem naar de juiste plek, of verwijder hem.
 essay-copy = Tekst kopiëren
@@ -335,7 +335,7 @@ snippet-text = Tekst van het fragment
 snippet-delete = Fragment verwijderen
 snippet-drag = Sleep om de volgorde te wijzigen; houd Alt ingedrukt om het hele fragment naar de kaart te slepen
 snippet-drag_to_map = Naar de kaart slepen: “{ $text }”
-snippet-tip-drag_to_map = Sleep de gekozen tekst naar de kaart; hij houdt de bron van dit fragment
+snippet-tip-drag_to_map = Sleep de gekozen tekst naar de kaart; hij behoudt de bron van dit fragment
 snippet-source_type = Soort bron
 snippet-citation = Bronvermelding (auteur, jaar, titel)
 snippet-link = Link naar de bron
@@ -354,41 +354,41 @@ outline-copy_all = Alles kopiëren
 outline-tip-copy_all = Kopieer de opzet als platte tekst
 outline-copied = Gekopieerd
 outline-empty = (leeg)
-check-all_clear = Geen problemen gevonden. Goed gedaan!
+check-all_clear = Geen tips: alles ziet er goed uit. Goed gedaan!
 check-ignore = Negeren
 check-restore = Genegeerde tips tonen ({ $count })
 check-heading = { $kind } ({ $count })
 check-kind-key_term = Ontbrekende kernwoorden
 check-kind-compound = Twee uitspraken in één
 check-kind-question = Vragen
-check-kind-unsupported = Niets ondersteunt het
+check-kind-unsupported = Nog niet onderbouwd
 check-kind-empty_category = Lege categorieën
 check-kind-incomplete_evaluation = Nog niet beoordeeld
 check-kind-inconsistent_evaluation = Beoordelingen die botsen
-check-kind-not_connected = Op de parkeerplaats
+check-kind-not_connected = Niet verbonden
 check-help-key_term = Elk kernwoord van een uitspraak hoort terug te komen in de premissen van de reden of het bezwaar eronder (de kernwoordregel): voeg een medepremisse toe die de ontbrekende woorden dekt. Korte woorden in enkelvoud en meervoud (baan, banen) kunnen gemeld worden, ook als ze gedekt zijn.
 check-help-compound = Elk vak zegt één ding. Een uitspraak met “{ $and }” of “{ $or }” erin kan er twee zeggen: als je het ene deel kunt aanvaarden en het andere verwerpen, zijn het er eigenlijk twee.
 check-help-question = Beweringen en premissen zijn uitspraken: je kunt ze aanvaarden of verwerpen, maar een vraag niet.
 check-help-unsupported = Elke premisse heeft steun nodig: een reden of een bron eronder.
 check-help-empty_category = Een hoofdcategorie hoort iets onder zich te hebben.
 check-help-incomplete_evaluation = Ben je eenmaal begonnen met beoordelen, beoordeel dan elke uitspraak, elk blok en elke bron.
-check-help-inconsistent_evaluation = Een beoordeling hoort te passen bij de beoordelingen waarop ze rust.
-check-help-not_connected = Onderdelen op de parkeerplaats horen nog niet bij het argument.
+check-help-inconsistent_evaluation = Een beoordeling hoort te passen bij de beoordelingen waarop hij rust.
+check-help-not_connected = Onderdelen die nog niet verbonden zijn, horen nog niet bij het argument.
 check-explain-key_term = Ontbreekt: { $terms }
 check-explain-compound = Zegt dit twee dingen (verbonden door “{ $terms }”)? Als je het ene deel kunt aanvaarden en het andere verwerpen, splits het dan.
 check-explain-question = Dit is een vraag. Schrijf het als een uitspraak die je kunt aanvaarden of verwerpen.
 check-explain-unsupported = Nog niets ondersteunt deze premisse. Zet er een reden of een bron onder.
-check-explain-empty_category = Er staat niets onder deze categorie. Voeg onderdelen toe of verwijder haar.
+check-explain-empty_category = Er staat niets onder deze categorie. Voeg onderdelen toe of verwijder de categorie.
 check-explain-incomplete_evaluation = { $count ->
-    [one] { $count } onderdeel is nog niet beoordeeld, terwijl andere delen dat wel zijn. Klik om naar het volgende te gaan.
-   *[other] { $count } onderdelen zijn nog niet beoordeeld, terwijl andere delen dat wel zijn. Klik om naar het volgende te gaan.
+    [one] { $count } onderdeel is nog niet beoordeeld, terwijl andere dat wel zijn. Klik om naar het volgende te gaan.
+   *[other] { $count } onderdelen zijn nog niet beoordeeld, terwijl andere dat wel zijn. Klik om naar het volgende te gaan.
 }
 check-explain-inconsistent_evaluation = { $case ->
     [strong] Dit blok is als sterk beoordeeld, maar al zijn premissen zijn verworpen.
-    [solid] Deze bron is als solide beoordeeld, maar de premisse die ze steunt is verworpen.
+    [solid] Deze bron is als solide beoordeeld, maar de premisse die door deze bron wordt gesteund, is verworpen.
    *[nil] Dit blok is als “geen” beoordeeld, maar zijn premissen zijn aanvaard en niets spreekt het tegen.
 }
-check-explain-not_connected = Dit staat op de parkeerplaats. Verbind het met de kaart, of verwijder het.
+check-explain-not_connected = Dit is nog niet verbonden. Verbind het met de kaart, of verwijder het.
 check-card = { $kind }: { $premises }
 building-boxes = Vakken
 building-sources = Bronnen
@@ -422,15 +422,15 @@ rating-nil-rebuts = weerlegt niet
 
 ## Source types
 source-source = Bron
-source-my_basis = Eigen basis
-source-assertion = Bewering
+source-my_basis = Eigen kennis
+source-assertion = Mededeling
 source-by_definition = Per definitie
 source-case_study = Casus
 source-common_belief = Algemene opvatting
 source-data = Gegevens
 source-event = Gebeurtenis
 source-example = Voorbeeld
-source-expert_opinion = Deskundigenoordeel
+source-expert_opinion = Deskundige
 source-law = Wet
 source-media = Media
 source-personal_experience = Persoonlijke ervaring
@@ -443,7 +443,7 @@ source-prompt-my_basis = Waar je dit op baseert
 source-prompt-assertion = Wie zegt het, waar
 source-prompt-by_definition = Begrip en definitie
 source-prompt-case_study = De casus, waar, wanneer
-source-prompt-common_belief = Door wie geloofd
+source-prompt-common_belief = Wie gelooft dit
 source-prompt-data = Gegevensset, eigenaar, jaar
 source-prompt-event = Wat, waar, wanneer
 source-prompt-example = Beschrijf het voorbeeld
@@ -462,15 +462,15 @@ status-boxes = { $count ->
    *[other] { $count } vakken
 }
 status-issues = { $count ->
-    [0] Geen problemen
-    [one] { $count } probleem
-   *[other] { $count } problemen
+    [0] Geen tips
+    [one] { $count } tip
+   *[other] { $count } tips
 }
-status-tip-issues = Toon de problemen in het tabblad Controle
+status-tip-issues = Toon de tips in het tabblad Controle
 status-toggle_theme = Thema wisselen
 status-zoom = Zoom
 status-zoom_value = { $percent }%
-connect-hint = Klik op een vak of blok om het geparkeerde onderdeel ermee te verbinden, of kies er een en druk op Enter — Esc om te annuleren
+connect-hint = Klik op een vak of blok om het niet-verbonden onderdeel ermee te verbinden, of kies er een en druk op Enter — Esc om te annuleren
 
 ## Comments
 comment-anonymous = Anoniem
@@ -533,7 +533,7 @@ export-error-too_large = Deze kaart is te groot om als afbeelding te exporteren 
 export-error-io = Het bestand kon niet worden geschreven: { $detail }
 export-error-render = De afbeelding kon niet worden getekend: { $detail }
 export-error-clipboard = De afbeelding kon niet worden gekopieerd: { $detail }
-export-error-clipboard_too_large = Deze kaart is te groot om als afbeelding te kopiëren ({ $detail } pixels). Exporteer haar als PNG, SVG of PDF.
+export-error-clipboard_too_large = Deze kaart is te groot om als afbeelding te kopiëren ({ $detail } pixels). Exporteer hem als PNG, SVG of PDF.
 export-error-pdf = De pdf kon niet worden gemaakt: { $detail }
 export-error-open = De pdf kon niet worden geopend om af te drukken: { $detail }
 export-error-title = Exporteren mislukt
@@ -565,7 +565,7 @@ export-dialog-export = Exporteren
 export-dialog-ok = OK
 export-dialog-cancel = Annuleren
 export-page_setup-title = Pagina-instelling
-export-scope = Wat exporteren
+export-scope = Wat wil je exporteren?
 export-scope-map = Hele kaart
 export-scope-selection = Selectie
 export-theme = Kleuren
@@ -586,7 +586,7 @@ export-page-fit = Passend
 export-page-one_page = Eén pagina
 export-page-tile = Verdeeld over pagina's op
 export-page-margin = Marge
-export-done = Exporteren klaar.
+export-done = Export klaar.
 export-open_folder = Map openen
 export-copied = Gekopieerd naar het klembord.
 status-exporting = Exporteren…
