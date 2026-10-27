@@ -100,3 +100,29 @@ fn settings_page_fits_beside_the_backstage_entries() {
     // The icon-only entries keep their names.
     assert!(h.query_by_label(&t("backstage.about")).is_some());
 }
+
+#[test]
+fn text_panel_tabs_keep_to_their_panel() {
+    use reasoncraft::settings::TextTab;
+    for tab in [
+        TextTab::Outline,
+        TextTab::Essay,
+        TextTab::Check,
+        TextTab::Snippets,
+        TextTab::Help,
+    ] {
+        let mut app = ReasonCraftApp::new_for_test();
+        app.settings.ui_scale = 1.5;
+        app.settings.text_tab = tab;
+        let mut h = Harness::builder()
+            .with_size(egui::vec2(800.0, 500.0))
+            .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
+        h.run();
+        let map = h.state().tabs[0].viewport.expect("map shown");
+        let panel_tab = h.get_by_label(&t("text.tab.outline")).rect();
+        assert!(
+            map.right() <= panel_tab.left(),
+            "{tab:?}: the map ({map:?}) runs under the Text panel ({panel_tab:?})"
+        );
+    }
+}

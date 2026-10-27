@@ -214,10 +214,23 @@ fn paragraph(ui: &mut Ui, spans: &[Span], tk: &Tokens) -> Option<&'static str> {
             match span {
                 Span::Link { text, topic } => {
                     // A link stays on one line: the rows of a wrapped one
-                    // would be separate, nameless click targets.
+                    // would be separate, nameless click targets. One wider
+                    // than a whole row (a very narrow panel) wraps all the
+                    // same rather than push the panel wider.
                     let wrap = ui.style().wrap_mode;
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                     let link = RichText::new(text).size(BODY).underline();
+                    let width = egui::WidgetText::from(link.clone())
+                        .into_galley(
+                            ui,
+                            Some(egui::TextWrapMode::Extend),
+                            f32::INFINITY,
+                            egui::TextStyle::Body,
+                        )
+                        .size()
+                        .x;
+                    if width <= ui.max_rect().width() {
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                    }
                     if ui.link(link).clicked() {
                         clicked = Some(*topic);
                     }
