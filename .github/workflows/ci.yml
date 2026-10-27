@@ -52,3 +52,7 @@ jobs:
 
       - name: Tests
         run: cargo test --workspace -j 4
+
+      # Debug-only code (cfg(debug_assertions)) must not leak into release builds.
+      - name: Release build check
+        run: cargo check --workspace --release -j 4

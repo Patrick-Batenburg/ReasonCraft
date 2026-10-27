@@ -16,3 +16,4 @@ Patterns learned from corrections during this project. Review at session start.
 
 ## Build machine
 - **Always run workspace builds and tests with `-j 4`.** Linking ~30 app test binaries in parallel with MSVC `link.exe` (~2.7 GB each) once exhausted the machine's memory.
+- **Check a release build too, not only the debug tests.** Debug-only items (`cfg(debug_assertions)`) referenced from normal code compile in tests but break `--release`; the CI runs `cargo check --workspace --release`.

@@ -163,13 +163,16 @@ pub(super) fn small_column(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
 /// Whether a command clicked in a collapsed group's drop-down leaves it
 /// open: a setting that may be changed again, or a step that is repeated.
 pub(super) fn keeps_open(action: &Action) -> bool {
+    #[cfg(debug_assertions)]
+    if matches!(action, Action::ToggleSourceIcons) {
+        return true;
+    }
     matches!(
         action,
         Action::ToggleMarkers
             | Action::ToggleNumbers
             | Action::ToggleShading
             | Action::TogglePanel(_)
-            | Action::ToggleSourceIcons
             | Action::SetTheme(_)
             | Action::ZoomIn
             | Action::ZoomOut
