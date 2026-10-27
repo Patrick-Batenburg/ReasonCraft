@@ -4,7 +4,7 @@ Met ReasonCraft denk je een vraag goed door: je tekent hem als kaart. Bovenaan z
 
 ## Het venster
 
-- Het **lint** bovenaan bevat de opdrachten, op de tabbladen Bestand, Start, Beoordelen, Beeld, Exporteren en Help. (Het tabblad Invoegen komt in een latere versie.)
+- Het **lint** bovenaan bevat de opdrachten, op de tabbladen Bestand, Start, Invoegen, Beoordelen, Beeld, Exporteren en Help. Invoegen bundelt alles wat iets aan de kaart toevoegt. Is het venster te smal voor een tabblad, dan schuiven pijlen aan de uiteinden het opzij (het muiswiel ook).
 - **Bouwstenen** links bevat vakken, bronnen, standaardopmerkingen en sjablonen. Klik op een vak, bron of opmerking om het bij de selectie toe te voegen, of sleep het naar de kaart; klik op een sjabloon om er een nieuwe kaart mee te beginnen.
 - In het midden staat de **kaart**: daar bouw je. Scroll met het muiswiel (Shift+wiel opzij), of sleep met de rechter- of middelste muisknop, of houd Spatie ingedrukt en sleep. Ctrl+wiel zoomt, net als het tabblad Beeld en de schuifregelaar in de statusbalk.
 - Het **Tekstpaneel** rechts heeft de tabbladen Opzet, Betoog, Controle, Fragmenten en Help.

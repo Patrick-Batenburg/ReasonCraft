@@ -4,7 +4,7 @@ ReasonCraft helps you think a question through by drawing it as a map. You put a
 
 ## The window
 
-- The **ribbon** at the top holds the commands, on the tabs File, Home, Evaluate, View, Export and Help. (The Insert tab is coming in a later version.)
+- The **ribbon** at the top holds the commands, on the tabs File, Home, Insert, Evaluate, View, Export and Help. Insert gathers everything that adds to the map. When the window is too narrow for a tab, arrows at its ends scroll it (so does the mouse wheel).
 - The **Building panel** on the left lists boxes, sources, preset comments and templates. Click a box, source or comment to add it at the selection, or drag it onto the map; click a template to start a new map from it.
 - The **map** in the middle is where you build. Scroll with the mouse wheel (Shift+wheel sideways), or drag with the right or middle mouse button, or hold Space and drag. Ctrl+wheel zooms, as do the View tab and the slider in the status bar.
 - The **Text panel** on the right has the tabs Outline, Essay, Check, Snippets and Help.

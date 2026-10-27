@@ -26,6 +26,7 @@ The first release.
 - Curved, elbow or tapered connectors; arrowheads kept apart where many connectors meet a box.
 - Minimap, outline numbers on the map, zoom to fit the map or the selection.
 - Light and dark themes, and an interface size from 80 % to 200 %.
+- Small windows: a ribbon tab that does not fit scrolls sideways (arrows at its ends, or the mouse wheel), and the side panels give way so the map keeps room.
 
 ### Writing
 - The Text panel: the Outline, the Essay (a text field for each part, ordered strongest first), the Check hints, Snippets of source text and the Help.
@@ -35,6 +36,7 @@ The first release.
 ### Files and output
 - `.rcraft` files (a zip with the map, the essay, the snippets and the images); files from newer versions keep the parts this version does not know.
 - Autosave to a recovery folder and recovery after a crash.
+- `REASONCRAFT_PROFILE_DIR` keeps the settings and the recovery folder in one folder of your choice (portable use, testing).
 - Export as PNG, SVG or PDF (with page setup and print), copy as image, the outline and the essay as Markdown, plain text or Word, and Argdown export and import.
 - Recent files, two example maps and four templates (Blank reasoning map, Blank grouping map, Essay plan, Peer review).
 
