@@ -50,6 +50,13 @@ impl Camera {
         self.zoom_to(screen_pt, self.zoom * factor);
     }
 
+    /// The view went from `old` to `new` (a window or panel resize): keep
+    /// the world point in the middle of the view in the middle, so the
+    /// map does not slide out of a shrinking window.
+    pub fn follow_resize(&mut self, old: Rect, new: Rect) {
+        self.offset += new.center() - old.center();
+    }
+
     /// Set the zoom to exactly `zoom` (clamped), keeping the world point
     /// under `screen_pt` in place.
     pub fn zoom_to(&mut self, screen_pt: Pos2, zoom: f32) {
@@ -224,6 +231,20 @@ mod tests {
         assert!(viewport.shrink(REVEAL_MARGIN - 0.01).contains_rect(shown));
         assert!((shown.width() - (1000.0 - 2.0 * REVEAL_MARGIN)).abs() < 1e-2);
         assert!((shown.center() - viewport.center()).length() < 1e-3);
+    }
+
+    #[test]
+    fn resize_keeps_the_middle_in_the_middle() {
+        let mut cam = Camera {
+            offset: vec2(30.0, -20.0),
+            zoom: 0.5,
+        };
+        let old = Rect::from_min_size(pos2(220.0, 120.0), vec2(900.0, 600.0));
+        let new = Rect::from_min_size(pos2(120.0, 120.0), vec2(300.0, 320.0));
+        let middle = cam.screen_to_world(old.center());
+        cam.follow_resize(old, new);
+        assert!((cam.world_to_screen(middle) - new.center()).length() < 1e-3);
+        assert_eq!(cam.zoom, 0.5);
     }
 
     #[test]

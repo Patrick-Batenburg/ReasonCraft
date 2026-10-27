@@ -77,6 +77,11 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let params = settings.layout_params();
     let layout = layout(&tab.doc, &measure, &params);
 
+    if let Some(old) = tab.viewport
+        && old != rect
+    {
+        tab.camera.follow_resize(old, rect);
+    }
     tab.viewport = Some(rect);
     if tab.fit_pending {
         tab.camera.fit(paint::content_bounds(&layout), rect);

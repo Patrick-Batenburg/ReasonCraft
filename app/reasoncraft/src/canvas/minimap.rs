@@ -118,14 +118,18 @@ pub fn panel_rect(viewport: Rect) -> Rect {
 
 /// Whether the minimap shows in `mode`: Auto shows it only while the
 /// content (`content`, world units) at `zoom` is wider or taller than
-/// `viewport`.
+/// `viewport`, and the viewport is at least twice the minimap's size each
+/// way (in a small window it would hide most of the map).
 pub fn shown(mode: MinimapMode, content: Rect, zoom: f32, viewport: Rect) -> bool {
     match mode {
         MinimapMode::On => true,
         MinimapMode::Off => false,
         MinimapMode::Auto => {
             let size = content.size() * zoom;
-            size.x > viewport.width() || size.y > viewport.height()
+            let overflows = size.x > viewport.width() || size.y > viewport.height();
+            let room = 2.0 * (SIZE + Vec2::splat(INSET));
+            let roomy = viewport.width() >= room.x && viewport.height() >= room.y;
+            overflows && roomy
         }
     }
 }
@@ -257,6 +261,15 @@ mod tests {
         // Zoomed in far enough, the same map no longer fits.
         assert!(shown(MinimapMode::Auto, content, 1.5, viewport()));
         assert!(!shown(MinimapMode::Off, content, 4.0, viewport()));
+    }
+
+    #[test]
+    fn auto_minimap_stays_out_of_a_small_map() {
+        let content = Rect::from_min_size(pos2(0.0, 0.0), vec2(3000.0, 2000.0));
+        let small = Rect::from_min_size(pos2(240.0, 120.0), vec2(300.0, 320.0));
+        assert!(!shown(MinimapMode::Auto, content, 1.0, small));
+        assert!(shown(MinimapMode::On, content, 1.0, small), "asked for");
+        assert!(shown(MinimapMode::Auto, content, 1.0, viewport()));
     }
 
     #[test]
