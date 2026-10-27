@@ -57,24 +57,30 @@ pub(crate) fn open_about(ctx: &egui::Context) {
     ctx.data_mut(|d| d.insert_temp(page_id(), Some(Page::About)));
 }
 
+/// Below this width (in points) the entries show their icons only, so the
+/// page beside them keeps room (a small window at a large UI scale).
+const COMPACT_BELOW: f32 = 640.0;
+
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let shown = egui::CentralPanel::default()
         .frame(Frame::new().fill(tk.panel).inner_margin(Margin::same(24)))
         .show(ui, |ui| {
             let mut page = ui.data(|d| d.get_temp::<Option<Page>>(page_id()).flatten());
+            let compact = ui.available_width() < COMPACT_BELOW;
+            let gap = if compact { 8.0 } else { 24.0 };
             let left = ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                 ui.vertical(|ui| {
-                    ui.set_width(220.0);
+                    ui.set_width(entry_width(compact));
                     // The entries scroll too when they do not fit (at a
                     // large UI scale), apart from the page.
                     let scroll = egui::ScrollArea::vertical().id_salt("backstage_entries");
-                    scroll.show(ui, |ui| entries(ui, app, &mut page));
+                    scroll.show(ui, |ui| entries(ui, app, &mut page, compact));
                 });
                 if let Some(page) = page {
-                    ui.add_space(24.0);
+                    ui.add_space(gap);
                     ui.separator();
-                    ui.add_space(24.0);
+                    ui.add_space(gap);
                     // Scrolls when it does not fit (at a large UI scale),
                     // each page on its own.
                     let scroll = egui::ScrollArea::vertical().id_salt(page);
@@ -105,7 +111,14 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     app.panes.shown(pane, shown.response.rect);
 }
 
-fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>) {
+/// The width of an entry: icon and label, or (`compact`) the icon alone.
+fn entry_width(compact: bool) -> f32 {
+    if compact { 44.0 } else { 220.0 }
+}
+
+/// The entries down the left; `compact` shows their icons only, each
+/// label then in its tooltip (and still its accessible name).
+fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>, compact: bool) {
     let tk = app.tokens;
     ui.spacing_mut().item_spacing.y = 4.0;
     // File commands take their label and action from the registry.
@@ -146,7 +159,8 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
     for (icon, key, entry) in items {
         let label = t(key);
         let on = matches!(entry, Entry::Page(p) if Some(p) == *page);
-        let (rect, resp) = ui.allocate_exact_size(Vec2::new(220.0, 40.0), Sense::click());
+        let size = Vec2::new(entry_width(compact), 40.0);
+        let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
         resp.widget_info(|| WidgetInfo::selected(Role::Button, true, on, &label));
         if resp.hovered() || on {
             ui.painter()
@@ -155,13 +169,18 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
         let icon_rect =
             Rect::from_center_size(rect.left_center() + Vec2::new(22.0, 0.0), Vec2::splat(20.0));
         icons::paint(ui.painter(), icon_rect, icon, tk.box_text, tk.panel, &tk);
-        ui.painter().text(
-            rect.left_center() + Vec2::new(44.0, 0.0),
-            Align2::LEFT_CENTER,
-            &label,
-            FontId::proportional(14.0),
-            tk.box_text,
-        );
+        let resp = if compact {
+            resp.on_hover_text(&label)
+        } else {
+            ui.painter().text(
+                rect.left_center() + Vec2::new(44.0, 0.0),
+                Align2::LEFT_CENTER,
+                &label,
+                FontId::proportional(14.0),
+                tk.box_text,
+            );
+            resp
+        };
         if resp.clicked() {
             match entry {
                 Entry::Page(p) => *page = if *page == Some(p) { None } else { Some(p) },
@@ -356,7 +375,7 @@ fn author_field(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
             TextEdit::singleline(&mut text)
                 .id(id)
                 .hint_text(t("comment.anonymous"))
-                .desired_width(280.0),
+                .desired_width(ui.available_width().min(280.0)),
         )
         .labelled_by(label.id);
     if response.changed() {

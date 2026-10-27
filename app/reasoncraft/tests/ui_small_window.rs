@@ -74,3 +74,29 @@ fn map_keeps_room_beside_both_panels() {
         );
     }
 }
+
+#[test]
+fn settings_page_fits_beside_the_backstage_entries() {
+    let mut h = harness(1.5);
+    h.state_mut().ribbon_tab = RibbonTab::File;
+    h.run();
+    // Below the window's bottom edge at this size: reached by keyboard.
+    h.get_by_label(&t("backstage.settings")).focus();
+    h.run();
+    h.key_press(egui::Key::Enter);
+    h.run();
+    let right = right_edge(&h);
+    let dutch = reasoncraft::a11y::in_group(&t("settings.ui_language"), "Nederlands");
+    for label in [dutch, t("settings.author")] {
+        let node = h.query_by_label(&label);
+        let rect = node
+            .unwrap_or_else(|| panic!("{label}: not on screen"))
+            .rect();
+        assert!(rect.right() <= right, "{label}: {rect:?} past {right}");
+    }
+    // A hint wraps inside the window.
+    let hint = h.get_by_label(&t("settings.ui_language_hint")).rect();
+    assert!(hint.right() <= right, "hint {hint:?} past {right}");
+    // The icon-only entries keep their names.
+    assert!(h.query_by_label(&t("backstage.about")).is_some());
+}
