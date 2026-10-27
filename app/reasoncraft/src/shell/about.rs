@@ -1,14 +1,19 @@
 //! The backstage About page: the app's name, version and licence, credits
 //! to the dictionary projects, and the third-party notices.
 
+use std::sync::LazyLock;
+
 use eframe::egui::{self, Label, RichText};
 
 use crate::app::ReasonCraftApp;
-use crate::help::render::{self, parse};
+use crate::help::render::{self, Block, parse};
 use crate::i18n::{FluentArgs, t, t_args};
 
 /// `THIRD-PARTY.md`, embedded as it is in the repository.
 pub const THIRD_PARTY: &str = include_str!("../../../../THIRD-PARTY.md");
+
+/// [`THIRD_PARTY`] read into blocks, once.
+static THIRD_PARTY_BLOCKS: LazyLock<Vec<Block>> = LazyLock::new(|| parse(THIRD_PARTY));
 
 /// The licence ReasonCraft is under.
 pub const LICENCE: &str = "MIT OR Apache-2.0";
@@ -32,5 +37,5 @@ pub(super) fn page(ui: &mut egui::Ui, app: &ReasonCraftApp) {
     ui.add_space(8.0);
     ui.separator();
     // The notices hold no topic links: nothing in them is clickable.
-    render::show(ui, &parse(THIRD_PARTY), &tk);
+    render::show(ui, &THIRD_PARTY_BLOCKS, &tk);
 }

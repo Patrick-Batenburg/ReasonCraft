@@ -2,6 +2,9 @@
 //! small Markdown subset (see [`render`]) and embedded in the binary. The
 //! Text panel's Help tab shows it, in the UI language.
 
+use std::collections::HashMap;
+use std::sync::{Arc, LazyLock, Mutex, PoisonError};
+
 mod index;
 pub mod keyboard;
 pub mod render;
@@ -108,4 +111,17 @@ pub fn title(lang: &str, topic: &str) -> String {
         .unwrap_or(topic)
         .trim()
         .to_owned()
+}
+
+/// The page of `topic` in `lang` (see [`source`]), read into blocks once
+/// per language and topic and kept: the Help tab draws it every frame.
+pub fn blocks(lang: &str, topic: &'static str) -> Arc<[render::Block]> {
+    type Cache = HashMap<(&'static str, &'static str), Arc<[render::Block]>>;
+    static PARSED: LazyLock<Mutex<Cache>> = LazyLock::new(Mutex::default);
+    let lang = crate::i18n::language_of(lang);
+    let mut parsed = PARSED.lock().unwrap_or_else(PoisonError::into_inner);
+    parsed
+        .entry((lang, topic))
+        .or_insert_with(|| render::parse(source(lang, topic)).into())
+        .clone()
 }

@@ -183,3 +183,15 @@ fn help_contains_no_listed_words() {
         }
     }
 }
+
+#[test]
+fn parsed_pages_are_kept_per_language_and_topic() {
+    use std::sync::Arc;
+    let en = super::blocks("en", "sources");
+    assert_eq!(&*en, &parse(source("en", "sources"))[..]);
+    // Read once: the same blocks again, for any tag of the language.
+    assert!(Arc::ptr_eq(&en, &super::blocks("en-GB", "sources")));
+    let nl = super::blocks("nl", "sources");
+    assert_eq!(&*nl, &parse(source("nl", "sources"))[..]);
+    assert_ne!(en, nl);
+}

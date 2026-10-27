@@ -5,8 +5,8 @@ use eframe::egui::{Button, Label, RichText, ScrollArea, Ui};
 
 use crate::actions::Action;
 use crate::canvas::input::Os;
-use crate::help::render::{self, Block, Span, parse};
-use crate::help::{HelpPage, HelpState, TOPICS, keyboard, source, title};
+use crate::help::render::{self, Block, Span};
+use crate::help::{HelpPage, HelpState, TOPICS, blocks, keyboard, title};
 use crate::i18n::{t, ui_language};
 use crate::theme::Tokens;
 
@@ -35,7 +35,7 @@ pub(super) fn show(ui: &mut Ui, help: &HelpState, os: Os, tk: &Tokens, out: &mut
         let open = match help.page {
             HelpPage::Contents => contents(ui, tk),
             HelpPage::Topic(topic) => {
-                let blocks = parse(source(ui_language(), topic));
+                let blocks = blocks(ui_language(), topic);
                 let open = render::show(ui, &blocks, tk);
                 if topic == "keyboard" {
                     shortcut_table(ui, os, tk);
