@@ -257,6 +257,7 @@ settings-checks_hint = Which hints the Check tab shows. Checks never stop you fr
 
 settings-default_language = Language of new documents
 settings-default_language_hint = Used by the language-aware checks. Change it for one document on the Document page.
+settings-default_language-ui = Same as interface
 settings-spellcheck = Check spelling in the document language
 settings-spellcheck_hint = Underlines misspelled words while you type and enables Spelling (F7).
 settings-autosave = Autosave every

@@ -50,8 +50,10 @@ pub struct Settings {
     pub outline_colour: bool,
     /// Which course-rule checks the Check tab and the status bar report.
     pub checks: CheckSet,
-    /// The language new documents start with: `"en"` or `"nl"`.
-    pub default_doc_language: String,
+    /// The language new documents start with, `"en"` or `"nl"`; `None`
+    /// follows the interface language (see [`Settings::new_doc_language`]).
+    #[serde(deserialize_with = "deserialize_text_or_none")]
+    pub default_doc_language: Option<String>,
     /// Paper, orientation, fit and margins for PDF export and printing.
     pub page_setup: PageSetup,
     /// The export dialog's last choices (scope, theme, PNG and SVG options).
@@ -189,6 +191,24 @@ impl Settings {
         self.ui_language.as_deref().map(crate::i18n::language_of)
     }
 
+    /// The UI language these settings show: the stored one, or the one
+    /// `os_locale` names while they follow the OS (read only then).
+    pub fn resolved_ui_language(&self, os_locale: fn() -> Option<String>) -> &'static str {
+        match &self.ui_language {
+            Some(lang) => crate::i18n::language_of(lang),
+            None => crate::i18n::os_ui_language(os_locale().as_deref()),
+        }
+    }
+
+    /// The language a new blank document starts in: the chosen one, else
+    /// the UI language (see [`Self::resolved_ui_language`]).
+    pub fn new_doc_language(&self, os_locale: fn() -> Option<String>) -> &str {
+        match &self.default_doc_language {
+            Some(lang) => lang,
+            None => self.resolved_ui_language(os_locale),
+        }
+    }
+
     /// `secs` as an autosave setting: 0 (off) or within the allowed range.
     pub fn clamp_autosave(secs: u32) -> u32 {
         if secs == 0 {
@@ -320,7 +340,7 @@ impl Default for Settings {
             outline_indent: true,
             outline_colour: true,
             checks: CheckSet::default(),
-            default_doc_language: "en".to_owned(),
+            default_doc_language: None,
             page_setup: PageSetup::default(),
             export: ExportOptions::default(),
             spellcheck: true,

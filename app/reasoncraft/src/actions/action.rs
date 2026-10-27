@@ -257,8 +257,9 @@ pub enum Action {
     },
     /// Set the document language (`"en"` or `"nl"`); anything else is refused.
     SetDocLanguage(String),
-    /// Set the language new documents start with (`"en"` or `"nl"`).
-    SetDefaultDocLanguage(String),
+    /// Set the language new documents start with (`"en"` or `"nl"`), or
+    /// `None` to follow the interface language.
+    SetDefaultDocLanguage(Option<String>),
     /// Switch to the tab at this index.
     ActivateTab(usize),
     /// Open the export dialog for an image format; a text format asks

@@ -11,6 +11,7 @@ use crate::settings::{AUTOSAVE_DEFAULT, AUTOSAVE_MAX, AUTOSAVE_MIN, UI_SCALE_MAX
 use crate::shell::text_panel::{check_help, check_key};
 use crate::theme::{ThemeChoice, Tokens};
 use reasoncraft_core::checks::CheckKind;
+use reasoncraft_core::meta::LANGUAGES;
 
 mod choice;
 mod document;
@@ -161,13 +162,7 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     ui.add_space(8.0);
     ui_scale(ui, app, &tk);
     ui.add_space(8.0);
-    let group = t("settings.default_language");
-    ui.label(RichText::new(&group).color(tk.box_text));
-    let current = app.settings.default_doc_language.clone();
-    if let Some(lang) = document::language_picker(ui, &group, &current) {
-        app.push(Action::SetDefaultDocLanguage(lang));
-    }
-    ui.label(RichText::new(t("settings.default_language_hint")).color(tk.text_muted));
+    default_doc_language(ui, app, &tk);
     ui.add_space(8.0);
     let mut spellcheck = app.settings.spellcheck;
     if ui
@@ -232,6 +227,26 @@ fn ui_language(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
         }
     });
     ui.label(RichText::new(t("settings.ui_language_hint")).color(tk.text_muted));
+}
+
+/// The language of new documents: the interface language (the default)
+/// or one of the document languages.
+fn default_doc_language(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
+    let group = t("settings.default_language");
+    ui.label(RichText::new(&group).color(tk.box_text));
+    let current = app.settings.default_doc_language.clone();
+    ui.horizontal(|ui| {
+        let langs = LANGUAGES.map(|l| (format!("lang.{l}"), Some(l)));
+        let follow = ("settings.default_language.ui".to_owned(), None);
+        for (key, lang) in std::iter::once(follow).chain(langs) {
+            let on = current.as_deref() == lang;
+            let resp = ui.selectable_label(on, t(&key));
+            if labelled(resp, in_group(&group, &t(&key))).clicked() && !on {
+                app.push(Action::SetDefaultDocLanguage(lang.map(str::to_owned)));
+            }
+        }
+    });
+    ui.label(RichText::new(t("settings.default_language_hint")).color(tk.text_muted));
 }
 
 /// Autosave on or off, and its interval in seconds. Turning it back on

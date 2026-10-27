@@ -14,7 +14,7 @@ Elke kaart heeft een eigen taal, Engels of Nederlands, die je instelt op de pagi
 - de spellingcontrole;
 - de signaalwoorden en namen van bronnen in de export van de opzet en het betoog.
 
-Bestand > Instellingen > **Taal van nieuwe documenten** bepaalt met welke taal een nieuwe kaart begint.
+Bestand > Instellingen > **Taal van nieuwe documenten** bepaalt met welke taal een nieuwe kaart begint. Met **Zelfde als de interface** (de standaard) krijgt een nieuwe kaart de taal van de interface.
 
 ## Spelling
 

@@ -220,7 +220,7 @@ fn settings_from_old_storage_fill_defaults() {
         checks: reasoncraft_core::checks::CheckSet {
             disabled: vec![reasoncraft_core::checks::CheckKind::KeyTerm],
         },
-        default_doc_language: "nl".to_owned(),
+        default_doc_language: Some("nl".to_owned()),
         page_setup: reasoncraft::export::PageSetup {
             paper: reasoncraft::export::Paper::Letter,
             orientation: reasoncraft::export::Orientation::Landscape,

@@ -68,18 +68,36 @@ fn language_is_validated_and_one_step() {
 #[test]
 fn new_doc_uses_default_language() {
     let mut a = ReasonCraftApp::new_for_test();
+    // By default it follows the interface language (English here).
+    assert_eq!(a.settings.default_doc_language, None);
     apply(&mut a, Action::New);
     assert_eq!(tab(&a).doc.meta.language, "en");
-    apply(&mut a, Action::SetDefaultDocLanguage("nl".to_owned()));
-    apply(&mut a, Action::SetDefaultDocLanguage("xx".to_owned()));
-    assert_eq!(a.settings.default_doc_language, "nl");
+    apply(&mut a, Action::SetDefaultDocLanguage(Some("nl".to_owned())));
+    apply(&mut a, Action::SetDefaultDocLanguage(Some("xx".to_owned())));
+    assert_eq!(a.settings.default_doc_language.as_deref(), Some("nl"));
     apply(&mut a, Action::New);
     assert_eq!(tab(&a).doc.meta.language, "nl");
     assert!(!tab(&a).is_dirty(), "a new document is clean");
-    // Older saved settings and bad values fall back to English.
+    apply(&mut a, Action::SetDefaultDocLanguage(None));
+    assert_eq!(a.settings.default_doc_language, None);
+    apply(&mut a, Action::New);
+    assert_eq!(tab(&a).doc.meta.language, "en");
+    // Older saved settings follow the interface; bad values give English.
     let old: Settings = serde_json::from_str(r#"{"theme":"Light"}"#).unwrap();
-    assert_eq!(old.default_doc_language, "en");
+    assert_eq!(old.default_doc_language, None);
     assert_eq!(DocTab::with_language("zz").doc.meta.language, "en");
+}
+
+#[test]
+fn new_doc_language_follows_the_ui_language_unless_chosen() {
+    let mut s = Settings::default();
+    let dutch = || Some("nl-NL".to_owned());
+    assert_eq!(s.new_doc_language(dutch), "nl");
+    assert_eq!(s.new_doc_language(|| None), "en");
+    s.ui_language = Some("en".to_owned());
+    assert_eq!(s.new_doc_language(dutch), "en", "the UI shown, not the OS");
+    s.default_doc_language = Some("nl".to_owned());
+    assert_eq!(s.new_doc_language(|| None), "nl");
 }
 
 #[test]

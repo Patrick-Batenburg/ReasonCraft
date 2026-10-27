@@ -73,8 +73,8 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
     }
     match action {
         Action::New => {
-            app.tabs
-                .push(DocTab::with_language(&app.settings.default_doc_language));
+            let lang = app.settings.new_doc_language(app.os_locale);
+            app.tabs.push(DocTab::with_language(lang));
             app.active = app.tabs.len() - 1;
         }
         Action::Open => file_ops::open_with_dialog(app),

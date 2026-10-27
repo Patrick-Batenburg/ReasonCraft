@@ -12,7 +12,7 @@ fn template_language_follows_ui() {
     let _lang = lock();
     let mut app = ReasonCraftApp::new_for_test();
     // The default language of new documents does not decide it.
-    app.settings.default_doc_language = "en".to_owned();
+    app.settings.default_doc_language = Some("en".to_owned());
     apply(&mut app, Action::SetUiLanguage(Some("nl".to_owned())));
     apply(&mut app, Action::OpenTemplate(Template::BlankReasoning));
     let doc = &app.active_tab().doc;

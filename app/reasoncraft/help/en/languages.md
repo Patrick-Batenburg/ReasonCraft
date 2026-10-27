@@ -14,7 +14,7 @@ Each map has its own language, English or Dutch, set on the File > **Document** 
 - spellcheck;
 - the linking words and source names in the outline and essay exports.
 
-File > Settings > **Language of new documents** sets the language a new map starts with.
+File > Settings > **Language of new documents** sets the language a new map starts with. With **Same as interface** (the default) a new map takes the language of the interface.
 
 ## Spelling
 

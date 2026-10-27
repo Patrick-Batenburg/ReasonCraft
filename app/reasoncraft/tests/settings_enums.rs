@@ -124,3 +124,28 @@ fn recent_files_of_another_shape_keep_other_settings() {
     let s = from_ron("(recent_files:[\"a.rcraft\"],author:\"Ann\")");
     assert_eq!(s.recent_files, vec![std::path::PathBuf::from("a.rcraft")]);
 }
+
+#[test]
+fn default_doc_language_of_older_builds_still_loads() {
+    // Older builds stored a plain language: it stays the user's choice.
+    let s = from_ron("(default_doc_language:\"nl\",author:\"Ann\")");
+    assert_eq!(s.default_doc_language.as_deref(), Some("nl"));
+    let s: Settings = serde_json::from_str(r#"{"default_doc_language":"en"}"#).unwrap();
+    assert_eq!(s.default_doc_language.as_deref(), Some("en"));
+    // Missing or of the wrong type: follow the interface language.
+    assert_eq!(from_ron("(author:\"Ann\")").default_doc_language, None);
+    let s = from_ron("(default_doc_language:5,author:\"Ann\",minimap:off)");
+    assert_eq!(s.default_doc_language, None);
+    assert_eq!((s.author.as_str(), s.minimap), ("Ann", MinimapMode::Off));
+    // Saved and read back.
+    let s = Settings {
+        default_doc_language: Some("nl".to_owned()),
+        ..Settings::default()
+    };
+    let mut storage = MemStorage::default();
+    eframe::set_value(&mut storage, SETTINGS_KEY, &s);
+    assert_eq!(
+        eframe::get_value::<Settings>(&storage, SETTINGS_KEY),
+        Some(s)
+    );
+}

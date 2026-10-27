@@ -105,5 +105,16 @@ fn settings_page_sets_default_language() {
     let dutch = reasoncraft::a11y::in_group(&t("settings.default_language"), &t("lang.nl"));
     h.get_by_label(&dutch).click();
     h.run();
-    assert_eq!(h.state().settings.default_doc_language, "nl");
+    assert_eq!(
+        h.state().settings.default_doc_language.as_deref(),
+        Some("nl")
+    );
+    // "Same as interface" goes back to following the interface.
+    let follow = reasoncraft::a11y::in_group(
+        &t("settings.default_language"),
+        &t("settings.default_language.ui"),
+    );
+    h.get_by_label(&follow).click();
+    h.run();
+    assert_eq!(h.state().settings.default_doc_language, None);
 }

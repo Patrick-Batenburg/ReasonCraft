@@ -258,6 +258,7 @@ settings-checks_hint = Welke tips het tabblad Controle toont. Controles houden j
 
 settings-default_language = Taal van nieuwe documenten
 settings-default_language_hint = Gebruikt door de taalgevoelige controles. Wijzig de taal van één document op de pagina Document.
+settings-default_language-ui = Zelfde als de interface
 settings-spellcheck = Spelling controleren in de taal van het document
 settings-spellcheck_hint = Onderstreept fout gespelde woorden terwijl je typt en zet Spelling (F7) aan.
 settings-autosave = Automatisch opslaan elke

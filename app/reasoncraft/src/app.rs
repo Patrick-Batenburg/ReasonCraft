@@ -4,13 +4,15 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use crate::actions::{self, Action, FakeOpener, LinkOpener, SystemOpener};
+mod testing;
+
+use crate::actions::{self, Action, LinkOpener, SystemOpener};
 use crate::canvas::images::{ImageCache, ImageJobs};
 use crate::canvas::input::Os;
 use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
-use crate::export::{ExportJobs, FakeClipboard, SharedClipboard, SystemClipboard};
-use crate::file_ops::{FakeDialogs, FileDialogs, Modal, RfdDialogs};
+use crate::export::{ExportJobs, SharedClipboard, SystemClipboard};
+use crate::file_ops::{FileDialogs, Modal, RfdDialogs};
 pub use crate::settings::{SETTINGS_KEY, Settings};
 use crate::shell;
 use crate::shell::export_dialog::ExportDialog;
@@ -116,7 +118,7 @@ impl ReasonCraftApp {
         clipboard: SharedClipboard,
     ) -> Self {
         let app = Self {
-            tabs: vec![DocTab::with_language(&settings.default_doc_language)],
+            tabs: vec![DocTab::with_language(settings.new_doc_language(os_locale))],
             active: 0,
             tokens: theme::resolve(settings.theme, true),
             spell: SpellService::new(&settings.spell_words),
@@ -159,11 +161,7 @@ impl ReasonCraftApp {
     /// Show the interface in the language the settings ask for. The OS
     /// locale is read only when they follow the OS.
     pub(crate) fn apply_ui_language(&self) {
-        let lang = match &self.settings.ui_language {
-            Some(lang) => lang.as_str(),
-            None => crate::i18n::os_ui_language((self.os_locale)().as_deref()),
-        };
-        crate::i18n::set_ui_language(lang);
+        crate::i18n::set_ui_language(self.settings.resolved_ui_language(self.os_locale));
     }
 
     /// Build the app, restoring settings from eframe storage, with autosave
@@ -204,35 +202,6 @@ impl ReasonCraftApp {
             }
             _ => self.status_note = Some(crate::i18n::t("recovery.unavailable")),
         }
-    }
-
-    /// Build the app with default settings, no storage, no OS locale (so
-    /// the interface is English), file dialogs that always cancel, a link
-    /// opener and clipboard that only record, and the Windows keys.
-    pub fn new_for_test() -> Self {
-        Self::new_for_test_with(Box::new(FakeDialogs::default()))
-    }
-
-    /// Like [`Self::new_for_test`], with the given file dialogs.
-    pub fn new_for_test_with(dialogs: Box<dyn FileDialogs>) -> Self {
-        let mut app = Self::with_settings(
-            Settings::default(),
-            || None,
-            dialogs,
-            Box::new(FakeOpener::default()),
-            Arc::new(Mutex::new(FakeClipboard::default())),
-        );
-        // The same keys whatever the test runs on.
-        app.os = Os::Windows;
-        app
-    }
-
-    /// Like [`Self::new_for_test`], with autosave to the recovery folder
-    /// `dir` (a temp folder: never the user's).
-    pub fn new_for_test_with_recovery(dir: PathBuf) -> Self {
-        let mut app = Self::new_for_test();
-        app.start_recovery(Some(dir));
-        app
     }
 
     /// True once the user has answered every unsaved-changes question of a

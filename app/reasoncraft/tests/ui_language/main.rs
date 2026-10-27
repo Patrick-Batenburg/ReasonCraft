@@ -23,6 +23,7 @@ use reasoncraft_core::{
     BoxKind, CardKind, CardStrength, Document, Item, NewLoose, Parent, SourceType,
 };
 
+mod doc_language;
 mod examples;
 mod help;
 mod release;
@@ -323,7 +324,7 @@ fn choosing_the_shown_language_again_changes_nothing() {
         app.settings.ui_language = Some(stored.to_owned());
         // Dutch documents: their language pickers do not select "English".
         app.tabs[0].doc.meta.language = "nl".to_owned();
-        app.settings.default_doc_language = "nl".to_owned();
+        app.settings.default_doc_language = Some("nl".to_owned());
         let mut h = harness_with(app);
         h.run();
         h.state_mut().status_note = Some("Saved".to_owned());

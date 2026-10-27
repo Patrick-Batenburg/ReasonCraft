@@ -39,7 +39,7 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
         Action::SetOutlineOption(toggle, on) => s.set_outline_toggle(toggle, on),
         Action::SetCheckEnabled(kind, on) => s.set_check_enabled(kind, on),
         Action::SetDefaultDocLanguage(lang) => {
-            if LANGUAGES.contains(&lang.as_str()) {
+            if lang.as_deref().is_none_or(|l| LANGUAGES.contains(&l)) {
                 s.default_doc_language = lang;
             }
         }
