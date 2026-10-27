@@ -1,7 +1,7 @@
 //! Example maps, templates (File → New, the building panel, Help) and the
 //! recent-files list.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use eframe::egui;
 use egui_kittest::{Harness, kittest::Queryable};
@@ -162,6 +162,27 @@ fn recent_files_capped_and_deduplicated() {
     assert_eq!(s.recent_files[0], path(5));
     assert_eq!(s.recent_files.len(), MAX_RECENT, "no duplicates");
     assert_eq!(s.recent_files.iter().filter(|p| **p == path(5)).count(), 1);
+    // Another spelling of a file already listed replaces it.
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir(dir.path().join("sub")).unwrap();
+    let file = dir.path().join("same.rcraft");
+    std::fs::write(&file, b"x").unwrap();
+    s.push_recent(&file);
+    s.push_recent(&dir.path().join("sub").join("..").join("same.rcraft"));
+    let same = |p: &PathBuf| p.file_name() == file.file_name();
+    assert_eq!(s.recent_files.iter().filter(|p| same(p)).count(), 1);
+    // A path the settings cannot store (not UTF-8) is left out, and one
+    // put in the list anyway is not written: the rest still saves.
+    let odd = non_utf8_path();
+    s.push_recent(&odd);
+    assert!(!s.recent_files.contains(&odd));
+    let mut written = s.clone();
+    written.recent_files.insert(0, odd);
+    let mut storage = MemStorage::default();
+    eframe::set_value(&mut storage, reasoncraft::settings::SETTINGS_KEY, &written);
+    let back: Settings = eframe::get_value(&storage, reasoncraft::settings::SETTINGS_KEY)
+        .expect("the settings were written");
+    assert_eq!(back.recent_files, s.recent_files);
     // A relative path (from the command line) is kept as an absolute one.
     s.push_recent(Path::new("relative.rcraft"));
     assert!(s.recent_files[0].is_absolute());
@@ -185,6 +206,38 @@ fn recent_files_capped_and_deduplicated() {
     fake.set_open(other.clone());
     apply(&mut app, Action::Open);
     assert_eq!(app.settings.recent_files, vec![other, saved]);
+}
+
+/// A file name that is not valid UTF-8.
+fn non_utf8_path() -> PathBuf {
+    #[cfg(windows)]
+    let name = {
+        use std::os::windows::ffi::OsStringExt;
+        std::ffi::OsString::from_wide(&[0xD800])
+    };
+    #[cfg(unix)]
+    let name = {
+        use std::os::unix::ffi::OsStringExt;
+        std::ffi::OsString::from_vec(vec![0xff])
+    };
+    std::env::temp_dir().join(name)
+}
+
+/// eframe storage held in memory.
+#[derive(Default)]
+struct MemStorage(std::collections::HashMap<String, String>);
+
+impl eframe::Storage for MemStorage {
+    fn get_string(&self, key: &str) -> Option<String> {
+        self.0.get(key).cloned()
+    }
+    fn set_string(&mut self, key: &str, value: String) {
+        self.0.insert(key.to_owned(), value);
+    }
+    fn remove_string(&mut self, key: &str) {
+        self.0.remove(key);
+    }
+    fn flush(&mut self) {}
 }
 
 /// The backstage Recent page names each file with its folder.

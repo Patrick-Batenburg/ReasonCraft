@@ -8,16 +8,7 @@ use crate::actions::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::i18n::t;
 use crate::shell::icons::Icon;
-
-/// The i18n key and icon of a template (its hint is `<key>.hint`).
-pub fn template_key(which: Template) -> (&'static str, Icon) {
-    match which {
-        Template::BlankReasoning => ("template.blank_reasoning", Icon::Reason),
-        Template::BlankGrouping => ("template.blank_grouping", Icon::Category),
-        Template::EssayPlan => ("template.essay_plan", Icon::Essay),
-        Template::PeerReview => ("template.peer_review", Icon::Comment),
-    }
-}
+use crate::shell::template_key;
 
 /// The page. True when a choice was made: the map shows again.
 pub(super) fn page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) -> bool {

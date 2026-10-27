@@ -27,6 +27,17 @@ use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::spell::SpellFields;
 use crate::theme::Tokens;
 use icons::Icon;
+use reasoncraft_core::examples::Template;
+
+/// The i18n key and icon of a template (its hint is `<key>.hint`).
+pub fn template_key(which: Template) -> (&'static str, Icon) {
+    match which {
+        Template::BlankReasoning => ("template.blank_reasoning", Icon::Reason),
+        Template::BlankGrouping => ("template.blank_grouping", Icon::Category),
+        Template::EssayPlan => ("template.essay_plan", Icon::Essay),
+        Template::PeerReview => ("template.peer_review", Icon::Comment),
+    }
+}
 
 /// Opaque background of a hovered control on `surface`.
 pub fn hover_fill(t: &Tokens, surface: Color32) -> Color32 {

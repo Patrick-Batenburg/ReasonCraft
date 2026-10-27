@@ -20,6 +20,25 @@ fn name_and_folder(path: &Path) -> (String, String) {
     )
 }
 
+/// The most characters of a folder shown under a file name.
+const FOLDER_CHARS: usize = 56;
+
+/// `text` cut to at most `max` characters by leaving out its middle
+/// ("C:\Users\Ann\…\School\Maps"): the drive and the last folders
+/// say the most.
+fn elide_middle(text: &str, max: usize) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    if chars.len() <= max {
+        return text.to_owned();
+    }
+    let head = (max - 1) / 3;
+    let tail = max - 1 - head;
+    let mut out: String = chars[..head].iter().collect();
+    out.push('…');
+    out.extend(&chars[chars.len() - tail..]);
+    out
+}
+
 /// The page. True when a file was chosen: the map shows again.
 pub(super) fn page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) -> bool {
     let tk = app.tokens;
@@ -39,7 +58,9 @@ pub(super) fn page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) -> bool {
         args.set("name", name.as_str());
         args.set("folder", folder.as_str());
         let spoken = t_args("backstage.recent.item", &args);
-        if choice(ui, &tk, Icon::Open, &name, &folder, &spoken).clicked() {
+        let shown = elide_middle(&folder, FOLDER_CHARS);
+        let resp = choice(ui, &tk, Icon::Recent, &name, &shown, &spoken);
+        if resp.on_hover_text(path.display().to_string()).clicked() {
             chosen = Some(path.clone());
         }
     }
@@ -49,4 +70,19 @@ pub(super) fn page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) -> bool {
     app.ribbon_tab = RibbonTab::Home;
     app.push(Action::OpenRecent(path));
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::elide_middle;
+
+    #[test]
+    fn long_folders_lose_their_middle() {
+        assert_eq!(elide_middle("C:/maps", 56), "C:/maps");
+        let long = format!("C:/Users/{}/School", "x".repeat(80));
+        let short = elide_middle(&long, 56);
+        assert_eq!(short.chars().count(), 56);
+        assert!(short.starts_with("C:/Users") && short.ends_with("/School"));
+        assert!(short.contains('…'));
+    }
 }

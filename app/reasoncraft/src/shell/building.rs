@@ -124,7 +124,7 @@ pub fn show(ui: &mut Ui, tab: &DocTab, tk: &Tokens, out: &mut Vec<Action>) {
 
 /// A template: its icon and name; a click opens it as a new map.
 fn template_row(ui: &mut Ui, tk: &Tokens, which: Template, out: &mut Vec<Action>) {
-    let (key, icon) = super::backstage::template_key(which);
+    let (key, icon) = super::template_key(which);
     let name = t(key);
     let width = ui.available_width();
     let text_w = width - ROW_GLYPH - 3.0 * PAD;

@@ -1,4 +1,4 @@
-//! Help, keyboard and About icons.
+//! Help, keyboard, About and Recent icons.
 
 use eframe::egui::Color32;
 
@@ -40,6 +40,11 @@ pub(super) fn paint(pen: &Pen, icon: Icon, fg: Color32, t: &Tokens) {
             pen.disc(0.5, 0.3, 0.045, muted(t.accent));
             pen.line(&[(0.44, 0.44), (0.5, 0.44), (0.5, 0.72)]);
             pen.line(&[(0.42, 0.72), (0.58, 0.72)]);
+        }
+        // A clock: the recent files.
+        Icon::Recent => {
+            pen.circle(0.5, 0.5, 0.4);
+            pen.line_c(&[(0.5, 0.26), (0.5, 0.5), (0.68, 0.6)], muted(t.accent));
         }
         _ => {}
     }

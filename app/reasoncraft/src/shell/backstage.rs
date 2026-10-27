@@ -21,7 +21,6 @@ mod choice;
 mod document;
 mod new_page;
 mod recent;
-pub(crate) use new_page::template_key;
 
 /// A page beside the entries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

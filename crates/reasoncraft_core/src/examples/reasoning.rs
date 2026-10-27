@@ -54,11 +54,11 @@ fn fewer_cars(d: &mut Document, l: Lang) -> Result<(), EditError> {
         &[
             l.s(
                 "Free public transport would tempt many drivers to leave their cars at home",
-                "Gratis openbaar vervoer zou veel automobilisten verleiden hun auto te laten staan",
+                "Gratis openbaar vervoer zou het voor veel automobilisten aantrekkelijk maken om hun auto te laten staan",
             ),
             l.s(
                 "Cities should make cutting car traffic a priority",
-                "Steden moeten er een prioriteit van maken om autoverkeer terug te dringen",
+                "Steden moeten voorrang geven aan het terugdringen van autoverkeer",
             ),
         ],
     )?;
@@ -69,9 +69,9 @@ fn fewer_cars(d: &mut Document, l: Lang) -> Result<(), EditError> {
         SourceType::Publication,
         l.s(
             "Studies of fare-free schemes report more passengers once fares were dropped",
-            "Onderzoek naar gratis vervoer laat meer reizigers zien zodra je niet meer hoeft te betalen",
+            "Onderzoek naar gratis vervoer laat meer gebruik zien zodra reizigers niet meer hoeven te betalen",
         ),
-        Solid,
+        Shaky,
     )?;
     source(
         d,
@@ -89,7 +89,7 @@ fn fewer_cars(d: &mut Document, l: Lang) -> Result<(), EditError> {
         Objection,
         &[l.s(
             "Many of the new passengers would be people who used to walk",
-            "Veel nieuwe reizigers zouden mensen zijn die eerst liepen",
+            "Veel nieuwe reizigers zouden mensen zijn die vroeger liepen",
         )],
     )?;
     rate(d, walkers, Weak, &q, &[Accept])?;
@@ -103,25 +103,25 @@ fn fewer_cars(d: &mut Document, l: Lang) -> Result<(), EditError> {
         ),
         Solid,
     )?;
-    let (zones, z) = card(
+    let (charge, z) = card(
         d,
         Parent::Card(card_id),
         Objection,
         &[l.s(
-            "Low-emission zones could cut car traffic at a lower cost",
-            "Milieuzones kunnen autoverkeer goedkoper terugdringen",
+            "A congestion charge could cut car traffic while raising money instead of costing it",
+            "Een spitsheffing kan autoverkeer terugdringen terwijl ze geld oplevert in plaats van geld kost",
         )],
     )?;
-    rate(d, zones, Weak, &z, &[Unsure])?;
+    rate(d, charge, Weak, &z, &[Accept])?;
     source(
         d,
         z[0],
         SourceType::Example,
         l.s(
-            "Many European cities already have a low-emission zone",
-            "Veel Europese steden hebben al een milieuzone",
+            "Stockholm's congestion charge cut traffic into the city centre by about a fifth",
+            "De spitsheffing in Stockholm verminderde het verkeer naar het centrum met ongeveer een vijfde",
         ),
-        Shaky,
+        Solid,
     )?;
     Ok(())
 }
@@ -194,8 +194,8 @@ fn already_done(d: &mut Document, l: Lang) -> Result<(), EditError> {
         p[0],
         SourceType::Event,
         l.s(
-            "Luxembourg made all public transport in the country free in 2020",
-            "Luxemburg maakte in 2020 al het openbaar vervoer in het land gratis",
+            "Luxembourg, including its capital, made all public transport in the country free in 2020",
+            "Luxemburg, met inbegrip van de hoofdstad, maakte in 2020 al het openbaar vervoer in het land gratis",
         ),
         Solid,
     )?;
@@ -233,7 +233,7 @@ fn lost_income(d: &mut Document, l: Lang) -> Result<(), EditError> {
             "In sommige steden betalen de kaartjes maar een klein deel van de kosten",
         )],
     )?;
-    rate(d, rebuttal, Strong, &r, &[Accept])?;
+    rate(d, rebuttal, Weak, &r, &[Accept])?;
     source(
         d,
         r[0],
@@ -255,7 +255,7 @@ fn better_service(d: &mut Document, l: Lang) -> Result<(), EditError> {
         Objection,
         &[l.s(
             "The money for free fares would do more good if spent on more frequent services",
-            "Het geld voor gratis reizen doet meer goed als het naar vaker rijdend vervoer gaat",
+            "Het geld voor gratis reizen doet meer goed als het wordt besteed aan vervoer dat vaker rijdt",
         )],
     )?;
     rate(d, card_id, Weak, &p, &[Unsure])?;
@@ -265,7 +265,7 @@ fn better_service(d: &mut Document, l: Lang) -> Result<(), EditError> {
         SourceType::ExpertOpinion,
         l.s(
             "Many transport planners say that frequent, reliable service wins more riders than low fares",
-            "Veel vervoersplanners zeggen dat vaak en betrouwbaar rijden meer reizigers trekt dan lage prijzen",
+            "Veel vervoersplanners zeggen dat een hoge frequentie en een betrouwbare dienstregeling meer reizigers trekken dan lage prijzen",
         ),
         Solid,
     )?;

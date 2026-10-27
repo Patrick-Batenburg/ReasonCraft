@@ -134,7 +134,7 @@ pub fn open_into_app(app: &mut ReasonCraftApp, path: &Path) {
 /// why; when it is gone, it also leaves the list.
 pub fn open_recent(app: &mut ReasonCraftApp, path: &Path) {
     if let Err(err) = try_open(app, path) {
-        if !path.exists() {
+        if matches!(path.try_exists(), Ok(false)) {
             app.settings.recent_files.retain(|p| p != path);
         }
         show_error(app, FileOp::Open, path, &err);
@@ -157,7 +157,9 @@ pub fn open_paths(app: &mut ReasonCraftApp, args: impl IntoIterator<Item = OsStr
     }
 }
 
-fn same_file(a: &Path, b: &Path) -> bool {
+/// Whether `a` and `b` name the same file (compared as given when either
+/// cannot be resolved).
+pub(crate) fn same_file(a: &Path, b: &Path) -> bool {
     match (a.canonicalize(), b.canonicalize()) {
         (Ok(a), Ok(b)) => a == b,
         _ => a == b,

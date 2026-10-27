@@ -68,7 +68,10 @@ pub struct Settings {
     /// [`Settings::ui_scale_factor`]). The map's own zoom comes on top.
     pub ui_scale: f32,
     /// The maps last opened or saved, newest first, at most [`MAX_RECENT`].
-    #[serde(deserialize_with = "deserialize_paths")]
+    #[serde(
+        deserialize_with = "deserialize_paths",
+        serialize_with = "serialize_paths"
+    )]
     pub recent_files: Vec<PathBuf>,
 }
 
@@ -123,6 +126,12 @@ where
         Stored::Paths(paths) => paths,
         Stored::Other(_) => Vec::new(),
     })
+}
+
+/// Write the paths that are valid UTF-8; the settings format cannot hold
+/// others, and one would fail the whole settings write.
+fn serialize_paths<S: serde::Serializer>(paths: &[PathBuf], s: S) -> Result<S::Ok, S::Error> {
+    s.collect_seq(paths.iter().filter(|p| p.to_str().is_some()))
 }
 
 /// How many recent maps the File page lists.
@@ -216,11 +225,17 @@ impl Settings {
         };
     }
 
-    /// Put `path` first in the recent files (once), keeping at most
-    /// [`MAX_RECENT`]. A relative path is made absolute first.
+    /// Put `path` first in the recent files (once: another spelling of the
+    /// same file goes), keeping at most [`MAX_RECENT`]. A relative path is
+    /// made absolute first. A path that is not valid UTF-8 is left out:
+    /// the settings cannot store it.
     pub fn push_recent(&mut self, path: &Path) {
+        if path.to_str().is_none() {
+            return;
+        }
         let path = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
-        self.recent_files.retain(|p| *p != path);
+        self.recent_files
+            .retain(|p| !crate::file_ops::same_file(p, &path));
         self.recent_files.insert(0, path);
         self.recent_files.truncate(MAX_RECENT);
     }
