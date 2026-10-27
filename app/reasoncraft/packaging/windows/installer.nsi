@@ -502,10 +502,23 @@ Section Install
   {{/each}}
 
   ; Create file associations
+  ; ReasonCraft change: the ProgID is "<product>.<ext>" (ReasonCraft.rcraft)
+  ; rather than the association's name, which holds a space; the name stays
+  ; the type's description. The exe path is quoted (it may hold spaces).
+  ; On a reinstall the extension already points at our ProgID: keep the
+  ; backup of what it pointed at before the first install.
   {{#each file_associations as |association| ~}}
     {{#each association.extensions as |ext| ~}}
-       ; ReasonCraft change: the exe path is quoted (it may hold spaces).
-       !insertmacro APP_ASSOCIATE "{{ext}}" "{{or association.name ext}}" "{{association-description association.description ext}}" "$INSTDIR\${MAINBINARYNAME}.exe,0" "Open with ${PRODUCTNAME}" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\" $\"%1$\""
+       ReadRegStr $R1 SHCTX "Software\Classes\.{{ext}}" ""
+       ReadRegStr $R2 SHCTX "Software\Classes\.{{ext}}" "${PRODUCTNAME}.{{ext}}_backup"
+       !insertmacro APP_ASSOCIATE "{{ext}}" "${PRODUCTNAME}.{{ext}}" "{{association-description association.description ext}}" "$INSTDIR\${MAINBINARYNAME}.exe,0" "Open with ${PRODUCTNAME}" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\" $\"%1$\""
+       ${If} $R1 == "${PRODUCTNAME}.{{ext}}"
+         ${If} $R2 == ""
+           DeleteRegValue SHCTX "Software\Classes\.{{ext}}" "${PRODUCTNAME}.{{ext}}_backup"
+         ${Else}
+           WriteRegStr SHCTX "Software\Classes\.{{ext}}" "${PRODUCTNAME}.{{ext}}_backup" "$R2"
+         ${EndIf}
+       ${EndIf}
     {{/each}}
   {{/each}}
 
@@ -604,15 +617,17 @@ Section Uninstall
 
   ; Delete app associations
   ; ReasonCraft change: the upstream template loops over `association.ext`,
-  ; which does not exist, so the association was never removed.
+  ; which does not exist, so the association was never removed. Also: our
+  ; ProgID (see the install section); the backup value goes, and so does
+  ; the extension key when nothing else was associated with it before (an
+  ; empty backup, or one naming our own ProgID).
   {{#each file_associations as |association| ~}}
     {{#each association.extensions as |ext| ~}}
-      !insertmacro APP_UNASSOCIATE "{{ext}}" "{{or association.name ext}}"
-      ; ReasonCraft change: drop the backup value, and the extension key
-      ; itself when nothing else was associated with it before.
-      DeleteRegValue SHCTX "Software\Classes\.{{ext}}" "{{or association.name ext}}_backup"
+      !insertmacro APP_UNASSOCIATE "{{ext}}" "${PRODUCTNAME}.{{ext}}"
+      DeleteRegValue SHCTX "Software\Classes\.{{ext}}" "${PRODUCTNAME}.{{ext}}_backup"
       ReadRegStr $R0 SHCTX "Software\Classes\.{{ext}}" ""
       ${If} $R0 == ""
+      ${OrIf} $R0 == "${PRODUCTNAME}.{{ext}}"
         DeleteRegValue SHCTX "Software\Classes\.{{ext}}" ""
         DeleteRegKey /ifempty SHCTX "Software\Classes\.{{ext}}"
       ${EndIf}
@@ -653,6 +668,10 @@ Section Uninstall
   !endif
 
   DeleteRegValue HKCU "${MANUPRODUCTKEY}" "Installer Language"
+  ; ReasonCraft change: remove the product key and, when nothing else is
+  ; left in it, the publisher key.
+  DeleteRegKey SHCTX "${MANUPRODUCTKEY}"
+  DeleteRegKey /ifempty SHCTX "Software\${MANUFACTURER}"
 
   ; Delete app data
   {{#if appdata_paths}}

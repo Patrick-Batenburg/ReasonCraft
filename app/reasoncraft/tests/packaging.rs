@@ -102,8 +102,17 @@ fn packager_config_has_association() {
     assert_eq!(text(&packager["product-name"]), "ReasonCraft");
     assert_eq!(text(&packager["identifier"]), "nl.reasoncraft.app");
     assert_eq!(text(&packager["publisher"]), "ReasonCraft contributors");
-    let licence = crate_dir().join(text(&packager["license-file"]));
-    assert!(licence.is_file(), "{}", licence.display());
+    // The installer's licence page holds both licences (dual licence).
+    let licence = std::fs::read_to_string(crate_dir().join(text(&packager["license-file"])))
+        .expect("the licence file exists");
+    let workspace = crate_dir().join("../..");
+    for name in ["LICENSE-MIT", "LICENSE-APACHE"] {
+        let full = std::fs::read_to_string(workspace.join(name)).unwrap();
+        assert!(
+            licence.contains(full.trim_end()),
+            "the licence page lacks {name}; run `cargo run -p xtask -- licence`"
+        );
+    }
 
     let formats = list(&packager["formats"]);
     for format in ["nsis", "app", "dmg", "deb", "appimage"] {
@@ -120,8 +129,24 @@ fn packager_config_has_association() {
         "currentUser",
         "per user, no admin"
     );
-    if let Some(template) = nsis.get("template") {
-        assert!(crate_dir().join(text(template)).is_file());
+    assert_eq!(
+        text(&nsis["compression"]),
+        "zlib",
+        "zlib-licensed decompressor"
+    );
+    // The vendored template's ProgID and clean-up (see its header).
+    let template = std::fs::read_to_string(crate_dir().join(text(&nsis["template"])))
+        .expect("the NSIS template exists");
+    for needle in [
+        r#"!insertmacro APP_ASSOCIATE "{{ext}}" "${PRODUCTNAME}.{{ext}}""#,
+        r#"!insertmacro APP_UNASSOCIATE "{{ext}}" "${PRODUCTNAME}.{{ext}}""#,
+        r#"${OrIf} $R0 == "${PRODUCTNAME}.{{ext}}""#,
+        r#"DeleteRegKey SHCTX "${MANUPRODUCTKEY}""#,
+    ] {
+        assert!(
+            template.contains(needle),
+            "the NSIS template lacks `{needle}`"
+        );
     }
 
     let associations = packager["file-associations"].as_array().expect("a list");
@@ -129,6 +154,7 @@ fn packager_config_has_association() {
     let rcraft = &associations[0];
     assert_eq!(list(&rcraft["extensions"]), ["rcraft"]);
     assert_eq!(text(&rcraft["name"]), "ReasonCraft map");
+    assert_eq!(text(&rcraft["description"]), "ReasonCraft map");
     assert_eq!(text(&rcraft["mime-type"]), "application/x-reasoncraft");
     assert_eq!(text(&rcraft["role"]), "editor", "CFBundleTypeRole Editor");
 

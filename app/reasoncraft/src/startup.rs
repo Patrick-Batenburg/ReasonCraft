@@ -13,27 +13,38 @@ use crate::i18n::{FluentArgs, t_lang, t_lang_args};
 /// The renderers to try, in order.
 pub const RENDERERS: [Renderer; 2] = [Renderer::Wgpu, Renderer::Glow];
 
+/// Why the app stopped with an error.
+#[derive(Debug, PartialEq, Eq)]
+pub enum StartError<E> {
+    /// No renderer opened a window: the last renderer's error. The user is
+    /// told (see [`show_failure`]).
+    NoWindow(E),
+    /// The app was created (it ran, or failed to build) and then failed.
+    AfterStart(E),
+}
+
 /// Run `run` with each renderer in turn until one succeeds. `run` sets its
-/// `Cell` once the app exists; an error after that (the app ran, or failed
-/// to build) ends the tries, as a second window would not help. Returns
-/// the last error when no renderer works.
+/// `Cell` once the app exists; an error after that ends the tries, as a
+/// second window would not help.
 pub fn first_that_starts<E: Display>(
     renderers: &[Renderer],
     mut run: impl FnMut(Renderer, &Cell<bool>) -> Result<(), E>,
-) -> Result<(), E> {
+) -> Result<(), StartError<E>> {
     let mut last = None;
     for &renderer in renderers {
         let started = Cell::new(false);
         match run(renderer, &started) {
             Ok(()) => return Ok(()),
-            Err(err) if started.get() => return Err(err),
+            Err(err) if started.get() => return Err(StartError::AfterStart(err)),
             Err(err) => {
                 eprintln!("warning: the {renderer} renderer did not start: {err}");
                 last = Some(err);
             }
         }
     }
-    Err(last.expect("at least one renderer is tried"))
+    Err(StartError::NoWindow(
+        last.expect("at least one renderer is tried"),
+    ))
 }
 
 /// The title and text of the start-up error dialog in `lang`.
@@ -67,7 +78,7 @@ mod tests {
 
     /// A fake run: fails with `err` for the listed renderers, after
     /// starting the app when `started` says so.
-    fn tries(fails: &[(Renderer, bool)]) -> (Result<(), String>, Vec<Renderer>) {
+    fn tries(fails: &[(Renderer, bool)]) -> (Result<(), StartError<String>>, Vec<Renderer>) {
         let mut tried = Vec::new();
         let outcome = first_that_starts(&RENDERERS, |renderer, started| {
             tried.push(renderer);
@@ -100,14 +111,15 @@ mod tests {
     #[test]
     fn the_last_error_when_nothing_starts() {
         let (outcome, tried) = tries(&[(Renderer::Wgpu, false), (Renderer::Glow, false)]);
-        assert_eq!(outcome, Err("glow failed".into()));
+        assert_eq!(outcome, Err(StartError::NoWindow("glow failed".into())));
         assert_eq!(tried, RENDERERS);
     }
 
     #[test]
     fn no_second_window_after_the_app_ran() {
         let (outcome, tried) = tries(&[(Renderer::Wgpu, true)]);
-        assert_eq!(outcome, Err("wgpu failed".into()));
+        // Not a window failure: no graphics dialog.
+        assert_eq!(outcome, Err(StartError::AfterStart("wgpu failed".into())));
         assert_eq!(tried, [Renderer::Wgpu]);
     }
 

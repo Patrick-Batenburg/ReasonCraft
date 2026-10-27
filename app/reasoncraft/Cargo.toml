@@ -68,7 +68,8 @@ identifier = "nl.reasoncraft.app"
 publisher = "ReasonCraft contributors"
 copyright = "Copyright (c) ReasonCraft contributors"
 category = "Education"
-license-file = "../../LICENSE-MIT"
+# Both licence texts (see `cargo run -p xtask -- licence`).
+license-file = "packaging/LICENSE.txt"
 icons = ["assets/icons/icon-*.png", "assets/icon.ico", "assets/icon.icns"]
 formats = ["nsis", "app", "dmg", "deb", "appimage"]
 out-dir = "../../target/release/packager"

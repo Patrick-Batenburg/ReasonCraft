@@ -28,9 +28,13 @@ fn main() -> ExitCode {
     });
     match outcome {
         Ok(()) => ExitCode::SUCCESS,
-        Err(err) => {
-            eprintln!("error: {err}");
+        Err(startup::StartError::NoWindow(err)) => {
+            eprintln!("error: no renderer opened the window: {err}");
             startup::show_failure(&err);
+            ExitCode::FAILURE
+        }
+        Err(startup::StartError::AfterStart(err)) => {
+            eprintln!("error: {err}");
             ExitCode::FAILURE
         }
     }

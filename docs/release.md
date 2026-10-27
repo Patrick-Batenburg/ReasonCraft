@@ -33,11 +33,12 @@ It downloads NSIS the first time.
 The installer:
 - installs for the current user only, into `%LOCALAPPDATA%\Programs\ReasonCraft`, without asking for administrator rights (the app's own data, such as the recovery folder, lives apart in `%LOCALAPPDATA%\ReasonCraft`);
 - adds Start menu and desktop shortcuts and an entry in Settings → Apps;
-- associates `.rcraft` with the ProgID `ReasonCraft map` under `HKCU\Software\Classes`, which opens `"reasoncraft.exe" "%1"`;
-- runs silently with `/S`. The uninstaller (`uninstall.exe /S`) removes the files, the shortcuts and the association, and leaves the user's documents alone.
+- associates `.rcraft` with the ProgID `ReasonCraft.rcraft` (shown as "ReasonCraft map") under `HKCU\Software\Classes`, which opens `"reasoncraft.exe" "%1"`; a reinstall or upgrade keeps the record of what `.rcraft` opened with before;
+- shows both licence texts on its licence page (`packaging/LICENSE.txt`, written by `cargo run -p xtask -- licence`);
+- runs silently with `/S`. The uninstaller (`uninstall.exe /S`) removes the files, the shortcuts, the association (restoring whatever `.rcraft` opened with before) and its registry keys, and leaves the user's documents and the app's data alone.
 
 The NSIS script is cargo-packager's own template, kept as `packaging/windows/installer.nsi` with a few marked changes:
-the uninstaller removes the file association (the upstream template never does), the exe path in the association is quoted, the per-user install goes under `Programs`, and the ApplicationID plugin is not used.
+the ProgID is `<product>.<ext>`; the uninstaller removes the file association (the upstream template never does), also after a reinstall, and the publisher and product registry keys; the exe path in the association is quoted; the per-user install goes under `Programs`; and the ApplicationID plugin is not used.
 When you upgrade cargo-packager, compare that file with the upstream template.
 The installer uses zlib compression, whose decompressor is under the zlib licence.
 
@@ -56,10 +57,11 @@ cargo run -p xtask -- sample-map target\sample.rcraft
 The script:
 1. takes the checkpoint `before-reasoncraft` and starts the VM;
 2. turns on automatic sign-in and restarts the guest, if nobody is signed in;
-3. installs silently, then checks the files, the shortcuts and the association;
+3. installs silently twice (as an upgrade does), then checks the files, the shortcuts, the association and the registry keys;
 4. opens the sample through the association, checks the app's command line, and saves the VM screen;
-5. uninstalls silently, then checks that everything is gone except a map in Documents;
-6. turns the VM off, restores the checkpoint, and deletes it.
+5. starts the app with `WGPU_BACKEND=metal`, so that wgpu cannot start and OpenGL, which the VM lacks, is tried next, and checks that the error dialog shows;
+6. uninstalls silently, then checks that everything is gone except a map in Documents and the app's data;
+7. turns the VM off, restores the checkpoint, and deletes it.
 
 The script needs no changes to the VM's settings.
 The checkpoint undoes everything it changes inside the guest.

@@ -6,6 +6,10 @@
 //!
 //! `cargo run -p xtask -- sample-map <path>` saves the bundled reasoning
 //! example as a `.rcraft` file, for installer smoke tests.
+//!
+//! `cargo run -p xtask -- licence` writes the installer's licence page,
+//! `app/reasoncraft/packaging/LICENSE.txt`: both licence texts, as
+//! ReasonCraft is under either at the user's option.
 
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
@@ -40,8 +44,9 @@ fn main() -> ExitCode {
     let outcome = match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {
         ["icons"] => icons(),
         ["sample-map", path] => sample_map(Path::new(path)),
+        ["licence"] => licence(),
         _ => {
-            eprintln!("usage: cargo run -p xtask -- icons | sample-map <path>");
+            eprintln!("usage: cargo run -p xtask -- icons | sample-map <path> | licence");
             return ExitCode::FAILURE;
         }
     };
@@ -54,11 +59,32 @@ fn main() -> ExitCode {
     }
 }
 
+fn workspace_dir() -> &'static Path {
+    let xtask = Path::new(env!("CARGO_MANIFEST_DIR"));
+    xtask.parent().expect("xtask sits in the workspace")
+}
+
 fn assets_dir() -> PathBuf {
-    let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent();
-    workspace
-        .expect("xtask sits in the workspace")
-        .join("app/reasoncraft/assets")
+    workspace_dir().join("app/reasoncraft/assets")
+}
+
+fn licence() -> Result<()> {
+    let root = workspace_dir();
+    let mit = fs::read_to_string(root.join("LICENSE-MIT"))?;
+    let apache = fs::read_to_string(root.join("LICENSE-APACHE"))?;
+    let text = [
+        "ReasonCraft is licensed under either of the following licences, at your option.",
+        "==================== MIT License ====================",
+        mit.trim_end(),
+        "==================== Apache License, Version 2.0 ====================",
+        apache.trim_end(),
+    ]
+    .join("\n\n")
+        + "\n";
+    write(
+        &root.join("app/reasoncraft/packaging/LICENSE.txt"),
+        text.as_bytes(),
+    )
 }
 
 fn icons() -> Result<()> {
