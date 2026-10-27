@@ -9,6 +9,7 @@ pub mod find_bar;
 pub mod icons;
 pub mod link_modal;
 pub mod modal;
+mod panel_width;
 pub mod panes;
 pub mod resize;
 pub mod ribbon;
@@ -119,6 +120,10 @@ pub fn tab_button(
 /// [`panel_width_range`]).
 pub const PANEL_MIN_WIDTH: f32 = 220.0;
 
+/// The width the Building and the Text panel start at, in px.
+const BUILDING_WIDTH: f32 = 220.0;
+const TEXT_WIDTH: f32 = 320.0;
+
 /// The narrowest the map gets beside open side panels, in px.
 pub const MAP_MIN_WIDTH: f32 = 240.0;
 
@@ -148,9 +153,12 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let mut out = Vec::new();
     let open = usize::from(app.left_panel) + usize::from(app.right_panel);
     let widths = panel_width_range(ui.available_width(), open);
+    use panel_width::{Side, keep_chosen};
+    keep_chosen(ui, "building_panel", Side::Left, widths, BUILDING_WIDTH);
+    keep_chosen(ui, "text_panel", Side::Right, widths, TEXT_WIDTH);
     let building = egui::Panel::left("building_panel")
         .frame(frame)
-        .default_size(220.0)
+        .default_size(BUILDING_WIDTH)
         .size_range(widths)
         .show_collapsible(ui, &mut app.left_panel, |ui| {
             building::show(ui, tab, &tk, &mut out);
@@ -160,7 +168,7 @@ pub fn show_side_panels(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     let text = egui::Panel::right("text_panel")
         .frame(frame)
-        .default_size(320.0)
+        .default_size(TEXT_WIDTH)
         .size_range(widths)
         .show_collapsible(ui, &mut app.right_panel, |ui| {
             spelling_panel::show(ui, tab, &mut app.spell, &tk, &mut out);

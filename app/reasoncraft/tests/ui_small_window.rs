@@ -126,3 +126,22 @@ fn text_panel_tabs_keep_to_their_panel() {
         );
     }
 }
+
+/// A squeezed panel gets its width back when the window has room again.
+#[test]
+fn squeezed_panels_get_their_width_back() {
+    let mut h = harness(1.5);
+    let text_left =
+        |h: &Harness<'static, ReasonCraftApp>| h.get_by_label(&t("text.tab.outline")).rect().left();
+    let right = |h: &Harness<'static, ReasonCraftApp>| h.ctx.content_rect().right();
+    let squeezed = right(&h) - text_left(&h);
+    h.state_mut().settings.ui_scale = 1.0;
+    for _ in 0..3 {
+        h.run();
+    }
+    let back = right(&h) - text_left(&h);
+    assert!(
+        back > squeezed + 100.0,
+        "the Text panel is {back} wide again (was {squeezed})"
+    );
+}
