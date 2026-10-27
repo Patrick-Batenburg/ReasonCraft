@@ -5,7 +5,7 @@
 use eframe::egui::{
     self, FontId, Frame, Label, Margin, Response, RichText, Role, Sense, Shape, Ui, WidgetInfo,
 };
-use reasoncraft_core::checks::{CheckKind, Issue};
+use reasoncraft_core::checks::{CheckKind, Issue, compound_conjunctions};
 use reasoncraft_core::{CardKind, CardStrength, Document, Item};
 
 use super::outline::one_line;
@@ -23,6 +23,20 @@ const EXPLAIN: f32 = 12.0;
 /// The check's name in i18n keys (`check.kind.<key>`) and files.
 pub fn check_key(kind: CheckKind) -> &'static str {
     kind.key()
+}
+
+/// The rule of check `kind`, for a document in `doc_lang`: the Compound
+/// help names the conjunctions the check looks for in that language.
+pub fn check_help(kind: CheckKind, doc_lang: &str) -> String {
+    let key = format!("check.help.{}", check_key(kind));
+    if kind != CheckKind::Compound {
+        return t(&key);
+    }
+    let [and, or] = compound_conjunctions(doc_lang);
+    let mut args = FluentArgs::new();
+    args.set("and", and);
+    args.set("or", or);
+    t_args(&key, &args)
 }
 
 /// One row of the tab, with what it draws.
@@ -104,7 +118,7 @@ pub fn show(
                 if !first {
                     ui.add_space(10.0);
                 }
-                heading(ui, kind, count, tk);
+                heading(ui, kind, count, &tab_ref.doc.meta.language, tk);
             }
             Part::Issue(n, issue) => {
                 let selected = tab_ref.selection == Some(issue.item);
@@ -143,8 +157,9 @@ fn footer(ui: &mut Ui, ignored: usize, out: &mut Vec<Action>) {
     }
 }
 
-/// The group heading, "Questions (2)", with the rule as its tooltip.
-fn heading(ui: &mut Ui, kind: CheckKind, count: usize, tk: &Tokens) {
+/// The group heading, "Questions (2)", with the rule (for a document in
+/// `doc_lang`) as its tooltip.
+fn heading(ui: &mut Ui, kind: CheckKind, count: usize, doc_lang: &str, tk: &Tokens) {
     let key = check_key(kind);
     let mut args = FluentArgs::new();
     args.set("kind", t(&format!("check.kind.{key}")));
@@ -153,7 +168,7 @@ fn heading(ui: &mut Ui, kind: CheckKind, count: usize, tk: &Tokens) {
         .strong()
         .color(tk.box_text);
     ui.add(Label::new(text).wrap().selectable(false))
-        .on_hover_text(t(&format!("check.help.{key}")));
+        .on_hover_text(check_help(kind, doc_lang));
     ui.add_space(2.0);
 }
 

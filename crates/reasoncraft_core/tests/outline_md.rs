@@ -17,8 +17,17 @@ fn sample(claim: &str, reason: &str) -> Document {
     d
 }
 
+/// The app's names for the one source type used here, by language.
+fn names(lang: &str) -> impl Fn(&str) -> String {
+    let law = if lang == "nl" { "Wet" } else { "Law" };
+    move |key: &str| match key {
+        "source.law" => law.to_owned(),
+        other => panic!("unexpected key {other}"),
+    }
+}
+
 fn md(d: &Document, opts: &OutlineOptions, lang: &str) -> String {
-    outline_markdown(&build_outline(d, opts), opts, lang)
+    outline_markdown(&build_outline(d, opts), opts, lang, &names(lang))
 }
 
 #[test]
@@ -42,7 +51,7 @@ fn markdown_matches_expected() {
         md(&d, &bare, "en"),
         "# Claim\n\n- R1\n  - _Law:_ art. 1\n- O2\n\n## Not connected\n\n- Loose"
     );
-    let plain = outline_plain_text_lang(&build_outline(&d, &o), &o, "nl");
+    let plain = outline_plain_text_lang(&build_outline(&d, &o), &o, "nl", &names("nl"));
     assert!(plain.contains("1 omdat R1") && plain.contains("[Wet] art. 1"));
 }
 

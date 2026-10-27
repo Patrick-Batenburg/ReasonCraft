@@ -1,8 +1,15 @@
-//! Linking words and source-type names in the document language (en/nl).
-//! These are document content, not UI text.
+//! The words the core itself writes into a document's text, in the
+//! document language (en/nl): linking words ("because"/"omdat"), essay
+//! headings and the Argdown heading of the parking area, which Argdown
+//! import also reads back. They are core logic, used and tested without
+//! the app.
+//!
+//! Every other word drawn on the map or written into exports, source-type
+//! names included, lives in the app's `i18n/*.ftl` files only; core text
+//! exports take those words from the caller (see
+//! [`crate::outline_md::outline_markdown`]).
 
 use crate::checks::stopwords::is_dutch;
-use crate::model::SourceType;
 use crate::outline::LinkLabel;
 
 /// The words that link a premise to what it supports or opposes.
@@ -40,32 +47,6 @@ impl LinkingWords {
             LinkLabel::However => self.however,
             LinkLabel::None => "",
         }
-    }
-}
-
-/// The name of a source type in the document language. `Other` gives the
-/// generic name.
-pub fn source_word(t: &SourceType, lang: &str) -> &'static str {
-    let nl = is_dutch(lang);
-    let pick = |en: &'static str, nl_word: &'static str| if nl { nl_word } else { en };
-    match t {
-        SourceType::Source | SourceType::Other(_) => pick("Source", "Bron"),
-        SourceType::MyBasis => pick("My own basis", "Eigen basis"),
-        SourceType::Assertion => pick("Assertion", "Bewering"),
-        SourceType::ByDefinition => pick("By definition", "Per definitie"),
-        SourceType::CaseStudy => pick("Case study", "Casus"),
-        SourceType::CommonBelief => pick("Common belief", "Algemene opvatting"),
-        SourceType::Data => pick("Data", "Gegevens"),
-        SourceType::Event => pick("Event", "Gebeurtenis"),
-        SourceType::Example => pick("Example", "Voorbeeld"),
-        SourceType::ExpertOpinion => pick("Expert opinion", "Deskundigenoordeel"),
-        SourceType::Law => pick("Law", "Wet"),
-        SourceType::Media => "Media",
-        SourceType::PersonalExperience => pick("Personal experience", "Persoonlijke ervaring"),
-        SourceType::Publication => pick("Publication", "Publicatie"),
-        SourceType::Quote => pick("Quote", "Citaat"),
-        SourceType::Statistic => pick("Statistic", "Statistiek"),
-        SourceType::Web => "Web",
     }
 }
 
@@ -120,17 +101,6 @@ mod tests {
         assert_eq!(linking_words("de"), en);
         assert_eq!(linking_words(""), en);
         assert_eq!(en.word(LinkLabel::None), "");
-    }
-
-    #[test]
-    fn source_words_cover_every_type() {
-        for t in SourceType::ALL {
-            assert!(!source_word(&t, "en").is_empty());
-            assert!(!source_word(&t, "nl").is_empty());
-        }
-        assert_eq!(source_word(&SourceType::Law, "nl"), "Wet");
-        assert_eq!(source_word(&SourceType::Other("x".into()), "nl"), "Bron");
-        assert_eq!(source_word(&SourceType::MyBasis, "fr"), "My own basis");
     }
 
     #[test]

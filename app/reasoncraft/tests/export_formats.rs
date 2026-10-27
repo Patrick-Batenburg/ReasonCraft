@@ -110,6 +110,42 @@ fn outline_markdown_export_uses_doc_language() {
 }
 
 #[test]
+fn export_worker_uses_document_language() {
+    use reasoncraft::i18n::t_lang;
+    use reasoncraft_core::{CardStrength, ImageRef};
+
+    let dir = tempfile::tempdir().unwrap();
+    let (mut h, fakes, alpha) = harness(dir.path());
+    let doc = &mut h.state_mut().tabs[0].doc;
+    doc.meta.language = "nl".into();
+    let card = doc.cards.values().find(|c| c.premises.contains(&alpha));
+    let card = card.unwrap().id;
+    doc.set_card_strength(card, Some(CardStrength::Strong))
+        .unwrap();
+    // An image whose asset is gone: the worker draws its placeholder.
+    doc.boxes.get_mut(&alpha).unwrap().image = Some(ImageRef {
+        asset: "gone".into(),
+        aspect: 2.0,
+    });
+    let file = dir.path().join("map.svg");
+    fakes.dialogs.set_export(file.clone());
+    let options = ExportOptions {
+        svg_outlines: false,
+        ..ExportOptions::default()
+    };
+    h.state_mut().push(request(ExportFormat::Svg, options));
+    h.run_steps(2);
+    wait(&mut h);
+    let svg = std::fs::read_to_string(&file).unwrap();
+    for key in ["rating.strong.supports", "image.missing", "role.opposes"] {
+        let (nl, en) = (t_lang("nl", key), t_lang("en", key));
+        assert_ne!(nl, en, "{key} has a Dutch text");
+        assert!(svg.contains(&format!(">{nl}<")), "{nl:?} in {svg}");
+        assert!(!svg.contains(&format!(">{en}<")), "{en:?} in {svg}");
+    }
+}
+
+#[test]
 fn word_and_essay_exports_run_from_the_ribbon() {
     use reasoncraft_core::EssaySlot;
 

@@ -28,10 +28,14 @@ pub fn paint_scene(
                     paint_shape(painter, shape, cam);
                 }
             }
-            Shape::Image { rect, asset } => {
+            Shape::Image {
+                rect,
+                asset,
+                missing,
+            } => {
                 let r = cam.world_rect_to_screen(*rect);
                 if clip.intersects(r.expand(4.0)) {
-                    paint_image(painter, r, asset, images, tokens, cam.zoom);
+                    paint_image(painter, r, asset, missing, images, tokens, cam.zoom);
                 }
             }
             _ => paint_shape(painter, shape, cam),

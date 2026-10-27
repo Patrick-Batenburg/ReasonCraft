@@ -78,11 +78,21 @@ fn compound_explanation_asks_and_quotes_the_word() {
         text.contains("accept one part and reject the other"),
         "{text}"
     );
-    // The group help names no particular conjunction.
-    let help = t("check.help.compound");
-    assert!(
-        !help.contains("\"and\"") && !help.contains("\"or\""),
-        "{help}"
+}
+
+#[test]
+fn compound_help_in_document_language() {
+    // The help names the words the check looks for in the document's
+    // language, whatever language the interface is in.
+    let en = check_help(CheckKind::Compound, "en");
+    assert!(en.contains("“and”") && en.contains("“or”"), "{en}");
+    let nl = check_help(CheckKind::Compound, "nl-NL");
+    assert!(nl.contains("“en”") && nl.contains("“of”"), "{nl}");
+    assert!(!nl.contains("“and”"), "{nl}");
+    // Other checks' help does not depend on the document.
+    assert_eq!(
+        check_help(CheckKind::KeyTerm, "nl"),
+        t("check.help.key_term")
     );
 }
 

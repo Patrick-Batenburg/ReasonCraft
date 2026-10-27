@@ -53,6 +53,30 @@ fn unknown_enum_values_keep_other_settings_json() {
 }
 
 #[test]
+fn ui_language_of_another_build_or_type_keeps_other_settings() {
+    // A language this build lacks is kept (and shows English); a value of
+    // the wrong type means "follow the OS".
+    let s: Settings = serde_json::from_str(r#"{"ui_language":"xx","author":"Ann"}"#).unwrap();
+    assert_eq!(s.ui_language.as_deref(), Some("xx"));
+    assert_eq!(s.ui_language_choice(), Some("en"));
+    let s: Settings =
+        serde_json::from_str(r#"{"ui_language":5,"author":"Ann","minimap":"off"}"#).unwrap();
+    assert_eq!(s.ui_language, None);
+    assert_eq!(s.ui_language_choice(), None);
+    assert_eq!(s.author, "Ann");
+    assert_eq!(s.minimap, MinimapMode::Off);
+    for ron in ["5", "Some(5)", "Some((1,2))"] {
+        let s = from_ron(&format!("(ui_language:{ron},author:\"Ann\",minimap:off)"));
+        assert_eq!(s.ui_language, None, "{ron}");
+        assert_eq!((s.author.as_str(), s.minimap), ("Ann", MinimapMode::Off));
+    }
+    let s = from_ron("(ui_language:None)");
+    assert_eq!(s.ui_language, None);
+    let s = from_ron("(ui_language:Some(\"nl\"))");
+    assert_eq!(s.ui_language_choice(), Some("nl"));
+}
+
+#[test]
 fn unknown_values_in_nested_enums_fall_back_and_later_fields_still_load() {
     let ron = "(text_tab:Notes,export:(scope:Everything,theme:Neon,png_scale:3),\
                page_setup:(paper:A3,orientation:Diagonal,fit:Spiral,margin_mm:5.0),\

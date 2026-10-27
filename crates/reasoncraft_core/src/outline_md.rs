@@ -2,7 +2,17 @@
 
 use crate::model::SourceType;
 use crate::outline::{LineKind, OutlineLine, OutlineOptions, outline_plain_text};
-use crate::words::{linking_words, not_connected_heading, source_word};
+use crate::words::{linking_words, not_connected_heading};
+
+/// The text of an i18n key (such as `source.law`) in the document
+/// language, from the app's translations: the core has no source-type
+/// names of its own.
+pub type Label<'a> = &'a dyn Fn(&str) -> String;
+
+/// The name of `source_type`, looked up as `source.<key>`.
+pub fn source_name(source_type: &SourceType, label: Label) -> String {
+    label(&format!("source.{}", source_type.key()))
+}
 
 /// Escape Markdown specials in `s` (including `|` for tables, `&` for
 /// entities and `~` for strikethrough). At the start of a line, a leading
@@ -58,6 +68,7 @@ fn push_item(
     indent: usize,
     opts: &OutlineOptions,
     lang: &str,
+    label: Label,
 ) {
     let pad = " ".repeat(indent);
     let mut head: Vec<String> = Vec::with_capacity(3);
@@ -65,7 +76,7 @@ fn push_item(
     let mut text = lines.iter().copied();
     let first = text.next().unwrap_or_default();
     if let LineKind::Source(t) = &line.kind {
-        head.push(format!("_{}:_", source_word(t, lang)));
+        head.push(format!("_{}:_", source_name(t, label)));
     } else {
         if opts.numbering && !line.number.is_empty() {
             head.push(format!("**{}**", escape(&line.number, false)));
@@ -98,8 +109,14 @@ fn push_item(
 
 /// The outline as Markdown: the claim as `#` heading, other lines as nested
 /// list items (two spaces per level below the claim), parked fragments under
-/// a second heading in the document language.
-pub fn outline_markdown(lines: &[OutlineLine], opts: &OutlineOptions, lang: &str) -> String {
+/// a second heading in the document language `lang`; source-type names
+/// come from `label`.
+pub fn outline_markdown(
+    lines: &[OutlineLine],
+    opts: &OutlineOptions,
+    lang: &str,
+    label: Label,
+) -> String {
     let mut out = String::new();
     let mut any_parked = false;
     for line in lines {
@@ -127,20 +144,26 @@ pub fn outline_markdown(lines: &[OutlineLine], opts: &OutlineOptions, lang: &str
             } else {
                 line.depth.saturating_sub(1)
             };
-            push_item(&mut out, line, level * 2, opts, lang);
+            push_item(&mut out, line, level * 2, opts, lang, label);
         }
     }
     out.truncate(out.trim_end().len());
     out
 }
 
-/// Indented plain text with the words of the document language.
-pub fn outline_plain_text_lang(lines: &[OutlineLine], opts: &OutlineOptions, lang: &str) -> String {
+/// Indented plain text with the linking words of the document language
+/// `lang`; source-type names come from `label`.
+pub fn outline_plain_text_lang(
+    lines: &[OutlineLine],
+    opts: &OutlineOptions,
+    lang: &str,
+    label: Label,
+) -> String {
     let words = linking_words(lang);
     outline_plain_text(
         lines,
         opts,
         &|l| words.word(l).to_owned(),
-        &|t: &SourceType| source_word(t, lang).to_owned(),
+        &|t: &SourceType| source_name(t, label),
     )
 }

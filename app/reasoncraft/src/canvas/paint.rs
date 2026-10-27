@@ -114,6 +114,7 @@ pub fn paint(
         zoom: cam.zoom,
         editing,
         connector_style: opts.connector_style,
+        lang: crate::i18n::language_of(&doc.meta.language),
     };
     let scene = build_scene(doc, layout, &scene_opts, fonts);
     paint_scene(painter, &scene, cam, images, tokens);

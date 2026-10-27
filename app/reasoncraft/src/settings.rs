@@ -21,6 +21,7 @@ pub struct Settings {
     pub theme: ThemeChoice,
     /// The interface language, one of [`crate::i18n::UI_LANGUAGES`];
     /// `None` follows the OS. Another value shows English.
+    #[serde(deserialize_with = "deserialize_text_or_none")]
     pub ui_language: Option<String>,
     /// The name put on new comments.
     pub author: String,
@@ -77,6 +78,26 @@ where
     Ok(T::deserialize(d).unwrap_or_default())
 }
 
+/// Read an optional text field; a value of another type (also inside
+/// RON's `Some(..)`) reads as `None`, and the rest of the file still loads.
+/// [`deserialize_or_default`] cannot do this for RON, which stops at the
+/// wrong value: here the whole value is read before its type is checked.
+pub fn deserialize_text_or_none<'de, D>(d: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Stored {
+        Text(Option<String>),
+        Other(serde::de::IgnoredAny),
+    }
+    Ok(match Stored::deserialize(d)? {
+        Stored::Text(text) => text,
+        Stored::Other(_) => None,
+    })
+}
+
 /// The default seconds between autosaves.
 pub const AUTOSAVE_DEFAULT: u32 = 45;
 /// The shortest and longest autosave intervals, in seconds.
@@ -118,6 +139,13 @@ pub enum OutlineToggle {
 }
 
 impl Settings {
+    /// The language choice the settings page and View → Language show as
+    /// selected: `None` for System, else the UI language shown (English
+    /// for a stored language this build lacks).
+    pub fn ui_language_choice(&self) -> Option<&'static str> {
+        self.ui_language.as_deref().map(crate::i18n::language_of)
+    }
+
     /// `secs` as an autosave setting: 0 (off) or within the allowed range.
     pub fn clamp_autosave(secs: u32) -> u32 {
         if secs == 0 {

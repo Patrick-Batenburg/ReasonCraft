@@ -248,7 +248,11 @@ impl Writer<'_> {
                     self.text_row(Pos2::new(origin.x, top), row, *size, *bold, *color, *align);
                 }
             }
-            Shape::Image { rect, asset } => self.image(*rect, asset),
+            Shape::Image {
+                rect,
+                asset,
+                missing,
+            } => self.image(*rect, asset, missing),
             Shape::Strip { left, right, fill } => {
                 let _ = write!(self.out, "<path d=\"{}\"", strip_data(left, right));
                 self.fill(Some(*fill));
@@ -307,8 +311,8 @@ impl Writer<'_> {
 
     /// An embedded PNG (JPEG and WebP assets converted), or the
     /// missing-image placeholder (also for one the canvas refuses to draw
-    /// as too large).
-    fn image(&mut self, r: Rect, asset: &str) {
+    /// as too large), labelled `missing`.
+    fn image(&mut self, r: Rect, asset: &str, missing: &str) {
         let asset = self.assets.get(asset);
         let png = asset.as_deref().and_then(export_png_bytes);
         match png {
@@ -324,11 +328,11 @@ impl Writer<'_> {
                     num(r.height()),
                 );
             }
-            _ => self.missing_image(r),
+            _ => self.missing_image(r, missing),
         }
     }
 
-    fn missing_image(&mut self, r: Rect) {
+    fn missing_image(&mut self, r: Rect, label: &str) {
         let muted = self.opts.muted;
         self.rect(r, 0.0);
         self.out.push_str(" fill=\"none\"");
@@ -337,9 +341,8 @@ impl Writer<'_> {
         self.out.push_str("/>\n");
         let size = missing_image::TEXT_SIZE;
         let top = r.center().y - TEXT_FACE.row_height(size) / 2.0;
-        let label = missing_image::label();
         let at = Pos2::new(r.center().x, top);
-        self.text_row(at, &label, size, false, muted, Align::Center);
+        self.text_row(at, label, size, false, muted, Align::Center);
     }
 
     /// The start of a `<rect>` element.

@@ -8,7 +8,7 @@ use reasoncraft_core::{Acceptance, BoxNode, CardStrength, Role, SourceRating};
 use reasoncraft_core::layout::BOX_TEXT_PAD;
 
 use super::paint::role_colour;
-use crate::i18n::t;
+use crate::i18n::t_lang;
 use crate::scene::{PathEl, Shape, paint_shapes};
 use crate::theme::Tokens;
 
@@ -68,9 +68,9 @@ pub fn card_colour(t: &Tokens, role: Role, strength: Option<CardStrength>) -> Co
     }
 }
 
-/// The label inside a card frame, e.g. "strongly supports". Its strength
-/// dots ([`rating_dots`]) are drawn beside it.
-pub fn rating_label(role: Role, strength: Option<CardStrength>) -> String {
+/// The label inside a card frame in `lang`, e.g. "strongly supports".
+/// Its strength dots ([`rating_dots`]) are drawn beside it.
+pub fn rating_label(lang: &str, role: Role, strength: Option<CardStrength>) -> String {
     let role = match role {
         Role::Supports => "supports",
         Role::Opposes => "opposes",
@@ -82,7 +82,7 @@ pub fn rating_label(role: Role, strength: Option<CardStrength>) -> String {
         Some(CardStrength::Weak) => "rating.weak",
         Some(CardStrength::Nil) => "rating.nil",
     };
-    t(&format!("{prefix}.{role}"))
+    t_lang(lang, &format!("{prefix}.{role}"))
 }
 
 /// How many strength dots lead a card's rating label: two for strong, one
@@ -229,7 +229,8 @@ mod tests {
             (Role::Rebuts, Some(Nil), "does not rebut"),
         ];
         for (role, strength, want) in cases {
-            assert_eq!(rating_label(role, strength), want, "{role:?} {strength:?}");
+            let label = rating_label("en", role, strength);
+            assert_eq!(label, want, "{role:?} {strength:?}");
         }
     }
 

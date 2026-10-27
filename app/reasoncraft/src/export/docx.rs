@@ -11,13 +11,13 @@ use std::io::Cursor;
 use docx_rs::{BreakType, Docx, Paragraph, Run, RunFonts, Style, StyleType};
 use reasoncraft_core::essay::essay_order;
 use reasoncraft_core::outline::{LineKind, OutlineLine, OutlineOptions};
-use reasoncraft_core::words::{
-    EssayHeading, essay_heading, linking_words, not_connected_heading, source_word,
-};
+use reasoncraft_core::outline_md::source_name;
+use reasoncraft_core::words::{EssayHeading, essay_heading, linking_words, not_connected_heading};
 use reasoncraft_core::{Document, EssaySlot};
 
 use super::ExportError;
 use super::docx_props::{finish_package, now_w3cdtf};
+use crate::i18n::t_lang;
 use crate::theme::Tokens;
 
 /// Left indent per outline level: 0.6 cm in twentieths of a point.
@@ -161,7 +161,7 @@ pub fn outline_docx(
                 .style("Normal")
                 .indent(Some(INDENT_TWIPS * depth), None, None, None);
         if let LineKind::Source(t) = &line.kind {
-            let label = format!("{}: ", source_word(t, lang));
+            let label = format!("{}: ", source_name(t, &|key| t_lang(lang, key)));
             p = p.add_run(Run::new().add_text(label).italic());
         } else {
             if opts.numbering && !line.number.is_empty() {

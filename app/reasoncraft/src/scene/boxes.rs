@@ -9,7 +9,7 @@ use super::{PathEl, Shape};
 use crate::canvas::images::{content_rect, image_rect};
 use crate::canvas::measure::font_for;
 use crate::canvas::paint::screen_font;
-use crate::i18n::t;
+use crate::i18n::{t, t_lang};
 use crate::shell::source_icons::source_icon_shapes_px;
 
 pub const BOX_RADIUS: f32 = 7.0;
@@ -78,6 +78,7 @@ impl Builder<'_> {
             self.shapes.push(Shape::Image {
                 rect: image_rect(body, img),
                 asset: img.asset.clone(),
+                missing: t_lang(self.opts.lang, "image.missing"),
             });
         }
         // The inline editor shows the text of the box being edited.
@@ -133,7 +134,7 @@ impl Builder<'_> {
         if screen_font(SOURCE_TYPE_SIZE, self.opts.zoom).is_none() {
             return;
         }
-        let name = t(&format!("source.{}", source_type.key()));
+        let name = t_lang(self.opts.lang, &format!("source.{}", source_type.key()));
         let width = self.text_width(&name, SOURCE_TYPE_SIZE);
         let line_height = self.fonts.line_height(SOURCE_TYPE_SIZE);
         let total = SOURCE_ICON + SOURCE_ICON_GAP + width;

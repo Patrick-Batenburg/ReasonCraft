@@ -54,7 +54,7 @@ fn scene_in(doc: &Document, style: ConnectorStyle) -> (Layout, Scene) {
     let lay = layout(doc, &Fake, &LayoutParams::default());
     let opts = SceneOptions {
         connector_style: style,
-        ..SceneOptions::export(crate::theme::Tokens::dark())
+        ..SceneOptions::export(crate::theme::Tokens::dark(), "en")
     };
     let scene = build_scene(doc, &lay, &opts, &Fake);
     (lay, scene)
@@ -115,7 +115,7 @@ fn screen_px_widths_follow_the_zoom_with_a_floor() {
     let (doc, _) = claim_with_reasons(1, LayoutDirection::TopDown);
     let lay = layout(&doc, &Fake, &LayoutParams::default());
     for zoom in [0.1, 0.5, 1.0, 2.0] {
-        let mut o = SceneOptions::export(crate::theme::Tokens::dark());
+        let mut o = SceneOptions::export(crate::theme::Tokens::dark(), "en");
         o.zoom = zoom;
         let scene = build_scene(&doc, &lay, &o, &Fake);
         let width = scene

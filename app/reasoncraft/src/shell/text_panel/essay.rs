@@ -18,7 +18,7 @@ use super::virtual_rows::{self, Rows};
 use crate::actions::Action;
 use crate::canvas::rating::{Mark, card_colour, mark_for, rating_dots, rating_label};
 use crate::doc_tab::{DocTab, EssayRow, EssayView};
-use crate::i18n::{FluentArgs, t, t_args};
+use crate::i18n::{FluentArgs, t, t_args, ui_language};
 use crate::settings::Settings;
 use crate::spell::SpellFields;
 use crate::theme::Tokens;
@@ -203,7 +203,7 @@ fn section_heading(ui: &mut Ui, cx: &Ctx, n: usize, section: &EssaySection) {
         ),
         Item::Box(_) => (CardRole::Supports, None),
     };
-    let rating = rating_label(role, strength);
+    let rating = rating_label(ui_language(), role, strength);
     let dots = rating_dots(strength);
     let own: Vec<String> = section
         .elements

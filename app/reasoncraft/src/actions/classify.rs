@@ -7,7 +7,9 @@ use crate::doc_tab::EditSession;
 /// Whether `action` leaves the status note and export notice alone: it
 /// only looks around (selection, view, panels) or answers a message (which
 /// may have left a note behind). "Open folder" acts on the notice itself.
-/// Document edits and file, export and image commands clear them.
+/// Document edits and file, export and image commands clear them, and so
+/// does switching the UI language (a note is in the language it was
+/// written in).
 pub(super) fn keeps_notes(action: &Action) -> bool {
     matches!(
         action,
@@ -26,7 +28,6 @@ pub(super) fn keeps_notes(action: &Action) -> bool {
             | Action::ShowPanel(_)
             | Action::SetTextTab(_)
             | Action::SetTheme(_)
-            | Action::SetUiLanguage(_)
             | Action::SetConnectorStyle(_)
             | Action::ToggleMarkers
             | Action::SetMinimap(_)

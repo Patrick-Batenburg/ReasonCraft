@@ -91,7 +91,7 @@ fn scene_500_boxes_fast() {
     let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
         let measure = EguiMeasure::new(ui.ctx(), &mut cache);
         let layout = layout(&doc, &measure, &LayoutParams::default());
-        let opts = SceneOptions::export(Tokens::dark());
+        let opts = SceneOptions::export(Tokens::dark(), "en");
         // Warm the glyph cache, then time a whole-map build (no culling).
         build_scene(&doc, &layout, &opts, &measure);
         let started = std::time::Instant::now();

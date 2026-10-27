@@ -37,7 +37,7 @@ fn lay_out(doc: &Document) -> Layout {
 }
 
 fn opts() -> SceneOptions {
-    SceneOptions::export(Tokens::dark())
+    SceneOptions::export(Tokens::dark(), "en")
 }
 
 fn texts(scene: &Scene) -> Vec<String> {

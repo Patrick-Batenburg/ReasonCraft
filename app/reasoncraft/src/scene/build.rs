@@ -16,7 +16,7 @@ use crate::canvas::rating::{
     MARKER_MIN_ZOOM, Mark, card_colour, frame_alpha, frame_border, mark_for, mark_shapes,
     marker_circle, rating_dots, rating_label,
 };
-use crate::i18n::t;
+use crate::i18n::t_lang;
 
 const FRAME_STROKE_ALPHA: f32 = 0.55;
 const LABEL_SIZE: f32 = 10.5;
@@ -214,7 +214,7 @@ impl Builder<'_> {
         });
         self.shapes.push(Shape::Text {
             origin: frame.min + vec2(12.0, 8.0),
-            rows: vec![t("parking.title")],
+            rows: vec![t_lang(self.opts.lang, "parking.title")],
             size: PARKING_TITLE_SIZE,
             bold: false,
             color: tk.text_muted,
@@ -252,7 +252,7 @@ impl Builder<'_> {
             return;
         }
         let colour = card_colour(&self.opts.tokens, role, strength);
-        let text = rating_label(role, strength);
+        let text = rating_label(self.opts.lang, role, strength);
         let dots = rating_dots(strength);
         let line_height = self.fonts.line_height(LABEL_SIZE);
         let width = self.text_width(&text, LABEL_SIZE);

@@ -35,11 +35,13 @@ pub fn content_rect(world: Rect, node: &BoxNode) -> Rect {
 }
 
 /// Asset `asset`'s image in screen rect `r`: a plain block while it waits
-/// to be decoded, a dashed placeholder when it is missing or broken.
+/// to be decoded, a dashed placeholder labelled `missing` when it is
+/// missing or broken.
 pub fn paint_image(
     painter: &Painter,
     r: Rect,
     asset: &str,
+    missing: &str,
     images: &ImageCache,
     tk: &Tokens,
     zoom: f32,
@@ -70,13 +72,7 @@ pub fn paint_image(
         painter.extend(Shape::dashed_line(&edge, stroke, dash, gap));
     }
     if let Some(font) = screen_font(missing_image::TEXT_SIZE, zoom) {
-        painter.text(
-            r.center(),
-            Align2::CENTER_CENTER,
-            missing_image::label(),
-            font,
-            colour,
-        );
+        painter.text(r.center(), Align2::CENTER_CENTER, missing, font, colour);
     }
 }
 

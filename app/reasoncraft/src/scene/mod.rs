@@ -8,6 +8,10 @@
 //! top. A scene for the screen differs from one for export only in what is
 //! culled, the zoom it is built for (sizes given in screen px), the hint in
 //! an empty claim and the text of the box being edited.
+//!
+//! The words a scene draws are in the document's language
+//! ([`SceneOptions::lang`]); only the screen hint in an empty claim, an
+//! instruction to the user, is in the UI language.
 
 mod boxes;
 mod build;
@@ -44,8 +48,8 @@ pub fn bold_offset(zoom: f32) -> f32 {
 }
 
 /// The placeholder drawn for an image whose asset is missing or broken: a
-/// dashed outline with a centred label, in the muted text colour. Sizes in
-/// screen px (world units in an export).
+/// dashed outline with a centred label (the image shape's `missing`), in
+/// the muted text colour. Sizes in screen px (world units in an export).
 pub mod missing_image {
     /// Outline width.
     pub const STROKE: f32 = 1.0;
@@ -54,11 +58,6 @@ pub mod missing_image {
     pub const GAP: f32 = 4.0;
     /// Size of the label's text (in world units, like box text).
     pub const TEXT_SIZE: f32 = 11.0;
-
-    /// The label in the middle of the outline.
-    pub fn label() -> String {
-        crate::i18n::t("image.missing")
-    }
 }
 
 /// One step of a [`Shape::Path`], in world units.
@@ -110,8 +109,14 @@ pub enum Shape {
         align: Align,
         line_height: f32,
     },
-    /// A box image, from the document's asset `asset`.
-    Image { rect: Rect, asset: String },
+    /// A box image, from the document's asset `asset`. `missing` is the
+    /// label of the placeholder drawn when the asset is missing or broken
+    /// (in the document's language: an export worker draws it too).
+    Image {
+        rect: Rect,
+        asset: String,
+        missing: String,
+    },
     /// A filled band between two edges with the same number of points:
     /// `left[i]` and `right[i]` lie across the band from each other. It
     /// may bend any way (a tapered connector), unlike a filled path.
@@ -157,11 +162,16 @@ pub struct SceneOptions {
     pub editing: Option<NodeId>,
     /// How connectors are drawn.
     pub connector_style: ConnectorStyle,
+    /// The document's language ([`crate::i18n::language_of`]): every word
+    /// the scene draws (card labels, source-type names, the parking title,
+    /// the missing-image label) is in it, whatever the UI language.
+    pub lang: &'static str,
 }
 
 impl SceneOptions {
-    /// Options for exporting the whole map, parking area excluded.
-    pub fn export(tokens: Tokens) -> Self {
+    /// Options for exporting the whole map, parking area excluded, with
+    /// its words in `lang` (the document's language).
+    pub fn export(tokens: Tokens, lang: &'static str) -> Self {
         Self {
             tokens,
             show_markers: true,
@@ -174,6 +184,7 @@ impl SceneOptions {
             zoom: 1.0,
             editing: None,
             connector_style: ConnectorStyle::Curved,
+            lang,
         }
     }
 }

@@ -25,6 +25,7 @@ use super::{
     bundled_font_family, copy_scene_to_clipboard, scene_to_png, scene_to_svg, shared_fontdb,
     svg_to_pdf, write_print_file,
 };
+use crate::i18n::t_lang;
 use crate::jobs::{Job, JobState};
 use crate::scene::Scene;
 use crate::theme::Tokens;
@@ -136,12 +137,13 @@ impl ExportWork {
             (Snapshot::Doc { doc, outline }, format) => {
                 let lines = build_outline(doc, outline);
                 let lang = doc.meta.language.as_str();
+                let label = |key: &str| t_lang(lang, key);
                 match format {
                     ExportFormat::OutlineMarkdown => {
-                        outline_markdown(&lines, outline, lang).into_bytes()
+                        outline_markdown(&lines, outline, lang, &label).into_bytes()
                     }
                     ExportFormat::OutlineText => {
-                        outline_plain_text_lang(&lines, outline, lang).into_bytes()
+                        outline_plain_text_lang(&lines, outline, lang, &label).into_bytes()
                     }
                     ExportFormat::OutlineDocx => {
                         outline_docx(&lines, outline, lang, &doc.meta.author)?

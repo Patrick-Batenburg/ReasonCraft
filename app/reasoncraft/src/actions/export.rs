@@ -18,7 +18,7 @@ use crate::export::{
     Notice, Outcome, Snapshot, Target,
 };
 use crate::file_ops::{Modal, with_extension};
-use crate::i18n::{FluentArgs, t, t_args};
+use crate::i18n::{FluentArgs, language_of, t, t_args};
 use crate::scene::{Scene, SceneOptions, build_scene};
 use crate::shell::export_dialog::ExportDialog;
 use crate::theme::Tokens;
@@ -203,7 +203,7 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
         eval_shading: settings.eval_shading,
         connector_style: settings.connector_style,
         only,
-        ..SceneOptions::export(tokens)
+        ..SceneOptions::export(tokens, language_of(&tab.doc.meta.language))
     };
     let build = |ctx: &egui::Context, cache: &mut MeasureCache| -> Scene {
         let measure = EguiMeasure::new(ctx, cache);

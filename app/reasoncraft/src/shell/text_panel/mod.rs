@@ -13,7 +13,7 @@ mod snippet_card;
 mod snippets;
 mod virtual_rows;
 
-pub use check::{check_key, item_text};
+pub use check::{check_help, check_key, item_text};
 pub use drag_chip::{chip_label, excerpt};
 pub use snippet_card::capped_notice;
 

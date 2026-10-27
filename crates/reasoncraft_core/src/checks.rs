@@ -354,14 +354,20 @@ impl<'a> Run<'a> {
     }
 }
 
-/// The distinct standalone conjunctions in `text`, in order of appearance:
+/// The conjunctions the Compound check looks for in a document in `lang`:
 /// "and"/"or" in English, "en"/"of" in Dutch (see [`stopwords::is_dutch`]).
-fn conjunctions(text: &str, lang: &str) -> Vec<String> {
-    let list: [&str; 2] = if stopwords::is_dutch(lang) {
+pub fn compound_conjunctions(lang: &str) -> [&'static str; 2] {
+    if stopwords::is_dutch(lang) {
         ["en", "of"]
     } else {
         ["and", "or"]
-    };
+    }
+}
+
+/// The distinct standalone conjunctions of [`compound_conjunctions`] in
+/// `text`, in order of appearance.
+fn conjunctions(text: &str, lang: &str) -> Vec<String> {
+    let list = compound_conjunctions(lang);
     let mut found: Vec<String> = Vec::new();
     for word in tokens::words(text) {
         if let [part] = word.parts.as_slice()

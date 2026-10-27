@@ -10,7 +10,6 @@ use reasoncraft_core::{Assets, CardKind, Document, ImageRef, Parent};
 
 use super::tests::scene_of;
 use super::*;
-use crate::scene::missing_image;
 use crate::theme::Tokens;
 
 fn encoded(w: u32, h: u32, format: ImageFormat) -> Vec<u8> {
@@ -61,7 +60,7 @@ fn jpeg_asset_exports_as_png() {
     assert_eq!(images.len(), 1, "{svg}");
     let png = image::load_from_memory_with_format(&images[0], ImageFormat::Png).unwrap();
     assert_eq!((png.width(), png.height()), (8, 4));
-    assert!(!svg.contains(&missing_image::label()));
+    assert!(!svg.contains(&crate::i18n::t("image.missing")));
 }
 
 #[test]
@@ -83,7 +82,7 @@ fn png_assets_pass_unchanged_and_others_are_refused() {
     assert!(export_png_bytes(b"\xff\xd8\xff\xe0 not really a jpeg").is_none());
     let svg = svg_with_image(GIF.to_vec());
     assert!(!svg.contains("<image"));
-    assert!(svg.contains(&missing_image::label()));
+    assert!(svg.contains(&crate::i18n::t("image.missing")));
 }
 
 /// A JPEG larger than this build ever stores is refused, as on screen.

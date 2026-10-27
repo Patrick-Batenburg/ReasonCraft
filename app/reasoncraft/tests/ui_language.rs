@@ -6,13 +6,19 @@
 
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use eframe::egui::{self, Key, Modifiers, accesskit::Role};
-use egui_kittest::{Harness, kittest::Queryable};
+use eframe::egui::accesskit::{Role, Toggled};
+use eframe::egui::{self, Key, Modifiers, epaint};
+use egui_kittest::{
+    Harness,
+    kittest::{NodeT, Queryable},
+};
 use reasoncraft::actions::Action;
 use reasoncraft::canvas::input::{shortcut_for, shortcut_text};
+use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::{self, FluentArgs, t, t_args, t_lang, ui_language};
 use reasoncraft::settings::Settings;
 use reasoncraft::{ReasonCraftApp, commands};
+use reasoncraft_core::{BoxKind, CardKind, CardStrength, Document, NewLoose, Parent, SourceType};
 
 static LANGUAGE: Mutex<()> = Mutex::new(());
 
@@ -158,4 +164,134 @@ fn ui_language_setting_defaults_to_the_os_and_survives_unknown_values() {
     let s: Settings = serde_json::from_str(r#"{"ui_language":"nl","author":"Ann"}"#).unwrap();
     assert_eq!(s.ui_language.as_deref(), Some("nl"));
     assert_eq!(s.author, "Ann");
+}
+
+/// The texts painted in the last frame.
+fn painted_texts(h: &Harness<'static, ReasonCraftApp>) -> Vec<String> {
+    fn walk(s: &epaint::Shape, out: &mut Vec<String>) {
+        match s {
+            epaint::Shape::Vec(v) => v.iter().for_each(|s| walk(s, out)),
+            epaint::Shape::Text(t) => out.push(t.galley.job.text.clone()),
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    for clipped in &h.output().shapes {
+        walk(&clipped.shape, &mut out);
+    }
+    out
+}
+
+/// A map in `lang`: a strong reason with a law under it, and a loose
+/// premise in the parking area.
+fn rated_map(lang: &str) -> ReasonCraftApp {
+    let mut doc = Document::new("Cities should ban cars");
+    doc.meta.language = lang.to_owned();
+    let (card, premise) = doc
+        .add_card(Parent::Box(doc.root), CardKind::Reason, "Cleaner air")
+        .unwrap();
+    doc.set_card_strength(card, Some(CardStrength::Strong))
+        .unwrap();
+    let law = BoxKind::Source {
+        source_type: SourceType::Law,
+    };
+    doc.add_box(Parent::Box(premise), law, "Clean air act")
+        .unwrap();
+    doc.add_loose(NewLoose::Card(CardKind::Reason), "Loose");
+    let mut app = ReasonCraftApp::new_for_test();
+    app.tabs[0] = DocTab::from_document(doc);
+    // No panels: the Outline would name the source in the UI language.
+    app.left_panel = false;
+    app.right_panel = false;
+    app
+}
+
+#[test]
+fn map_labels_follow_document_language_not_ui() {
+    let _lang = lock();
+    let words = ["rating.strong.supports", "source.law", "parking.title"];
+    // UI English, document Dutch: the map speaks Dutch.
+    let mut h = harness_with(rated_map("nl-NL"));
+    h.run();
+    h.state_mut().push(Action::JumpParking);
+    h.run();
+    h.state_mut().push(Action::ZoomFit);
+    h.run();
+    let texts = painted_texts(&h);
+    for key in words {
+        let (nl, en) = (t_lang("nl", key), t_lang("en", key));
+        assert_ne!(nl, en, "{key} has a Dutch text");
+        assert!(texts.contains(&nl), "{nl:?} in {texts:?}");
+        assert!(!texts.contains(&en), "{en:?} in {texts:?}");
+    }
+
+    // UI Dutch, document English: the map speaks English.
+    i18n::set_ui_language("nl");
+    let mut h = harness_with(rated_map("en"));
+    h.run();
+    h.state_mut().push(Action::ZoomFit);
+    h.run();
+    let texts = painted_texts(&h);
+    for key in words {
+        let en = t_lang("en", key);
+        assert!(texts.contains(&en), "{en:?} in {texts:?}");
+        assert!(!texts.contains(&t_lang("nl", key)), "{key} in {texts:?}");
+    }
+}
+
+#[test]
+fn switching_language_clears_the_status_note() {
+    let _lang = lock();
+    let mut h = harness_with(ReasonCraftApp::new_for_test());
+    h.state_mut().status_note = Some("Saved".to_owned());
+    h.state_mut()
+        .push(Action::SetUiLanguage(Some("nl".to_owned())));
+    h.run();
+    assert_eq!(h.state().status_note, None);
+}
+
+/// The one node labelled `label` that shows as selected.
+fn selected_node<'h>(
+    h: &'h Harness<'static, ReasonCraftApp>,
+    label: &'h str,
+) -> egui_kittest::Node<'h> {
+    let mut on = h
+        .query_all_by_label(label)
+        .filter(|n| n.accesskit_node().toggled() == Some(Toggled::True));
+    let node = on
+        .next()
+        .unwrap_or_else(|| panic!("{label:?} is not selected"));
+    assert!(on.next().is_none(), "one {label:?} selected");
+    node
+}
+
+#[test]
+fn choosing_the_shown_language_again_changes_nothing() {
+    let _lang = lock();
+    for (stored, choice) in [("nl", "view.language.nl"), ("xx", "view.language.en")] {
+        let mut app = ReasonCraftApp::new_for_test();
+        app.settings.ui_language = Some(stored.to_owned());
+        // Dutch documents: their language pickers do not select "English".
+        app.tabs[0].doc.meta.language = "nl".to_owned();
+        app.settings.default_doc_language = "nl".to_owned();
+        let mut h = harness_with(app);
+        h.run();
+        h.state_mut().status_note = Some("Saved".to_owned());
+        let label = t(commands::get(choice).label);
+        // View → Language: the language shown is selected; choosing it
+        // again pushes nothing (the note stays, the setting is kept).
+        click(&mut h, &t("ribbon.tab.view"));
+        click(&mut h, &t("action.ui_language"));
+        selected_node(&h, &label).click();
+        h.run();
+        let state = h.state();
+        assert_eq!(state.settings.ui_language.as_deref(), Some(stored));
+        assert_eq!(state.status_note.as_deref(), Some("Saved"), "{stored}");
+        // The settings page shows the same choice.
+        click(&mut h, &t("ribbon.tab.file"));
+        click(&mut h, &t("backstage.settings"));
+        selected_node(&h, &label).click();
+        h.run();
+        assert_eq!(h.state().settings.ui_language.as_deref(), Some(stored));
+    }
 }

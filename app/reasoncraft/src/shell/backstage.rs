@@ -12,7 +12,7 @@ use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::commands;
 use crate::i18n::{UI_LANGUAGES, t};
 use crate::settings::{AUTOSAVE_DEFAULT, AUTOSAVE_MAX, AUTOSAVE_MIN};
-use crate::shell::text_panel::check_key;
+use crate::shell::text_panel::{check_help, check_key};
 use crate::theme::{ThemeChoice, Tokens};
 use reasoncraft_core::checks::CheckKind;
 
@@ -194,12 +194,12 @@ fn settings_page(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
 /// Language.
 fn ui_language(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
     ui.label(RichText::new(t("settings.ui_language")).color(tk.box_text));
-    let current = app.settings.ui_language.clone();
+    let current = app.settings.ui_language_choice();
     ui.horizontal(|ui| {
         let langs = UI_LANGUAGES.map(|l| (l, Some(l)));
         for (key, lang) in std::iter::once(("system", None)).chain(langs) {
             let cmd = commands::get(&format!("view.language.{key}"));
-            let on = current.as_deref() == lang;
+            let on = current == lang;
             if ui.selectable_label(on, t(cmd.label)).clicked() && !on {
                 app.push(cmd.action.clone());
             }
@@ -240,8 +240,10 @@ fn autosave(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
     ui.label(RichText::new(t("settings.autosave_hint")).color(tk.text_muted));
 }
 
-/// One checkbox per course-rule check, its rule as the tooltip.
+/// One checkbox per course-rule check, its rule (for the active
+/// document's language) as the tooltip.
 fn checks(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
+    let doc_lang = app.active_tab().doc.meta.language.clone();
     ui.label(RichText::new(t("settings.checks")).color(tk.box_text));
     ui.label(RichText::new(t("settings.checks_hint")).color(tk.text_muted));
     ui.spacing_mut().item_spacing.y = 4.0;
@@ -250,7 +252,7 @@ fn checks(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
         let mut on = app.settings.checks.is_on(kind);
         if ui
             .checkbox(&mut on, t(&format!("check.kind.{key}")))
-            .on_hover_text(t(&format!("check.help.{key}")))
+            .on_hover_text(check_help(kind, &doc_lang))
             .changed()
         {
             app.push(Action::SetCheckEnabled(kind, on));

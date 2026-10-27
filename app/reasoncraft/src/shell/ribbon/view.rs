@@ -105,7 +105,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 /// its own language.
 fn language_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     let tk = app.tokens;
-    let current = app.settings.ui_language.as_deref();
+    let current = app.settings.ui_language_choice();
     group(ui, &tk, &t("group.language"), |ui| {
         let label = t("action.ui_language");
         let resp = large_menu(ui, &tk, Icon::Language, &label, true);
@@ -113,10 +113,8 @@ fn language_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
             let langs = UI_LANGUAGES.map(|l| (l, Some(l)));
             for (key, lang) in std::iter::once(("system", None)).chain(langs) {
                 let cmd = commands::get(&format!("view.language.{key}"));
-                if ui
-                    .add(Button::new(t(cmd.label)).selected(lang == current))
-                    .clicked()
-                {
+                let on = lang == current;
+                if ui.add(Button::new(t(cmd.label)).selected(on)).clicked() && !on {
                     out.push(cmd.action.clone());
                 }
             }
