@@ -2,10 +2,7 @@
 //! every ribbon command stays reachable by mouse and the map keeps room.
 
 use eframe::egui;
-use egui_kittest::{
-    Harness,
-    kittest::{NodeT, Queryable},
-};
+use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::app::RibbonTab;
 use reasoncraft::i18n::t;
