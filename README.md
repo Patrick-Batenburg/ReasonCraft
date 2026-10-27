@@ -185,6 +185,8 @@ Dragging also reorders: drop an item between its siblings (an insertion bar show
 
 ## Known limitations
 
+- A box with many connectors attached grows so that their arrowheads stay apart: wider top-down and bottom-up, taller left-to-right. A box therefore can't be narrower than its connectors need, even when its width is set in the file.
+
 - macOS: the app has no app menu (About, Hide, Quit), so that Cmd+Q reaches the window and asks about unsaved changes first. Quitting from the Dock, or logging out or shutting down, still quits without asking; with autosave on, the next start offers to recover the work up to the last autosave.
 
 ## Licence

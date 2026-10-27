@@ -78,18 +78,21 @@ impl<'a> Sizer<'a> {
 
 /// The cross length the far edge of each box with ports needs: room for
 /// its group's ports `port_spacing` apart within `port_margin` of each
-/// corner. The middle premises of a card with an even number of premises
-/// also keep their ports a spacing clear of the whole-card ports spread
-/// about the gap between them.
+/// corner. The two middle premises of a card with an even number of
+/// premises also make room for the whole-card ports spread about the gap
+/// between them: each reaches far enough from the gap for half of them,
+/// and keeps its own ports a spacing clear of them.
 fn edge_needs(doc: &Document, p: &LayoutParams) -> HashMap<NodeId, f32> {
+    let (s, margin) = (p.port_spacing, p.port_margin);
     let mut ports: HashMap<NodeId, usize> = doc
         .boxes
         .iter()
         .filter(|(_, node)| !node.children.is_empty())
         .map(|(&id, node)| (id, node.children.len()))
         .collect();
-    // Extra room on each side of a premise beside whole-card ports.
-    let mut clear: HashMap<NodeId, f32> = HashMap::new();
+    // Beside whole-card ports: the extra room on each side of a premise's
+    // own ports, and the least length for its half of the whole-card ports.
+    let mut beside: HashMap<NodeId, (f32, f32)> = HashMap::new();
     for card in doc.cards.values() {
         let whole = card.children.len();
         if whole == 0 {
@@ -98,24 +101,29 @@ fn edge_needs(doc: &Document, p: &LayoutParams) -> HashMap<NodeId, f32> {
         match whole_ports(doc, card) {
             WholePorts::Premise(id) => *ports.entry(id).or_default() += whole,
             WholePorts::Between(a, b) => {
-                // The outermost whole-card port lies this far from the gap
-                // centre, the innermost premise port at least
-                // `premise_gap / 2 + port_margin + extra`.
-                let half = (whole - 1) as f32 * p.port_spacing / 2.0;
-                let extra = half + p.port_spacing - p.premise_gap / 2.0 - p.port_margin;
+                // The outermost whole-card port lies `half` from the gap
+                // centre; past it come a margin (to the frame's corner)
+                // or a spacing (to the premise's innermost own port).
+                let half = (whole - 1) as f32 * s / 2.0;
+                let reach = half + margin - p.premise_gap / 2.0;
+                let extra = (half + s - p.premise_gap / 2.0 - margin).max(0.0);
                 for id in [a, b] {
-                    clear.insert(id, extra.max(0.0));
+                    beside.insert(id, (extra, reach));
                 }
             }
             WholePorts::Frame => {}
         }
     }
-    ports
+    let mut needs: HashMap<NodeId, f32> = ports
         .into_iter()
         .map(|(id, n)| {
-            let extra = clear.get(&id).copied().unwrap_or(0.0);
-            let need = (n - 1) as f32 * p.port_spacing + 2.0 * (p.port_margin + extra);
-            (id, need)
+            let extra = beside.get(&id).map_or(0.0, |b| b.0);
+            (id, (n - 1) as f32 * s + 2.0 * (margin + extra))
         })
-        .collect()
+        .collect();
+    for (id, (_, reach)) in beside {
+        let need = needs.entry(id).or_default();
+        *need = need.max(reach);
+    }
+    needs
 }

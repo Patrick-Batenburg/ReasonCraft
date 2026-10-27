@@ -272,7 +272,16 @@ fn crowded_premise_markers_stay_clear() {
 #[test]
 fn whole_card_ports_stay_clear_of_premise_ports() {
     for dir in LayoutDirection::ALL {
-        for (premises, own, whole) in [(3, 1, 8), (2, 9, 5), (2, 1, 3), (4, 3, 2)] {
+        let cases = [
+            (3, 1, 8),
+            (2, 9, 5),
+            (2, 1, 3),
+            (4, 3, 2),
+            (2, 0, 12),
+            (2, 0, 24),
+            (4, 0, 6),
+        ];
+        for (premises, own, whole) in cases {
             let mut doc = Document::new("Claim");
             doc.layout_direction = dir;
             let (card, first) = doc
@@ -295,7 +304,28 @@ fn whole_card_ports_stay_clear_of_premise_ports() {
                 doc.add_card(Parent::Card(card), mixed(i + 1), &format!("Whole {i}"))
                     .unwrap();
             }
-            assert_markers_clear(&doc, &format!("{dir:?} {premises}/{own}/{whole}"));
+            let what = format!("{dir:?} {premises}/{own}/{whole}");
+            assert_markers_clear(&doc, &what);
+            assert_ports_spaced(&doc, &what);
+        }
+    }
+}
+
+/// Every stub of `doc` runs straight along the main axis (none fans out),
+/// and ports on one line are `port_spacing` apart or more.
+fn assert_ports_spaced(doc: &Document, what: &str) {
+    let p = LayoutParams::default();
+    let lay = layout(doc, &Fake, &p);
+    let toward = doc.layout_direction.toward_parent();
+    let main = |v: Pos2| v.to_vec2().dot(toward.abs());
+    let cross = |v: Pos2| v.to_vec2().dot(toward.rot90().abs());
+    for (i, c) in lay.connectors.iter().enumerate() {
+        assert_eq!(c.approach, toward, "{what}: a fanned stub");
+        for d in &lay.connectors[i + 1..] {
+            if (main(c.to) - main(d.to)).abs() < 0.01 {
+                let gap = (cross(c.to) - cross(d.to)).abs();
+                assert!(gap >= p.port_spacing - 1e-3, "{what}: ports {gap} apart");
+            }
         }
     }
 }
