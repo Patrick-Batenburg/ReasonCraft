@@ -3,8 +3,10 @@
 //! it, open it again and check that nothing was lost. The step-3 text
 //! panel flow is in [`text_panel`], the title/author session on the
 //! close paths in [`meta_sessions`], the step-4 essay and exports in
-//! [`output`].
+//! [`output`], the step-5 interchange (find, spelling, Argdown, SVG,
+//! recovery) in [`interchange`].
 
+mod interchange;
 mod meta_sessions;
 mod output;
 mod text_panel;

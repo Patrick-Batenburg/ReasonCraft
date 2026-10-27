@@ -40,7 +40,7 @@ fn paragraph(b: NodeId, text: &str) -> Action {
 
 /// Exports the active map as `format` to `dir/out.<ext>` and returns the
 /// file's bytes.
-fn export(
+pub(super) fn export(
     app: &mut ReasonCraftApp,
     fake: &FakeDialogs,
     dir: &Path,

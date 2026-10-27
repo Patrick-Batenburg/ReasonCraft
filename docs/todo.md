@@ -57,7 +57,7 @@
   - [x] Task 10: Word export
   - [x] Task 11: Image insert off the UI thread
   - [x] Task 12: End-to-end verification and docs
-- [ ] Step 5 — Interchange & polish ([plan](plans/2026-10-25-step5-interchange-polish.md))
+- [x] Step 5 — Interchange & polish ([plan](plans/2026-10-25-step5-interchange-polish.md))
   - [x] Task 1: Split core files; stronger validate()
   - [x] Task 2: Spec-alignment items from the step 4 review
   - [x] Task 3: Command registry and Search commands
@@ -73,7 +73,7 @@
   - [x] Task 13: Argdown import
   - [x] Task 14: Check carry-overs
   - [x] Task 15: Export and panel carry-overs
-  - [ ] Task 16: End-to-end verification and docs
+  - [x] Task 16: End-to-end verification and docs
 - [ ] Step 6 — Release readiness: Dutch, accessibility, help, examples, templates, installers
 
 ## Review
@@ -250,19 +250,85 @@ Writing this test showed a real bug. An image export applied without a running f
 - The 6 s for an export notice also run while the busy chip hides it.
 - A Word file with no author set keeps docx-rs's "unknown" creator.
 
+### Step 5 — Interchange and polish (2026-10-27)
+
+**Tests:** 752 pass, 12 ignored, across the workspace (debug, `cargo test --workspace -j 4`):
+- core: 185 unit tests, plus 56 integration tests (`checks` 11, `checks_hints` 3, `checks_text` 7, `essay_file` 1, `layout` 10, `layout_compact` 2, `layout_direction` 5, `layout_sources` 2, `outline` 8, `outline_md` 5, `snippet_file` 2);
+- spell: 8 unit tests;
+- app: 285 unit tests, 209 UI and integration tests in 33 files (egui_kittest; new in step 5: `close_waits`, `command_search`, `connector_style`, `find`, `import_argdown`, `layout_direction`, `minimap`, `panel_rows`, `recovery` (22), `spelling`, `tab_fields`, and `ui.rs` split into `ui_editing`, `ui_files`, `ui_navigation`, `ui_ribbon` and `ui_shell`) and 9 end-to-end tests (`tests/e2e/`).
+
+`cargo test --workspace --release -j 4` gives 751 passed (one debug-only core test is left out of release builds). The 12 ignored release-only timing tests pass with `cargo test --workspace --release -- --ignored`: `layout_500_boxes_fast`, `outline_500_boxes_fast`, `checks_500_boxes_fast`, `scene_500_boxes_fast`, the kittest `outline_scrolls_large_map`, six linear-time Argdown import tests and the dictionary `load_speed`. `cargo clippy --workspace --all-targets -- -D warnings` and `cargo fmt --check` are clean, and `cargo build --release -p reasoncraft` succeeds.
+
+The new end-to-end test `tests/e2e/interchange.rs` (`interchange_round_trip`) runs in an app that autosaves to a temp recovery folder, and uses actions and `FakeDialogs` only:
+1. It builds a Dutch map with a title and an author: a claim, a two-premise reason with a statistic source, an objection on one premise, a whole-card rebuttal of that objection and a parked note.
+2. It sets left to right, tapered connectors and numbers on.
+3. Find "fiets" has 3 hits. Replace all with "bike" is one history step, one Undo restores every box, and Redo brings the replacement back.
+4. The spelling pass, started on the premise with the seeded "gezondt", waits for the Dutch dictionary, offers "gezond" and changes it.
+5. It exports Argdown, imports the file into a new tab (no import report) and checks `structurally_equal` against the source tab.
+6. It exports SVG from both tabs and checks that the files are byte-identical. The imported tab is set to left to right first, because Argdown has no layout direction (ruling T16-2), and the SVG writer emits no ids (ruling T16-1). Setting the imported tab to top-down instead makes the test fail.
+7. It autosaves, drops the app without a normal exit (a crash), starts a new app on the same folder, sees the recovery prompt with both maps, chooses Restore all, and finds both documents back, equal and unsaved.
+
+**Checked by hand** (Windows 11, release build). No keyboard or mouse input was sent to the desktop (ruling O2). The artefacts are in `.superpowers/sdd/2026-10-25-step5-interchange-polish/` as `task-16-*`. A throwaway test made them and was deleted.
+- `task-16-sample.rcraft` is the Dutch map above, with ratings: the claim accepted, the reason strong, the objection weak, the rebuttal strong, a second reason nil and the source solid. The PNG exports `task-16-top_down-curved.png`, `task-16-bottom_up-elbow.png` and `task-16-left_right-tapered.png` all show:
+  - the numbers (1a, 1b, 1b.1, 1b.1.w1, 2);
+  - the rating labels clear of the connectors;
+  - the source under its premise;
+  - no screen-only overlays.
+
+  The parking area is left out, as in every image export. In bottom-up elbow, the objection's connector makes a small sideways jog (about 9 px at 2×), because it attaches to the premise, not the card centre.
+- The default outlined SVG was rendered with resvg at 4× (`task-16-outlined-resvg-4x.png`, close-up `task-16-outlined-bold-zoom.png`). The bold "Statistic" label is one path with `paint-order="stroke"`. The stroke sits under the fill, the counters stay open and the edges are clean.
+- Elbow connectors and rating labels were checked on a dense left-to-right map (`sample_iot_like(60)` with every card rated, `task-16-dense-left_right-elbow.png`). No connector crosses a rating label, and the labels stay in the card's top band. Where many children attach to one premise (Reason 0, with nine), their arrowheads pile up at nearly one point on the premise's edge.
+- The first F7 was timed on `sample_iot_like(500)` in release:
+  - The English dictionary loads in about 7 ms, and the first pass walks all 500 boxes in 1.8 ms (the sample has no English misspellings).
+  - With the language set to Dutch, the English text is full of "misspellings". The first stop takes 46 ms, and a whole pass of 2,296 Ignore steps takes 118 s, about 51 ms per step. Most of that is suggestions: about 11 ms per word in English and 29 ms in Dutch.
+  - Each click stays responsive, but suggestions run on the UI thread.
+- Window capture `task-16-window.png` (PrintWindow, the sample passed on the command line, no input) shows:
+  - the map left to right with tapered connectors and the numbers on the boxes;
+  - the find bar with "fiets" and "bike", at "1 of 4" (whole word is off, so "Fietsers" matches), with the hits outlined;
+  - the minimap in the bottom-right corner;
+  - the Outline with the same numbers.
+
+  A temporary local build turned these on: an environment-variable switch in `main.rs` set the numbers, the minimap, tapered connectors and the find bar, and pointed eframe's settings and the recovery folder at temp folders. It was reverted before the commit. The settings file `app.ron` had the same SHA-256 before and after, and no recovery folder was created under `%LOCALAPPDATA%`.
+
+**Known limitations:**
+- The map's card labels and source names ("strongly supports", "Statistic") and all new UI strings are English only. Dutch UI is step 6.
+- Spelling suggestions run on the UI thread, at about 30–50 ms per step of a Dutch F7 pass.
+- When many children attach to one premise, their arrowheads pile up on its edge. In left-to-right maps, the opposes bars of ports close together on one card edge can overlap.
+- Sources form a row under their premise. In crowded left-to-right cards, a row can sit beside its premise (ruling T5-3).
+- In exports, a box with only a link or comments keeps a blank indicator band (ruling T6-4).
+- Argdown:
+  - The official Argdown map view may show a redundant relation for whole-card conclusions. This could not be checked offline.
+  - Comment dates, the links and comments of notes, where notes sit among their siblings, images and the layout direction are not carried.
+  - Identical repeated arguments are reported more than once, and a few refused relations go unreported.
+- Find does not search comments (ruling B3).
+- Autosave:
+  - Two instances started at the same instant can both offer the same crashed session (no data is lost).
+  - A retry after a failed restore write offers the orphan again.
+- Ignoring the "not rated yet" hint only holds while the number of unrated items stays the same.
+- The Essay and Check tabs keep the last height of rows out of view, so the scroll position can shift slightly after edits above the view.
+- In the PDF, the bold outline is not selectable text; the plain text under it is (ruling T15-1).
+- The Search commands list rebuilds its labels (about 160 strings) every frame while it is open.
+
 ## Carry-over from step 4 reviews
-- [ ] Step 5: draw PDF bold once (no duplicate text on copy); non-PNG assets in exports; split `crates/reasoncraft_core/src/edit.rs` (916 lines) and `file.rs` (603 lines)
-- [ ] Step 5: virtualise the Essay tab (cached heights) and the Check tab
+- [x] Step 5 (Tasks 1, 15): draw PDF bold once (no duplicate text on copy); non-PNG assets in exports; split `crates/reasoncraft_core/src/edit.rs` (916 lines) and `file.rs` (603 lines)
+- [x] Step 5 (Task 15): virtualise the Essay tab (cached heights) and the Check tab
 - [ ] Step 6: map labels and source names in exports by document language (with the Dutch UI); open the Word files in Word and LibreOffice; test the clipboard on Linux; upgrade resvg/usvg together with svg2pdf
-- [ ] Step 5 (final review): Copy as image of the selection (spec §9); essay plain-text export (`essay_plain_text` exists); File backstage Export…/Print entries (spec §6); essay paragraphs for vanished boxes become unplaced notes on load; Word files carry the document language; split `app/reasoncraft/tests/ui.rs` (1228 lines) and `tests/export.rs`; tell the user when a paste is cut at 50 000 characters; clear `edit_focus` when undo drops an inline edit; setext/indented-code Markdown escaping; mesh/strip fill in the scene painter (tapered connectors are not convex); connector style and direction in `SceneOptions`
+- [x] Step 5 (Tasks 1, 2, 6; each connector carries its direction and style, ruling T6-3) (final review): Copy as image of the selection (spec §9); essay plain-text export (`essay_plain_text` exists); File backstage Export…/Print entries (spec §6); essay paragraphs for vanished boxes become unplaced notes on load; Word files carry the document language; split `app/reasoncraft/tests/ui.rs` (1228 lines) and `tests/export.rs`; tell the user when a paste is cut at 50 000 characters; clear `edit_focus` when undo drops an inline edit; setext/indented-code Markdown escaping; mesh/strip fill in the scene painter (tapered connectors are not convex); connector style and direction in `SceneOptions`
 - [ ] Step 6 (final review): lower the 256 MP PNG cap or check memory first (allocation failure aborts the app); swappable i18n bundle plus a document-language label provider for the scene (labels are also made on the export worker); one home for source-type names (en.ftl and core words.rs); translate the page-cap detail and the new close/export prompts into Dutch; Windows: a print file name still being deleted gives PermissionDenied instead of trying the next name
+
+## Carry-over from step 5 (for step 6)
+- [ ] Dutch `nl.ftl` with every UI string, including all strings added since step 4 (find bar, spelling panel, Search commands, layout direction and connector menus, minimap, numbers, autosave settings, recovery prompt, Argdown import report, Ignore/Show ignored hints, essay Plain text export, backstage Export/Print/Import); map labels and source names by document language
+- [ ] macOS keys: Replace is Ctrl+H, but Cmd+H hides the app (ruling F3); review Alt+arrow reorder (Alt+Up/Down in left-to-right maps) and Alt+Q (Option types characters on macOS) with the rest of the macOS key review
+- [ ] Accessibility of the new widgets: find bar, spelling panel, Search commands list, minimap (keyboard and screen reader), recovery prompt, Check tab Ignore buttons, Argdown import report, export dialog options
+- [ ] Spelling suggestions off the UI thread (or cached), so a Dutch F7 pass steps faster than ~50 ms
+- [ ] Spread the arrowheads where many children attach to one premise
 
 ## Carry-over from step 1 reviews (put into the step 2+ plans)
 - [x] Step 2, first item: drag siblings to reorder them (spec §5), with a keyboard equivalent; add a "Connect to…" command for parking items
 - [x] Step 2: rebind the whole-card objection shortcut — Ctrl+Shift+Tab is the app switcher on macOS (Cmd) and usually "previous tab"
 - [x] Step 2: store roles/strength in `Layout` so evaluation visuals add no per-frame `owner_of` scans; design an image asset store kept out of undo snapshots; save must keep unknown zip entries
-- [ ] Step 5: compact layout (contour packing) so 100+ box maps stay readable at Fit; lay out on main/cross axes for layout directions
-- [ ] Step 5: `validate()` should also check map key == stored id and kind-level attach rules (needed for Argdown import)
+- [x] Step 5 (Tasks 4, 5): compact layout (contour packing) so 100+ box maps stay readable at Fit; lay out on main/cross axes for layout directions
+- [x] Step 5 (Task 1): `validate()` should also check map key == stored id and kind-level attach rules (needed for Argdown import)
 - [ ] Step 6: make the i18n bundle swappable for Dutch; Backspace deletes on macOS; verify Cmd+Q goes through the unsaved-changes prompt; close-button glyph contrast; long tab titles truncate
 
 ## Carry-over from step 2 reviews
@@ -270,11 +336,11 @@ Writing this test showed a real bug. An image export applied without a running f
 - [x] Step 3: keep theme/panel/marker toggles on the Connect-mode keep-list (optional polish)
 - [x] Step 4, first task: backend-neutral painter (shape list / surface trait, images by asset key, PaintOptions export flag without selection/badges/link glyphs/grid) before any exporter
 - [x] Step 4: inserting large photos off the UI thread (worker + busy state)
-- [ ] Step 5: link glyph vs rightmost arrowheads on busy boxes; badge/marker overlap between adjacent co-premises
+- [x] Step 5 (Task 6, ruling T6-1): link glyph vs rightmost arrowheads on busy boxes; badge/marker overlap between adjacent co-premises
 - [ ] Step 6: store empty comment author and translate on display; stop parsing '●' out of ftl strings (dot count in code); Unicode Cf characters in links; duplicate accessible names (Nil, panel vs ribbon)
 
 ## Carry-over from step 3 reviews
 - [x] Step 4, task 1: one `EditSession` enum (box/snippet/meta/essay) with a single snapshot; split actions.rs, doc_tab.rs, model.rs (roles.rs + card_roles == card_role test); plural selector for "not rated yet"; release-mode test build (cfg the debug-only helper test)
 - [x] Step 4: exports and Essay use the document language for linking words ("because"/"omdat")
-- [ ] Step 5: per-issue "ignore this hint" stored in the document; CheckSet tolerant of unknown kinds; skip quoted text in Compound
+- [x] Step 5 (Task 14): per-issue "ignore this hint" stored in the document; CheckSet tolerant of unknown kinds; skip quoted text in Compound
 - [ ] Step 6: Compound help by document language; panel min width; drag polish (snippet card follow, autoscroll)
