@@ -75,7 +75,7 @@
   - [x] Task 15: Export and panel carry-overs
   - [x] Task 16: End-to-end verification and docs
 - [ ] Step 6 — Release readiness ([plan](plans/2026-10-27-step6-release-readiness.md))
-  - [ ] Task 1: Housekeeping: file splits and tolerant settings
+  - [x] Task 1: Housekeeping: file splits and tolerant settings
   - [ ] Task 2: Swappable i18n and the UI language
   - [ ] Task 3: Labels in the document's language
   - [ ] Task 4: Dutch translation
