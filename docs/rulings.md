@@ -150,3 +150,7 @@ Made while implementing:
 - Ruling S6-F4: copyright line "Patrick van Batenburg and ReasonCraft contributors"; installer publisher stays "ReasonCraft contributors" — cost: none.
 - Ruling S6-F5: crate licence list split line by line and pinned to LF so Windows checkouts keep it; copyright lines in nsis.txt/spellbook.txt copied verbatim or reduced to plain attributions — cost: none.
 
+## After step 6 — owner feedback
+- Ruling R-1: the ribbon follows WordCraft (owner's reference screenshots and its Apache-2.0 source): groups shrink from the right (full → icon-only small buttons → one drop-down per group), give back from the left, and only then scroll with 18 pt ‹ › strips overlaid on the row ends (no reserved gutter). WordCraft's give-back order is kept, so a middle group may fold while a group to its right stays full — cost: that order can look odd; adapted code credited in file headers and THIRD-PARTY.md.
+- Ruling R-2: rating buttons and Connect keep a folded drop-down open (repeated or mode-starting actions); other commands close it — cost: none.
+

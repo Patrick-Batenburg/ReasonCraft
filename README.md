@@ -213,7 +213,7 @@ Dragging also reorders: drop an item between its siblings (an insertion bar show
 
 - A box with many connectors attached grows so that their arrowheads stay apart: wider top-down and bottom-up, taller left-to-right. A box therefore can't be narrower than its connectors need, even when its width is set in the file.
 
-- In a narrow window (for example at 150 % interface size on a laptop screen) a ribbon tab does not fit at once: arrows at its ends scroll it, as does the mouse wheel over it. The side panels then get narrower so the map keeps room.
+- In a narrow window (for example at 150 % interface size on a laptop screen) the ribbon groups shrink from the right, as in WordCraft: small buttons drop their labels, then a group folds into one drop-down ("Add ▾") that opens the whole group. Only if even that does not fit does the row scroll, with thin ‹ › arrows over its ends or the mouse wheel. The side panels then get narrower so the map keeps room.
 
 - In Dutch, at 150 % interface size in the smallest window (800 × 500), the Text panel's tabs wrap onto a second line.
 

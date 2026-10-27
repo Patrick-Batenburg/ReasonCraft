@@ -360,7 +360,7 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 
 **Known limitations:**
 - In Dutch, at 150 % in the smallest window (800 × 500), the Text panel's tabs wrap onto a second line.
-- In a narrow window a ribbon tab scrolls sideways (arrows at its ends, or the wheel) rather than collapsing its groups to icons (Task 14).
+- In a narrow window ribbon groups shrink and fold into drop-downs from the right (WordCraft behaviour); the row scrolls with overlaid ‹ › arrows only as a last resort.
 - Task 14: Print was not exercised end to end on the host (it hands a PDF to the system viewer). The other findings were fixed in the review round (see `task-14-findings.md`).
 - macOS is configured but unverified: no Mac was available, and CI runs only once a remote exists (ruling M3). Double-clicking a `.rcraft` file starts the app without opening the file (ruling S6-T11-2). There is no app menu, and quitting from the Dock, logging out or shutting down does not ask about unsaved changes (ruling S6-T6-2).
 - The installers are not code-signed, so SmartScreen and Gatekeeper warn (ruling L3).

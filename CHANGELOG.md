@@ -26,7 +26,7 @@ The first release.
 - Curved, elbow or tapered connectors; arrowheads kept apart where many connectors meet a box.
 - Minimap, outline numbers on the map, zoom to fit the map or the selection.
 - Light and dark themes, and an interface size from 80 % to 200 %.
-- Small windows: a ribbon tab that does not fit scrolls sideways (arrows at its ends, or the mouse wheel), and the side panels give way so the map keeps room.
+- Small windows: ribbon groups shrink from the right (labels first, then folded into drop-downs, as in WordCraft); only when that is not enough does the row scroll, with thin ‹ › arrows over its ends or the mouse wheel. The side panels give way so the map keeps room.
 
 ### Writing
 - The Text panel: the Outline, the Essay (a text field for each part, ordered strongest first), the Check hints, Snippets of source text and the Help.
