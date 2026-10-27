@@ -71,7 +71,7 @@
   - [x] Task 11: Autosave and crash recovery
   - [x] Task 12: Argdown export
   - [x] Task 13: Argdown import
-  - [ ] Task 14: Check carry-overs
+  - [x] Task 14: Check carry-overs
   - [ ] Task 15: Export and panel carry-overs
   - [ ] Task 16: End-to-end verification and docs
 - [ ] Step 6 — Release readiness: Dutch, accessibility, help, examples, templates, installers
