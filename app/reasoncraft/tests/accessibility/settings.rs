@@ -19,8 +19,12 @@ impl eframe::Storage for MemStorage {
     fn flush(&mut self) {}
 }
 
+/// Open the settings page (its entry may be scrolled out of view at a
+/// large UI scale).
 fn settings_page(h: &mut H) {
     h.get_by_label(&t("ribbon.tab.file")).click();
+    h.run();
+    h.get_by_label(&t("backstage.settings")).scroll_to_me();
     h.run();
     h.get_by_label(&t("backstage.settings")).click();
     h.run();
@@ -75,7 +79,7 @@ fn ui_scale_applies_and_persists() {
 }
 
 /// Reset to defaults asks first, then restores every setting but the
-/// personal dictionary (and, once there is one, the recent-files list).
+/// personal dictionary and the recent-files list.
 #[test]
 fn reset_to_defaults_keeps_recent_and_dictionary() {
     let mut app = ReasonCraftApp::new_for_test();
@@ -86,6 +90,7 @@ fn reset_to_defaults_keeps_recent_and_dictionary() {
     s.show_numbers = true;
     s.autosave_secs = 0;
     s.spell_words = vec!["Zork".into()];
+    s.recent_files = vec!["maps/a.rcraft".into()];
     let mut h = harness_with(app);
     settings_page(&mut h);
     reset_button(&mut h);
@@ -100,6 +105,7 @@ fn reset_to_defaults_keeps_recent_and_dictionary() {
     h.run();
     let want = Settings {
         spell_words: vec!["Zork".into()],
+        recent_files: vec!["maps/a.rcraft".into()],
         ..Settings::default()
     };
     assert_eq!(h.state().settings, want);

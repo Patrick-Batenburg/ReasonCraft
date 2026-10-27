@@ -4,7 +4,8 @@
 
 - Een kaart wordt bewaard als één `.rcraft`-bestand. Daarin staan de kaart, de afbeeldingen, de fragmenten en het betoog.
 - Bestand > **Opslaan** (Ctrl+S) bewaart de kaart; de eerste keer vraagt het waar. **Opslaan als** (Ctrl+Shift+S) bewaart de kaart onder een nieuwe naam; daarna werk je in dat bestand.
-- Bestand > **Openen** (Ctrl+O) opent een kaart in een nieuw tabblad. Bestand > **Nieuw** (Ctrl+N) begint een lege kaart.
+- Bestand > **Openen** (Ctrl+O) opent een kaart in een nieuw tabblad. Bestand > **Recent** toont de laatste tien kaarten die je hebt geopend of opgeslagen; klik erop om er een weer te openen.
+- Bestand > **Nieuw** biedt een lege kaart, sjablonen om mee te beginnen en de voorbeeldkaarten. Elk ervan opent in een nieuw tabblad, als kaart die nog niet is opgeslagen. Met Ctrl+N begin je meteen een lege kaart.
 - Elke open kaart heeft een eigen tabblad boven het lint. Sluit je een tabblad, of het venster, met niet-opgeslagen wijzigingen, dan wordt eerst gevraagd of je ze wilt opslaan.
 - Bestand > **Document** bevat de titel, de auteur en de taal van de open kaart.
 
@@ -26,7 +27,7 @@ In Bestand > Instellingen stel je in hoe vaak automatisch opslaan gebeurt: van 3
 
 ## Instellingen
 
-Bestand > **Instellingen** bevat je eigen voorkeuren: de taal en grootte van de interface, je naam voor opmerkingen, het thema, de taal van nieuwe kaarten, de spellingcontrole, automatisch opslaan en de controles. **Standaardinstellingen herstellen** zet ze allemaal terug zoals bij de eerste start, behalve je eigen woordenlijst.
+Bestand > **Instellingen** bevat je eigen voorkeuren: de taal en grootte van de interface, je naam voor opmerkingen, het thema, de taal van nieuwe kaarten, de spellingcontrole, automatisch opslaan en de controles. **Standaardinstellingen herstellen** zet ze allemaal terug zoals bij de eerste start, behalve je eigen woordenlijst en de lijst met recente kaarten.
 
 ## Lees verder
 

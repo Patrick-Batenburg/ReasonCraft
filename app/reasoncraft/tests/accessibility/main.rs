@@ -228,9 +228,13 @@ fn every_interactive_widget_has_a_name() {
     act(&mut h, Action::ResetSettings);
     all.extend(problems(&h, "reset prompt"));
     act(&mut h, Action::DismissModal);
+    // Two recent maps of the same name, in different folders.
+    h.state_mut().settings.recent_files = vec!["one/map.rcraft".into(), "two/map.rcraft".into()];
     h.state_mut().ribbon_tab = RibbonTab::File;
     h.run();
     for page in [
+        "action.new",
+        "backstage.recent",
         "backstage.document",
         "backstage.settings",
         "backstage.about",

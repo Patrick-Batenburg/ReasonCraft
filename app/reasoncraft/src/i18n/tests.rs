@@ -203,6 +203,7 @@ const SAME_IN_DUTCH: &[&str] = &[
     "settings-ui_scale_unit",
     "a11y-in_group",
     "spell-suggesting",
+    "backstage-recent",
 ];
 
 #[test]

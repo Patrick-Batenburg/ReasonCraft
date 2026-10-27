@@ -23,6 +23,7 @@ use reasoncraft_core::{
     BoxKind, CardKind, CardStrength, Document, Item, NewLoose, Parent, SourceType,
 };
 
+mod examples;
 mod help;
 mod ribbon_fit;
 

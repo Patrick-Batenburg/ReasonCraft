@@ -4,7 +4,8 @@
 
 - A map is saved as one `.rcraft` file. It holds the map, its images, the snippets and the essay.
 - File > **Save** (Ctrl+S) saves the map; the first time, it asks where. **Save As** (Ctrl+Shift+S) saves the map under a new name; from then on you work in that file.
-- File > **Open** (Ctrl+O) opens a map in a new tab. File > **New** (Ctrl+N) starts an empty map.
+- File > **Open** (Ctrl+O) opens a map in a new tab. File > **Recent** lists the last ten maps you opened or saved; click one to open it again.
+- File > **New** offers a blank map, templates to start from and the example maps. Each opens in a new tab, as a map that has not been saved yet. Ctrl+N starts an empty map at once.
 - Each open map has its own tab above the ribbon. Closing a tab, or the window, with unsaved changes asks whether to save them first.
 - File > **Document** holds the title, the author and the language of the open map.
 
@@ -26,7 +27,7 @@ File > Settings sets how often autosave runs: from 30 to 600 seconds, or off.
 
 ## Settings
 
-File > **Settings** holds your own preferences: the interface language and size, your name for comments, the theme, the language of new maps, spellcheck, autosave and the checks. **Reset to defaults** puts them all back as at the first start, except your personal dictionary.
+File > **Settings** holds your own preferences: the interface language and size, your name for comments, the theme, the language of new maps, spellcheck, autosave and the checks. **Reset to defaults** puts them all back as at the first start, except your personal dictionary and the list of recent maps.
 
 ## Read on
 

@@ -130,6 +130,17 @@ pub fn open_into_app(app: &mut ReasonCraftApp, path: &Path) {
     }
 }
 
+/// Open `path` from the recent-files list. When it cannot be opened, say
+/// why; when it is gone, it also leaves the list.
+pub fn open_recent(app: &mut ReasonCraftApp, path: &Path) {
+    if let Err(err) = try_open(app, path) {
+        if !path.exists() {
+            app.settings.recent_files.retain(|p| p != path);
+        }
+        show_error(app, FileOp::Open, path, &err);
+    }
+}
+
 /// Open the files named on the command line. Arguments that are not
 /// existing files are skipped; the first file that fails to open is shown.
 pub fn open_paths(app: &mut ReasonCraftApp, args: impl IntoIterator<Item = OsString>) {
@@ -153,17 +164,32 @@ fn same_file(a: &Path, b: &Path) -> bool {
     }
 }
 
-/// A tab nobody has worked in: untitled, with no history and no edit.
+/// A blank tab nobody has worked in: untitled, with no history, no edit
+/// and only an empty claim (an example or template opened clean is not
+/// blank, so it stays).
 fn is_untouched(tab: &DocTab) -> bool {
     tab.path.is_none()
         && tab.history.undo.is_empty()
         && tab.history.redo.is_empty()
         && !tab.is_dirty()
+        && tab.doc.boxes.len() == 1
+        && tab
+            .doc
+            .boxes
+            .get(&tab.doc.root)
+            .is_some_and(|b| b.text.is_empty())
 }
 
 /// Open `path`: activate its tab if it is already open, else load it into
-/// the active tab when that one is untouched, else into a new tab.
+/// the active tab when that one is untouched, else into a new tab. Either
+/// way it goes first in the recent files.
 fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
+    open_or_activate(app, path)?;
+    app.settings.push_recent(path);
+    Ok(())
+}
+
+fn open_or_activate(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
     let open_tab = app
         .tabs
         .iter()

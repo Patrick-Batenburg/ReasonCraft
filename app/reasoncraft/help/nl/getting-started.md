@@ -5,7 +5,7 @@ Met ReasonCraft denk je een vraag goed door: je tekent hem als kaart. Bovenaan z
 ## Het venster
 
 - Het **lint** bovenaan bevat de opdrachten, op de tabbladen Bestand, Start, Beoordelen, Beeld, Exporteren en Help. (Het tabblad Invoegen komt in een latere versie.)
-- **Bouwstenen** links bevat vakken, bronnen en standaardopmerkingen. Klik erop om het bij de selectie toe te voegen, of sleep het naar de kaart.
+- **Bouwstenen** links bevat vakken, bronnen, standaardopmerkingen en sjablonen. Klik op een vak, bron of opmerking om het bij de selectie toe te voegen, of sleep het naar de kaart; klik op een sjabloon om er een nieuwe kaart mee te beginnen.
 - In het midden staat de **kaart**: daar bouw je. Scroll met het muiswiel (Shift+wiel opzij), of sleep met de rechter- of middelste muisknop, of houd Spatie ingedrukt en sleep. Ctrl+wiel zoomt, net als het tabblad Beeld en de schuifregelaar in de statusbalk.
 - Het **Tekstpaneel** rechts heeft de tabbladen Opzet, Betoog, Controle, Fragmenten en Help.
 - De **statusbalk** onderaan telt de vakken en de tips van het tabblad Controle.
@@ -37,6 +37,10 @@ Wat je op een lege plek laat vallen, of wat overblijft als je het vak erboven ve
 - Het vak **Opdrachten zoeken** in de titelbalk (Alt+Q) vindt elke opdracht op naam.
 - F6 brengt de toetsenbordfocus van het lint naar de panelen, de kaart en de statusbalk.
 - F1 opent hulp bij het deel van het venster waarin je werkt.
+
+## Voorbeeldkaarten en sjablonen
+
+Wil je eerst een afgemaakte kaart zien? Open het tabblad Help van het lint en klik in de groep **Voorbeeldkaarten** op **Voorbeeld argumentkaart** of **Voorbeeld groeperingskaart**. Het voorbeeld van de argumentkaart laat redenen, bezwaren, medepremissen, een weerlegging, bronnen en beoordelingen zien; je mag het zo veel veranderen als je wilt, het is een kopie. Bestand > **Nieuw** heeft dezelfde voorbeelden, en daarnaast sjablonen om mee te beginnen, zoals een betoogplan.
 
 ## Lees verder
 

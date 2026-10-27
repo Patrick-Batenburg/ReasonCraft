@@ -21,6 +21,7 @@ mod comments;
 mod editing;
 mod essay;
 mod evaluate;
+mod examples;
 mod export;
 mod find;
 mod help;
@@ -134,6 +135,9 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
             app.apply_ui_language();
         }
         Action::ResolveRecovery(choice) => crate::recovery::resolve(app, choice),
+        Action::OpenExample(_) | Action::OpenTemplate(_) | Action::OpenRecent(_) => {
+            examples::apply(app, action)
+        }
         Action::OpenHelp(_) | Action::ContextHelp | Action::HelpBack | Action::ShowAbout => {
             help::apply(app, action)
         }
@@ -337,7 +341,10 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::OpenHelp(_)
         | Action::ContextHelp
         | Action::HelpBack
-        | Action::ShowAbout => unreachable!("app-level action"),
+        | Action::ShowAbout
+        | Action::OpenExample(_)
+        | Action::OpenTemplate(_)
+        | Action::OpenRecent(_) => unreachable!("app-level action"),
         #[cfg(debug_assertions)]
         Action::LoadSampleMap | Action::ToggleSourceIcons => unreachable!("app-level action"),
     }

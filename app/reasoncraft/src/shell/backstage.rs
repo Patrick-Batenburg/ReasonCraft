@@ -17,11 +17,19 @@ use crate::shell::text_panel::{check_help, check_key};
 use crate::theme::{ThemeChoice, Tokens};
 use reasoncraft_core::checks::CheckKind;
 
+mod choice;
 mod document;
+mod new_page;
+mod recent;
+pub(crate) use new_page::template_key;
 
 /// A page beside the entries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum Page {
+    /// A blank map, the templates and the examples.
+    New,
+    /// The maps last opened or saved.
+    Recent,
     /// Title, author and language of the document.
     Document,
     /// Personal preferences.
@@ -56,7 +64,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         .frame(Frame::new().fill(tk.panel).inner_margin(Margin::same(24)))
         .show(ui, |ui| {
             let mut page = ui.data(|d| d.get_temp::<Option<Page>>(page_id()).flatten());
-            ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+            let left = ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                 ui.vertical(|ui| {
                     ui.set_width(220.0);
                     // The entries scroll too when they do not fit (at a
@@ -71,15 +79,27 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     // Scrolls when it does not fit (at a large UI scale),
                     // each page on its own.
                     let scroll = egui::ScrollArea::vertical().id_salt(page);
-                    scroll.show(ui, |ui| {
-                        ui.vertical(|ui| match page {
-                            Page::Document => document::page(ui, app),
-                            Page::Settings => settings_page(ui, app),
-                            Page::About => super::about::page(ui, app),
+                    // True when a map was chosen on the page.
+                    let chosen = scroll.show(ui, |ui| {
+                        ui.vertical(|ui| {
+                            match page {
+                                Page::New => return new_page::page(ui, app),
+                                Page::Recent => return recent::page(ui, app),
+                                Page::Document => document::page(ui, app),
+                                Page::Settings => settings_page(ui, app),
+                                Page::About => super::about::page(ui, app),
+                            }
+                            false
                         })
+                        .inner
                     });
+                    chosen.inner
+                } else {
+                    false
                 }
             });
+            // After choosing a map, the backstage opens afresh next time.
+            let page = if left.inner { None } else { page };
             ui.data_mut(|d| d.insert_temp(page_id(), page));
         });
     let pane = crate::shell::panes::Pane::Backstage;
@@ -96,8 +116,13 @@ fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Option<Page>)
     };
     let items = [
         (Icon::Back, "backstage.back", Entry::Command(None)),
-        command(Icon::New, "file.new"),
+        (
+            Icon::New,
+            commands::get("file.new").label,
+            Entry::Page(Page::New),
+        ),
         command(Icon::Open, "file.open"),
+        (Icon::Open, "backstage.recent", Entry::Page(Page::Recent)),
         command(Icon::Open, "file.import_argdown"),
         command(Icon::Save, "file.save"),
         command(Icon::SaveAs, "file.save_as"),

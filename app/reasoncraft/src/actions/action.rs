@@ -1,7 +1,10 @@
 //! The commands the user can give (see [`super::apply`]).
 
+use std::path::PathBuf;
+
 use reasoncraft_core::checks::{CheckKind, Issue};
 use reasoncraft_core::essay::EssaySlot;
+use reasoncraft_core::examples::{Example, Template};
 use reasoncraft_core::{
     Acceptance, CardKind, CardStrength, ClearScope, ConnectorStyle, FindHit, FindOptions, Item,
     LayoutDirection, NewLoose, NodeId, Parent, SnippetSource, SourceRating, SourceType, Uuid,
@@ -346,7 +349,7 @@ pub enum Action {
     /// Ask whether to put every setting back to its default.
     ResetSettings,
     /// Put every setting back to its default, but the personal dictionary
-    /// (the answer Reset to [`Action::ResetSettings`]).
+    /// and the recent files (the answer Reset to [`Action::ResetSettings`]).
     ConfirmResetSettings,
     /// The answer to the recovery prompt shown after a crash.
     ResolveRecovery(RecoveryChoice),
@@ -359,6 +362,12 @@ pub enum Action {
     HelpBack,
     /// The About page of the File backstage.
     ShowAbout,
+    /// Open an example map, in the UI language, as a new untitled tab.
+    OpenExample(Example),
+    /// Open a template, in the UI language, as a new untitled tab.
+    OpenTemplate(Template),
+    /// Open a map from the recent-files list; one that is gone leaves it.
+    OpenRecent(PathBuf),
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,

@@ -1,6 +1,7 @@
-//! The building panel: boxes, sources and comment presets. A click inserts
-//! at the selection (like the ribbon); a drag carries the item to the map,
-//! where the canvas shows where it would land.
+//! The building panel: boxes, sources, comment presets and templates. A
+//! click inserts at the selection (like the ribbon); a drag carries the
+//! item to the map, where the canvas shows where it would land. A
+//! template opens as a new map.
 
 use eframe::egui::{
     self, Align, CollapsingHeader, Color32, CursorIcon, DragAndDrop, FontId, Id, LayerId, Order,
@@ -9,6 +10,7 @@ use eframe::egui::{
     vec2,
 };
 use reasoncraft_core::SourceType;
+use reasoncraft_core::examples::Template;
 
 use super::hover_fill;
 use super::icons::{self, Icon};
@@ -112,7 +114,42 @@ pub fn show(ui: &mut Ui, tab: &DocTab, tk: &Tokens, out: &mut Vec<Action>) {
                 row(ui, tab, tk, Insertable::Comment(i), out);
             }
         });
+        section(ui, tk, "building.templates", |ui| {
+            for which in Template::ALL {
+                template_row(ui, tk, which, out);
+            }
+        });
     });
+}
+
+/// A template: its icon and name; a click opens it as a new map.
+fn template_row(ui: &mut Ui, tk: &Tokens, which: Template, out: &mut Vec<Action>) {
+    let (key, icon) = super::backstage::template_key(which);
+    let name = t(key);
+    let width = ui.available_width();
+    let text_w = width - ROW_GLYPH - 3.0 * PAD;
+    let galley = ui.fonts_mut(|f| f.layout_job(text_job(&name, ROW_FONT, tk.box_text, text_w, 3)));
+    let h = (galley.size().y + 2.0 * PAD).max(26.0);
+    let (rect, resp) = ui.allocate_exact_size(vec2(width, h), Sense::click());
+    let glyph = Rect::from_center_size(
+        egui::pos2(rect.left() + PAD + ROW_GLYPH / 2.0, rect.center().y),
+        egui::Vec2::splat(ROW_GLYPH),
+    );
+    if ui.is_rect_visible(rect) {
+        let painter = ui.painter();
+        backdrop(painter, rect, &resp, tk);
+        icons::paint(painter, glyph, icon, tk.box_text, tk.panel, tk);
+        let text_pos = egui::pos2(glyph.right() + PAD, rect.center().y - galley.size().y / 2.0);
+        painter.galley(text_pos, galley, tk.box_text);
+    }
+    let mut args = FluentArgs::new();
+    args.set("item", name.as_str());
+    let spoken = t_args("building.item_name", &args);
+    resp.widget_info(|| WidgetInfo::labeled(Role::Button, true, &spoken));
+    let resp = resp.on_hover_text(t(&format!("{key}.hint")));
+    if resp.on_hover_cursor(CursorIcon::PointingHand).clicked() {
+        out.push(Action::OpenTemplate(which));
+    }
 }
 
 /// A collapsible section, open at first.

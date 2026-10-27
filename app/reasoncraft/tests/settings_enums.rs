@@ -115,3 +115,12 @@ fn known_values_still_load_and_round_trip() {
     let json: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
     assert_eq!(json, s);
 }
+
+#[test]
+fn recent_files_of_another_shape_keep_other_settings() {
+    let s = from_ron("(recent_files:5,author:\"Ann\")");
+    assert!(s.recent_files.is_empty());
+    assert_eq!(s.author, "Ann");
+    let s = from_ron("(recent_files:[\"a.rcraft\"],author:\"Ann\")");
+    assert_eq!(s.recent_files, vec![std::path::PathBuf::from("a.rcraft")]);
+}

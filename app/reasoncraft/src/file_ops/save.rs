@@ -85,7 +85,10 @@ pub(super) fn save_and_report(
         return false;
     };
     match save_tab_at(tab, &*app.dialogs, save_as) {
-        Ok(SaveOutcome::Saved) => true,
+        Ok(SaveOutcome::Saved) => {
+            note_saved(app, i);
+            true
+        }
         Ok(SaveOutcome::Cancelled) => false,
         Ok(SaveOutcome::NeedsReplaceConfirm(path)) => ask_replace(app, i, path, then, false),
         Ok(SaveOutcome::OriginalChanged(path)) => ask_replace(app, i, path, then, true),
@@ -134,5 +137,13 @@ pub fn resolve_replace(app: &mut ReasonCraftApp, replace: bool) {
         show_error(app, FileOp::Save, &path, &err);
         return;
     }
+    note_saved(app, tab);
     carry_on(app, tab, then);
+}
+
+/// Tab `i` was just saved: its file goes first in the recent files.
+fn note_saved(app: &mut ReasonCraftApp, i: usize) {
+    if let Some(path) = app.tabs.get(i).and_then(|t| t.path.clone()) {
+        app.settings.push_recent(&path);
+    }
 }

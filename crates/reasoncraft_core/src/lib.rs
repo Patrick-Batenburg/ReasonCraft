@@ -6,6 +6,7 @@ pub mod connector;
 pub mod edit;
 pub mod essay;
 pub mod evaluate;
+pub mod examples;
 pub mod file;
 pub mod find;
 #[cfg(feature = "test-fixtures")]

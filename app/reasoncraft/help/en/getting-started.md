@@ -5,7 +5,7 @@ ReasonCraft helps you think a question through by drawing it as a map. You put a
 ## The window
 
 - The **ribbon** at the top holds the commands, on the tabs File, Home, Evaluate, View, Export and Help. (The Insert tab is coming in a later version.)
-- The **Building panel** on the left lists boxes, sources and preset comments. Click one to add it at the selection, or drag it onto the map.
+- The **Building panel** on the left lists boxes, sources, preset comments and templates. Click a box, source or comment to add it at the selection, or drag it onto the map; click a template to start a new map from it.
 - The **map** in the middle is where you build. Scroll with the mouse wheel (Shift+wheel sideways), or drag with the right or middle mouse button, or hold Space and drag. Ctrl+wheel zooms, as do the View tab and the slider in the status bar.
 - The **Text panel** on the right has the tabs Outline, Essay, Check, Snippets and Help.
 - The **status bar** at the bottom counts the boxes and the hints of the Check tab.
@@ -37,6 +37,10 @@ Anything you drop on empty canvas, or that is left over when you delete the box 
 - The **Search commands** box in the title bar (Alt+Q) finds any command by name.
 - F6 moves the keyboard focus between the ribbon, the panels, the map and the status bar.
 - F1 opens help about the part of the window you are working in.
+
+## Example maps and templates
+
+To see a finished map first, open the Help tab of the ribbon and click **Reasoning example** or **Grouping example** in the group **Example maps**. The reasoning example shows reasons, objections, co-premises, a rebuttal, sources and ratings; change it as much as you like, it is a copy. File > **New** has the same examples, plus templates to start from, such as an essay plan.
 
 ## Read on
 

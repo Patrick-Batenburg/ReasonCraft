@@ -238,6 +238,7 @@ fn settings_from_old_storage_fill_defaults() {
         spell_words: vec!["Reasoncraftish".to_owned()],
         autosave_secs: 120,
         ui_scale: 1.3,
+        recent_files: vec!["maps/one.rcraft".into(), "two.rcraft".into()],
     };
     eframe::set_value(&mut storage, SETTINGS_KEY, &custom);
     assert_eq!(

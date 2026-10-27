@@ -1,5 +1,7 @@
 //! Personal preferences that survive restarts.
 
+use std::path::{Path, PathBuf};
+
 use reasoncraft_core::checks::{CheckKind, CheckSet};
 use reasoncraft_core::layout::IndicatorOptions;
 use reasoncraft_core::outline::OutlineOptions;
@@ -65,6 +67,9 @@ pub struct Settings {
     /// 10 % within [`UI_SCALE_MIN`]..=[`UI_SCALE_MAX`] (see
     /// [`Settings::ui_scale_factor`]). The map's own zoom comes on top.
     pub ui_scale: f32,
+    /// The maps last opened or saved, newest first, at most [`MAX_RECENT`].
+    #[serde(deserialize_with = "deserialize_paths")]
+    pub recent_files: Vec<PathBuf>,
 }
 
 /// Read a field, taking its default when the saved value is not one this
@@ -101,6 +106,27 @@ where
         Stored::Other(_) => None,
     })
 }
+
+/// Read a list of paths; a value of another shape reads as an empty list,
+/// and the rest of the file still loads (see [`deserialize_text_or_none`]).
+fn deserialize_paths<'de, D>(d: D) -> Result<Vec<PathBuf>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Stored {
+        Paths(Vec<PathBuf>),
+        Other(serde::de::IgnoredAny),
+    }
+    Ok(match Stored::deserialize(d)? {
+        Stored::Paths(paths) => paths,
+        Stored::Other(_) => Vec::new(),
+    })
+}
+
+/// How many recent maps the File page lists.
+pub const MAX_RECENT: usize = 10;
 
 /// The default seconds between autosaves.
 pub const AUTOSAVE_DEFAULT: u32 = 45;
@@ -180,13 +206,23 @@ impl Settings {
     }
 
     /// Every setting back to its default, except the personal dictionary
-    /// (and the recent files, once the settings keep them): those are the
-    /// user's own data, not preferences.
+    /// and the recent files: those are the user's own data, not
+    /// preferences.
     pub fn reset_to_defaults(&mut self) {
         *self = Settings {
             spell_words: std::mem::take(&mut self.spell_words),
+            recent_files: std::mem::take(&mut self.recent_files),
             ..Settings::default()
         };
+    }
+
+    /// Put `path` first in the recent files (once), keeping at most
+    /// [`MAX_RECENT`]. A relative path is made absolute first.
+    pub fn push_recent(&mut self, path: &Path) {
+        let path = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+        self.recent_files.retain(|p| *p != path);
+        self.recent_files.insert(0, path);
+        self.recent_files.truncate(MAX_RECENT);
     }
 
     /// Seconds between autosaves, or `None` when autosave is off.
@@ -276,6 +312,7 @@ impl Default for Settings {
             spell_words: Vec::new(),
             autosave_secs: AUTOSAVE_DEFAULT,
             ui_scale: 1.0,
+            recent_files: Vec::new(),
         }
     }
 }

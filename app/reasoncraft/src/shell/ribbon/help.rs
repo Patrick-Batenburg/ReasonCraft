@@ -1,4 +1,5 @@
-//! The Help ribbon tab: the help topics, the keyboard shortcuts and About.
+//! The Help ribbon tab: the help topics, the keyboard shortcuts, About
+//! and the example maps.
 
 use eframe::egui::Ui;
 
@@ -15,6 +16,15 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             (Icon::Help, "help.topics"),
             (Icon::Keyboard, "help.keyboard"),
             (Icon::About, "help.about"),
+        ];
+        for (icon, id) in buttons {
+            command(ui, &tk, icon, id, true, false, &mut out);
+        }
+    });
+    group(ui, &tk, &t("group.examples"), |ui| {
+        let buttons = [
+            (Icon::Reason, "help.example_reasoning"),
+            (Icon::Category, "help.example_grouping"),
         ];
         for (icon, id) in buttons {
             command(ui, &tk, icon, id, true, false, &mut out);
