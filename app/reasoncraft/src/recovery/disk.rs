@@ -41,7 +41,7 @@ pub(super) fn write_entry(
     meta: &RecoveryMeta,
 ) -> io::Result<()> {
     if !folder.join(LOCK_FILE).is_file() {
-        let gone = "the session folder is gone";
+        let gone = crate::i18n::t("recovery.session_gone");
         return Err(io::Error::new(io::ErrorKind::NotFound, gone));
     }
     file::save_package(pkg, &folder.join(format!("{tab_key}.rcraft"))).map_err(io::Error::other)?;

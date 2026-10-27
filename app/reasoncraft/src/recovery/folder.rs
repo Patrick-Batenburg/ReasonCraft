@@ -67,11 +67,25 @@ mod tests {
         Some(parts.iter().collect())
     }
 
+    /// `C:\...` is rooted only on Windows; elsewhere it is a relative name.
+    #[cfg(windows)]
     #[test]
     fn windows_uses_local_app_data() {
         assert_eq!(
             windows_dir(s(r"C:\Users\Ann\AppData\Local")),
             p(&[r"C:\Users\Ann\AppData\Local", "ReasonCraft", "recovery"])
+        );
+        assert_eq!(windows_dir(None), None);
+        assert_eq!(windows_dir(s("")), None);
+        assert_eq!(windows_dir(s("AppData")), None, "relative");
+    }
+
+    /// The Windows logic with a rooted path every platform understands.
+    #[test]
+    fn windows_logic_with_a_rooted_path() {
+        assert_eq!(
+            windows_dir(s("/Ann/Local")),
+            p(&["/Ann/Local", "ReasonCraft", "recovery"])
         );
         assert_eq!(windows_dir(None), None);
         assert_eq!(windows_dir(s("")), None);

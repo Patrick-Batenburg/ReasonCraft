@@ -110,12 +110,16 @@ fn long_reports_are_grouped_and_capped() {
     notes.push(note(20, ImportNoteKind::UnknownReference("A".into())));
     notes.push(note(21, ImportNoteKind::UnknownReference("B".into())));
     let body = report_text(&notes);
-    // One line per kind, after the introduction.
-    assert_eq!(body.lines().count(), 3, "{body}");
+    // One line per kind (each unknown title is its own kind), after the
+    // introduction.
+    assert_eq!(body.lines().count(), 4, "{body}");
     assert!(
         body.contains("1, 2, 3, 4, 5") && body.contains('7'),
         "{body}"
     );
     assert!(!body.contains(", 6"), "{body}");
-    assert!(body.contains("20, 21"), "{body}");
+    let line_of = |title: &str| body.lines().find(|l| l.contains(title)).unwrap();
+    let (a, b) = (line_of("\"A\""), line_of("\"B\""));
+    assert!(a.contains("20") && !a.contains("21"), "{body}");
+    assert!(b.contains("21") && !b.contains("20"), "{body}");
 }

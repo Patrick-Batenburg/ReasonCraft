@@ -73,6 +73,8 @@ pub fn import_path(app: &mut ReasonCraftApp, path: &Path) {
     let mut tab = DocTab::from_document(doc);
     // Never saved: closing it asks first, and autosave keeps it.
     tab.history.saved_marker = None;
+    // Revision 0 means "no recovery copy": a loaded tab is past it.
+    tab.mark_loaded(0);
     app.tabs.push(tab);
     app.active = app.tabs.len() - 1;
     if !report.notes.is_empty() {
@@ -109,7 +111,7 @@ const LINES_SHOWN: usize = 5;
 pub fn report_text(notes: &[ImportNote]) -> String {
     let mut groups: Vec<(&ImportNoteKind, Vec<usize>)> = Vec::new();
     for note in notes {
-        match groups.iter_mut().find(|(k, _)| k.key() == note.kind.key()) {
+        match groups.iter_mut().find(|(k, _)| **k == note.kind) {
             Some((_, lines)) => lines.push(note.line),
             None => groups.push((&note.kind, vec![note.line])),
         }

@@ -244,6 +244,7 @@ recovery-later = Decide later
 recovery-tab_title = { $name } (recovered)
 recovery-original_changed = The file changed since you opened or last saved it. Replacing it overwrites those changes.
 recovery-unavailable = Autosave is off: the recovery folder cannot be used.
+recovery-session_gone = the recovery session folder is gone
 recovery-write_failed = Autosave could not write a copy: { $detail }. It tries again at the next autosave.
 
 ## Document page

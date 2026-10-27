@@ -215,3 +215,26 @@ fn failed_write_is_noted_and_retried() {
     assert!(copy.is_file());
     assert_eq!(root_text(&copy), "Robots help");
 }
+
+#[test]
+fn imported_tab_is_autosaved_before_any_edit() {
+    let rec = tempfile::tempdir().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("coffee.argdown");
+    std::fs::write(
+        &source,
+        "[A]: Coffee is good.
+",
+    )
+    .unwrap();
+    let fake = reasoncraft::file_ops::FakeDialogs::default();
+    fake.set_import(source);
+    let mut app = app_with_recovery(rec.path());
+    app.dialogs = Box::new(fake);
+    actions::apply(&mut app, Action::ImportArgdown);
+    assert_eq!(app.tabs.len(), 2);
+    autosave(&mut app, 0.0);
+    let copy = recovery_file(&app, 1);
+    assert!(copy.is_file(), "the unedited import has a recovery copy");
+    assert_eq!(root_text(&copy), "Coffee is good.");
+}

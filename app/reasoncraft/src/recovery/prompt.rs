@@ -86,6 +86,8 @@ fn restore(app: &mut ReasonCraftApp, doc: &RecoveredDoc) -> Result<(), FileError
     tab.path = doc.meta.original.clone();
     tab.disk_mtime = doc.meta.original_mtime;
     tab.history.saved_marker = None;
+    // Revision 0 means "no recovery copy": a loaded tab is past it.
+    tab.mark_loaded(0);
     tab.recovered_from = Some(doc.meta.clone());
     let i = file_ops::place_tab(app, tab);
     if let Some(store) = &app.recovery {

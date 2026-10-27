@@ -185,3 +185,14 @@ fn tidied_session_folder_is_not_made_again_by_a_write() {
     let c = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
     assert!(c.orphaned().is_empty());
 }
+
+#[test]
+fn missing_session_folder_error_is_translated() {
+    let dir = tempfile::tempdir().unwrap();
+    let pkg = Package::new(Document::new("Robots"));
+    let err =
+        super::disk::write_entry(dir.path(), Uuid::new_v4(), &pkg, &meta("Robots")).unwrap_err();
+    let text = err.to_string();
+    assert!(!text.starts_with("recovery."), "{text}");
+    assert_eq!(text, crate::i18n::t("recovery.session_gone"));
+}
