@@ -81,3 +81,44 @@ fn new_doc_uses_default_language() {
     assert_eq!(old.default_doc_language, "en");
     assert_eq!(DocTab::with_language("zz").doc.meta.language, "en");
 }
+
+#[test]
+fn ignore_is_one_undo_step() {
+    use reasoncraft_core::checks::{CheckKind, CheckSet, run_checks};
+    let mut a = ReasonCraftApp::new_for_test();
+    let root = tab(&a).doc.root;
+    a.tabs[0].edit(|d| {
+        d.boxes[&root].text = "Robots help or hurt".into();
+        Ok(())
+    });
+    let issue = run_checks(&tab(&a).doc, &CheckSet::default())
+        .into_iter()
+        .find(|i| i.kind == CheckKind::Compound)
+        .unwrap();
+    let before = tab(&a).history.undo.len();
+    apply(&mut a, Action::IgnoreHint(issue.clone()));
+    assert_eq!(tab(&a).history.undo.len(), before + 1);
+    assert_eq!(tab(&a).doc.ignored_hints.len(), 1);
+    // Ignoring it again is a no-op without a history entry.
+    apply(&mut a, Action::IgnoreHint(issue));
+    assert_eq!(tab(&a).history.undo.len(), before + 1);
+
+    apply(&mut a, Action::Undo);
+    assert!(tab(&a).doc.ignored_hints.is_empty());
+    apply(&mut a, Action::Redo);
+    assert_eq!(tab(&a).doc.ignored_hints.len(), 1);
+
+    apply(&mut a, Action::RestoreHints);
+    assert!(tab(&a).doc.ignored_hints.is_empty());
+    assert_eq!(tab(&a).history.undo.len(), before + 2);
+    apply(&mut a, Action::RestoreHints);
+    assert_eq!(tab(&a).history.undo.len(), before + 2);
+}
+
+#[test]
+fn unknown_check_kind_in_settings_is_skipped() {
+    use reasoncraft_core::checks::CheckKind;
+    let s: Settings =
+        serde_json::from_str(r#"{"checks":{"disabled":["key_term","future_kind"]}}"#).unwrap();
+    assert_eq!(s.checks.disabled, vec![CheckKind::KeyTerm]);
+}

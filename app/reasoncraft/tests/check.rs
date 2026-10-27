@@ -286,3 +286,28 @@ fn incomplete_evaluation_is_one_row_that_goes_to_the_next() {
     h.run();
     assert_eq!(h.state().tabs[0].selection, Some(card));
 }
+
+#[test]
+fn ignore_button_hides_hint_and_footer_restores_it() {
+    let mut d = clean_doc();
+    d.add_loose(reasoncraft_core::NewLoose::Category, "Parked thought");
+    let mut h = harness_with(d, TextTab::Check);
+    h.run();
+    assert!(has(&h, &heading("not_connected", 1)));
+
+    h.get_by_role_and_label(Role::Button, &t("check.ignore"))
+        .click();
+    h.run();
+    let tab = &h.state().tabs[0];
+    assert_eq!(tab.doc.ignored_hints.len(), 1);
+    // The button takes its own click: the row did not select its item.
+    assert_eq!(tab.selection, Some(Item::Box(tab.doc.root)));
+    assert!(has(&h, &t("check.all_clear")));
+    let mut args = FluentArgs::new();
+    args.set("count", 1);
+    let restore = t_args("check.restore", &args);
+    h.get_by_role_and_label(Role::Button, &restore).click();
+    h.run();
+    assert!(h.state().tabs[0].doc.ignored_hints.is_empty());
+    assert!(has(&h, &heading("not_connected", 1)));
+}

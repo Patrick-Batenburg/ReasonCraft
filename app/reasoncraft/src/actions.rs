@@ -299,7 +299,10 @@ fn apply_to_tab(tab: &mut DocTab, action: Action) {
         | Action::SetSourceRating(_)
         | Action::ClearEvaluation(_) => evaluate::apply(tab, action),
         Action::AddSource(_) | Action::SetSourceType(_) => sources::apply(tab, action),
-        Action::SetDocMeta { .. } | Action::SetDocLanguage(_) => meta::apply(tab, action),
+        Action::SetDocMeta { .. }
+        | Action::SetDocLanguage(_)
+        | Action::IgnoreHint(_)
+        | Action::RestoreHints => meta::apply(tab, action),
         Action::AddSnippet(_)
         | Action::EditSnippetText { .. }
         | Action::EditSnippetCitation { .. }

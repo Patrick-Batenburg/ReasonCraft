@@ -154,6 +154,7 @@ impl Document {
             }
         }
         self.salvage_essay_text(&doomed);
+        self.ignored_hints.retain(|h| !doomed.contains(&h.item));
         for gone in doomed {
             match gone {
                 Item::Box(b) => {

@@ -1,6 +1,6 @@
 //! The commands the user can give (see [`super::apply`]).
 
-use reasoncraft_core::checks::CheckKind;
+use reasoncraft_core::checks::{CheckKind, Issue};
 use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::{
     Acceptance, CardKind, CardStrength, ClearScope, ConnectorStyle, FindHit, FindOptions, Item,
@@ -234,6 +234,12 @@ pub enum Action {
     SetOutlineOption(OutlineToggle, bool),
     /// Turn one course-rule check on or off.
     SetCheckEnabled(CheckKind, bool),
+    /// Stop reporting this hint in the document (one history step; none
+    /// when it already is ignored).
+    IgnoreHint(Issue),
+    /// Report every ignored hint of the document again (one history step;
+    /// none when nothing is ignored).
+    RestoreHints,
     /// The Document page's title or author field changed: show it live,
     /// without a history step until the session ends (like
     /// [`Action::EditText`]).

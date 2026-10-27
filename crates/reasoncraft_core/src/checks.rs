@@ -51,13 +51,59 @@ impl CheckKind {
         CheckKind::InconsistentEvaluation,
         CheckKind::NotConnected,
     ];
+
+    /// The check's saved name (its snake_case serde name).
+    pub fn key(self) -> &'static str {
+        match self {
+            CheckKind::KeyTerm => "key_term",
+            CheckKind::Compound => "compound",
+            CheckKind::Question => "question",
+            CheckKind::Unsupported => "unsupported",
+            CheckKind::EmptyCategory => "empty_category",
+            CheckKind::IncompleteEvaluation => "incomplete_evaluation",
+            CheckKind::InconsistentEvaluation => "inconsistent_evaluation",
+            CheckKind::NotConnected => "not_connected",
+        }
+    }
 }
 
 /// Which checks run. The default runs all of them.
+///
+/// Names of checks this build does not know (from a newer build's settings)
+/// are skipped when loading, so the rest of the settings still load.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct CheckSet {
+    #[serde(deserialize_with = "known_kinds")]
     pub disabled: Vec<CheckKind>,
+}
+
+fn known_kinds<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<CheckKind>, D::Error> {
+    Ok(Vec::<MaybeKind>::deserialize(d)?
+        .into_iter()
+        .filter_map(|k| k.0)
+        .collect())
+}
+
+/// A saved check name, `None` when this build does not know it. Read as an
+/// identifier, like the derived [`CheckKind`] impl, so it suits every format
+/// the settings are saved in.
+struct MaybeKind(Option<CheckKind>);
+
+impl<'de> Deserialize<'de> for MaybeKind {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        struct Name;
+        impl serde::de::Visitor<'_> for Name {
+            type Value = MaybeKind;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a check name")
+            }
+            fn visit_str<E>(self, v: &str) -> Result<MaybeKind, E> {
+                Ok(MaybeKind(CheckKind::ALL.into_iter().find(|k| k.key() == v)))
+            }
+        }
+        d.deserialize_identifier(Name)
+    }
 }
 
 impl CheckSet {
@@ -113,6 +159,7 @@ pub fn run_checks(doc: &Document, set: &CheckSet) -> Vec<Issue> {
         let kind = CheckKind::IncompleteEvaluation;
         issues.insert(at, Issue { kind, item, terms });
     }
+    issues.retain(|i| !doc.ignored_hints.iter().any(|h| h.matches(i)));
     issues
 }
 
@@ -169,7 +216,7 @@ impl<'a> Run<'a> {
         let parent = v.parent;
         let statement = matches!(node.kind, BoxKind::Claim | BoxKind::Premise);
         if statement && self.on(CheckKind::Compound) {
-            let found = conjunctions(&node.text, self.lang);
+            let found = conjunctions(&tokens::without_quoted(&node.text), self.lang);
             if !found.is_empty() {
                 self.emit(issues, CheckKind::Compound, item, found);
             }

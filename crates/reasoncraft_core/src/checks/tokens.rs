@@ -145,6 +145,39 @@ fn fold(c: char) -> Option<&'static str> {
     })
 }
 
+/// `text` with every closed quotation replaced by a space, so quoted words
+/// are not checked: straight double quotes, typographic double quotes
+/// (opened by U+201C or U+201E, closed by U+201D; U+201E also by U+201C or
+/// a straight quote) and typographic single quotes (U+2018 .. U+2019). A
+/// quote that is never closed is kept as it is, and a lone U+2019 stays an
+/// apostrophe.
+pub(super) fn without_quoted(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0;
+    while i < chars.len() {
+        let closers: &[char] = match chars[i] {
+            '"' => &['"'],
+            '\u{201C}' => &['\u{201D}'],
+            '\u{201E}' => &['\u{201D}', '\u{201C}', '"'],
+            '\u{2018}' => &['\u{2019}'],
+            _ => &[],
+        };
+        let close = chars[i + 1..].iter().position(|c| closers.contains(c));
+        match close {
+            Some(n) if !closers.is_empty() => {
+                out.push(' ');
+                i += n + 2;
+            }
+            _ => {
+                out.push(chars[i]);
+                i += 1;
+            }
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

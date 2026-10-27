@@ -22,16 +22,7 @@ const EXPLAIN: f32 = 12.0;
 
 /// The check's name in i18n keys (`check.kind.<key>`) and files.
 pub fn check_key(kind: CheckKind) -> &'static str {
-    match kind {
-        CheckKind::KeyTerm => "key_term",
-        CheckKind::Compound => "compound",
-        CheckKind::Question => "question",
-        CheckKind::Unsupported => "unsupported",
-        CheckKind::EmptyCategory => "empty_category",
-        CheckKind::IncompleteEvaluation => "incomplete_evaluation",
-        CheckKind::InconsistentEvaluation => "inconsistent_evaluation",
-        CheckKind::NotConnected => "not_connected",
-    }
+    kind.key()
 }
 
 /// Draw the Check tab for `tab`, with the checks turned on in `settings`.
@@ -45,8 +36,10 @@ pub fn show(
     tab.issues(&settings.checks);
     let tab = &*tab;
     let issues = tab.issue_cache.as_ref().map_or(&[][..], |(_, _, i)| i);
+    let ignored = tab.doc.ignored_hints.len();
     if issues.is_empty() {
         ui.label(RichText::new(t("check.all_clear")).color(tk.text_muted));
+        footer(ui, ignored, out);
         ui.take_available_space();
         return;
     }
@@ -69,14 +62,27 @@ pub fn show(
                 for (n, issue) in group.into_iter().enumerate() {
                     let selected = tab.selection == Some(issue.item);
                     let id = ui.scope_id().with((check_key(kind), n));
-                    if row(ui, id, &tab.doc, issue, selected, tk).clicked() {
+                    if row(ui, id, &tab.doc, issue, selected, tk, out).clicked() {
                         out.push(Action::Select(Some(issue.item)));
                         out.push(Action::RevealSelection);
                     }
                 }
                 ui.add_space(10.0);
             }
+            footer(ui, ignored, out);
         });
+}
+
+/// "Show ignored hints (n)", when the document ignores any.
+fn footer(ui: &mut Ui, ignored: usize, out: &mut Vec<Action>) {
+    if ignored == 0 {
+        return;
+    }
+    let mut args = FluentArgs::new();
+    args.set("count", ignored);
+    if ui.button(t_args("check.restore", &args)).clicked() {
+        out.push(Action::RestoreHints);
+    }
 }
 
 /// The group heading, "Questions (2)", with the rule as its tooltip.
@@ -148,7 +154,8 @@ pub fn explain(doc: &Document, issue: &Issue) -> String {
 }
 
 /// One issue: the item's text on one line (the full text in a tooltip when
-/// cut) and the explanation, wrapped. The whole row is one click target.
+/// cut) and the explanation, wrapped. The whole row is one click target,
+/// except its "Ignore" button.
 fn row(
     ui: &mut Ui,
     id: egui::Id,
@@ -156,8 +163,17 @@ fn row(
     issue: &Issue,
     selected: bool,
     tk: &Tokens,
+    out: &mut Vec<Action>,
 ) -> Response {
     let title = item_text(doc, issue.item);
+    let ignore = t("check.ignore");
+    let button_w = ui
+        .painter()
+        .layout_no_wrap(ignore.clone(), FontId::proportional(EXPLAIN), tk.box_text)
+        .size()
+        .x
+        + 2.0 * ui.spacing().button_padding.x
+        + 4.0;
     let background = ui.painter().add(Shape::Noop);
     let inner = Frame::new()
         .inner_margin(Margin::symmetric(8, 4))
@@ -168,12 +184,26 @@ fn row(
             let explain = RichText::new(explain(doc, issue))
                 .size(EXPLAIN)
                 .color(tk.text_muted);
-            ui.add(Label::new(title).truncate().selectable(false));
+            // The title leaves room for the Ignore button drawn over its end.
+            let text_w = ui.available_width() - button_w;
+            ui.scope(|ui| {
+                ui.set_max_width(text_w);
+                ui.add(Label::new(title).truncate().selectable(false));
+            });
             ui.add(Label::new(explain).wrap().selectable(false));
-            ui.available_width()
+            text_w
         });
     let rect = inner.response.rect;
     let resp = ui.interact(rect, id, Sense::click());
+    // Added after the row, so it sits on top and takes its own clicks.
+    let button_rect = egui::Rect::from_min_size(
+        egui::pos2(rect.right() - button_w - 4.0, rect.top() + 2.0),
+        egui::vec2(button_w, TITLE + 4.0),
+    );
+    let button = egui::Button::new(RichText::new(ignore).size(EXPLAIN)).small();
+    if ui.put(button_rect, button).clicked() {
+        out.push(Action::IgnoreHint(issue.clone()));
+    }
     resp.widget_info(|| WidgetInfo::selected(Role::ListItem, true, selected, &title));
     let fill = if selected {
         Some(selected_fill(tk, tk.panel))

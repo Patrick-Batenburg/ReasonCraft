@@ -1,4 +1,5 @@
-//! Document metadata: title, author and language.
+//! Document metadata: title, author and language, and the check hints the
+//! author ignores.
 
 use super::Action;
 use crate::doc_tab::DocTab;
@@ -13,6 +14,12 @@ pub(super) fn apply(tab: &mut DocTab, action: Action) {
             if tab.doc.meta.language != lang {
                 tab.edit(|d| d.set_language(&lang));
             }
+        }
+        Action::IgnoreHint(issue) => {
+            tab.edit(|d| d.ignore_hint(&issue));
+        }
+        Action::RestoreHints => {
+            tab.edit(|d| d.restore_hints());
         }
         _ => unreachable!("not a metadata action"),
     }

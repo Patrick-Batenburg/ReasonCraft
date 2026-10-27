@@ -12,8 +12,10 @@ use crate::snippets::Snippet;
 use crate::ids::{CardId, Item, NodeId, Parent};
 
 mod direction;
+mod hints;
 mod source_type;
 pub use direction::LayoutDirection;
+pub use hints::IgnoredHint;
 pub use source_type::SourceType;
 
 /// The current time as an RFC 3339 string with second precision.
@@ -227,6 +229,10 @@ pub struct Document {
     /// direction in `extra`.
     #[serde(default, skip_serializing_if = "is_default")]
     pub layout_direction: LayoutDirection,
+    /// Check hints the author chose to ignore. Hints of items that are gone
+    /// are harmless and left alone.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ignored_hints: Vec<IgnoredHint>,
     /// Unknown fields, kept so files roundtrip.
     #[serde(flatten)]
     pub extra: Map<String, Value>,
@@ -255,6 +261,7 @@ impl Document {
             snippets: Vec::new(),
             essay: EssayPlan::default(),
             layout_direction: LayoutDirection::TopDown,
+            ignored_hints: Vec::new(),
             extra: Map::new(),
         }
     }
