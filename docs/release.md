@@ -157,10 +157,10 @@ It publishes nothing.
 
 ## Release checklist
 
-1. The CI workflow is green on all three platforms.
+1. The CI workflow is green on all three platforms, `macos-latest` included, for the commit to be tagged.
 2. `THIRD-PARTY.md`, `packaging/LICENSE.txt` (`cargo run -p xtask -- licence`) and the crates' licence texts (`cargo run -p xtask -- notices`, see [Licence notices](#licence-notices)) are current: running both leaves no change to commit.
 3. Tag the version (`v<version>`) and download the installers from the release workflow's run.
-4. Windows: check the installer in the test VM (see above).
+4. Windows: check the installer in the test VM (see above), then run it once interactively there (not with `/S`) and check that its licence page shows both licences.
 5. macOS, on a real Mac (CI cannot show a window):
    - open the `.dmg`, drag the app to Applications, and start it (it is not signed, so open it with right-click → Open the first time);
    - make, save and reopen a map; export it as PNG and PDF; copy a map as an image and paste it into another app;
@@ -172,3 +172,4 @@ It publishes nothing.
    - copy a map as an image and paste it into another app, and copy and paste text between ReasonCraft and another app (the real clipboard);
    - open and save through the file dialogs;
    - start the AppImage on a second distribution.
+7. At 200 % interface size (File > Settings), look over the ribbon tabs, the File pages, the side panels and a dialog in both languages: nothing is cut off or overlaps.

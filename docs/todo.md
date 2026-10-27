@@ -325,12 +325,12 @@ The new end-to-end test `tests/e2e/interchange.rs` (`interchange_round_trip`) ru
 
 ### Step 6 — Release readiness (2026-10-27)
 
-**Tests:** 865 pass, 13 ignored, across the workspace (debug, `cargo test --workspace -j 4`):
+**Tests:** 897 pass, 13 ignored, across the workspace (debug, `cargo test --workspace -j 4`, after the final review fixes):
 - core: 192 unit tests, plus 58 integration tests in 11 files;
 - spell: 8 unit tests;
-- app: 330 unit tests, and 277 UI and integration tests in 43 files (egui_kittest; new in step 6: `accessibility/` (with keyboard and settings), `close_request`, `examples`, `help`, `packaging`, `settings_enums`, `shell_polish`, `spelling_slices` and `ui_language/` (14 tests: the language switch, labels by document language, help, examples, the Dutch ribbon fit and the release flow)), including 9 end-to-end tests in `tests/e2e/`.
+- app: 339 unit tests, and 300 UI and integration tests in 45 files (egui_kittest; new in step 6: `accessibility/` (with keyboard and settings), `close_request`, `examples`, `help`, `packaging`, `settings_enums`, `shell_polish`, `spelling_esc`, `spelling_slices`, `ui_small_window` and `ui_language/` (17 tests: the language switch, labels by document language, help, examples, the Dutch ribbon fit, the language of new documents and the release flow)), including 9 end-to-end tests in `tests/e2e/`.
 
-`cargo test --workspace --release -j 4` gives 864 passed (one debug-only core test is left out of release builds), and the 13 ignored release-only timing tests pass with `-- --ignored`.
+`cargo test --workspace --release -j 4` gives 896 passed (one debug-only core test is left out of release builds), and the 13 ignored release-only timing tests pass with `-- --ignored`.
 
 `cargo clippy --workspace --all-targets -j 4 -- -D warnings` and `cargo fmt --check` are clean. `cargo packager --release -p reasoncraft --formats nsis` builds `reasoncraft_0.1.0_x64-setup.exe` (13.0 MB). The Linux test suite and the `.deb` were checked in Docker in Task 12, and the Windows installer in the test VM in Task 11 (29 checks pass).
 
@@ -356,7 +356,10 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 
 **Also in this task:** `release.yml` names its artifacts after the tag, or after the commit for a run by hand (a branch name may hold a "/"); both workflows install `pkg-config` explicitly; `docs/release.md` notes that the Docker memory cap can be changed. The Linux release binary opens no libXrandr (ruling S6-T13-3), so the `.deb` dependencies are unchanged. `THIRD-PARTY.md` now lists egui's bundled fonts (Ubuntu Light, which PDF exports embed, Hack and egui-icons). The README gained install instructions per OS and a Languages section; `CHANGELOG.md`, `docs/user-guide.md` and `docs/glossary-nl.md` are new.
 
+**Final review fixes** (rulings S6-F1 to S6-F4): new documents follow the interface language until one is chosen (Settings gets "Same as interface"; old saved choices are kept), so a first start on a Dutch computer makes Dutch maps; cargo-packager is pinned to 0.11.8 in CI, the Docker image and the docs; the About page has a Licences section with the full licence texts of the fonts, dictionaries, spellbook, NSIS and every Rust crate (`cargo run -p xtask -- notices`, with cargo-about); the copyright line is "Patrick van Batenburg and ReasonCraft contributors"; the recent-files list resolves only the new path; help topics are parsed once per language.
+
 **Known limitations:**
+- In Dutch, at 150 % in the smallest window (800 × 500), the Text panel's tabs wrap onto a second line.
 - In a narrow window a ribbon tab scrolls sideways (arrows at its ends, or the wheel) rather than collapsing its groups to icons (Task 14).
 - Task 14: Print was not exercised end to end on the host (it hands a PDF to the system viewer). The other findings were fixed in the review round (see `task-14-findings.md`).
 - macOS is configured but unverified: no Mac was available, and CI runs only once a remote exists (ruling M3). Double-clicking a `.rcraft` file starts the app without opening the file (ruling S6-T11-2). There is no app menu, and quitting from the Dock, logging out or shutting down does not ask about unsaved changes (ruling S6-T6-2).
