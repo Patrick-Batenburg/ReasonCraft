@@ -304,3 +304,20 @@ fn a_dragged_panel_width_survives_a_restart_in_a_small_window() {
         width(&h)
     );
 }
+
+/// An icon-only backstage entry shows its label when the keyboard
+/// reaches it, not only on hover.
+#[test]
+fn compact_backstage_entry_shows_its_label_on_focus() {
+    let mut h = harness(1.5);
+    h.state_mut().ribbon_tab = RibbonTab::File;
+    h.run();
+    let label = t("action.open");
+    assert_eq!(h.query_all_by_label(&label).count(), 1, "the entry only");
+    h.get_by_label(&label).focus();
+    h.run();
+    assert!(
+        h.query_all_by_label(&label).count() >= 2,
+        "the entry and its tooltip"
+    );
+}
