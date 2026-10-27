@@ -31,13 +31,13 @@ cargo-packager names the installer after the binary, hence the lower case.
 It downloads NSIS the first time.
 
 The installer:
-- installs for the current user only, into `%LOCALAPPDATA%\ReasonCraft`, without asking for administrator rights;
+- installs for the current user only, into `%LOCALAPPDATA%\Programs\ReasonCraft`, without asking for administrator rights (the app's own data, such as the recovery folder, lives apart in `%LOCALAPPDATA%\ReasonCraft`);
 - adds Start menu and desktop shortcuts and an entry in Settings → Apps;
 - associates `.rcraft` with the ProgID `ReasonCraft map` under `HKCU\Software\Classes`, which opens `"reasoncraft.exe" "%1"`;
 - runs silently with `/S`. The uninstaller (`uninstall.exe /S`) removes the files, the shortcuts and the association, and leaves the user's documents alone.
 
 The NSIS script is cargo-packager's own template, kept as `packaging/windows/installer.nsi` with a few marked changes:
-the uninstaller removes the file association (the upstream template never does), the exe path in the association is quoted, and the ApplicationID plugin is not used.
+the uninstaller removes the file association (the upstream template never does), the exe path in the association is quoted, the per-user install goes under `Programs`, and the ApplicationID plugin is not used.
 When you upgrade cargo-packager, compare that file with the upstream template.
 The installer uses zlib compression, whose decompressor is under the zlib licence.
 
@@ -63,6 +63,10 @@ The script:
 
 The script needs no changes to the VM's settings.
 The checkpoint undoes everything it changes inside the guest.
+
+## Renderer
+
+The app draws with wgpu first. Where no GPU driver is usable, wgpu falls back to software rendering (WARP on Windows), so the app also runs in VMs and remote sessions. If wgpu cannot open the window, the app tries OpenGL (glow). If that fails too, it shows an error dialog in the OS language instead of quitting silently (`src/startup.rs`).
 
 ## macOS
 

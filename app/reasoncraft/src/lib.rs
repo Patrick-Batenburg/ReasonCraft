@@ -16,6 +16,7 @@ pub mod scene;
 pub mod settings;
 pub mod shell;
 pub mod spell;
+pub mod startup;
 pub mod theme;
 
 pub use app::ReasonCraftApp;

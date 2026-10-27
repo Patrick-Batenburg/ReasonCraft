@@ -1,13 +1,43 @@
-//! ReasonCraft desktop app entry point: window setup with a custom title bar.
+//! ReasonCraft desktop app entry point: window setup with a custom title
+//! bar, trying the renderers in turn (see `reasoncraft::startup`).
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::process::ExitCode;
+
 use eframe::egui;
-use reasoncraft::ReasonCraftApp;
+use reasoncraft::{ReasonCraftApp, startup};
 
 const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
-fn main() -> eframe::Result {
+fn main() -> ExitCode {
+    let outcome = startup::first_that_starts(&startup::RENDERERS, |renderer, started| {
+        eframe::run_native(
+            "ReasonCraft",
+            native_options(renderer),
+            Box::new(|cc| {
+                started.set(true);
+                let recovery_dir = reasoncraft::recovery::RecoveryStore::default_dir();
+                let mut app = ReasonCraftApp::new(cc, recovery_dir, sys_locale::get_locale);
+                // Files given on the command line (this is also how a
+                // double-clicked `.rcraft` file arrives on Windows and Linux).
+                reasoncraft::file_ops::open_paths(&mut app, std::env::args_os().skip(1));
+                Ok(Box::new(app))
+            }),
+        )
+    });
+    match outcome {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) => {
+            eprintln!("error: {err}");
+            startup::show_failure(&err);
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// The main window, drawn with `renderer`.
+fn native_options(renderer: eframe::Renderer) -> eframe::NativeOptions {
     let mut viewport = egui::ViewportBuilder::default()
         .with_title(reasoncraft::i18n::t("app.name"))
         .with_app_id("nl.reasoncraft.app")
@@ -26,23 +56,12 @@ fn main() -> eframe::Result {
         Ok(icon) => viewport = viewport.with_icon(icon),
         Err(err) => eprintln!("warning: app icon not loaded: {err}"),
     }
-    let options = eframe::NativeOptions {
+    eframe::NativeOptions {
         viewport,
+        renderer,
         event_loop_builder: event_loop_hook(),
         ..Default::default()
-    };
-    eframe::run_native(
-        "ReasonCraft",
-        options,
-        Box::new(|cc| {
-            let recovery_dir = reasoncraft::recovery::RecoveryStore::default_dir();
-            let mut app = ReasonCraftApp::new(cc, recovery_dir, sys_locale::get_locale);
-            // Files given on the command line (this is also how a
-            // double-clicked `.rcraft` file arrives on Windows and Linux).
-            reasoncraft::file_ops::open_paths(&mut app, std::env::args_os().skip(1));
-            Ok(Box::new(app))
-        }),
-    )
+    }
 }
 
 /// On macOS, no default app menu: its Quit item (Cmd+Q) would quit without

@@ -408,7 +408,10 @@ Function .onInit
         StrCpy $INSTDIR "$PROGRAMFILES\${PRODUCTNAME}"
       ${EndIf}
     !else if "${INSTALLMODE}" == "currentUser"
-      StrCpy $INSTDIR "$LOCALAPPDATA\${PRODUCTNAME}"
+      ; ReasonCraft change: under Programs, apart from the app's own data
+      ; in %LOCALAPPDATA%\ReasonCraft (the recovery folder), so that the
+      ; uninstaller removes the whole program folder and no user data.
+      StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCTNAME}"
     !endif
 
     Call RestorePreviousInstallLocation

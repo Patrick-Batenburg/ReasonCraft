@@ -132,7 +132,7 @@ try {
         $p = Start-Process C:\rc-test\setup.exe -ArgumentList '/S' -Wait -PassThru
         $uninst = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ReasonCraft'
         $dir = (Get-ItemProperty $uninst -ErrorAction SilentlyContinue).InstallLocation
-        $dir = if ($dir) { $dir.Trim('"') } else { "$env:LOCALAPPDATA\ReasonCraft" }
+        $dir = if ($dir) { $dir.Trim('"') } else { "$env:LOCALAPPDATA\Programs\ReasonCraft" }
         $ext = Get-Item 'HKCU:\Software\Classes\.rcraft' -ErrorAction SilentlyContinue
         $progId = if ($ext) { $ext.GetValue('') } else { $null }
         $cmdKey = "HKCU:\Software\Classes\$progId\shell\open\command"
@@ -151,7 +151,7 @@ try {
     }
     $installed | Format-List | Out-String | Write-Host
     Check 'installer exits 0' ($installed.ExitCode -eq 0)
-    Check 'reasoncraft.exe installed per user' ($installed.Exe -and $installed.Dir -like '*\AppData\Local\*')
+    Check 'reasoncraft.exe installed per user' ($installed.Exe -and $installed.Dir -like '*\AppData\Local\Programs\ReasonCraft')
     Check 'uninstall entry under HKCU' $installed.Uninst
     Check 'Start menu shortcut' $installed.Shortcut
     Check 'desktop shortcut' $installed.Desktop
@@ -183,7 +183,7 @@ try {
         $output = $null
         if (-not $running) {
             # Run the exe itself with the file, keeping what it prints.
-            $exe = Join-Path $env:LOCALAPPDATA 'ReasonCraft\reasoncraft.exe'
+            $exe = Join-Path $env:LOCALAPPDATA 'Programs\ReasonCraft\reasoncraft.exe'
             Run-AsUser 'rc-direct' ('/c ""' + $exe + '" "C:\rc-test\Sample map.rcraft" > C:\rc-test\output.txt 2>&1"')
             Start-Sleep -Seconds 15
             $output = 'exit code {0}: {1}' -f (Get-ScheduledTaskInfo -TaskName 'rc-direct').LastTaskResult,
@@ -225,6 +225,7 @@ try {
             Shortcut = [bool](Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Recurse -Filter ReasonCraft.lnk)
             Desktop  = Test-Path ([Environment]::GetFolderPath('Desktop') + '\ReasonCraft.lnk')
             KeptDoc  = Test-Path (Join-Path $docs 'Keep me.rcraft')
+            AppData  = Test-Path "$env:LOCALAPPDATA\ReasonCraft\recovery"
         }
     }
     $removed | Format-List | Out-String | Write-Host
@@ -237,6 +238,7 @@ try {
     Check 'ProgID removed' (-not $removed.ProgId)
     Check 'HKCR .rcraft no longer resolves' (-not $removed.Assoc)
     Check 'the document in Documents survives' $removed.KeptDoc
+    Check "the app's recovery folder (user data) is left alone" $removed.AppData
     Remove-PSSession $session
 }
 finally {

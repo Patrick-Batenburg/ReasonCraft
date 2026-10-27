@@ -709,3 +709,8 @@ about-credits = De spellingcontrole gebruikt het Engelse Hunspell-woordenboek ui
 a11y-in_group = { $group }: { $name }
 a11y-resize_building = Breedte van Bouwstenen aanpassen
 a11y-resize_text = Breedte van het Tekstpaneel aanpassen
+
+## Start-up: shown when the window cannot open
+startup-failed-title = ReasonCraft kon niet starten
+startup-failed-body = ReasonCraft kon zijn venster niet openen. Het grafische stuurprogramma van deze computer ontbreekt misschien of is verouderd; bijwerken helpt meestal.
+startup-failed-details = Technische details: { $details }

@@ -708,3 +708,8 @@ about-credits = Spellcheck uses the English Hunspell dictionary from SCOWL by Ke
 a11y-in_group = { $group }: { $name }
 a11y-resize_building = Resize the Building panel
 a11y-resize_text = Resize the Text panel
+
+## Start-up: shown when the window cannot open
+startup-failed-title = ReasonCraft could not start
+startup-failed-body = ReasonCraft could not open its window. The graphics driver of this computer may be missing or out of date; updating it usually helps.
+startup-failed-details = Technical details: { $details }
