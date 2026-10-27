@@ -11,13 +11,14 @@ use reasoncraft::{ReasonCraftApp, startup};
 const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
 fn main() -> ExitCode {
+    let profile = reasoncraft::profile::Profile::from_env();
     let outcome = startup::first_that_starts(&startup::RENDERERS, |renderer, started| {
         eframe::run_native(
             "ReasonCraft",
-            native_options(renderer),
+            native_options(renderer, profile.settings_file.clone()),
             Box::new(|cc| {
                 started.set(true);
-                let recovery_dir = reasoncraft::recovery::RecoveryStore::default_dir();
+                let recovery_dir = profile.recovery_dir.clone();
                 let mut app = ReasonCraftApp::new(cc, recovery_dir, sys_locale::get_locale);
                 // Files given on the command line (this is also how a
                 // double-clicked `.rcraft` file arrives on Windows and Linux).
@@ -40,8 +41,12 @@ fn main() -> ExitCode {
     }
 }
 
-/// The main window, drawn with `renderer`.
-fn native_options(renderer: eframe::Renderer) -> eframe::NativeOptions {
+/// The main window, drawn with `renderer`, keeping its settings in
+/// `settings_file` (or eframe's per-user default when `None`).
+fn native_options(
+    renderer: eframe::Renderer,
+    settings_file: Option<std::path::PathBuf>,
+) -> eframe::NativeOptions {
     let mut viewport = egui::ViewportBuilder::default()
         .with_title(reasoncraft::i18n::t("app.name"))
         .with_app_id("nl.reasoncraft.app")
@@ -64,6 +69,7 @@ fn native_options(renderer: eframe::Renderer) -> eframe::NativeOptions {
         viewport,
         renderer,
         event_loop_builder: event_loop_hook(),
+        persistence_path: settings_file,
         ..Default::default()
     }
 }

@@ -11,6 +11,7 @@ pub mod file_ops;
 pub mod help;
 pub mod i18n;
 pub mod jobs;
+pub mod profile;
 pub mod recovery;
 pub mod scene;
 pub mod settings;
