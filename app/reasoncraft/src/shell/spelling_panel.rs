@@ -4,7 +4,8 @@
 //! Change all, Ignore, Ignore all, Add to dictionary and Close.
 
 use eframe::egui::{
-    Button, FontId, Frame, Id, Margin, RichText, Role, Stroke, TextEdit, Ui, WidgetInfo,
+    self, Button, FontId, Frame, Id, Margin, Rect, RichText, Role, Stroke, TextEdit, Ui,
+    WidgetInfo,
     text::{LayoutJob, TextFormat},
 };
 
@@ -39,7 +40,7 @@ pub fn show(
     let Some(pass) = &mut tab.spelling else {
         return;
     };
-    Frame::new()
+    let shown = Frame::new()
         .fill(tk.box_fill)
         .stroke(Stroke::new(1.0, tk.attachment_line))
         .corner_radius(6.0)
@@ -74,7 +75,50 @@ pub fn show(
                 }
             });
         });
+    let rect = shown.response.rect;
+    ui.ctx().data_mut(|d| d.insert_temp(box_rect_id(), rect));
     ui.add_space(8.0);
+}
+
+/// Where the spelling box was drawn last (egui memory).
+fn box_rect_id() -> Id {
+    Id::unique("spelling_box_rect")
+}
+
+/// The control that had the keyboard focus at the end of the last frame.
+fn last_focus_id() -> Id {
+    Id::unique("spelling_last_focus")
+}
+
+/// Notes the focused control at the end of a frame, for [`esc_closes`]
+/// (egui drops the focus as soon as Esc is pressed).
+pub fn note_focus(ctx: &egui::Context) {
+    let focused = ctx.memory(|m| m.focused());
+    ctx.data_mut(|d| d.insert_temp(last_focus_id(), focused));
+}
+
+/// Whether Esc closes `tab`'s spelling box: it is open and, before the
+/// Esc, the focus was inside it, on the map or nowhere (not in another
+/// field, such as an essay paragraph, whose Esc is its own).
+pub fn esc_closes(ctx: &egui::Context, tab: &DocTab) -> bool {
+    if tab.spelling.is_none() {
+        return false;
+    }
+    let Some(focus) = ctx
+        .data(|d| d.get_temp::<Option<Id>>(last_focus_id()))
+        .flatten()
+    else {
+        return true;
+    };
+    if focus == crate::canvas::canvas_id() {
+        return true;
+    }
+    let inside = |area: Rect| {
+        ctx.read_response(focus)
+            .is_some_and(|r| area.contains(r.rect.center()))
+    };
+    ctx.data(|d| d.get_temp::<Rect>(box_rect_id()))
+        .is_some_and(inside)
 }
 
 /// The buttons for the misspelling `hit` of `word`, but Close.

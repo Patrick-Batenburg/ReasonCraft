@@ -316,6 +316,7 @@ impl ReasonCraftApp {
         shell::source_icons::preview(&ctx, self);
         shell::resize::show(&ctx);
         crate::a11y::paint_focus_ring(&ctx, self.tokens.accent);
+        shell::spelling_panel::note_focus(&ctx);
         self.pending.extend(keys);
 
         let actions = std::mem::take(&mut self.pending);

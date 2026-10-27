@@ -155,10 +155,12 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     if let Some(item) = tab.connect_mode {
         super::connect::map_keys(item, tab.selection, &mut out);
     } else if editing.is_none() {
-        // Esc closes the comment popover, then the find bar, before it
-        // stops anything else.
+        // Esc closes the comment popover, the spelling box (`esc_closes`),
+        // then the find bar, before it stops anything else.
         let close = if tab.comments_open.is_some() {
             Some(Action::CloseComments)
+        } else if crate::shell::spelling_panel::esc_closes(ctx, tab) {
+            Some(Action::CloseSpelling)
         } else {
             tab.find.open.then_some(Action::CloseFind)
         };
