@@ -96,3 +96,4 @@ Made while executing:
 - Ruling T15-2: the export bold stroke (0.35 px) stays lighter than the screen's faux bold (0.45 px), as the plan asked — cost: exported bold labels are a touch lighter.
 - Ruling T16-1: the end-to-end test compares the SVGs of the source and the imported tab byte for byte: the SVG writer emits no ids, so "identical apart from ids" means identical — cost: none.
 - Ruling T16-2: the end-to-end test sets the imported tab to left-to-right before exporting, because Argdown carries no layout direction (docs/argdown.md) — cost: none.
+- Ruling S5-F1: final review — fixed before merge: recovery folder test on macOS/Linux, imported and restored tabs autosaved before the first edit (revision ≥ 1), import report grouped by full note kind, translated recovery error; everything else triaged to step 6 or "can wait" (see todo.md) — cost: dense left-to-right arrowheads and the other listed items stay until step 6.

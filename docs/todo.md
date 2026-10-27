@@ -322,6 +322,7 @@ The new end-to-end test `tests/e2e/interchange.rs` (`interchange_round_trip`) ru
 - [ ] Accessibility of the new widgets: find bar, spelling panel, Search commands list, minimap (keyboard and screen reader), recovery prompt, Check tab Ignore buttons, Argdown import report, export dialog options
 - [ ] Spelling suggestions off the UI thread (or cached), so a Dutch F7 pass steps faster than ~50 ms
 - [ ] Spread the arrowheads where many children attach to one premise
+- [ ] Final review (step 5): widen port spacing on short left-to-right edges (opposes bars overlap at ~5.7 units); cap imported box text at MAX_BOX_CHARS with a report note; cache spell underlines per line so typing in a 50 000-character paragraph stays fast; translate key names in shortcut text; tolerant deserialisation for Settings enums (connector style, minimap, theme) and a UI-language setting plus "reset to defaults" (spec §10); split files at ~400 lines before adding to them (file_ops.rs, actions.rs, argdown/build.rs, text_panel/check.rs, tests/ui_editing.rs, tests/e2e/main.rs, canvas/input/tests.rs); blank label of orphan essay notes (screen readers); keyboard navigation to off-screen rows in the virtualised Essay/Check tabs; own icon for Import Argdown; macOS ⌘ glyphs checked visually; run the test suite on macOS and Linux
 
 ## Carry-over from step 1 reviews (put into the step 2+ plans)
 - [x] Step 2, first item: drag siblings to reorder them (spec §5), with a keyboard equivalent; add a "Connect to…" command for parking items
