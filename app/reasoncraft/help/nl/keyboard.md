@@ -8,7 +8,7 @@ Deze toetsen werken als er een vak of blok op de kaart gekozen is:
 
 - **Tab** voegt een reden toe, **Shift+Tab** een bezwaar.
 - **Enter** of **F2** bewerkt het gekozen vak; als je typt op een gekozen vak, begin je het ook te bewerken.
-- **Esc** stopt met bewerken. Esc sluit ook de zoekbalk en de opmerkingen.
+- **Esc** stopt met bewerken. Esc sluit ook de zoekbalk en de opmerkingen, en op de pagina Bestand ga je ermee terug naar de kaart.
 - De **pijltjestoetsen** verplaatsen de selectie. Omhoog vanaf een premisse kiest haar blok; Omlaag vanaf een blok kiest de eerste premisse. De pijltjes volgen de richting van de kaart.
 - Op een Mac verwijdert **Backspace** net als Delete.
 

@@ -8,7 +8,7 @@ These keys work when a box or card on the map is selected:
 
 - **Tab** adds a reason, **Shift+Tab** an objection.
 - **Enter** or **F2** edits the selected box; typing on a selected box starts editing it too.
-- **Esc** stops editing. It also closes the find bar and the comments.
+- **Esc** stops editing. It also closes the find bar and the comments, and on the File page it goes back to the map.
 - The **arrow keys** move the selection. Up from a premise selects its card; Down from a card selects its first premise. The arrows follow the layout direction of the map.
 - On a Mac, **Backspace** deletes like Delete.
 

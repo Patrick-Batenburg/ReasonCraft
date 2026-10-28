@@ -67,6 +67,33 @@ fn default_page(app: &ReasonCraftApp) -> Page {
     }
 }
 
+/// The keys on the File page: the file keys (see
+/// [`crate::canvas::input::file_keys`]: Ctrl+S, Ctrl+O, Ctrl+N, Alt+Q,
+/// F1, F6…) with or without a field focused, and, with none focused and no
+/// pop-up open, Esc back to the map. Commands that show something on the
+/// map return to it, like the page's own commands.
+pub fn keys(ctx: &egui::Context, app: &mut ReasonCraftApp) -> Vec<Action> {
+    let out = crate::canvas::input::file_keys(ctx, app);
+    // egui drops the focus as Esc arrives: a field's Esc (it leaves the
+    // field) is told by the focus at the end of last frame.
+    let field = crate::shell::spelling_panel::last_focus(ctx)
+        .is_some_and(|id| egui::text_edit::TextEditState::load(ctx, id).is_some());
+    let esc = !field
+        && !ctx.text_edit_focused()
+        && !egui::Popup::is_any_open(ctx)
+        && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+    let to_map = out.iter().any(|a| {
+        !matches!(
+            a,
+            Action::NextPane | Action::PrevPane | Action::OpenCommandSearch
+        )
+    });
+    if esc || to_map {
+        app.ribbon_tab = crate::app::RibbonTab::Home;
+    }
+    out
+}
+
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let shown = egui::CentralPanel::default()

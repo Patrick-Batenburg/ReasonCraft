@@ -253,19 +253,15 @@ impl ReasonCraftApp {
         }
         // Shortcuts are taken out first, so no widget sees (or moves focus
         // with) them, but run after the widgets' own actions (see `handle_keys`).
-        // A modal takes all keys (Esc closes it). In the backstage only a
-        // focused field (the document title or author) passes on the file
-        // keys; F6 / Shift+F6 always move between the panes.
+        // A modal takes all keys (Esc closes it). In the backstage only the
+        // file keys work, and Esc goes back to the map (see
+        // `backstage::keys`).
         let modal =
             self.modal.is_some() || self.link_edit.is_some() || self.export_dialog.is_some();
         let keys = if modal {
             Vec::new()
         } else if self.ribbon_tab == RibbonTab::File {
-            if ctx.text_edit_focused() {
-                crate::canvas::input::file_keys(&ctx, self)
-            } else {
-                shell::panes::pane_keys(&ctx)
-            }
+            shell::backstage::keys(&ctx, self)
         } else {
             crate::canvas::input::handle_keys(&ctx, self)
         };

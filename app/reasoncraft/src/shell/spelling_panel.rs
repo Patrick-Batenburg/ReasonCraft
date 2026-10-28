@@ -97,6 +97,13 @@ pub fn note_focus(ctx: &egui::Context) {
     ctx.data_mut(|d| d.insert_temp(last_focus_id(), focused));
 }
 
+/// The control that had the focus at the end of last frame, as
+/// [`note_focus`] noted it.
+pub fn last_focus(ctx: &egui::Context) -> Option<Id> {
+    ctx.data(|d| d.get_temp::<Option<Id>>(last_focus_id()))
+        .flatten()
+}
+
 /// Whether Esc closes `tab`'s spelling box: it is open and, before the
 /// Esc, the focus was inside it, on the map or nowhere (not in another
 /// field, such as an essay paragraph, whose Esc is its own).
@@ -104,10 +111,7 @@ pub fn esc_closes(ctx: &egui::Context, tab: &DocTab) -> bool {
     if tab.spelling.is_none() {
         return false;
     }
-    let Some(focus) = ctx
-        .data(|d| d.get_temp::<Option<Id>>(last_focus_id()))
-        .flatten()
-    else {
+    let Some(focus) = last_focus(ctx) else {
         return true;
     };
     if focus == crate::canvas::canvas_id() {

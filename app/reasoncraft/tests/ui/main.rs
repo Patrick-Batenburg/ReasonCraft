@@ -12,6 +12,7 @@ mod common;
 mod accessibility;
 mod arrange;
 mod background_work;
+mod backstage_keys;
 mod box_group;
 mod building;
 mod canvas_scene;

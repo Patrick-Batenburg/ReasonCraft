@@ -4,9 +4,8 @@
 //! backstage, status bar. Hidden panels are skipped. The focus lands on
 //! the pane's first control (the map itself for the map).
 
-use eframe::egui::{self, Key, LayerId, Modifiers, Rect};
+use eframe::egui::{self, LayerId, Rect};
 
-use crate::actions::Action;
 use crate::canvas::canvas_id;
 
 /// A part of the window F6 moves between.
@@ -119,21 +118,4 @@ fn first_control(ctx: &egui::Context, (pane, rect): (Pane, Rect)) -> Option<egui
             .find(|w| w.sense.is_focusable() && w.enabled && rect.contains(w.rect.center()))
             .map(|w| w.id)
     })
-}
-
-/// F6 / Shift+F6 (next / previous pane) taken out of the input, for the
-/// backstage, which has no other keys outside its fields.
-pub fn pane_keys(ctx: &egui::Context) -> Vec<Action> {
-    let mut out = Vec::new();
-    ctx.input_mut(|i| {
-        for (mods, action) in [
-            (Modifiers::SHIFT, Action::PrevPane),
-            (Modifiers::NONE, Action::NextPane),
-        ] {
-            if i.consume_key(mods, Key::F6) {
-                out.push(action);
-            }
-        }
-    });
-    out
 }
