@@ -117,9 +117,18 @@ mod tests {
     #[test]
     fn stroke_px_is_the_design_width() {
         let close = |a: f32, b: f32| (a - b).abs() < 1e-6;
-        assert!(close(stroke_px(ConnectorKind::Supports, Strength::Weak, 0.1), 0.14));
-        assert!(close(stroke_px(ConnectorKind::Attachment, Strength::Normal, 0.1), 0.1));
-        assert!(close(stroke_px(ConnectorKind::Neutral, Strength::Strong, 2.0), 3.0));
+        assert!(close(
+            stroke_px(ConnectorKind::Supports, Strength::Weak, 0.1),
+            0.14
+        ));
+        assert!(close(
+            stroke_px(ConnectorKind::Attachment, Strength::Normal, 0.1),
+            0.1
+        ));
+        assert!(close(
+            stroke_px(ConnectorKind::Neutral, Strength::Strong, 2.0),
+            3.0
+        ));
     }
 
     /// On screen: weak (1.4 px) is drawn at the 1.5 px floor even at 100 %;

@@ -38,7 +38,7 @@ pub(crate) struct Traits {
     /// Leaves "Move to…" running: picking a target (selecting,
     /// navigating, revealing, zooming), starting it again, view
     /// preferences and personal settings. The inline editor's own "stop
-    /// editing" (sent when it loses focus, e.g. to the ribbon's "Connect
+    /// editing" (sent when it loses focus, e.g. to the ribbon's "Move
     /// to…") keeps it too: `apply` committed the edit when the mode
     /// started, and Esc arrives as [`Action::CancelConnect`].
     pub keeps_connect: bool,

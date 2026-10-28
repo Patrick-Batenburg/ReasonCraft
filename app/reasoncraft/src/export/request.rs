@@ -43,7 +43,10 @@ impl ExportFormat {
     /// Whether this is an essay export (a reasoning map's, not a grouping
     /// map's).
     pub fn is_essay(self) -> bool {
-        matches!(self, Self::EssayMarkdown | Self::EssayText | Self::EssayDocx)
+        matches!(
+            self,
+            Self::EssayMarkdown | Self::EssayText | Self::EssayDocx
+        )
     }
 
     /// What this format is made from: the map's picture, or the document.

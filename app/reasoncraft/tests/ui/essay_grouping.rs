@@ -35,7 +35,10 @@ fn grouping_map_has_no_essay() {
     for format in ESSAYS {
         assert!(!can_run(&app, &Action::OpenExport(format)), "{format:?}");
     }
-    assert!(can_run(&app, &Action::OpenExport(ExportFormat::OutlineMarkdown)));
+    assert!(can_run(
+        &app,
+        &Action::OpenExport(ExportFormat::OutlineMarkdown)
+    ));
     let mut h = build(app);
     h.run();
     h.get_by_label(&t("essay.grouping"));

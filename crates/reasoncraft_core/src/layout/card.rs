@@ -101,7 +101,10 @@ mod tests {
         assert_eq!(top_down.y, want);
         let ltr = frame_size(&premises, &p, Frame::new(LayoutDirection::LeftRight));
         let stack = 40.0 + p.premise_gap + 60.0;
-        assert_eq!(ltr.y, p.card_label_height + stack + p.card_pad + p.card_bottom_extra);
+        assert_eq!(
+            ltr.y,
+            p.card_label_height + stack + p.card_pad + p.card_bottom_extra
+        );
     }
 
     /// `premise_offsets` agrees with where `place` puts the premises, in

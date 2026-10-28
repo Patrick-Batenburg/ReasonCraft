@@ -6,17 +6,34 @@ use super::{command, group, large_menu, menu_item, menu_popup};
 use crate::actions::{Action, is_enabled};
 use crate::app::ReasonCraftApp;
 use crate::commands;
+use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::shell::icons::Icon;
 use crate::theme::Tokens;
 
-/// The Outline ▾ and Essay ▾ menus' commands.
-const OUTLINE: [&str; 3] = [
-    "export.outline_md",
-    "export.outline_txt",
-    "export.outline_docx",
-];
-const ESSAY: [&str; 3] = ["export.essay_md", "export.essay_txt", "export.essay_docx"];
+/// A dropdown of text formats: its icon, label key and registry command
+/// ids.
+struct Menu {
+    icon: Icon,
+    key: &'static str,
+    ids: [&'static str; 3],
+}
+
+/// The Outline ▾ and Essay ▾ menus.
+const OUTLINE: Menu = Menu {
+    icon: Icon::Outline,
+    key: "export.outline",
+    ids: [
+        "export.outline_md",
+        "export.outline_txt",
+        "export.outline_docx",
+    ],
+};
+const ESSAY: Menu = Menu {
+    icon: Icon::Essay,
+    key: "export.essay",
+    ids: ["export.essay_md", "export.essay_txt", "export.essay_docx"],
+};
 
 pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
@@ -34,10 +51,8 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     });
     group(ui, &tk, Icon::Essay, &t("group.text"), |ui| {
         let tab = app.active_tab();
-        let on = |id: &str| is_enabled(tab, &commands::get(id).action);
-        let (outline, essay) = (on(OUTLINE[0]), on(ESSAY[0]));
-        menu(ui, &tk, Icon::Outline, "export.outline", &OUTLINE, outline, &mut out);
-        menu(ui, &tk, Icon::Essay, "export.essay", &ESSAY, essay, &mut out);
+        menu(ui, &tk, tab, &OUTLINE, &mut out);
+        menu(ui, &tk, tab, &ESSAY, &mut out);
         command(ui, &tk, "export.argdown", true, false, &mut out);
     });
     group(ui, &tk, Icon::Print, &t("group.print"), |ui| {
@@ -47,20 +62,16 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     app.pending.extend(out);
 }
 
-/// A dropdown of text formats (registry command ids), greyed out when
-/// they are not `enabled` (Essay in a grouping map).
-fn menu(
-    ui: &mut Ui,
-    tk: &Tokens,
-    icon: Icon,
-    key: &str,
-    ids: &[&str],
-    enabled: bool,
-    out: &mut Vec<Action>,
-) {
-    let resp = large_menu(ui, tk, icon, &t(key), enabled);
+/// Draw `m`, greyed out when none of its formats can run for `tab`
+/// (Essay in a grouping map).
+fn menu(ui: &mut Ui, tk: &Tokens, tab: &DocTab, m: &Menu, out: &mut Vec<Action>) {
+    let enabled = m
+        .ids
+        .iter()
+        .any(|id| is_enabled(tab, &commands::get(id).action));
+    let resp = large_menu(ui, tk, m.icon, &t(m.key), enabled);
     menu_popup(ui, &resp, |ui| {
-        for &id in ids {
+        for id in m.ids {
             let cmd = commands::get(id);
             if menu_item(ui, true, Button::new(t(cmd.label))) {
                 out.push(cmd.action.clone());
@@ -77,7 +88,7 @@ mod tests {
     /// these ids.
     #[test]
     fn menu_ids_exist() {
-        for id in OUTLINE.into_iter().chain(ESSAY) {
+        for id in OUTLINE.ids.into_iter().chain(ESSAY.ids) {
             commands::get(id);
         }
     }
