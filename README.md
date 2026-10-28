@@ -124,6 +124,8 @@ macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, a
 | F3 / Shift+F3 | F3 / Shift+F3 | Go to the next / previous hit |
 | F7 | F7 | Spelling, also while typing in a box or field: check the spelling of box text, sources and notes from the selection, one misspelling at a time |
 | F6 / Shift+F6 | F6 / Shift+F6 | Move the keyboard focus to the next / previous pane, from any control: ribbon, Building panel, map, Text panel, status bar (hidden panels are skipped) |
+| Ctrl+Tab or Ctrl+PageDown / Ctrl+Shift+Tab or Ctrl+PageUp | Control+Tab or Control+PageDown / Control+Shift+Tab or Control+PageUp | Switch to the next / previous open map, also while typing in a box or field (round from the last to the first) |
+| Ctrl+W or Ctrl+F4 | Cmd+W or Cmd+F4 | Close the open map, also while typing in a box or field (asks first if it has unsaved changes) |
 | F1 | F1 | Help, also while typing in a box or field: the topic of the Text panel tab that has the focus (Outline, Essay, Check, Snippets), otherwise Getting started, in the Text panel's Help tab |
 
 ### While a box or card is selected

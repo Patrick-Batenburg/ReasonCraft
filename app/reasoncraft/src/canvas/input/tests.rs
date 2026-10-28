@@ -57,7 +57,11 @@ fn tab_adds_reason() {
         key_to_action(Os::Windows, Key::P, cmd_shift, false),
         Some(Action::JumpParking)
     );
-    assert_eq!(key_to_action(Os::Windows, Key::Tab, cmd, false), None);
+    // Ctrl+Tab switches documents (ROB-2), it adds nothing.
+    assert_eq!(
+        key_to_action(Os::Windows, Key::Tab, cmd, false),
+        Some(Action::NextTab)
+    );
     assert_eq!(key_to_action(Os::Windows, Key::R, cmd, false), None);
     assert_eq!(
         key_to_action(Os::Windows, Key::Num0, cmd, false),

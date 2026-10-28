@@ -214,7 +214,8 @@ pub fn clipboard_events(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action
 /// essay paragraph, the find bar):
 /// Ctrl+S, Ctrl+Shift+S, Ctrl+O and Ctrl+N, the find keys (Ctrl+F,
 /// Ctrl+H, F3, Shift+F3), the same subset that works while editing a box,
-/// Search commands (Alt+Q), F6 / Shift+F6 and F1, or their macOS keys. They
+/// Search commands (Alt+Q), F6 / Shift+F6, F1 and the tab keys (Ctrl+Tab,
+/// Ctrl+Shift+Tab, Ctrl+PgDn, Ctrl+PgUp, Ctrl+W, Ctrl+F4), or their macOS keys. They
 /// are taken out of the input; every other key stays with the field.
 /// Applying the action first ends the field's editing session, so its
 /// typing becomes a history step before the save.
@@ -250,6 +251,9 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
                     | Action::OpenSpelling
                     | Action::NextPane
                     | Action::PrevPane
+                    | Action::NextTab
+                    | Action::PrevTab
+                    | Action::CloseActiveTab
                     | Action::ContextHelp),
                 ) => {
                     alt_text = modifiers.alt;
@@ -263,6 +267,10 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
             }
         });
     });
+    if !out.is_empty() {
+        // Ctrl+Tab switches documents: egui must not move the focus too.
+        ctx.memory_mut(|m| m.move_focus(FocusDirection::None));
+    }
     out.retain(|a| can_run(app, a));
     out
 }

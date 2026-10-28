@@ -22,6 +22,7 @@ mod close_request;
 mod close_waits;
 mod command_search;
 mod connector_style;
+mod doc_tabs;
 mod document;
 mod essay;
 mod examples;

@@ -126,6 +126,7 @@ impl Action {
             // handles it before looking at these).
             Action::ImagePrepared { .. } => LOOKS,
             Action::NextPane | Action::PrevPane | Action::ContextHelp => editing(LOOKS),
+            Action::NextTab | Action::PrevTab => editing(KEEPS_NOTES),
             Action::ActivateTab(_)
             | Action::ResetSettings
             | Action::ConfirmResetSettings
@@ -159,6 +160,7 @@ impl Action {
             | Action::Open
             | Action::Save
             | Action::SaveAs
+            | Action::CloseActiveTab
             | Action::TargetWholeCard(_)
             | Action::AddSource(_) => editing(CHANGES),
             Action::ImportArgdown

@@ -72,6 +72,9 @@ fn description(action: &Action) -> Option<&'static str> {
         A::NextPane => "help.key.next_pane",
         A::PrevPane => "help.key.prev_pane",
         A::ContextHelp => "help.key.help",
+        A::NextTab => "help.key.next_tab",
+        A::PrevTab => "help.key.prev_tab",
+        A::CloseActiveTab => "help.key.close_tab",
         _ => return None,
     })
 }

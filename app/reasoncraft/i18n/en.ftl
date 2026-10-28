@@ -15,6 +15,7 @@ window-close = Close window
 ## Document tabs
 tabs-new = New tab
 tabs-close = Close { $name }
+tabs-more = All open maps
 
 ## Ribbon tabs
 ribbon-tab-file = File
@@ -73,6 +74,9 @@ action-park = Move to parking
 action-box_type = Type
 action-link = Link
 action-open_link = Open link
+action-next_tab = Next tab
+action-prev_tab = Previous tab
+action-close_tab = Close tab
 action-image = Image
 action-remove_image = Remove image
 action-delete = Delete
@@ -679,6 +683,9 @@ help-key-delete_branch = Delete with everything under it
 help-key-jump_parking = Jump between the map and Not connected
 help-key-comments = Open the comments of the selected box
 help-key-open_link = Open the link of the selected box
+help-key-next_tab = Switch to the next open map
+help-key-prev_tab = Switch to the previous open map
+help-key-close_tab = Close the open map
 help-key-connect = Move to…: move the selected item (a premise moves its card)
 help-key-move_left = Move the selection one place to the left
 help-key-move_right = Move the selection one place to the right

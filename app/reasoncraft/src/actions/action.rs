@@ -261,6 +261,13 @@ pub enum Action {
     SetDefaultDocLanguage(Option<String>),
     /// Switch to the tab at this index.
     ActivateTab(usize),
+    /// Switch to the next (previous) tab, round from the last to the
+    /// first (Ctrl+Tab, Ctrl+Shift+Tab, Ctrl+PgDn, Ctrl+PgUp).
+    NextTab,
+    PrevTab,
+    /// Close the active tab, asking first if it has unsaved changes
+    /// (Ctrl+W, Ctrl+F4).
+    CloseActiveTab,
     /// Open the export dialog for an image format; a text format asks
     /// for a file right away.
     OpenExport(ExportFormat),

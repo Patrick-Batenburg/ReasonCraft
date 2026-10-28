@@ -16,6 +16,7 @@ window-close = Venster sluiten
 ## Document tabs
 tabs-new = Nieuw tabblad
 tabs-close = { $name } sluiten
+tabs-more = Alle open kaarten
 
 ## Ribbon tabs
 ribbon-tab-file = Bestand
@@ -74,6 +75,9 @@ action-park = Naar Niet verbonden
 action-box_type = Soort
 action-link = Link
 action-open_link = Link openen
+action-next_tab = Volgend tabblad
+action-prev_tab = Vorig tabblad
+action-close_tab = Tabblad sluiten
 action-image = Afbeelding
 action-remove_image = Afbeelding wissen
 action-delete = Verwijderen
@@ -680,6 +684,9 @@ help-key-delete_branch = Verwijderen met alles eronder
 help-key-jump_parking = Heen en weer tussen de kaart en Niet verbonden
 help-key-comments = De opmerkingen bij het gekozen vak openen
 help-key-open_link = De link van het gekozen vak openen
+help-key-next_tab = Naar de volgende open kaart
+help-key-prev_tab = Naar de vorige open kaart
+help-key-close_tab = De open kaart sluiten
 help-key-connect = Verplaatsen…: het gekozen onderdeel verplaatsen (een premisse neemt haar blok mee)
 help-key-move_left = De selectie één plek naar links schuiven
 help-key-move_right = De selectie één plek naar rechts schuiven

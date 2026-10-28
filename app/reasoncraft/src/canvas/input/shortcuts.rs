@@ -155,6 +155,12 @@ const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     (Shortcut::new(Key::F1, NONE), || Action::ContextHelp),
     (Shortcut::new(Key::F6, NONE), || Action::NextPane),
     (Shortcut::new(Key::F6, SHIFT), || Action::PrevPane),
+    (Shortcut::new(Key::Tab, CMD), || Action::NextTab),
+    (Shortcut::new(Key::Tab, CMD_SHIFT), || Action::PrevTab),
+    (Shortcut::new(Key::PageDown, CMD), || Action::NextTab),
+    (Shortcut::new(Key::PageUp, CMD), || Action::PrevTab),
+    (Shortcut::new(Key::W, CMD), || Action::CloseActiveTab),
+    (Shortcut::new(Key::F4, CMD), || Action::CloseActiveTab),
 ];
 
 /// The macOS table, [`SHORTCUTS`] with these changes:
@@ -164,7 +170,8 @@ const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
 ///   Control. Opt with an arrow key stays (Control with the arrows
 ///   switches desktops);
 /// - Cmd+H hides the app, so Replace is Cmd+Opt+F;
-/// - Search commands is Cmd+Shift+A.
+/// - Search commands is Cmd+Shift+A;
+/// - the next and previous tab take Control, as Cmd+Tab switches apps.
 static MAC: LazyLock<Vec<(Shortcut, ActionCtor)>> = LazyLock::new(|| {
     SHORTCUTS
         .iter()
@@ -176,6 +183,14 @@ fn mac_shortcut(s: Shortcut, action: &Action) -> Shortcut {
     match action {
         Action::OpenFind { replace: true } => Shortcut::new(Key::F, CMD_ALT),
         Action::OpenCommandSearch => Shortcut::new(Key::A, CMD_SHIFT),
+        Action::NextTab | Action::PrevTab => {
+            let mods = Modifiers {
+                command: false,
+                ctrl: true,
+                ..s.mods
+            };
+            Shortcut::new(s.key, mods)
+        }
         _ if s.mods.alt && is_digit(s.key) => Shortcut::new(s.key, s.mods.plus(CMD)),
         _ if s.mods.alt && types_with_opt(s.key) => {
             let mods = Modifiers {

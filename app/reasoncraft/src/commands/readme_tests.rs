@@ -109,6 +109,8 @@ fn row_actions(head: &str) -> Option<Vec<Action>> {
         "Spelling" => vec![A::OpenSpelling],
         "Move the keyboard focus to the next / previous pane" => vec![A::NextPane, A::PrevPane],
         "Help" => vec![A::ContextHelp],
+        "Switch to the next / previous open map" => vec![A::NextTab, A::PrevTab],
+        "Close the open map" => vec![A::CloseActiveTab],
         "Add a co-premise" => vec![A::AddCoPremise],
         "Add a reason for the whole card" => vec![A::TargetWholeCard(CardKind::Reason)],
         "Add an objection to the whole card" => vec![A::TargetWholeCard(CardKind::Objection)],

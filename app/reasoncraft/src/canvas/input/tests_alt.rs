@@ -126,7 +126,7 @@ fn ctrl_shift_m_opens_comments() {
 }
 
 #[test]
-fn ctrl_shift_o_targets_whole_card_objection_and_ctrl_shift_tab_unmapped() {
+fn ctrl_shift_o_targets_whole_card_objection_and_ctrl_shift_tab_goes_back_a_tab() {
     let cmd_shift = Modifiers::COMMAND | Modifiers::SHIFT;
     let objection = Some(Action::TargetWholeCard(CardKind::Objection));
     for editing in [false, true] {
@@ -136,7 +136,7 @@ fn ctrl_shift_o_targets_whole_card_objection_and_ctrl_shift_tab_unmapped() {
         );
         assert_eq!(
             key_to_action(Os::Windows, Key::Tab, cmd_shift, editing),
-            None
+            Some(Action::PrevTab)
         );
         // Ctrl+Shift+R stays the whole-card reason.
         assert_eq!(

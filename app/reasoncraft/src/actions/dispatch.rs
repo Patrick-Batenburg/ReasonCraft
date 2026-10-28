@@ -31,6 +31,13 @@ fn noting_cut(app: &mut ReasonCraftApp, f: impl FnOnce(&mut DocTab) -> bool) {
     }
 }
 
+/// Switch `step` tabs to the right, round from the last to the first.
+fn step_tab(app: &mut ReasonCraftApp, step: usize) {
+    if !app.tabs.is_empty() {
+        app.active = (app.active + step) % app.tabs.len();
+    }
+}
+
 /// Carry out `action` (after [`super::apply`] has ended what it ends).
 pub(super) fn run(app: &mut ReasonCraftApp, action: Action) {
     match action {
@@ -71,6 +78,13 @@ pub(super) fn run(app: &mut ReasonCraftApp, action: Action) {
             if i < app.tabs.len() {
                 app.active = i;
             }
+        }
+        Action::NextTab => step_tab(app, 1),
+        Action::PrevTab => step_tab(app, app.tabs.len().saturating_sub(1)),
+        Action::CloseActiveTab => {
+            let i = app.active;
+            images::flush_tab(app, i);
+            file_ops::request_close_tab(app, i);
         }
         Action::ResolveRecovery(choice) => crate::recovery::resolve(app, choice),
         Action::OpenExample(which) => examples::open_example(app, which),
