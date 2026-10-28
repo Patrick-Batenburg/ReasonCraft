@@ -26,6 +26,9 @@ pub struct Fragment {
     pub cards: IndexMap<CardId, Card>,
 }
 
+/// The deepest indent of the clipboard text, in levels.
+pub const MAX_INDENT: usize = 32;
+
 impl Fragment {
     /// What the pasted top item is for the structure rules.
     pub fn new_item(&self) -> NewItem {
@@ -52,43 +55,48 @@ impl Fragment {
     }
 
     /// The fragment's text, one box per line, indented two spaces a level
-    /// (cards add no level), in the order the map shows them: what goes on
-    /// the system clipboard for other programs.
+    /// (cards add no level) up to [`MAX_INDENT`] levels, in the order the
+    /// map shows them: what goes on the system clipboard for other
+    /// programs. It walks with its own stack, so any depth fits.
     pub fn plain_text(&self) -> String {
         let mut out = String::new();
-        self.text_of(self.top, 0, &mut out);
-        out
-    }
-
-    fn text_of(&self, item: Item, depth: usize, out: &mut String) {
-        match item {
-            Item::Card(c) => {
-                let Some(card) = self.cards.get(&c) else {
-                    return;
-                };
-                for p in &card.premises {
-                    self.text_of(Item::Box(*p), depth, out);
-                }
-                for k in &card.children {
-                    self.text_of(Item::Card(*k), depth + 1, out);
-                }
+        let mut stack = vec![(self.top, 0)];
+        // Bounded by the item count, so even a damaged cycle ends.
+        let mut budget = self.boxes.len() + self.cards.len();
+        while let Some((item, depth)) = stack.pop() {
+            if budget == 0 {
+                break;
             }
-            Item::Box(b) => {
-                let Some(node) = self.boxes.get(&b) else {
-                    return;
-                };
-                for line in node.text.lines() {
-                    out.push_str(&"  ".repeat(depth));
-                    out.push_str(line);
-                    out.push('\n');
+            budget -= 1;
+            // Pushed last to first, so they come off in order.
+            match item {
+                Item::Card(c) => {
+                    let Some(card) = self.cards.get(&c) else {
+                        continue;
+                    };
+                    let kids = card.children.iter().map(|&k| (Item::Card(k), depth + 1));
+                    let premises = card.premises.iter().map(|&p| (Item::Box(p), depth));
+                    let order: Vec<_> = premises.chain(kids).collect();
+                    stack.extend(order.into_iter().rev());
                 }
-                let first = node.children.iter().filter(|i| self.is_attachment(**i));
-                let rest = node.children.iter().filter(|i| !self.is_attachment(**i));
-                for &child in first.chain(rest) {
-                    self.text_of(child, depth + 1, out);
+                Item::Box(b) => {
+                    let Some(node) = self.boxes.get(&b) else {
+                        continue;
+                    };
+                    let indent = "  ".repeat(depth.min(MAX_INDENT));
+                    for line in node.text.lines() {
+                        out.push_str(&indent);
+                        out.push_str(line);
+                        out.push('\n');
+                    }
+                    let first = node.children.iter().filter(|i| self.is_attachment(**i));
+                    let rest = node.children.iter().filter(|i| !self.is_attachment(**i));
+                    let order: Vec<_> = first.chain(rest).map(|&i| (i, depth + 1)).collect();
+                    stack.extend(order.into_iter().rev());
                 }
             }
         }
+        out
     }
 
     fn is_attachment(&self, item: Item) -> bool {

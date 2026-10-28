@@ -94,3 +94,50 @@ fn comments_get_new_ids() {
     assert_eq!(new.text, old.text);
     assert_ne!(new.id, old.id);
 }
+
+/// A chain `depth` reasons deep under the root: each premise has one
+/// reason under it (built directly: an edit checks the whole document in
+/// debug builds). Returns the top card.
+fn chain(depth: usize) -> (Document, CardId) {
+    let mut d = Document::new("Claim");
+    let mut holder = d.root;
+    let mut top = None;
+    for i in 0..depth {
+        let (card, premise) = (CardId::new(), NodeId::new());
+        let text = format!("level {i}");
+        (d.boxes).insert(premise, BoxNode::new(premise, BoxKind::Premise, &text));
+        (d.cards).insert(card, Card::new(card, CardKind::Reason, vec![premise]));
+        d.boxes[&holder].children.push(Item::Card(card));
+        holder = premise;
+        top.get_or_insert(card);
+    }
+    d.validate().unwrap();
+    (d, top.unwrap())
+}
+
+/// Copy, its clipboard text and paste walk the tree without recursion,
+/// so a deep chain (from a crafted file or Argdown) fits the main
+/// thread's 1 MiB stack; the indent stops growing at [`MAX_INDENT`]
+/// levels, so the text grows with the box count, not its square.
+#[test]
+fn a_deep_chain_copies_and_pastes_on_a_small_stack() {
+    const DEPTH: usize = 50_000;
+    let (mut d, top) = chain(DEPTH);
+    let run = std::thread::Builder::new()
+        .stack_size(1 << 20)
+        .spawn(move || {
+            let f = d.copy_fragment(Item::Card(top)).unwrap();
+            let text = f.plain_text();
+            d.paste_fragment(&f, Parent::Parking).unwrap();
+            (text, d.boxes.len())
+        })
+        .unwrap();
+    let (text, boxes) = run.join().expect("no stack overflow");
+    assert_eq!(boxes, 1 + 2 * DEPTH);
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), DEPTH);
+    assert_eq!(lines[1], "  level 1");
+    let deepest = format!("{}level {}", "  ".repeat(MAX_INDENT), DEPTH - 1);
+    assert_eq!(lines[DEPTH - 1], deepest);
+    assert!(text.len() < DEPTH * (2 * MAX_INDENT + 16));
+}
