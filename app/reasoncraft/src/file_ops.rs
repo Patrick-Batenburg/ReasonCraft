@@ -210,8 +210,17 @@ fn open_or_activate(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileErr
         return Ok(());
     }
     let pkg = file::open_package(path)?;
+    let mut notes = Vec::new();
     if pkg.cut_on_open {
-        app.status_note = Some(crate::i18n::t("status.open_cut"));
+        notes.push(crate::i18n::t("status.open_cut"));
+    }
+    if pkg.parked_on_open {
+        let mut args = fluent_bundle::FluentArgs::new();
+        args.set("max", reasoncraft_core::MAX_DEPTH);
+        notes.push(crate::i18n::t_args("status.open_too_deep", &args));
+    }
+    if !notes.is_empty() {
+        app.status_note = Some(notes.join(" "));
     }
     let mut tab = DocTab::from_package(pkg);
     tab.path = Some(path.to_path_buf());

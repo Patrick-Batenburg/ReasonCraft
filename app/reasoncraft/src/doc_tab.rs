@@ -81,6 +81,10 @@ pub struct DocTab {
     /// Pan the selection into view on the next canvas frame (set by
     /// keyboard navigation and adds, so it uses the fresh layout).
     pub reveal_pending: bool,
+    /// The last edit was refused because the map would nest deeper than
+    /// [`reasoncraft_core::MAX_DEPTH`] levels; [`crate::actions::apply`]
+    /// says so in the status bar.
+    pub refused_too_deep: bool,
     /// The box whose comment popover is showing.
     pub comments_open: Option<NodeId>,
     /// The item waiting for a target ("Move to…").
@@ -174,6 +178,7 @@ impl DocTab {
             assets,
             other_entries,
             cut_on_open: _,
+            parked_on_open: _,
         } = pkg;
         let selection = Some(Item::Box(doc.root));
         Self {
@@ -192,6 +197,7 @@ impl DocTab {
             fit_selection_pending: false,
             minimap: Default::default(),
             reveal_pending: false,
+            refused_too_deep: false,
             comments_open: None,
             connect_mode: None,
             snippet_focus: None,
@@ -311,15 +317,20 @@ impl DocTab {
         let mut draft = self.doc.clone();
         let out = match edit(&mut draft) {
             Ok(out) => out,
-            // A rule refusing (or nothing to change) and a target that is
-            // gone (an id from an earlier frame) are expected. A cycle, or
-            // a claim losing its last premise, means a command skipped the
-            // check that should have greyed it out.
+            // A rule refusing (or nothing to change), a target that is
+            // gone (an id from an earlier frame) and a branch that would
+            // nest too deep are expected. A cycle, or a claim losing its
+            // last premise, means a command skipped the check that should
+            // have greyed it out.
             Err(e) => {
                 debug_assert!(
-                    matches!(e, EditError::NotAllowed | EditError::NotFound),
+                    matches!(
+                        e,
+                        EditError::NotAllowed | EditError::NotFound | EditError::TooDeep
+                    ),
                     "unexpected edit error: {e:?}"
                 );
+                self.refused_too_deep = e == EditError::TooDeep;
                 return None;
             }
         };

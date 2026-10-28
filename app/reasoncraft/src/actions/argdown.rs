@@ -98,6 +98,7 @@ pub fn note_text(kind: &ImportNoteKind) -> String {
     match kind {
         ImportNoteKind::UnknownReference(title) => args.set("title", title.clone()),
         ImportNoteKind::TextCut => args.set("max", reasoncraft_core::MAX_BOX_CHARS),
+        ImportNoteKind::TooDeep => args.set("max", reasoncraft_core::MAX_DEPTH),
         _ => {}
     }
     t_args(&format!("argdown.note.{}", kind.key()), &args)

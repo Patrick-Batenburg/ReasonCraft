@@ -93,13 +93,15 @@ pub fn asset_key(ext: &str, bytes: &[u8]) -> String {
 ///
 /// `cut_on_open` is true when opening the file cut an over-long text or
 /// left out data that was too large or unsafe (see [`crate::file::open`]);
-/// saving ignores it.
+/// `parked_on_open` is true when it moved branches nested deeper than
+/// [`crate::MAX_DEPTH`] levels to the parking area. Saving ignores both.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Package {
     pub doc: Document,
     pub assets: Assets,
     pub other_entries: Vec<(String, Arc<[u8]>)>,
     pub cut_on_open: bool,
+    pub parked_on_open: bool,
 }
 
 impl Package {
@@ -109,6 +111,7 @@ impl Package {
             assets: Assets::default(),
             other_entries: Vec::new(),
             cut_on_open: false,
+            parked_on_open: false,
         }
     }
 }

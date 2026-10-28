@@ -68,6 +68,13 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         }
     }
     dispatch::run(app, action);
+    if let Some(tab) = app.tabs.get_mut(app.active)
+        && std::mem::take(&mut tab.refused_too_deep)
+    {
+        let mut args = fluent_bundle::FluentArgs::new();
+        args.set("max", reasoncraft_core::MAX_DEPTH);
+        app.status_note = Some(crate::i18n::t_args("status.too_deep", &args));
+    }
 }
 
 #[cfg(test)]

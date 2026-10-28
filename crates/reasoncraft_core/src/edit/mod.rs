@@ -1,6 +1,7 @@
 //! Editing operations on a [`Document`].
 
 mod add;
+mod depth;
 mod fragment;
 mod move_remove;
 #[cfg(test)]
@@ -11,6 +12,7 @@ mod validate_tests;
 
 use thiserror::Error;
 
+pub use depth::MAX_DEPTH;
 pub use fragment::Fragment;
 
 use crate::caps::capped;
@@ -28,6 +30,9 @@ pub enum EditError {
     LastPremiseOfRoot,
     #[error("this move would create a cycle")]
     Cycle,
+    /// The item would sit deeper than [`MAX_DEPTH`] levels.
+    #[error("the map would nest more than {MAX_DEPTH} levels deep")]
+    TooDeep,
 }
 
 /// A loose item to create in the parking area.

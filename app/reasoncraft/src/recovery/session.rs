@@ -101,6 +101,7 @@ pub(super) fn autosave_tab(
         assets: tab.assets.clone(),
         other_entries: tab.other_entries.clone(),
         cut_on_open: false,
+        parked_on_open: false,
     };
     match replaces {
         Some(doc) => store.write_then_discard(tab.recovery_key, pkg, meta, doc),

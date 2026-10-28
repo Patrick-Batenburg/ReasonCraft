@@ -25,6 +25,11 @@ pub fn from_argdown(src: &str) -> Result<(Document, ImportReport), ArgdownError>
     let mut report = ImportReport::default();
     let graph = Reader::new(&tree, &mut report).read();
     let mut doc = super::build::build(&graph, &mut report)?;
+    // Titles can chain statements far deeper than relations nest; what
+    // lies deeper than a map allows is parked, as when a file is opened.
+    if doc.park_too_deep() {
+        report.note(1, super::ImportNoteKind::TooDeep);
+    }
     // Comments, frontmatter and links from data keep the caps a file's
     // open applies, so an imported map is not cut when it is opened again.
     if doc.cap_texts() {

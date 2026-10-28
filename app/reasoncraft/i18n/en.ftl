@@ -232,6 +232,7 @@ argdown-note-moved_to_parking = An item could not go where the file puts it and 
 argdown-note-relation_dropped = A relation to a conclusion that was left out was left out too; its statement is in the parking area.
 argdown-note-link_dropped = A link that is not a safe web or mail link was left out.
 argdown-note-text_cut = Text longer than the map keeps was cut (a box keeps { $max } characters).
+argdown-note-too_deep = A branch nested more than { $max } levels deep is in the parking area.
 
 ## Backstage
 backstage-back = Back
@@ -677,6 +678,8 @@ status-saving = Saving…
 clipboard-empty_item = (empty)
 status-text_cut = Text was cut to 50 000 characters.
 status-open_cut = Some of this file was too large or unsafe: long texts were shortened and the rest left out.
+status-open_too_deep = Parts of this map were nested more than { $max } levels deep; they are in the parking area.
+status-too_deep = That would nest the map more than { $max } levels deep.
 status-jobs-exports = { $count ->
     [one] One export running
    *[other] { $count } exports running

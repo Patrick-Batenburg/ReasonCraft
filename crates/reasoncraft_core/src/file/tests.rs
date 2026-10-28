@@ -210,6 +210,7 @@ fn package_roundtrip_keeps_ratings_comments_links() {
         assets,
         other_entries: vec![("extra/x.bin".into(), vec![7; 10].into())],
         cut_on_open: false,
+        parked_on_open: false,
     };
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("m.rcraft");

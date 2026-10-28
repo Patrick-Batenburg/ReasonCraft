@@ -115,3 +115,16 @@ fn markdown_escapes_setext_and_indented_code() {
     let expected = "\n- &#32;&#32;&#32;&#32;code\n  &#32;&#32;&#32;&#32;more\n  &#9;x\n";
     assert!(out.contains(expected), "{out}");
 }
+
+#[test]
+fn deep_items_indent_at_most_max_indent_levels() {
+    use reasoncraft_core::caps::MAX_INDENT;
+    let (d, _) = reasoncraft_core::fixtures::deep_chain(200);
+    let text = md(&d, &OutlineOptions::default(), "en");
+    let widest = text
+        .lines()
+        .map(|l| l.len() - l.trim_start().len())
+        .max()
+        .unwrap();
+    assert_eq!(widest, 2 * MAX_INDENT);
+}

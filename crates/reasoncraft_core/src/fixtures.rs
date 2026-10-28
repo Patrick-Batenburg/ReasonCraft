@@ -3,7 +3,7 @@
 use crate::edit::NewLoose;
 use crate::ids::{CardId, Item, NodeId, Parent};
 use crate::layout::Measure;
-use crate::model::{BoxKind, CardKind, Document};
+use crate::model::{BoxKind, BoxNode, Card, CardKind, Document};
 
 /// Measures text as 7 px per character and 14 px per line, wrapping at word
 /// boundaries and breaking words longer than the width.
@@ -57,6 +57,29 @@ const PHRASES: [&str; 8] = [
 
 fn text(label: &str, i: usize) -> String {
     format!("{label} {i}: {}", PHRASES[i % PHRASES.len()])
+}
+
+/// A map whose claim has a chain of `levels` reasons, each under the
+/// premise of the one before, built directly (past any edit check, so it
+/// may nest deeper than [`crate::MAX_DEPTH`]); and its premises from the
+/// top down.
+pub fn deep_chain(levels: usize) -> (Document, Vec<NodeId>) {
+    let mut d = Document::new("C");
+    let mut premises = Vec::with_capacity(levels);
+    let mut owner = d.root;
+    for i in 0..levels {
+        let (card, premise) = (CardId::new(), NodeId::new());
+        d.boxes.insert(
+            premise,
+            BoxNode::new(premise, BoxKind::Premise, &format!("level {i}")),
+        );
+        d.cards
+            .insert(card, Card::new(card, CardKind::Reason, vec![premise]));
+        d.boxes[&owner].children.push(Item::Card(card));
+        premises.push(premise);
+        owner = premise;
+    }
+    (d, premises)
 }
 
 /// A deterministic map of about `n_boxes` boxes (root, premises and sources

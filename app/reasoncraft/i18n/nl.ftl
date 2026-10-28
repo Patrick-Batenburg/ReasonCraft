@@ -233,6 +233,7 @@ argdown-note-moved_to_parking = Een onderdeel kon niet op de plek uit het bestan
 argdown-note-relation_dropped = Een relatie naar een weggelaten conclusie is ook weggelaten; de uitspraak staat nu bij Niet verbonden.
 argdown-note-link_dropped = Een link die geen veilige web- of e-maillink is, is weggelaten.
 argdown-note-text_cut = Tekst die langer is dan de kaart bewaart, is ingekort (een vak bewaart { $max } tekens).
+argdown-note-too_deep = Een tak die meer dan { $max } niveaus diep zit, staat nu bij Niet verbonden.
 
 ## Backstage
 backstage-back = Terug
@@ -676,6 +677,8 @@ status-saving = Opslaan…
 clipboard-empty_item = (leeg)
 status-text_cut = Tekst is ingekort tot 50 000 tekens.
 status-open_cut = Een deel van dit bestand was te groot of onveilig: lange teksten zijn ingekort en de rest is weggelaten.
+status-open_too_deep = Delen van deze kaart zaten meer dan { $max } niveaus diep; ze staan nu bij Niet verbonden.
+status-too_deep = Dan zou de kaart meer dan { $max } niveaus diep worden.
 status-jobs-exports = { $count ->
     [one] Eén export bezig
    *[other] { $count } exports bezig

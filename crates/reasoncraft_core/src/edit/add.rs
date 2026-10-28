@@ -19,6 +19,7 @@ impl Document {
             return Err(EditError::NotAllowed);
         }
         let card_id = CardId::new();
+        self.check_depth(parent, Item::Card(card_id), 0)?;
         let premise = NodeId::new();
         self.insert_into(parent, Item::Card(card_id), None)?;
         self.boxes.insert(
@@ -66,6 +67,7 @@ impl Document {
             return Err(EditError::NotAllowed);
         }
         let id = NodeId::new();
+        self.check_depth(parent, Item::Box(id), 0)?;
         self.insert_into(parent, Item::Box(id), None)?;
         self.boxes.insert(id, BoxNode::new(id, kind, text));
         self.finish_edit();

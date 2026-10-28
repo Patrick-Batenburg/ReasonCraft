@@ -145,12 +145,13 @@ fn language_tags_round_trip_by_primary_language() {
     assert_eq!(back.meta.language, "nl");
 }
 
-/// A long chain of objections, in non-Latin script: nothing recurses.
+/// A chain of objections as deep as a map goes, in non-Latin script:
+/// nothing recurses.
 #[test]
 fn deep_chain_round_trips() {
     let mut d = Document::new("Wurzel — 日本語");
     let mut p = d.root;
-    for k in 0..600 {
+    for k in 0..crate::MAX_DEPTH {
         let (_, next) = d
             .add_card(
                 Parent::Box(p),
@@ -362,5 +363,27 @@ fn reports_the_other_constructs() {
     assert_eq!(
         kinds,
         [CardKind::Objection, CardKind::Reason, CardKind::Reason]
+    );
+}
+
+#[test]
+fn a_chain_of_titles_deeper_than_the_map_allows_is_parked() {
+    let n = crate::MAX_DEPTH + 40;
+    let src: String = (0..n)
+        .map(|k| format!("[S{k}]: s{k}\n    <+ [S{}]: s{}\n\n", k + 1, k + 1))
+        .collect();
+    let (d, report) = from_argdown(&src).unwrap();
+    d.validate().unwrap();
+    let deepest = d
+        .boxes
+        .keys()
+        .filter_map(|b| d.depth_of(crate::Item::Box(*b)));
+    assert_eq!(deepest.max(), Some(crate::MAX_DEPTH));
+    assert!(!d.parking.is_empty());
+    assert!(
+        report
+            .notes
+            .iter()
+            .any(|n| n.kind == super::ImportNoteKind::TooDeep)
     );
 }

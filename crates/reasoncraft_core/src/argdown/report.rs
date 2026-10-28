@@ -57,6 +57,9 @@ pub enum ImportNoteKind {
     /// comment, title or author past its cap (see [`crate::caps`]); a
     /// link too long to keep was left out.
     TextCut,
+    /// A branch nested deeper than [`MAX_DEPTH`](crate::MAX_DEPTH) levels
+    /// (a long chain of titles) went to the parking area.
+    TooDeep,
 }
 
 impl ImportNoteKind {
@@ -77,6 +80,7 @@ impl ImportNoteKind {
             ImportNoteKind::RelationDropped => "relation_dropped",
             ImportNoteKind::LinkDropped => "link_dropped",
             ImportNoteKind::TextCut => "text_cut",
+            ImportNoteKind::TooDeep => "too_deep",
         }
     }
 }

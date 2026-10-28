@@ -32,7 +32,8 @@ pub fn open(path: &Path) -> Result<Document, FileError> {
 ///
 /// What a hostile or damaged file holds is bounded, and
 /// [`Package::cut_on_open`] says when something had to give: texts are cut
-/// to their caps ([`crate::caps`]); links that are too long, unknown JSON
+/// to their caps ([`crate::caps`]); branches nested deeper than
+/// [`crate::MAX_DEPTH`] levels are moved to the parking area; links that are too long, unknown JSON
 /// fields past [`super::MAX_EXTRA_BYTES`] in all, entries with unsafe names
 /// and image entries whose name is not a content key are left out.
 pub fn open_package(path: &Path) -> Result<Package, FileError> {
@@ -138,6 +139,7 @@ pub(super) fn open_package_with_limits(
         EssaySlot::Item(Item::Card(c)) => cards.contains_key(c),
         EssaySlot::Intro | EssaySlot::Conclusion => true,
     });
+    let parked_on_open = doc.park_too_deep();
     let mut cut_on_open = doc.cap_texts();
     cut_on_open |= sanitize::drop_large_extras(&mut doc);
 
@@ -183,5 +185,6 @@ pub(super) fn open_package_with_limits(
         assets,
         other_entries,
         cut_on_open,
+        parked_on_open,
     })
 }

@@ -95,30 +95,21 @@ fn comments_get_new_ids() {
     assert_ne!(new.id, old.id);
 }
 
-/// A chain `depth` reasons deep under the root: each premise has one
-/// reason under it (built directly: an edit checks the whole document in
-/// debug builds). Returns the top card.
+/// A chain `depth` reasons deep under the root, and its top card.
 fn chain(depth: usize) -> (Document, CardId) {
-    let mut d = Document::new("Claim");
-    let mut holder = d.root;
-    let mut top = None;
-    for i in 0..depth {
-        let (card, premise) = (CardId::new(), NodeId::new());
-        let text = format!("level {i}");
-        (d.boxes).insert(premise, BoxNode::new(premise, BoxKind::Premise, &text));
-        (d.cards).insert(card, Card::new(card, CardKind::Reason, vec![premise]));
-        d.boxes[&holder].children.push(Item::Card(card));
-        holder = premise;
-        top.get_or_insert(card);
-    }
-    d.validate().unwrap();
-    (d, top.unwrap())
+    let (d, _) = crate::fixtures::deep_chain(depth);
+    let Some(&Item::Card(top)) = d.boxes[&d.root].children.first() else {
+        unreachable!("the chain starts with a card")
+    };
+    (d, top)
 }
 
 /// Copy, its clipboard text and paste walk the tree without recursion,
-/// so a deep chain (from a crafted file or Argdown) fits the main
-/// thread's 1 MiB stack; the indent stops growing at [`MAX_INDENT`]
-/// levels, so the text grows with the box count, not its square.
+/// so a deep chain fits the main thread's 1 MiB stack; the indent stops
+/// growing at [`MAX_INDENT`] levels, so the text grows with the box
+/// count, not its square. Pasting a branch deeper than a map allows is
+/// refused (opening a file parks what lies deeper, so a map never holds
+/// one; this one is built directly).
 #[test]
 fn a_deep_chain_copies_and_pastes_on_a_small_stack() {
     const DEPTH: usize = 50_000;
@@ -128,12 +119,13 @@ fn a_deep_chain_copies_and_pastes_on_a_small_stack() {
         .spawn(move || {
             let f = d.copy_fragment(Item::Card(top)).unwrap();
             let text = f.plain_text();
-            d.paste_fragment(&f, Parent::Parking).unwrap();
-            (text, d.boxes.len())
+            let pasted = d.paste_fragment(&f, Parent::Parking);
+            (text, d.boxes.len(), pasted)
         })
         .unwrap();
-    let (text, boxes) = run.join().expect("no stack overflow");
-    assert_eq!(boxes, 1 + 2 * DEPTH);
+    let (text, boxes, pasted) = run.join().expect("no stack overflow");
+    assert_eq!(pasted, Err(EditError::TooDeep));
+    assert_eq!(boxes, 1 + DEPTH);
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines.len(), DEPTH);
     assert_eq!(lines[1], "  level 1");

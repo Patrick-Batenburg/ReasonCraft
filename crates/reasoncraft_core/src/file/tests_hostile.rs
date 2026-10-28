@@ -245,3 +245,24 @@ fn a_flood_of_json_values_is_refused() {
     d.boxes[&root].text = "[,]{:}".repeat(MAX_BOX_CHARS / 6);
     assert!(!open_doc(&d, &[]).cut_on_open);
 }
+
+#[test]
+fn branches_nested_too_deep_are_parked_on_open() {
+    let (d, _) = crate::fixtures::deep_chain(2 * crate::MAX_DEPTH + 1);
+    let pkg = open_doc(&d, &[]);
+    assert!(pkg.parked_on_open, "the open says branches were moved");
+    assert!(!pkg.cut_on_open, "no text was cut");
+    let doc = &pkg.doc;
+    doc.validate().unwrap();
+    assert_eq!(doc.parking.len(), 1);
+    assert_eq!(doc.boxes.len(), d.boxes.len(), "nothing is lost");
+    let deepest = doc
+        .boxes
+        .keys()
+        .filter_map(|b| doc.depth_of(crate::Item::Box(*b)));
+    assert_eq!(deepest.max(), Some(crate::MAX_DEPTH));
+    let (within, _) = crate::fixtures::deep_chain(crate::MAX_DEPTH);
+    let pkg = open_doc(&within, &[]);
+    assert!(!pkg.parked_on_open);
+    assert_eq!(pkg.doc, within);
+}

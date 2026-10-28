@@ -8,6 +8,7 @@ use indexmap::IndexMap;
 use uuid::Uuid;
 
 use super::EditError;
+use crate::caps::MAX_INDENT;
 use crate::ids::{CardId, Item, NodeId, Parent};
 use crate::model::{BoxKind, BoxNode, Card, CardKind, Document};
 use crate::rules::{NewItem, can_attach};
@@ -25,9 +26,6 @@ pub struct Fragment {
     pub boxes: IndexMap<NodeId, BoxNode>,
     pub cards: IndexMap<CardId, Card>,
 }
-
-/// The deepest indent of the clipboard text, in levels.
-pub const MAX_INDENT: usize = 32;
 
 impl Fragment {
     /// What the pasted top item is for the structure rules.
@@ -167,7 +165,8 @@ impl Document {
     /// Paste a fresh copy of `fragment` at the end of `parent`'s children
     /// and return its new top item (for a copied premise, the new card
     /// holding it). Refused with [`EditError::NotAllowed`] where the
-    /// structure rules do not let it go.
+    /// structure rules do not let it go, and with [`EditError::TooDeep`]
+    /// where it would reach past [`super::MAX_DEPTH`] levels.
     pub fn paste_fragment(
         &mut self,
         fragment: &Fragment,
@@ -177,6 +176,12 @@ impl Document {
         if !can_attach(self, parent, fragment.new_item()) {
             return Err(EditError::NotAllowed);
         }
+        // A copied premise goes in a new card: it sits at that card's level.
+        let placed = match (&fragment.premise_of, fragment.top) {
+            (Some(_), Item::Box(_)) => Item::Card(CardId::new()),
+            (_, top) => top,
+        };
+        self.check_depth(parent, placed, fragment.height())?;
         let nodes: HashMap<NodeId, NodeId> =
             fragment.boxes.keys().map(|&b| (b, NodeId::new())).collect();
         let cards: HashMap<CardId, CardId> =
