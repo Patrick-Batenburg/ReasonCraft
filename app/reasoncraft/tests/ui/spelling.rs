@@ -32,7 +32,7 @@ fn essay_doc(intro: &str, lang: &str) -> Document {
 }
 
 /// Run frames until `lang`'s dictionary is loaded (at most 20 s).
-fn wait_dictionary(h: &mut H, lang: &str) {
+pub(crate) fn wait_dictionary(h: &mut H, lang: &str) {
     let start = Instant::now();
     while h.state_mut().spell.get(lang).is_none() {
         assert!(
@@ -110,7 +110,7 @@ fn dutch_doc_uses_dutch_dictionary() {
 }
 
 /// A claim reading `claim` with a reason under it for each of `reasons`.
-fn map(claim: &str, reasons: &[&str]) -> (Document, Vec<NodeId>) {
+pub(crate) fn map(claim: &str, reasons: &[&str]) -> (Document, Vec<NodeId>) {
     let mut d = Document::new(claim);
     let root = Parent::Box(d.root);
     let mut ids = vec![d.root];
@@ -129,7 +129,7 @@ fn undo_len(h: &H) -> usize {
 }
 
 /// The word the pass is on (`None` once it is done or while it waits).
-fn current_word(h: &H) -> Option<String> {
+pub(crate) fn current_word(h: &H) -> Option<String> {
     let pass = h.state().tabs[0].spelling.as_ref()?;
     pass.current.as_ref().map(|_| pass.word.clone())
 }

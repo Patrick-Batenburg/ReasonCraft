@@ -20,7 +20,9 @@ use crate::i18n::{FluentArgs, t_args};
 /// Once a frame: pick up loaded dictionaries, report a load failure (once,
 /// in the status bar), let a spelling pass go on that waits for its
 /// dictionary, walks on from the last frame or whose misspelling the
-/// document no longer holds, and pick up its suggestions.
+/// document no longer holds, and pick up its suggestions. The pass waits
+/// while a box is being edited inline: walking on would move the selection
+/// away from the box being edited (it goes on once the edit ends).
 pub fn poll(app: &mut ReasonCraftApp) {
     app.spell.poll_all();
     if let Some(error) = app.spell.take_error() {
@@ -29,6 +31,7 @@ pub fn poll(app: &mut ReasonCraftApp) {
         app.status_note = Some(t_args("spell.load_failed", &args));
     }
     if let Some(tab) = app.tabs.get_mut(app.active)
+        && tab.editing().is_none()
         && tab
             .spelling
             .as_ref()
@@ -44,9 +47,9 @@ pub fn poll(app: &mut ReasonCraftApp) {
 }
 
 /// Whether the active tab's spelling pass walks on next frame (so the
-/// next frame should come at once).
+/// next frame should come at once); not while it waits for an inline edit.
 pub fn walking(app: &ReasonCraftApp) -> bool {
-    let tab = app.tabs.get(app.active);
+    let tab = app.tabs.get(app.active).filter(|t| t.editing().is_none());
     tab.and_then(|t| t.spelling.as_ref())
         .is_some_and(SpellPass::walking)
 }

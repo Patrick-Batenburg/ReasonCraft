@@ -45,6 +45,7 @@ mod shell_polish;
 mod snippet_drag;
 mod snippets;
 mod spelling;
+mod spelling_edit;
 mod spelling_esc;
 mod spelling_slices;
 mod tab_fields;
