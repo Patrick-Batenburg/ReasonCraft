@@ -171,6 +171,28 @@ pub(super) fn one_line(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// The most characters of a box's text a row lays out: more than the
+/// widest panel shows.
+const SHOWN_CHARS: usize = 500;
+
+/// The start of [`one_line`]`(text)`, at most about `max` characters, and
+/// whether more follows: a row lays out only what it can show.
+fn one_line_start(text: &str, max: usize) -> (String, bool) {
+    let mut out = String::new();
+    let mut chars = 0;
+    for word in text.split_whitespace() {
+        if chars >= max {
+            return (out, true);
+        }
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push_str(word);
+        chars += word.chars().count() + 1;
+    }
+    (out, false)
+}
+
 /// The row's accessible name and tooltip: what it shows, uncut.
 fn row_label(line: &OutlineLine, lang: &str, settings: &Settings) -> String {
     let (number, word) = lead(line, lang, settings);
@@ -206,8 +228,9 @@ fn row(
 ) -> Response {
     let width = ui.available_width();
     let (rect, resp) = ui.allocate_exact_size(vec2(width, ROW_H), Sense::click());
-    let label = row_label(line, lang, settings);
-    resp.widget_info(|| WidgetInfo::selected(Role::ListItem, true, selected, &label));
+    // Made only when asked for: the box's whole text can be long.
+    let label = || row_label(line, lang, settings);
+    resp.widget_info(|| WidgetInfo::selected(Role::ListItem, true, selected, &label()));
     if !ui.is_rect_visible(rect) {
         return resp;
     }
@@ -259,20 +282,23 @@ fn row(
     if !word.is_empty() {
         put(&mut x, word, tk.text_muted);
     }
-    let text = one_line(&line.text);
+    let (text, more) = one_line_start(&line.text, SHOWN_CHARS);
     let (text, colour) = match line.kind {
         _ if text.is_empty() => (t("outline.empty"), tk.text_muted),
         LineKind::Note => (text, tk.text_muted),
         _ => (text, tk.box_text),
     };
     put(&mut x, text, colour);
+    elided |= more;
 
     if let Some(mark) = mark {
         let c = pos2(rect.right() - 4.0 - MARK / 2.0, cy);
         paint_mark(painter, c, MARK / 2.0, mark, tk);
     }
     if elided {
-        resp.on_hover_text(label)
+        resp.on_hover_ui(|ui| {
+            ui.label(label());
+        })
     } else {
         resp
     }
@@ -319,6 +345,23 @@ mod tests {
             assert!(tip.contains("W1, W2, W3") && !tip.contains(&words), "{tip}");
         }
         assert_eq!(toggle_tip("en", "notes"), "Include notes");
+    }
+
+    #[test]
+    fn rows_flatten_only_the_start_of_long_text() {
+        assert_eq!(
+            one_line_start(
+                "a  b
+c", 10
+            ),
+            ("a b c".to_owned(), false)
+        );
+        let long = "word ".repeat(10_000);
+        let (start, more) = one_line_start(&long, SHOWN_CHARS);
+        assert!(more);
+        assert!(start.len() <= SHOWN_CHARS + 5, "{}", start.len());
+        assert!(long.starts_with(&start));
+        assert_eq!(one_line_start("", 10), (String::new(), false));
     }
 
     #[test]

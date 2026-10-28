@@ -40,28 +40,32 @@ pub fn wrapped_rows(ctx: &egui::Context, text: &str, width: f32, kind: &BoxKind)
         .collect()
 }
 
-/// Measured heights by (text, width bits, font size bits). Lives as long as
+/// Measured heights by (width bits, font size bits), then by text, so a
+/// lookup borrows the text and only a new one is copied. Lives as long as
 /// the app; cleared when the fonts or the display scale change.
 #[derive(Default)]
 pub struct MeasureCache {
     fonts_stamp: Option<u64>,
-    heights: HashMap<(String, u32, u32), f32>,
+    heights: HashMap<(u32, u32), HashMap<String, f32>>,
+    /// How many heights [`Self::heights`] holds.
+    len: usize,
 }
 
 impl MeasureCache {
     pub fn len(&self) -> usize {
-        self.heights.len()
+        self.len
     }
 
     pub fn is_empty(&self) -> bool {
-        self.heights.is_empty()
+        self.len == 0
     }
 
     /// Forget everything if the fonts changed since the last frame.
     fn sync(&mut self, ctx: &egui::Context) {
         let stamp = fonts_stamp(ctx);
-        if self.fonts_stamp != Some(stamp) || self.heights.len() > CACHE_LIMIT {
+        if self.fonts_stamp != Some(stamp) || self.len > CACHE_LIMIT {
             self.heights.clear();
+            self.len = 0;
             self.fonts_stamp = Some(stamp);
         }
     }
@@ -104,12 +108,24 @@ impl<'a> EguiMeasure<'a> {
 impl Measure for EguiMeasure<'_> {
     fn text_height(&self, text: &str, width: f32, kind: &BoxKind) -> f32 {
         let size = font_for(kind).size;
-        let key = (text.to_owned(), width.to_bits(), size.to_bits());
-        if let Some(&h) = self.cache.borrow().heights.get(&key) {
+        let key = (width.to_bits(), size.to_bits());
+        let known = self
+            .cache
+            .borrow()
+            .heights
+            .get(&key)
+            .and_then(|m| m.get(text).copied());
+        if let Some(h) = known {
             return h;
         }
         let h = galley(self.ctx, text, width, kind).size().y;
-        self.cache.borrow_mut().heights.insert(key, h);
+        let mut cache = self.cache.borrow_mut();
+        cache
+            .heights
+            .entry(key)
+            .or_default()
+            .insert(text.to_owned(), h);
+        cache.len += 1;
         h
     }
 }
