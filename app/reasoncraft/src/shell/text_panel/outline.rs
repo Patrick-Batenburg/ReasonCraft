@@ -230,7 +230,7 @@ fn row(
     let (rect, resp) = ui.allocate_exact_size(vec2(width, ROW_H), Sense::click());
     // Made only when asked for: the box's whole text can be long.
     let label = || row_label(line, lang, settings);
-    resp.widget_info(|| WidgetInfo::selected(Role::ListItem, true, selected, &label()));
+    resp.widget_info(|| WidgetInfo::selected(Role::ListItem, true, selected, label()));
     if !ui.is_rect_visible(rect) {
         return resp;
     }
