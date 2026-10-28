@@ -225,6 +225,7 @@ const SAME_IN_DUTCH: &[&str] = &[
     "export-page-letter",
     "settings-ui_scale_unit",
     "a11y-in_group",
+    "a11y-map-item",
     "spell-suggesting",
     "backstage-recent",
     "about-licences-spellbook",

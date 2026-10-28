@@ -120,12 +120,17 @@ fn virtual_rows_reachable_by_keyboard() {
     assert_eq!(h.state().tabs[0].doc.boxes.len(), 401, "nothing added");
 }
 
-/// The role and name of the control with the keyboard focus.
+/// The role and name of the control with the keyboard focus: the map's
+/// for the map item that is its active descendant.
 fn focused_control(h: &H) -> Option<(accesskit::Role, String)> {
     h.root()
         .children_recursive()
         .map(|n| n.accesskit_node())
         .find(|n| n.is_focused())
+        .map(|n| match n.parent() {
+            Some(p) if p.role() == accesskit::Role::Canvas => p,
+            _ => n,
+        })
         .map(|n| (n.role(), name(&n)))
 }
 

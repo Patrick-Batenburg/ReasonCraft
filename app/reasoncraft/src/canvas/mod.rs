@@ -3,6 +3,7 @@
 //! drops from the building panel, comments, link glyphs, box images) and
 //! the overview minimap.
 
+pub mod access;
 pub mod camera;
 pub mod comments;
 pub mod connect;
@@ -172,6 +173,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         settings.minimap,
         params.indicators,
     );
+    access::expose(ui, tab, &layout, rect);
     let mut fields = SpellFields::new(spell, settings, &tab.doc.meta.language, &tokens);
     editor::show(ui, tab, &layout, &tokens, &mut fields, pending);
     if !response.dragged() {

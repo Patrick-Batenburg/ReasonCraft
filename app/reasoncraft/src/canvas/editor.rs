@@ -86,6 +86,12 @@ pub(super) fn show(
         .align(Align2::CENTER_CENTER)
         .lock_focus(true);
     let response = ui.put(rect, editor);
+    // Named by the box it edits ("Text of Reason, …"), not by its hint.
+    if ui.ctx().accesskit_node_builder(id, |_| ()).is_some() {
+        let name = super::access::Tree::new(&tab.doc).editor_name(b);
+        ui.ctx()
+            .accesskit_node_builder(id, |node| node.set_label(name));
+    }
     if response.changed() {
         pending.push(Action::EditText {
             node: b,

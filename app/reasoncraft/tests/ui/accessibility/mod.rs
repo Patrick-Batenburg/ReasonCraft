@@ -25,6 +25,7 @@ use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent};
 mod announce;
 mod dialogs;
 mod keyboard;
+mod map;
 mod order;
 mod settings;
 
