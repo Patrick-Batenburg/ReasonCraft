@@ -100,19 +100,19 @@ impl DocTab {
             EditSession::Box { node, fresh } => {
                 self.edit_focus = false;
                 let changed = !fresh && box_text(&before, node) != box_text(&self.doc, node);
-                self.record_if(changed, &before)
+                self.record_if(changed, before)
             }
-            EditSession::Snippet { id } => self.finish_snippet(id, &before),
-            EditSession::Meta => self.finish_meta(&before),
+            EditSession::Snippet { id } => self.finish_snippet(id, before),
+            EditSession::Meta => self.finish_meta(before),
             EditSession::Essay { slot } => {
                 let changed = essay_edit::pending(&before, &self.doc, slot);
-                self.record_if(changed, &before)
+                self.record_if(changed, before)
             }
         }
     }
 
     /// Record `before` as a history step and note the change, if `changed`.
-    fn record_if(&mut self, changed: bool, before: &Document) -> bool {
+    fn record_if(&mut self, changed: bool, before: Document) -> bool {
         if changed {
             self.history.record(before);
             self.bump_revision();

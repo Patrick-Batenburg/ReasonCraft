@@ -19,13 +19,13 @@ pub(super) fn pending(before: &Document, now: &Document) -> bool {
 impl DocTab {
     /// End a title/author session that started at `before`: store both
     /// trimmed, and record `before` as one history step if they changed.
-    pub(super) fn finish_meta(&mut self, before: &Document) -> bool {
+    pub(super) fn finish_meta(&mut self, before: Document) -> bool {
         let (title, author) = (self.doc.meta.title.trim(), self.doc.meta.author.trim());
         let (title, author) = (title.to_owned(), author.to_owned());
         if self.doc.set_meta(&title, &author).is_ok() {
             self.bump_revision();
         }
-        let changed = differs(before, &self.doc);
+        let changed = differs(&before, &self.doc);
         if changed {
             self.history.record(before);
         }

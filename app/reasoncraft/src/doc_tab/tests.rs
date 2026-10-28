@@ -140,3 +140,24 @@ fn issues_wait_for_typing_to_pause() {
     tab.commit_session();
     assert_eq!(count(&mut tab, Instant::now()), (2, false));
 }
+
+#[test]
+fn history_of_a_large_map_stays_within_its_byte_budget() {
+    use reasoncraft_core::Acceptance;
+    use reasoncraft_core::fixtures::sample_iot_like;
+    let mut tab = DocTab::from_document(sample_iot_like(500));
+    let step = tab.doc.approx_bytes();
+    eprintln!("a 500-box map takes about {step} bytes");
+    // A budget of about ten snapshots, so the test stays quick.
+    tab.history.byte_limit = 10 * step;
+    let root = tab.doc.root;
+    for i in 0..30 {
+        let a = [Some(Acceptance::Accept), None][i % 2];
+        tab.edit(|d| d.set_acceptance(root, a)).unwrap();
+    }
+    // Snapshots are copies, so they may take a little less than the
+    // document did.
+    assert!((10..15).contains(&tab.history.undo.len()));
+    assert!(tab.history.bytes() <= tab.history.byte_limit);
+    assert!(reasoncraft_core::history::HISTORY_BYTES <= 128 << 20);
+}

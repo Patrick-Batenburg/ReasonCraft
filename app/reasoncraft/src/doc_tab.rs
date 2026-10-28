@@ -321,8 +321,10 @@ impl DocTab {
                 return None;
             }
         };
-        self.history.record(&self.doc);
-        self.doc = draft;
+        // The document before the edit becomes the snapshot: one copy per
+        // edit (the draft), none for the history.
+        let before = std::mem::replace(&mut self.doc, draft);
+        self.history.record(before);
         self.bump_revision();
         Some(out)
     }

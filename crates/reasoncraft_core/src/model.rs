@@ -13,6 +13,7 @@ use crate::ids::{CardId, Item, NodeId, Parent};
 
 mod direction;
 mod hints;
+mod size;
 mod source_type;
 pub use direction::LayoutDirection;
 pub use hints::IgnoredHint;
