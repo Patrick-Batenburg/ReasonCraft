@@ -34,6 +34,11 @@ pub const BOX_TEXT_PAD: f32 = 6.0;
 /// Vertical gap between a box's image and its text.
 pub const IMAGE_GAP: f32 = 6.0;
 
+/// The narrowest and widest a box may be made by its own `width` (a file
+/// may hold any number there; layout keeps it within these).
+pub const MIN_BOX_WIDTH: f32 = 40.0;
+pub const MAX_BOX_WIDTH: f32 = 2000.0;
+
 /// The height a box `width` wide reserves above its text for `image`:
 /// padding, the image at the text width, and [`IMAGE_GAP`]. Painters draw
 /// the image at `(BOX_TEXT_PAD, BOX_TEXT_PAD)` from the box's top-left,

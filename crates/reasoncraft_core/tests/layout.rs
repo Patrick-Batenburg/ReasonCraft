@@ -380,3 +380,46 @@ fn crowded_box_grows_to_fit_its_ports() {
         assert!(c.to.x > root.left() && c.to.x < root.right());
     }
 }
+
+/// A box width from a file is kept within a sane range: infinite, NaN,
+/// negative, zero or huge widths give a finite box of normal proportions.
+#[test]
+fn file_box_widths_are_clamped() {
+    let normal = run(&Document::new("c"))
+        .boxes
+        .values()
+        .next()
+        .unwrap()
+        .width();
+    for w in [
+        f32::INFINITY,
+        f32::NAN,
+        -500.0,
+        0.0,
+        1e30,
+        f32::MIN_POSITIVE,
+    ] {
+        let mut d = Document::new("c");
+        let root = d.root;
+        let (_, p) = d
+            .add_card(Parent::Box(root), CardKind::Reason, "p")
+            .unwrap();
+        for b in [root, p] {
+            d.boxes[&b].width = Some(w);
+        }
+        let l = run(&d);
+        for r in l.boxes.values() {
+            assert!(r.is_finite(), "{w}: {r:?}");
+            assert!((40.0..=2000.0).contains(&r.width()), "{w}: {r:?}");
+        }
+        assert!(l.main_bounds.is_finite(), "{w}");
+        if !w.is_finite() {
+            assert_eq!(l.boxes[&root].width(), normal, "{w}: default width");
+        }
+    }
+    // A sane width is used as it is.
+    let mut d = Document::new("c");
+    let root = d.root;
+    d.boxes[&root].width = Some(300.0);
+    assert_eq!(run(&d).boxes[&root].width(), 300.0);
+}

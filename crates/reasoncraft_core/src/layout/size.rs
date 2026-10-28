@@ -11,7 +11,9 @@ use std::collections::HashMap;
 use emath::Vec2;
 
 use super::ports::{WholePorts, whole_ports};
-use super::{BOX_TEXT_PAD, LayoutParams, Measure, image_height, indicators};
+use super::{
+    BOX_TEXT_PAD, LayoutParams, MAX_BOX_WIDTH, MIN_BOX_WIDTH, Measure, image_height, indicators,
+};
 use crate::ids::NodeId;
 use crate::model::{BoxKind, BoxNode, Document, LayoutDirection};
 
@@ -49,7 +51,12 @@ impl<'a> Sizer<'a> {
             p.box_width
         };
         let edge = self.edges.get(&node.id).copied().unwrap_or(0.0);
-        let mut width = node.width.unwrap_or(default_width);
+        // Widths come from files unchecked: NaN or infinity mean the
+        // default, anything else is kept within a sane range.
+        let mut width = node
+            .width
+            .filter(|w| w.is_finite())
+            .map_or(default_width, |w| w.clamp(MIN_BOX_WIDTH, MAX_BOX_WIDTH));
         if !self.cross_is_height {
             width = width.max(edge);
         }
