@@ -354,7 +354,8 @@ pub(super) fn docs_example() -> Document {
 #[test]
 fn docs_example_matches_the_writer() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/argdown.md");
-    let docs = std::fs::read_to_string(path).unwrap();
+    // CRLF on a checkout that converts line ends.
+    let docs = std::fs::read_to_string(path).unwrap().replace("\r\n", "\n");
     let out = to_argdown(&docs_example());
     let block = format!("```argdown\n{out}```");
     assert!(docs.contains(&block), "docs/argdown.md should show:\n{out}");

@@ -166,7 +166,8 @@ fn deep_chain_round_trips() {
 /// The ```argdown blocks of `docs/argdown.md`.
 fn docs_blocks() -> Vec<String> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/argdown.md");
-    let docs = std::fs::read_to_string(path).unwrap();
+    // CRLF on a checkout that converts line ends.
+    let docs = std::fs::read_to_string(path).unwrap().replace("\r\n", "\n");
     let blocks: Vec<String> = docs
         .split("```argdown\n")
         .skip(1)

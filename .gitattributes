@@ -1,2 +1,6 @@
+# Text files are LF on every checkout (tests compare docs and licence
+# texts byte for byte); git detects binary files (images, icons) itself.
+* text=auto eol=lf
+# The bundled dictionaries are never converted.
 crates/reasoncraft_spell/dict/** -text
 app/reasoncraft/assets/licences/*.txt text eol=lf
