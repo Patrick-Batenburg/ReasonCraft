@@ -5,8 +5,11 @@
 #
 #   docker build -f packaging/linux/Dockerfile -t reasoncraft-linux .
 #
-# Dockerfile.dockerignore keeps the build context down to that one file.
-FROM ubuntu:22.04
+# Dockerfile.dockerignore keeps the build context down to that file and install-rustup.sh.
+#
+# The base image is pinned by the digest of its multi-architecture index (amd64 and arm64); to
+# update it: `docker buildx imagetools inspect ubuntu:22.04` and take the top `Digest:`.
+FROM ubuntu:22.04@sha256:e0f80c829509ef4df9e76bd8944eb7b8ec25cbb379b112a7f9448b2c77a77c9b
 
 ARG DEBIAN_FRONTEND=noninteractive
 # The C toolchain and egui's system libraries (winit, arboard), the validators package.sh runs
@@ -38,10 +41,11 @@ RUN set -eu; \
     rm "/tmp/$file"; \
     nfpm --version
 
-# rustup, then the pinned toolchain with clippy and rustfmt.
+# rustup (rustup-init checked against its pinned SHA-256), then the pinned toolchain with clippy
+# and rustfmt.
 ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo PATH=/usr/local/cargo/bin:$PATH
-RUN curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \
-    | sh -s -- -y --no-modify-path --profile minimal --default-toolchain none
+COPY packaging/linux/install-rustup.sh /tmp/
+RUN bash /tmp/install-rustup.sh && rm /tmp/install-rustup.sh
 COPY rust-toolchain.toml /tmp/toolchain/
 RUN cd /tmp/toolchain && rustup toolchain install \
     && rm -rf /tmp/toolchain

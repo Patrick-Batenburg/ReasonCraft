@@ -41,6 +41,7 @@ jobs:
   version:
     name: version
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
@@ -59,6 +60,12 @@ jobs:
           case "$input" in
             *$'\r'* | *$'\n'*) echo "::error::the version input holds a line break"; exit 1 ;;
           esac
+          # A release is drafted from Cargo.toml's version only: an input
+          # version would draft a tag whose commit says otherwise in Cargo.toml.
+          if [[ -n "$input" && "$GITHUB_REF" == refs/heads/release ]]; then
+            echo "::error::no version input on the release branch; set the version with cargo xtask version set on main"
+            exit 1
+          fi
           version="${input:-$VERSION}"
           semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
           if [[ ! "$version" =~ $semver ]]; then
@@ -79,6 +86,8 @@ jobs:
       matrix:
         arch: [x64, x86, arm64]
     runs-on: windows-latest
+    # A release build; x64 also a debug build for test-packaging-script.ps1.
+    timeout-minutes: 90
     environment: ${{ github.ref == 'refs/heads/release' && 'release' || '' }}
     defaults:
       run:
@@ -98,15 +107,13 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: cargo xtask version set $env:VERSION
 
-      # WiX 5.0.2 exactly (MS-RL; later versions come with another licence).
+      # WiX 5.0.2 exactly (MS-RL; later versions come with another licence),
+      # its packages checked against pinned SHA-256s.
       - name: Install WiX
         run: |
-          dotnet tool install --global wix --version 5.0.2
-          if ($LASTEXITCODE -ne 0) { throw 'WiX installation failed.' }
-          $tools = Join-Path $env:USERPROFILE '.dotnet\tools'
+          $tools = Join-Path $env:RUNNER_TEMP 'wix'
+          ./packaging/windows/install-wix.ps1 -ToolPath $tools -Extensions UI, Util
           $tools >> $env:GITHUB_PATH
-          & (Join-Path $tools 'wix.exe') extension add -g WixToolset.UI.wixext/5.0.2 WixToolset.Util.wixext/5.0.2
-          if ($LASTEXITCODE -ne 0) { throw 'WiX extension installation failed.' }
 
       - name: Build the MSI and the portable zip
         env:
@@ -142,6 +149,10 @@ jobs:
     name: macos (universal)
     needs: version
     runs-on: macos-latest
+    # Two release builds and two notarizations, which usually take minutes each
+    # (notarytool would wait up to an hour); a slow Apple service can end the
+    # job, which then runs again.
+    timeout-minutes: 90
     environment: ${{ github.ref == 'refs/heads/release' && 'release' || '' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -213,6 +224,7 @@ jobs:
             nfpm-arch: arm64
             nfpm-sha256: 1c0f5f2999b9a974bfb04fdb0cc3306096de530ac5dbb25d739cc5f5219c919c
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -244,12 +256,12 @@ jobs:
           sudo tar -xzf "$RUNNER_TEMP/$file" -C /usr/local/bin nfpm
           nfpm --version
 
-      # rustup, if the image lacks it, then the toolchain pinned in rust-toolchain.toml.
+      # rustup, if the image lacks it (rustup-init checked against its
+      # pinned SHA-256), then the toolchain pinned in rust-toolchain.toml.
       - name: Install the toolchain
         run: |
           if ! command -v rustup >/dev/null; then
-            curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \
-              | sh -s -- -y --no-modify-path --profile minimal --default-toolchain none
+            packaging/linux/install-rustup.sh
             echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
             export PATH="$HOME/.cargo/bin:$PATH"
           fi
@@ -285,6 +297,7 @@ jobs:
           - arch: aarch64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     env:
       REASONCRAFT_VERSION: ${{ needs.version.outputs.version }}
     steps:
@@ -321,12 +334,13 @@ jobs:
           if-no-files-found: error
 
   # SHA256SUMS.txt over every artifact, and on the release branch a draft
-  # release with them. A failed job stops it; a cancelled run too.
+  # release with them. A failed, timed-out or cancelled job stops it.
   draft:
     name: checksums and draft release
     needs: [version, windows, macos, linux, flatpak]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:

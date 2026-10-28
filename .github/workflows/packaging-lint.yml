@@ -122,19 +122,15 @@ jobs:
         with:
           persist-credentials: false
 
-      # WiX 5.0.2 exactly (MS-RL), with the extensions install-policy.json names.
+      # WiX 5.0.2 exactly (MS-RL), with the extensions install-policy.json
+      # names, its packages checked against pinned SHA-256s.
       - name: Install WiX
         shell: pwsh
         run: |
           $tools = Join-Path $env:RUNNER_TEMP 'reasoncraft-install-policy-wix'
-          dotnet tool install --tool-path $tools wix --version 5.0.2
-          if ($LASTEXITCODE -ne 0) { throw 'WiX installation failed.' }
-          $tools >> $env:GITHUB_PATH
           $policy = Get-Content -Raw -LiteralPath packaging/windows/install-policy.json | ConvertFrom-Json
-          foreach ($extension in @($policy.extensions)) {
-            & (Join-Path $tools 'wix.exe') extension add -g "WixToolset.$extension.wixext/5.0.2"
-            if ($LASTEXITCODE -ne 0) { throw "WiX extension $extension installation failed." }
-          }
+          ./packaging/windows/install-wix.ps1 -ToolPath $tools -Extensions @($policy.extensions)
+          $tools >> $env:GITHUB_PATH
 
       # Builds MSI fixtures with text files in place of the exe and checks
       # their scope cases and registry contract; nothing is installed.

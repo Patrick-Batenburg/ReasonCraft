@@ -40,8 +40,9 @@ deb and rpm write it as `0.2.0~rc.1`, which sorts before `0.2.0` (nfpm's `versio
   ```
 
   WiX stays at exactly 5.0.2: it is under the MS-RL, while WiX 6 and later come with the Open Source Maintenance Fee EULA.
+  The workflows install it with `packaging/windows/install-wix.ps1 -ToolPath <folder>`, which checks the three `.nupkg` files against pinned SHA-256s and installs from that folder alone.
   The Windows SDK (signtool) is needed only for signing; the "MSVC v143 ARM64 build tools" only for `-Arch arm64`.
-- Linux: Docker. The image `packaging/linux/Dockerfile` holds the build dependencies, the validators and nfpm 2.47.0 (checked against its SHA-256).
+- Linux: Docker. The image `packaging/linux/Dockerfile` (on `ubuntu:22.04` pinned by digest) holds the build dependencies, the validators, nfpm 2.47.0 (checked against its SHA-256) and rustup, installed by `packaging/linux/install-rustup.sh` from a `rustup-init` checked against its pinned SHA-256 (the release workflow's arm64 Linux runner uses the same script).
   `package.sh` downloads appimagetool 1.9.1 and the AppImage type2-runtime 20251108 itself and checks both against pinned SHA-256s.
 - macOS: Xcode's command line tools (codesign, notarytool, stapler, hdiutil, lipo).
 
@@ -193,6 +194,7 @@ The release workflow takes the secrets from the GitHub environment `release`, wh
 4. Publish the draft; GitHub then creates the tag `vX.Y.Z` on the commit the workflow built.
 
 For a dry run, start the release workflow by hand (workflow_dispatch) on any branch, optionally with a version such as `0.2.0-rc.1`: it builds everything under that version (`cargo xtask version set` inside the runners only) and keeps the files as workflow artifacts (`release-windows-x64`, …, `release-checksums`); only a run on `release` drafts a release.
+On `release` the version input must stay empty: the workflow refuses it, because the draft's tag would then not match the commit's `Cargo.toml`.
 
 ## Continuous integration
 
@@ -205,6 +207,7 @@ For a dry run, start the release workflow by hand (workflow_dispatch) on any bra
 - `.github/workflows/release.yml` is described [above](#the-release-flow). Its jobs: `version` (the input or Cargo.toml's version, checked), `windows` (x64, x86 and arm64; x64 also runs `test-packaging-script.ps1`), `macos`, `linux` (x86_64 on `ubuntu-22.04`, aarch64 on `ubuntu-22.04-arm`, so the binaries need only glibc 2.35), `flatpak` (both architectures, on Ubuntu 24.04) and `draft`.
 
 The workflows are self-contained: they use no reusable workflow and nothing outside this repository.
+Every release job has a time limit (`timeout-minutes`; macOS 90 minutes, for two builds and two notarizations), and the draft is made only when every job succeeded.
 Their actions are pinned to commit SHAs, with the release tag in a comment; to upgrade one, look up the new tag's commit (`gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`).
 
 ### Compatibility with the Craft suite's reusable workflow
