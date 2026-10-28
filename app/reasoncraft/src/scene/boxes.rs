@@ -59,7 +59,8 @@ impl Builder<'_> {
                 (tk.box_fill, with(c), tk.box_text)
             }
             BoxKind::Category => (tk.box_fill, with(tk.text_muted), tk.box_text),
-            BoxKind::Source { .. } => (tk.box_fill, None, tk.box_text),
+            // Edged: a white box on the light canvas would not show.
+            BoxKind::Source { .. } => (tk.box_fill, with(tk.edge), tk.box_text),
             BoxKind::Note => (tk.note, None, tk.note_text),
         };
         self.shapes.push(Shape::Rect {

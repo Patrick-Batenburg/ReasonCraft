@@ -71,7 +71,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 
     let field = Frame::new()
         .fill(tk.panel)
-        .stroke(Stroke::new(1.0, tk.attachment_line.gamma_multiply(0.6)))
+        .stroke(Stroke::new(1.0, tk.edge))
         .corner_radius(6)
         .inner_margin(Margin::symmetric(8, 4));
     let mut args = FluentArgs::new();

@@ -36,6 +36,8 @@ pub struct Tokens {
     /// Cards rated nil: frame, label, premise borders and connector.
     pub nil: Color32,
     pub attachment_line: Color32,
+    /// The edge of text fields and of source boxes: 3:1 on every surface.
+    pub edge: Color32,
     /// Sticky-note fill and its text.
     pub note: Color32,
     pub note_text: Color32,
@@ -64,13 +66,14 @@ impl Tokens {
             box_fill: hex(0x26262B),
             box_text: hex(0xE8E8EC),
             claim_border: hex(0xC8C8D0),
-            text_muted: hex(0xA0A0AA),
+            text_muted: hex(0xA8A8B2),
             accent: hex(0x8AB4FF),
             reason: hex(0x4CC073),
             objection: hex(0xF07474),
             rebuttal: hex(0xE0A05A),
             nil: hex(0x8C8C96),
-            attachment_line: hex(0x5C5C66),
+            attachment_line: hex(0x72727C),
+            edge: hex(0x76767F),
             note: hex(0xD6C267),
             note_text: hex(0x26220F),
             find_hit: hex(0xE879F9),
@@ -97,7 +100,8 @@ impl Tokens {
             objection: hex(0xA82B24),
             rebuttal: hex(0x8E4B00),
             nil: hex(0x66666F),
-            attachment_line: hex(0x9A9AA4),
+            attachment_line: hex(0x84848E),
+            edge: hex(0x7A7A84),
             note: hex(0xFFF1A6),
             note_text: hex(0x3A3412),
             find_hit: hex(0xA21CAF),
@@ -138,6 +142,9 @@ pub fn apply(ctx: &egui::Context, t: &Tokens) {
     v.widgets.hovered.fg_stroke.color = t.box_text;
     v.widgets.active.fg_stroke.color = t.box_text;
     v.widgets.noninteractive.bg_stroke.color = t.attachment_line.gamma_multiply(0.6);
+    // Text fields (and framed buttons, check boxes) show their edge at
+    // rest, not only while hovered or focused.
+    v.widgets.inactive.bg_stroke = Stroke::new(1.0, t.edge);
     ctx.set_visuals_of(theme, v);
     ctx.set_theme(theme);
 }
@@ -260,6 +267,43 @@ mod tests {
                     t.dark
                 );
             }
+        }
+    }
+
+    /// Non-text contrast (WCAG 1.4.11, 3:1): the edges of text fields and
+    /// source boxes and the attachment lines on every surface; muted text
+    /// on a highlighted row (Search commands) still 4.5:1 (ROB-16).
+    #[test]
+    fn edges_lines_and_highlighted_rows_contrast() {
+        for t in [Tokens::dark(), Tokens::light()] {
+            for bg in [t.bg, t.panel, t.ribbon, t.box_fill, t.canvas] {
+                for (name, fg) in [("edge", t.edge), ("attachment_line", t.attachment_line)] {
+                    let c = contrast(fg, bg);
+                    assert!(c >= 3.0, "{name} on {bg:?}: {c:.2} (dark = {})", t.dark);
+                }
+            }
+            for surface in [t.panel, t.ribbon, t.bg] {
+                let row = crate::shell::selected_fill(&t, surface);
+                let c = contrast(t.text_muted, row);
+                assert!(
+                    c >= 4.5,
+                    "muted on a highlighted row: {c:.2} (dark = {})",
+                    t.dark
+                );
+            }
+        }
+    }
+
+    /// Text fields show their edge at rest: egui draws an inactive text
+    /// field's frame with `widgets.inactive.bg_stroke`.
+    #[test]
+    fn text_fields_have_an_edge_at_rest() {
+        for t in [Tokens::dark(), Tokens::light()] {
+            let ctx = egui::Context::default();
+            apply(&ctx, &t);
+            let stroke = ctx.global_style().visuals.widgets.inactive.bg_stroke;
+            assert_eq!(stroke.color, t.edge);
+            assert!(stroke.width >= 1.0);
         }
     }
 
