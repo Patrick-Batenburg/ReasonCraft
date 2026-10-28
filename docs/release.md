@@ -63,24 +63,30 @@ The installer uses zlib compression, whose decompressor is under the zlib licenc
 
 ### Checking the installer in the test VM
 
-`packaging/windows/verify-in-vm.ps1` checks the installer inside the Hyper-V VM "Windows 11 Sandbox".
+`packaging/windows/verify-in-vm.ps1` (with its helpers in `vm-checks.ps1`) checks the MSI inside the Hyper-V VM "Windows 11 Sandbox".
 It reaches the VM with PowerShell Direct, using the credential saved in `%USERPROFILE%\.vm-sandbox-cred.xml`, and it sends no keyboard or mouse input.
+Run it from an elevated PowerShell 7 on the host; it never installs anything on the host.
+The upgrade check needs an older MSI built from the same exe:
 
 ```powershell
-cargo run -p xtask -- sample-map target\sample.rcraft
-.\app\reasoncraft\packaging\windows\verify-in-vm.ps1 `
-    -Installer target\release\packager\reasoncraft_0.1.0_x64-setup.exe `
-    -Sample target\sample.rcraft -OutDir target\vm-check
+cargo xtask sample-map target\sample.rcraft
+$env:REASONCRAFT_VERSION = '0.0.1'; $env:DIST = 'target\vm-old'
+pwsh packaging/windows/package.ps1 -Arch x64 -SkipBuild
+Remove-Item Env:REASONCRAFT_VERSION, Env:DIST
+.\packaging\windows\verify-in-vm.ps1 -Msi dist\release\reasoncraft-0.1.0-windows-x64.msi `
+    -OlderMsi target\vm-old\reasoncraft-0.0.1-windows-x64.msi -Sample target\sample.rcraft -OutDir target\vm-check
 ```
 
 The script:
-1. takes the checkpoint `before-reasoncraft` and starts the VM;
-2. turns on automatic sign-in and restarts the guest, if nobody is signed in;
-3. installs silently twice (as an upgrade does), then checks the files, the shortcuts, the association and the registry keys;
-4. opens the sample through the association, checks the app's command line, and saves the VM screen;
-5. starts the app with `WGPU_BACKEND=metal`, so that wgpu cannot start and OpenGL, which the VM lacks, is tried next, and checks that the error dialog shows;
-6. uninstalls silently, then checks that everything is gone except a map in Documents and the app's data;
-7. turns the VM off, restores the checkpoint, and deletes it.
+1. takes the checkpoint `before-reasoncraft`, starts the VM, and turns on automatic sign-in and restarts the guest if nobody is signed in;
+2. per user: installs the older MSI, then the new one (a major upgrade), and checks the files in `%LOCALAPPDATA%\Programs\ReasonCraft`, the single ARP entry, the registry keys, the `.rcraft` association, the Start menu shortcut and `reasoncraft.exe --version`;
+3. checks that a per-machine install over it (`ALLUSERS=1`) is refused with "This app is already installed for your account" and adds nothing under HKLM;
+4. opens `Één kaart.rcraft` through the association (the shell's open, as a double-click), checks that the path arrives as one quoted argument and the app stays up, and saves the VM screen; then starts the app with `WGPU_BACKEND=metal`, so that wgpu cannot start and OpenGL, which the VM lacks, is tried next, and checks that the error dialog shows;
+5. uninstalls and checks that nothing is left except a map in Documents and the app's recovery folder;
+6. per machine: the same install, upgrade and checks in `%ProgramW6432%\ReasonCraft` and HKLM, the reverse refusal ("already installed for everyone"), opening by association, and the uninstall;
+7. always (also after a failure) turns the VM off, restores the checkpoint, deletes it, and leaves the VM off.
+
+The transcript (`msi-vm-transcript.txt`), the msiexec logs and the screenshots land in `-OutDir`.
 
 The script needs no changes to the VM's settings.
 The checkpoint undoes everything it changes inside the guest.

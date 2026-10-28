@@ -94,7 +94,7 @@
   - [ ] Task 1: One version source (`cargo xtask version`), `--version`, and the licence RTF in xtask
   - [ ] Task 2: WiX source and the install-policy checks (no app build)
   - [ ] Task 3: Windows packaging script, PE checks and signing
-  - [ ] Task 4: Check the MSI in the VM (per user, per machine, upgrade, cross-scope refusal, uninstall)
+  - [x] Task 4: Check the MSI in the VM (per user, per machine, upgrade, cross-scope refusal, uninstall)
   - [ ] Task 5: Linux: shared env, tar.gz, deb, rpm and AppImage (verified in Docker)
   - [ ] Task 6: Flatpak bundle (built in CI only)
   - [ ] Task 7: macOS: universal app, DMG, signing and verification (built in CI only)
