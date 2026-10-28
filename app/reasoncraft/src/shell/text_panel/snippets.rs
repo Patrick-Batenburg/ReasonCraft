@@ -8,13 +8,14 @@
 //! focused, Ctrl+V pastes into that snippet as usual.
 
 use eframe::egui::{
-    Context, Event, FontId, Id, LayerId, Order, Pos2, Rect, RichText, ScrollArea, Stroke,
-    StrokeKind, Ui, ViewportCommand, vec2,
+    Context, Event, FontId, Id, LayerId, Order, Pos2, Rect, RichText, Stroke, StrokeKind, Ui,
+    ViewportCommand, vec2,
 };
 use reasoncraft_core::{Snippet, Uuid};
 
 use super::drag_chip::excerpt;
 use super::snippet_card::{self, Card};
+use super::virtual_rows::{self, Rows};
 use crate::actions::Action;
 use crate::canvas::input::{Os, paste_shortcut, shortcut_text};
 use crate::doc_tab::DocTab;
@@ -46,21 +47,68 @@ pub fn show(
         return;
     }
     let focus = tab.snippet_focus.take();
-    let tab = &*tab;
-    ScrollArea::vertical()
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            let mut cards: Vec<(Uuid, Card)> = Vec::with_capacity(tab.doc.snippets.len());
-            for snippet in &tab.doc.snippets {
-                let focus = focus == Some(snippet.id);
-                let capped = tab.snippet_capped == Some(snippet.id);
-                let state = snippet_card::State { focus, capped };
-                let card = snippet_card::show(ui, tab, snippet, state, tk, spell, out);
-                cards.push((snippet.id, card));
-                ui.add_space(6.0);
-            }
-            reorder(ui, &tab.doc.snippets, &cards, tk, out);
-        });
+    let mut heights = std::mem::take(&mut tab.snippet_heights);
+    if focus.is_some() {
+        heights.reveal = focus;
+    }
+    let tab_ref = &*tab;
+    let snippets = &tab_ref.doc.snippets;
+    let keys: Vec<Uuid> = snippets.iter().map(|s| s.id).collect();
+    // The card being dragged stays laid out, and so does one holding the
+    // keyboard focus in its text (a new snippet at the end of a long
+    // list, before the list has measured the rows above it).
+    let dragging = ui.data(|d| d.get_temp::<Uuid>(dragging_id()));
+    let focused = ui.memory(|m| m.focused());
+    let typing = || {
+        let focused = focused?;
+        let s = snippets
+            .iter()
+            .find(|s| snippet_card::text_id(tab_ref, s) == focused)?;
+        Some(s.id)
+    };
+    let pinned = (dragging.or_else(typing)).and_then(|id| keys.iter().position(|&k| k == id));
+    let mut cards: Vec<(usize, Card)> = Vec::new();
+    let draw = |ui: &mut Ui, i: usize| {
+        let snippet = &snippets[i];
+        if i > 0 {
+            ui.add_space(6.0);
+        }
+        let focus = focus == Some(snippet.id);
+        let capped = tab_ref.snippet_capped == Some(snippet.id);
+        let state = snippet_card::State { focus, capped };
+        let card = snippet_card::show(ui, tab_ref, snippet, state, tk, spell, out);
+        cards.push((i, card));
+    };
+    let rows = Rows {
+        keys: &keys,
+        estimate: ROW_ESTIMATE,
+        revision: tab_ref.revision(),
+        pinned,
+        draw,
+    };
+    let rects = virtual_rows::show(ui, &mut heights, rows);
+    let dragged = cards
+        .into_iter()
+        .find(|(_, c)| c.handle.dragged() || c.handle.drag_stopped());
+    ui.data_mut(|d| match &dragged {
+        Some((i, c)) if c.handle.dragged() => {
+            d.insert_temp(dragging_id(), snippets[*i].id);
+        }
+        _ => d.remove::<Uuid>(dragging_id()),
+    });
+    if let Some((i, card)) = dragged.filter(|(_, c)| !c.to_map) {
+        reorder(ui, area, snippets, &rects, (i, &card), tk, out);
+    }
+    tab.snippet_heights = heights;
+}
+
+/// The height assumed for a snippet card not laid out yet: two lines of
+/// text with the handle and source rows.
+const ROW_ESTIMATE: f32 = 120.0;
+
+/// Where the snippet whose card is being dragged is kept between frames.
+fn dragging_id() -> Id {
+    Id::unique("snippet_dragging")
 }
 
 fn toolbar(ui: &mut Ui, keys: &FluentArgs, out: &mut Vec<Action>) {
@@ -119,41 +167,43 @@ fn paste_as_snippet(ui: &mut Ui, area: Rect, out: &mut Vec<Action>) {
     }
 }
 
-/// While a card's handle is dragged, show a ghost of it at the pointer and
-/// mark where it would land; on release, move it there. The place counts
-/// the other cards above the pointer.
+/// While card `dragged` (the index of its snippet, and what it reported)
+/// is dragged by its handle, show a ghost of it at the pointer and, over
+/// the Snippets tab (`area`), mark where it would land; on release there,
+/// move it there. The place counts the other cards (at `rects`, one per
+/// snippet) above the pointer.
 fn reorder(
     ui: &Ui,
+    area: Rect,
     snippets: &[Snippet],
-    cards: &[(Uuid, Card)],
+    rects: &[Rect],
+    (dragged, card): (usize, &Card),
     tk: &Tokens,
     out: &mut Vec<Action>,
 ) {
-    let Some((dragged, card)) = cards
-        .iter()
-        .find(|(_, c)| !c.to_map && (c.handle.dragged() || c.handle.drag_stopped()))
-    else {
-        return;
-    };
     let Some(pointer) = ui.ctx().pointer_latest_pos() else {
         return;
     };
-    let others: Vec<Rect> = cards
+    let others: Vec<Rect> = rects
         .iter()
-        .filter(|(id, _)| id != dragged)
-        .map(|(_, c)| c.rect)
+        .enumerate()
+        .filter(|&(i, _)| i != dragged)
+        .map(|(_, r)| *r)
         .collect();
     let index = others.iter().filter(|r| r.center().y < pointer.y).count();
+    // Released outside the Snippets tab (over the map, say): nothing moves.
+    let inside = area.contains(pointer);
     if card.handle.drag_stopped() {
-        out.push(Action::MoveSnippet {
-            id: *dragged,
-            index,
-        });
+        if inside {
+            let id = snippets[dragged].id;
+            out.push(Action::MoveSnippet { id, index });
+        }
         return;
     }
-    if let Some(snippet) = snippets.iter().find(|s| s.id == *dragged) {
-        let width = card.rect.width().min(GHOST_MAX_W);
-        paint_ghost(ui.ctx(), &snippet.text, pointer, width, tk);
+    let width = card.rect.width().min(GHOST_MAX_W);
+    paint_ghost(ui.ctx(), &snippets[dragged].text, pointer, width, tk);
+    if !inside {
+        return;
     }
     let y = match (index.checked_sub(1).map(|i| others[i]), others.get(index)) {
         (Some(above), Some(below)) => (above.bottom() + below.top()) / 2.0,

@@ -1,11 +1,11 @@
 //! The recovery prompt after a crash: restore, discard, decide later.
 
+use crate::common::{harness, settle};
 use std::fs::File;
 use std::time::{Duration, SystemTime};
 
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
-use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{self, Action};
 use reasoncraft::file_ops::Modal;
 use reasoncraft::i18n::t;
@@ -66,6 +66,7 @@ fn restored_doc_saves_without_asking_when_original_unchanged() {
         Action::ResolveRecovery(RecoveryChoice::RestoreAll),
     );
     actions::apply(&mut app, Action::Save);
+    reasoncraft::file_ops::wait_for_saves(&mut app);
     assert!(app.modal.is_none());
     assert_eq!(root_text(&path), "Edited");
     let tab = app.active_tab();
@@ -93,11 +94,7 @@ fn restored_doc_save_asks_when_original_changed() {
         &mut app,
         Action::ResolveRecovery(RecoveryChoice::RestoreAll),
     );
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
+    let mut h = harness(app);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::S);
     h.run();
     assert!(matches!(
@@ -110,7 +107,8 @@ fn restored_doc_save_asks_when_original_changed() {
     h.get_by_label(&t("recovery.original_changed"));
     assert_eq!(root_text(&path), "Saved", "nothing written yet");
     h.get_by_label(&t("replace.confirm")).click();
-    h.run();
+    h.run_steps(2);
+    settle(&mut h);
     assert!(h.state().modal.is_none());
     assert_eq!(root_text(&path), "Edited");
     assert!(!h.state().active_tab().is_dirty());
@@ -157,9 +155,11 @@ fn recovery_prompt_lists_documents_and_restores() {
     let rec = tempfile::tempdir().unwrap();
     let docs = tempfile::tempdir().unwrap();
     crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
-    let mut h = harness(app_with_recovery(rec.path()));
+    let mut h = crate::common::build(app_with_recovery(rec.path()));
     h.run();
-    h.get_by_label(&t("recovery.title"));
+    // The heading, and the dialog named after it.
+    h.get_by_role_and_label(egui::accesskit::Role::Label, &t("recovery.title"));
+    h.get_by_role_and_label(egui::accesskit::Role::Dialog, &t("recovery.title"));
     // One label: the message, then a line per document.
     let entry = format!("{}\n• robots (", t("recovery.message"));
     h.get_by_label_contains(&entry);
@@ -169,6 +169,32 @@ fn recovery_prompt_lists_documents_and_restores() {
     h.run();
     assert!(h.state().modal.is_none());
     assert_eq!(h.state().active_tab().title(), "robots (recovered) •");
+}
+
+#[test]
+fn recovery_prompt_ignores_a_click_beside_it() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let mut h = harness(app_with_recovery(rec.path()));
+    let pos = egui::pos2(10.0, 450.0);
+    h.event(egui::Event::PointerMoved(pos));
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+    h.run();
+    assert!(
+        matches!(h.state().modal, Some(Modal::Recover(_))),
+        "a stray click (to focus the window) keeps the offer"
+    );
+    h.key_press(egui::Key::Escape);
+    h.run();
+    assert!(h.state().modal.is_none(), "Esc puts it off");
 }
 
 /// Moves `path`'s modification time a minute ahead, as an edit by someone
@@ -199,6 +225,7 @@ fn file_changed_before_first_autosave_still_asks() {
         Action::ResolveRecovery(RecoveryChoice::RestoreAll),
     );
     actions::apply(&mut app, Action::Save);
+    reasoncraft::file_ops::wait_for_saves(&mut app);
     assert!(matches!(
         app.modal,
         Some(Modal::ConfirmReplace {
@@ -295,4 +322,68 @@ fn retry_keeps_then_discard() {
         "the orphan went once the retry was written"
     );
     assert!(!orphan.parent().unwrap().exists());
+}
+
+/// A copy whose original path is relative (from an older build) cannot
+/// tell which folder it meant: it is restored untitled, never saved to
+/// wherever the app happens to start.
+#[test]
+fn relative_original_path_restores_untitled() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("r.rcraft"));
+    let metas: Vec<_> = walk(rec.path())
+        .into_iter()
+        .filter(|p| p.extension().is_some_and(|e| e == "json"))
+        .collect();
+    assert_eq!(metas.len(), 1);
+    let mut meta: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&metas[0]).unwrap()).unwrap();
+    meta["original"] = "r.rcraft".into();
+    std::fs::write(&metas[0], meta.to_string()).unwrap();
+
+    let mut app = app_with_recovery(rec.path());
+    actions::apply(
+        &mut app,
+        Action::ResolveRecovery(RecoveryChoice::RestoreAll),
+    );
+    wait(&app);
+    let tab = app.active_tab();
+    assert_eq!(tab.doc.boxes[&tab.doc.root].text, "Edited");
+    assert_eq!(tab.path, None);
+}
+
+fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut out = Vec::new();
+    for e in std::fs::read_dir(dir).unwrap().flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            out.extend(walk(&p));
+        } else {
+            out.push(p);
+        }
+    }
+    out
+}
+
+/// The startup prompt has the keyboard focus on Restore all, so Enter
+/// restores (the finding: Enter did nothing and Tab landed on "Decide
+/// later") (ROB-7).
+#[test]
+fn recovery_prompt_enter_restores() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let mut h = harness(app_with_recovery(rec.path()));
+    assert!(matches!(h.state().modal, Some(Modal::Recover(_))));
+    h.key_press(egui::Key::Enter);
+    h.run();
+    assert!(h.state().modal.is_none(), "Enter answered");
+    assert!(
+        h.state()
+            .tabs
+            .iter()
+            .any(|t| t.doc.boxes[&t.doc.root].text == "Edited"),
+        "the crashed document is back"
+    );
 }

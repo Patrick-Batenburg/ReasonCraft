@@ -134,6 +134,11 @@ pub fn png_to_rgba(png: &[u8]) -> Result<(u32, u32, Vec<u8>), ExportError> {
 /// Somewhere an image can be put for other programs to paste.
 pub trait ClipboardSink {
     fn set_image(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<(), ExportError>;
+
+    /// The text on the clipboard, if any (for Paste from the ribbon).
+    fn text(&mut self) -> Option<String> {
+        None
+    }
 }
 
 /// The system clipboard. Only the running app uses this; tests use a fake.
@@ -167,6 +172,14 @@ impl ClipboardSink for SystemClipboard {
             })
             .map_err(|e| ExportError::Clipboard(e.to_string()))
     }
+
+    fn text(&mut self) -> Option<String> {
+        let board = match &mut self.board {
+            Some(board) => board,
+            empty => empty.insert(arboard::Clipboard::new().ok()?),
+        };
+        board.get_text().ok()
+    }
 }
 
 /// An image as width, height and straight RGBA pixels.
@@ -177,6 +190,8 @@ pub type RgbaImage = (u32, u32, Vec<u8>);
 #[derive(Clone, Default)]
 pub struct FakeClipboard {
     pub images: Arc<std::sync::Mutex<Vec<RgbaImage>>>,
+    /// The text other programs put on the clipboard.
+    pub text: Arc<std::sync::Mutex<Option<String>>>,
 }
 
 impl ClipboardSink for FakeClipboard {
@@ -185,6 +200,10 @@ impl ClipboardSink for FakeClipboard {
             images.push((width, height, rgba.to_vec()));
         }
         Ok(())
+    }
+
+    fn text(&mut self) -> Option<String> {
+        self.text.lock().ok()?.clone()
     }
 }
 

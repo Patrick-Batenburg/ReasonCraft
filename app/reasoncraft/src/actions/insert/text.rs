@@ -8,7 +8,8 @@
 //! no sources. Blank text, notes and sources are refused.
 
 use reasoncraft_core::{
-    BoxKind, CardKind, Document, Item, NewItem, NewLoose, NodeId, Parent, SnippetSource, can_attach,
+    BoxKind, CardKind, Document, Item, NewItem, NewLoose, NodeId, Parent, SnippetSource,
+    can_attach, kind_accepts,
 };
 
 use crate::doc_tab::DocTab;
@@ -17,11 +18,17 @@ use crate::shell::link_modal::safe_link;
 /// What text dropped on `to` becomes, for [`can_attach`].
 fn new_item(doc: &Document, to: Parent) -> Option<NewItem> {
     Some(match to {
-        Parent::Box(b) => match doc.boxes.get(&b)?.kind {
-            BoxKind::Claim | BoxKind::Premise => NewItem::Card(CardKind::Reason),
-            BoxKind::Category => NewItem::Category,
-            BoxKind::Source { .. } | BoxKind::Note => return None,
-        },
+        Parent::Box(b) => {
+            let kind = &doc.boxes.get(&b)?.kind;
+            let card = NewItem::Card(CardKind::Reason);
+            if kind_accepts(kind, &card) {
+                card
+            } else if kind_accepts(kind, &NewItem::Category) {
+                NewItem::Category
+            } else {
+                return None;
+            }
+        }
         Parent::Card(_) | Parent::Parking => NewItem::Card(CardKind::Reason),
     })
 }

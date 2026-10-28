@@ -6,14 +6,14 @@ use std::path::Path;
 
 use zip::write::SimpleFileOptions;
 
+use super::atomic::atomic_write;
 use super::{DOCUMENT_ENTRY, FileError, IMAGES_DIR, zip_to_io};
 use crate::model::Document;
 use crate::package::Package;
 
-fn write_archive(pkg: &Package, tmp: &Path) -> Result<(), FileError> {
+fn write_archive(pkg: &Package, file: &mut File) -> Result<(), FileError> {
     let json =
         serde_json::to_vec_pretty(&pkg.doc).map_err(|e| FileError::Malformed(e.to_string()))?;
-    let file = File::create(tmp)?;
     let mut zip = zip::ZipWriter::new(file);
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
     zip.start_file(DOCUMENT_ENTRY, options).map_err(zip_to_io)?;
@@ -35,22 +35,22 @@ fn write_archive(pkg: &Package, tmp: &Path) -> Result<(), FileError> {
             zip.write_all(bytes)?;
         }
     }
-    let file = zip.finish().map_err(zip_to_io)?;
-    file.sync_all()?;
+    zip.finish().map_err(zip_to_io)?;
     Ok(())
 }
 
-/// Save `pkg` to `path`. Writes a temporary file next to it and renames it
-/// over `path`, so a failed save never damages an existing file. Assets the
-/// document does not refer to are not written.
+/// Save `pkg` to `path`. Writes a new temporary file next to it and
+/// renames it over `path`, so a failed save never damages an existing
+/// file (see [`atomic_write`]); a replaced file keeps its permissions.
+/// Assets the document does not refer to are not written.
 pub fn save_package(pkg: &Package, path: &Path) -> Result<(), FileError> {
-    let tmp = path.with_extension("rcraft.tmp");
-    let result =
-        write_archive(pkg, &tmp).and_then(|()| std::fs::rename(&tmp, path).map_err(Into::into));
-    if result.is_err() && tmp.is_file() {
-        let _ = std::fs::remove_file(&tmp);
-    }
-    result
+    atomic_write(path, false, |file| write_archive(pkg, file))
+}
+
+/// [`save_package`] for a private copy: on Unix only the user may read it
+/// (mode 0600). Used for recovery copies.
+pub fn save_package_private(pkg: &Package, path: &Path) -> Result<(), FileError> {
+    atomic_write(path, true, |file| write_archive(pkg, file))
 }
 
 /// Save `doc` alone (no assets) to `path`.

@@ -3,6 +3,7 @@
 //! drops from the building panel, comments, link glyphs, box images) and
 //! the overview minimap.
 
+pub mod access;
 pub mod camera;
 pub mod comments;
 pub mod connect;
@@ -16,7 +17,7 @@ pub mod measure;
 pub mod minimap;
 pub mod paint;
 pub mod plus_menu;
-pub mod rating;
+pub mod scene_paint;
 
 use eframe::egui::{self, Key, PointerButton, Rect, Response, Role, Sense, WidgetInfo};
 use reasoncraft_core::{Document, Item, Layout, layout};
@@ -28,7 +29,7 @@ use measure::EguiMeasure;
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::i18n::t;
-use crate::scene::marks_leads;
+use crate::scene::{self, marks_leads};
 use crate::spell::SpellFields;
 
 impl From<Hit> for Item {
@@ -69,9 +70,6 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     } = app;
     images.evict_unused(tabs);
     let tab = &mut tabs[*active];
-    if images.load(&ctx, &tab.doc, &tab.assets) {
-        ctx.request_repaint();
-    }
     // Recomputed every frame: about 0.3 ms for 500 boxes, and never stale.
     let measure = EguiMeasure::new(&ctx, measure_cache);
     let params = settings.layout_params();
@@ -108,8 +106,22 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     {
         tab.camera.fit_selection(target, rect);
     }
+    // An edit starting this frame where its text would be too small to
+    // read zooms to 100 % around the box first.
+    if tab.edit_focus
+        && let Some(b) = tab.editing()
+        && let (Some(world), Some(node)) = (layout.boxes.get(&b), tab.doc.boxes.get(&b))
+        && scene::metrics::font_for(&node.kind).size * tab.camera.zoom < MIN_EDIT_PX
+    {
+        tab.camera.center_on(*world, rect, 1.0);
+    }
     let panning = navigate(ui, &response, &mut tab.camera, rect);
     drag::autoscroll(ui, &response, &mut tab.camera);
+    let ppp = ctx.pixels_per_point();
+    let wanted = images::wanted(&tab.doc, &layout, &tab.camera, rect, ppp);
+    if images.load(&ctx, &wanted, &tab.assets) {
+        ctx.request_repaint();
+    }
 
     if tab.connect_mode.is_none()
         && response.clicked()
@@ -161,6 +173,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         settings.minimap,
         params.indicators,
     );
+    access::expose(ui, tab, &layout, rect);
     let mut fields = SpellFields::new(spell, settings, &tab.doc.meta.language, &tokens);
     editor::show(ui, tab, &layout, &tokens, &mut fields, pending);
     if !response.dragged() {
@@ -168,6 +181,10 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     comments::show(ui, tab, &layout, &tokens, &mut fields, pending);
 }
+
+/// The smallest on-screen text size (points) an edit starts at: below
+/// it, starting an edit zooms in to 100 %.
+pub const MIN_EDIT_PX: f32 = 9.0;
 
 /// The world rect of `item` in `layout`: a box's own rect, or a card's
 /// frame with everything under it.

@@ -103,10 +103,13 @@ pub fn show(
     tk: &Tokens,
     out: &mut Vec<Action>,
 ) {
-    tab.issues(&settings.checks);
+    let (_, due) = tab.settled_issues(&settings.checks, ui.input(|i| i.time));
+    if let Some(due) = due {
+        ui.ctx().request_repaint_after(due);
+    }
     let mut heights = std::mem::take(&mut tab.check_heights);
     let tab_ref = &*tab;
-    let issues = tab_ref.issue_cache.as_ref().map_or(&[][..], |(_, _, i)| i);
+    let issues = tab_ref.issue_cache.last().map_or(&[][..], Vec::as_slice);
     let ignored = tab_ref.doc.ignored_hints.len();
     if issues.is_empty() {
         ui.label(RichText::new(t("check.all_clear")).color(tk.text_muted));
@@ -139,6 +142,7 @@ pub fn show(
             keys: &keys,
             estimate: ROW_ESTIMATE,
             revision: tab_ref.revision(),
+            pinned: None,
             draw,
         };
         virtual_rows::show(ui, &mut heights, rows);

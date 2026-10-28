@@ -3,7 +3,7 @@
 use crate::edit::NewLoose;
 use crate::ids::{CardId, Item, NodeId, Parent};
 use crate::layout::Measure;
-use crate::model::{BoxKind, CardKind, Document};
+use crate::model::{BoxKind, BoxNode, Card, CardKind, Document};
 
 /// Measures text as 7 px per character and 14 px per line, wrapping at word
 /// boundaries and breaking words longer than the width.
@@ -57,6 +57,59 @@ const PHRASES: [&str; 8] = [
 
 fn text(label: &str, i: usize) -> String {
     format!("{label} {i}: {}", PHRASES[i % PHRASES.len()])
+}
+
+/// A map whose claim has a chain of `levels` reasons, each under the
+/// premise of the one before, built directly (past any edit check, so it
+/// may nest deeper than [`crate::MAX_DEPTH`]); and its premises from the
+/// top down.
+pub fn deep_chain(levels: usize) -> (Document, Vec<NodeId>) {
+    let mut d = Document::new("C");
+    let mut premises = Vec::with_capacity(levels);
+    let mut owner = d.root;
+    for i in 0..levels {
+        let (card, premise) = (CardId::new(), NodeId::new());
+        d.boxes.insert(
+            premise,
+            BoxNode::new(premise, BoxKind::Premise, &format!("level {i}")),
+        );
+        d.cards
+            .insert(card, Card::new(card, CardKind::Reason, vec![premise]));
+        d.boxes[&owner].children.push(Item::Card(card));
+        premises.push(premise);
+        owner = premise;
+    }
+    (d, premises)
+}
+
+/// A map whose claim has a reason under which a chain of `levels`
+/// whole-card objections hangs, each against the card before it, built
+/// directly (past any edit check, so it may nest deeper than
+/// [`crate::MAX_DEPTH`]).
+pub fn deep_objection_chain(levels: usize) -> Document {
+    let mut d = Document::new("C");
+    let mut owner: Option<CardId> = None;
+    for i in 0..=levels {
+        let (card, premise) = (CardId::new(), NodeId::new());
+        d.boxes.insert(
+            premise,
+            BoxNode::new(premise, BoxKind::Premise, &format!("level {i}")),
+        );
+        let kind = match owner {
+            Some(_) => CardKind::Objection,
+            None => CardKind::Reason,
+        };
+        d.cards.insert(card, Card::new(card, kind, vec![premise]));
+        match owner {
+            Some(o) => d.cards[&o].children.push(card),
+            None => {
+                let root = d.root;
+                d.boxes[&root].children.push(Item::Card(card));
+            }
+        }
+        owner = Some(card);
+    }
+    d
 }
 
 /// A deterministic map of about `n_boxes` boxes (root, premises and sources
@@ -156,8 +209,8 @@ pub fn sample_iot_like(n_boxes: usize) -> Document {
 ///
 /// Ignored, because Argdown does not keep them: ids, images, widths,
 /// comment dates, the links and comments of notes under a box, where notes
-/// sit among their siblings, and the spaces around a box's text (line
-/// breaks in it count as spaces).
+/// sit among their other siblings (the notes' own order counts), and the
+/// spaces around a box's text (line breaks in it count as spaces).
 pub fn structurally_equal(a: &Document, b: &Document) -> Result<(), String> {
     for (what, x, y) in [
         ("title", &a.meta.title, &b.meta.title),
@@ -258,14 +311,13 @@ impl Compare<'_> {
         let split = |d: &Document, items: &[Item]| {
             let is_note = |i: &Item| matches!(i, Item::Box(b) if d.boxes.get(b).is_some_and(|n| n.kind == BoxKind::Note));
             let (notes, rest): (Vec<Item>, Vec<Item>) = items.iter().partition(|i| is_note(i));
-            let mut texts: Vec<String> = notes
+            let texts: Vec<String> = notes
                 .iter()
                 .filter_map(|i| match i {
                     Item::Box(b) => d.boxes.get(b).map(|n| flat(&n.text)),
                     Item::Card(_) => None,
                 })
                 .collect();
-            texts.sort();
             (texts, rest)
         };
         let (notes_p, rest_p) = split(self.a, &p.children);
@@ -347,5 +399,20 @@ mod tests {
                 .keys()
                 .any(|&c| a.card_role(c) == crate::model::Role::Rebuts)
         );
+    }
+
+    #[test]
+    fn note_order_counts() {
+        let mut a = Document::new("c");
+        let root = a.root;
+        a.add_box(Parent::Box(root), BoxKind::Note, "first")
+            .unwrap();
+        a.add_box(Parent::Box(root), BoxKind::Note, "second")
+            .unwrap();
+        let mut b = a.clone();
+        b.boxes[&root].children.reverse();
+        assert!(structurally_equal(&a, &a.clone()).is_ok());
+        let err = structurally_equal(&a, &b).unwrap_err();
+        assert!(err.contains("notes"), "{err}");
     }
 }

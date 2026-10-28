@@ -66,7 +66,8 @@ pub enum EndMarker {
     None,
 }
 
-/// Evaluated strength of a connector (only `Normal` is used in step 1).
+/// The weight a connector is drawn with, from the evaluation of what it
+/// connects (`Normal` when unrated or with evaluation shading off).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Strength {
     Strong,
@@ -82,21 +83,23 @@ pub fn end_marker(kind: ConnectorKind) -> EndMarker {
     }
 }
 
-/// On-screen stroke width in px at the given zoom (1.0 = 100%).
+/// The design stroke width on screen, in px, at `zoom` (1.0 = 100 %): the
+/// width at 100 % scaled by the zoom, with no floor. At 100 %: strong 3,
+/// normal 2, weak 1.4, neutral 1.5, attachment 1. Drawing goes through
+/// [`line_width`], which keeps every line at least [`MIN_VISIBLE_PX`], so
+/// weak is drawn at 1.5 px even at 100 %, normal and weak look the same
+/// below 75 % zoom, and every weight looks the same below 50 %.
 pub fn stroke_px(kind: ConnectorKind, strength: Strength, zoom: f32) -> f32 {
-    let (base, min) = match kind {
-        ConnectorKind::Neutral => (1.5, 1.25),
-        ConnectorKind::Attachment => (1.0, 1.0),
-        _ => (
-            match strength {
-                Strength::Strong => 3.0,
-                Strength::Normal => 2.0,
-                Strength::Weak => 1.4,
-            },
-            1.25,
-        ),
+    let base = match kind {
+        ConnectorKind::Neutral => 1.5,
+        ConnectorKind::Attachment => 1.0,
+        _ => match strength {
+            Strength::Strong => 3.0,
+            Strength::Normal => 2.0,
+            Strength::Weak => 1.4,
+        },
     };
-    (base * zoom).max(min)
+    base * zoom
 }
 
 /// The width a connector line is drawn at, in world units at `zoom`: its
@@ -109,10 +112,36 @@ pub fn line_width(kind: ConnectorKind, strength: Strength, zoom: f32) -> f32 {
 mod tests {
     use super::*;
 
+    /// `stroke_px` is the design width scaled by the zoom; only
+    /// `line_width` applies the visible floor.
     #[test]
-    fn stroke_never_below_minimum() {
-        assert!(stroke_px(ConnectorKind::Supports, Strength::Weak, 0.1) >= 1.25);
-        assert!(stroke_px(ConnectorKind::Attachment, Strength::Normal, 0.1) >= 1.0);
+    fn stroke_px_is_the_design_width() {
+        let close = |a: f32, b: f32| (a - b).abs() < 1e-6;
+        assert!(close(
+            stroke_px(ConnectorKind::Supports, Strength::Weak, 0.1),
+            0.14
+        ));
+        assert!(close(
+            stroke_px(ConnectorKind::Attachment, Strength::Normal, 0.1),
+            0.1
+        ));
+        assert!(close(
+            stroke_px(ConnectorKind::Neutral, Strength::Strong, 2.0),
+            3.0
+        ));
+    }
+
+    /// On screen: weak (1.4 px) is drawn at the 1.5 px floor even at 100 %;
+    /// below 75 % normal reaches the floor too, and below 50 % strong does,
+    /// so every weight looks the same.
+    #[test]
+    fn weights_merge_at_the_floor_when_zoomed_out() {
+        let px = |s, zoom| line_width(ConnectorKind::Supports, s, zoom) * zoom;
+        let close = |a: f32, b: f32| (a - b).abs() < 1e-5;
+        assert!(close(px(Strength::Weak, 1.0), MIN_VISIBLE_PX));
+        assert!(close(px(Strength::Normal, 0.7), px(Strength::Weak, 0.7)));
+        assert!(px(Strength::Strong, 0.7) > px(Strength::Normal, 0.7));
+        assert!(close(px(Strength::Strong, 0.4), MIN_VISIBLE_PX));
     }
 
     #[test]

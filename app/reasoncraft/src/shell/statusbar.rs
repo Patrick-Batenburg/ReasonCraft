@@ -1,6 +1,6 @@
-//! Status bar: box count, issue count (or the "Connect to…" hint), the
-//! busy chip of background jobs or the last export's notice, a status
-//! note, theme toggle and zoom slider.
+//! Status bar: box count, issue count (or the "Move to…" hint), the
+//! busy chip of background jobs (saves, exports, images) or the last
+//! export's notice, a status note, theme toggle and zoom slider.
 
 use eframe::egui::{
     self, Align, FontId, Frame, Layout, Margin, Response, RichText, Role, Sense, Slider,
@@ -27,7 +27,13 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         .exact_size(26.0)
         .show(ui, |ui| {
             ui.horizontal_centered(|ui| {
-                let issues = app.tabs[app.active].issues(&app.settings.checks).len();
+                let now = ui.input(|i| i.time);
+                let tab = &mut app.tabs[app.active];
+                let (found, due) = tab.settled_issues(&app.settings.checks, now);
+                let issues = found.len();
+                if let Some(due) = due {
+                    ui.ctx().request_repaint_after(due);
+                }
                 let tab = app.active_tab();
                 let mut args = FluentArgs::new();
                 args.set("count", tab.doc.boxes.len());
@@ -41,18 +47,20 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     app.pending.push(Action::SetTextTab(TextTab::Check));
                     app.pending.push(Action::ShowPanel(Panel::Right));
                 }
-                let tab = app.active_tab();
-                if tab.connect_mode.is_some() {
-                    ui.add_space(16.0);
-                    ui.label(
-                        RichText::new(t("connect.hint"))
-                            .size(12.0)
-                            .strong()
-                            .color(tk.accent),
-                    );
-                }
-
-                job_status(ui, app, &tk);
+                // Read out as it changes: the Move to… hint, "Saving…",
+                // "Copied", an export done, an autosave that failed.
+                crate::a11y::live_region(ui, "status_live", |ui| {
+                    if app.active_tab().connect_mode.is_some() {
+                        ui.add_space(16.0);
+                        ui.label(
+                            RichText::new(t("connect.hint"))
+                                .size(12.0)
+                                .strong()
+                                .color(tk.accent),
+                        );
+                    }
+                    job_status(ui, app, &tk);
+                });
 
                 let zoom = app.active_tab().camera.zoom;
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -132,10 +140,13 @@ fn job_status(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
     // for an edit session: the same ones that show "Preparing image…".
     let images: usize = app.tabs.iter().map(|t| t.pending_images.len()).sum();
     let exports = app.export.running();
-    if exports + images > 0 {
+    let saving = app.saves.busy();
+    if exports + images > 0 || saving {
         ui.add_space(16.0);
         ui.add(egui::Spinner::new().size(12.0).color(tk.accent));
-        let key = if exports > 0 {
+        let key = if saving {
+            "status.saving"
+        } else if exports > 0 {
             "status.exporting"
         } else {
             "status.preparing_image"

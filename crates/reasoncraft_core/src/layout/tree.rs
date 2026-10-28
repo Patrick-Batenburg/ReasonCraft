@@ -25,6 +25,7 @@ use super::{ConnectorKind, Layout, LayoutParams};
 use crate::connector::Strength;
 use crate::ids::{Item, NodeId};
 use crate::model::{BoxKind, Card, CardStrength, Document, Role};
+use crate::rules::is_attachment;
 
 /// A card, a box outside cards, or the root.
 struct Unit {
@@ -282,19 +283,12 @@ fn whole_children(card: &Card, out: &mut Vec<(Item, PortKey)>) {
 
 /// A box's children with sources and notes first, otherwise in order. The
 /// canvas and the outline share this order.
-pub(crate) fn display_children(doc: &Document, id: NodeId) -> Vec<Item> {
+pub fn display_children(doc: &Document, id: NodeId) -> Vec<Item> {
     let Some(node) = doc.boxes.get(&id) else {
         return Vec::new();
     };
-    let is_attachment = |item: &&Item| match item {
-        Item::Box(b) => doc
-            .boxes
-            .get(b)
-            .is_some_and(|n| matches!(n.kind, BoxKind::Source { .. } | BoxKind::Note)),
-        Item::Card(_) => false,
-    };
-    let first = node.children.iter().filter(is_attachment);
-    let rest = node.children.iter().filter(|i| !is_attachment(i));
+    let first = node.children.iter().filter(|&&i| is_attachment(doc, i));
+    let rest = node.children.iter().filter(|&&i| !is_attachment(doc, i));
     first.chain(rest).copied().collect()
 }
 

@@ -22,6 +22,14 @@ pub(super) fn build() -> Vec<Command> {
         ),
         cmd("file.save", "action.save", file, Action::Save),
         cmd("file.save_as", "action.save_as", file, Action::SaveAs),
+        cmd("file.next_tab", "action.next_tab", file, Action::NextTab),
+        cmd("file.prev_tab", "action.prev_tab", file, Action::PrevTab),
+        cmd(
+            "file.close_tab",
+            "action.close_tab",
+            file,
+            Action::CloseActiveTab,
+        ),
     ];
     out.extend(home::commands());
     out.extend(evaluate::commands());
@@ -37,6 +45,7 @@ fn cmd(id: &'static str, label: &'static str, group: &'static str, action: Actio
         id,
         label,
         group,
+        icon: None,
         action,
     }
 }

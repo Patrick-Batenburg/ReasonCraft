@@ -7,6 +7,7 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+use reasoncraft_core::Uuid;
 use reasoncraft_core::file::{self, FileError};
 
 use crate::actions::UnsavedChoice;
@@ -16,16 +17,20 @@ use crate::doc_tab::DocTab;
 mod dialogs;
 mod errors;
 mod save;
+mod save_job;
 pub use dialogs::{FakeDialogs, FileDialogs, RfdDialogs};
 pub(crate) use errors::show_error;
 pub use errors::{error_key, error_text};
 use save::save_and_report;
 pub use save::{resolve_replace, save_active, save_tab};
+pub use save_job::{SAVE_CLOSE_WAIT, SaveJobs, poll_saves, wait_for_saves};
 
 /// The file extension of ReasonCraft maps.
 pub const EXTENSION: &str = "rcraft";
 
-/// A dialog shown over the whole window.
+/// A dialog shown over the whole window. Tabs are named by their
+/// [`DocTab::recovery_key`]: a save ending behind the dialog may close a
+/// tab before them.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Modal {
     Error {
@@ -37,15 +42,16 @@ pub enum Modal {
     /// `waiting`: the user chose Save, which happens once the tab's images
     /// are prepared (Cancel still works meanwhile).
     Unsaved {
-        tab: usize,
+        tab: Uuid,
         window: bool,
         waiting: bool,
     },
     /// Saving tab `tab` to `path` would replace an existing file that the
     /// save dialog never checked (`.rcraft` was appended to the chosen name),
-    /// or, `original_changed`, a restored tab's original that changed since.
+    /// or, `original_changed`, the tab's file, changed on disk since the
+    /// tab opened or saved it (or, restored, since the crashed app did).
     ConfirmReplace {
-        tab: usize,
+        tab: Uuid,
         path: PathBuf,
         then: AfterSave,
         original_changed: bool,
@@ -60,7 +66,7 @@ pub enum Modal {
         request: crate::export::ExportRequest,
     },
     /// A crashed session left these documents behind: restore them?
-    Recover(Vec<crate::recovery::RecoveredDoc>),
+    Recover(crate::recovery::Orphans),
     /// An Argdown import changed or left out these constructs.
     ImportReport(Vec<reasoncraft_core::ImportNote>),
     /// Put every setting back to its default?
@@ -86,8 +92,8 @@ pub enum SaveOutcome {
     /// Nothing was written yet: `.rcraft` was appended to the chosen name
     /// and that file exists, so the user must confirm replacing it.
     NeedsReplaceConfirm(PathBuf),
-    /// Nothing was written yet: the tab was restored after a crash and its
-    /// original file changed since, so the user must confirm replacing it.
+    /// Nothing was written yet: the tab's file changed on disk since the
+    /// tab opened or saved it, so the user must confirm replacing it.
     OriginalChanged(PathBuf),
 }
 
@@ -166,14 +172,14 @@ pub(crate) fn same_file(a: &Path, b: &Path) -> bool {
     }
 }
 
-/// A blank tab nobody has worked in: untitled, with no history, no edit
-/// and only an empty claim (an example or template opened clean is not
-/// blank, so it stays).
+/// A blank tab nobody has worked in: untitled, with no history, no edit,
+/// no image being prepared and only an empty claim (an example or
+/// template opened clean is not blank, so it stays).
 fn is_untouched(tab: &DocTab) -> bool {
     tab.path.is_none()
         && tab.history.undo.is_empty()
         && tab.history.redo.is_empty()
-        && !tab.is_dirty()
+        && !tab.has_unsaved_work()
         && tab.doc.boxes.len() == 1
         && tab
             .doc
@@ -184,10 +190,13 @@ fn is_untouched(tab: &DocTab) -> bool {
 
 /// Open `path`: activate its tab if it is already open, else load it into
 /// the active tab when that one is untouched, else into a new tab. Either
-/// way it goes first in the recent files.
+/// way it goes first in the recent files. A relative path (from the
+/// command line) is made absolute first: the tab, the recent files and a
+/// recovered copy must not depend on the folder the app was started in.
 fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
-    open_or_activate(app, path)?;
-    app.settings.push_recent(path);
+    let path = std::path::absolute(path)?;
+    open_or_activate(app, &path)?;
+    app.settings.push_recent(&path);
     Ok(())
 }
 
@@ -200,46 +209,84 @@ fn open_or_activate(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileErr
         app.active = i;
         return Ok(());
     }
-    let mut tab = DocTab::from_package(file::open_package(path)?);
+    let pkg = file::open_package(path)?;
+    let mut notes = Vec::new();
+    if pkg.cut_on_open {
+        notes.push(crate::i18n::t("status.open_cut"));
+    }
+    if pkg.parked_on_open {
+        let mut args = fluent_bundle::FluentArgs::new();
+        args.set("max", reasoncraft_core::MAX_DEPTH);
+        notes.push(crate::i18n::t_args("status.open_too_deep", &args));
+    }
+    if !notes.is_empty() {
+        app.status_note = Some(notes.join(" "));
+    }
+    let mut tab = DocTab::from_package(pkg);
     tab.path = Some(path.to_path_buf());
     tab.disk_mtime = crate::recovery::file_mtime(path);
     place_tab(app, tab);
     Ok(())
 }
 
-/// Show a loaded `tab` in the active tab when that one is untouched, else
-/// in a new tab; it becomes active. Returns its index.
+/// Show a loaded `tab` in place of a tab showing its file without unsaved
+/// work (a restored copy of a file open already), else in the active tab
+/// when that one is untouched, else in a new tab; it becomes active.
+/// Returns its index.
 pub(crate) fn place_tab(app: &mut ReasonCraftApp, mut tab: DocTab) -> usize {
-    let reused = app.tabs.get(app.active).filter(|t| is_untouched(t));
-    tab.mark_loaded(reused.map_or(0, DocTab::revision));
-    if reused.is_some() {
-        app.tabs[app.active] = tab;
-    } else {
-        app.tabs.push(tab);
-        app.active = app.tabs.len() - 1;
+    let same_file_tab = tab.path.as_deref().and_then(|path| {
+        app.tabs.iter().position(|t| {
+            !t.has_unsaved_work() && t.path.as_deref().is_some_and(|p| same_file(p, path))
+        })
+    });
+    let untouched = Some(app.active).filter(|&i| app.tabs.get(i).is_some_and(is_untouched));
+    match same_file_tab.or(untouched) {
+        Some(i) => {
+            tab.mark_loaded(app.tabs[i].revision());
+            app.tabs[i] = tab;
+            app.active = i;
+        }
+        None => {
+            app.tabs.push(tab);
+            app.active = app.tabs.len() - 1;
+        }
     }
     app.active
 }
 
+/// Where the tab `key` names is now, if it is still open.
+pub(crate) fn tab_index(app: &ReasonCraftApp, key: Uuid) -> Option<usize> {
+    app.tabs.iter().position(|t| t.recovery_key == key)
+}
+
 /// Continue what a save of tab `tab` was part of.
-fn carry_on(app: &mut ReasonCraftApp, tab: usize, then: AfterSave) {
+fn carry_on(app: &mut ReasonCraftApp, tab: Uuid, then: AfterSave) {
+    let Some(i) = tab_index(app, tab) else {
+        return;
+    };
     match then {
         AfterSave::Nothing => {}
-        AfterSave::CloseTab => remove_tab(app, tab),
-        AfterSave::ContinueWindowClose => ask_from(app, tab + 1),
+        AfterSave::CloseTab => remove_tab(app, i),
+        AfterSave::ContinueWindowClose => ask_from(app, i + 1),
     }
 }
 
-/// Close tab `i`, asking first if it has unsaved changes (or an image
-/// still being prepared).
-pub fn request_close_tab(app: &mut ReasonCraftApp, i: usize) {
-    let Some(tab) = app.tabs.get_mut(i) else {
-        return;
-    };
+/// Close the tab `key` names, asking first if it has unsaved changes (or
+/// an image still being prepared). Saves being written finish first; one
+/// may close another tab, so the tab is looked for after them, and one
+/// that failed shows its error, which the close then waits behind.
+pub fn request_close_tab(app: &mut ReasonCraftApp, key: Uuid) {
+    wait_for_saves(app);
+    save_job::after_dialogs(app, key, AfterSave::CloseTab);
+}
+
+/// Close tab `i`, asking first if it has unsaved changes.
+fn ask_or_close(app: &mut ReasonCraftApp, i: usize) {
+    let tab = &mut app.tabs[i];
     tab.commit_session();
     if tab.has_unsaved_work() {
         app.modal = Some(Modal::Unsaved {
-            tab: i,
+            tab: tab.recovery_key,
             window: false,
             waiting: false,
         });
@@ -263,12 +310,21 @@ pub fn remove_tab(app: &mut ReasonCraftApp, i: usize) {
     }
 }
 
-/// Close the window, asking about each dirty tab in order first.
+/// Close the window, asking about each dirty tab in order first (saves
+/// being written finish first). The link editor and the export dialog
+/// close first: they act on the active tab, and asking may turn to
+/// another one.
 pub fn request_close_window(app: &mut ReasonCraftApp) {
+    wait_for_saves(app);
+    app.link_edit = None;
+    app.export_dialog = None;
     for tab in &mut app.tabs {
         tab.commit_session();
     }
-    ask_from(app, 0);
+    // The window keeps one tab; asking starts from it (behind a save's
+    // error, if one shows).
+    let first = app.tabs[0].recovery_key;
+    save_job::after_dialogs(app, first, AfterSave::ContinueWindowClose);
 }
 
 /// Ask about the first dirty tab at or after `from`; with none left, close
@@ -278,7 +334,7 @@ fn ask_from(app: &mut ReasonCraftApp, from: usize) {
         Some(i) => {
             app.active = i;
             app.modal = Some(Modal::Unsaved {
-                tab: i,
+                tab: app.tabs[i].recovery_key,
                 window: true,
                 waiting: false,
             });
@@ -297,17 +353,23 @@ pub fn resolve_unsaved(app: &mut ReasonCraftApp, choice: UnsavedChoice) {
     } else {
         AfterSave::CloseTab
     };
-    let proceed = match choice {
-        UnsavedChoice::Cancel => false,
-        UnsavedChoice::Discard => true,
-        // A failed or cancelled save ends the close (a failure shows its
-        // error); after a replace prompt, `then` runs once it is answered.
-        UnsavedChoice::Save => save_and_report(app, tab, false, then),
-    };
-    if proceed {
-        carry_on(app, tab, then);
+    match choice {
+        UnsavedChoice::Cancel => {}
+        UnsavedChoice::Discard => carry_on(app, tab, then),
+        // `then` runs once the file is written (after a replace prompt,
+        // once it is answered); a failed or cancelled save ends the close
+        // (a failure shows its error).
+        UnsavedChoice::Save => {
+            if let Some(i) = tab_index(app, tab) {
+                save_and_report(app, i, false, then);
+            }
+        }
     }
 }
 
+#[cfg(test)]
+mod open_tests;
+#[cfg(test)]
+mod save_job_tests;
 #[cfg(test)]
 mod tests;

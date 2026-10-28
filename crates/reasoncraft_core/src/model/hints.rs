@@ -47,7 +47,7 @@ impl Document {
             return Err(EditError::NotAllowed);
         }
         self.ignored_hints.push(IgnoredHint::from(issue));
-        self.touch();
+        self.finish_edit();
         Ok(())
     }
 
@@ -58,7 +58,7 @@ impl Document {
             return Err(EditError::NotAllowed);
         }
         self.ignored_hints.clear();
-        self.touch();
+        self.finish_edit();
         Ok(())
     }
 }

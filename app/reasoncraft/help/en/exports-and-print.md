@@ -8,7 +8,7 @@ Everything for handing in and sharing is on the **Export** tab of the ribbon. Ex
 - PNG: choose a scale from 1× to 4×, and a transparent background if you like. A PNG can be at most 16,384 pixels on a side; for a very large map, use SVG or PDF.
 - SVG: text is turned into outlines by default, so the drawing looks the same on a computer without the font. Untick the option to keep text you can select.
 - PDF: the text stays selectable. **Page setup…** sets the paper (A4 or Letter), the orientation, the margin and the fit: the whole map on one page, or spread across pages at a scale you choose.
-- **Copy as image** puts a picture of the map on the clipboard, in the colours you see, to paste into another program.
+- **Copy as image** puts a picture on the clipboard to paste into another program. It uses the choices you last made in the export dialog (whole map or selection, light or current theme); until you make them, it copies the whole map in the light theme.
 
 Exports show what the map shows, without the parts that only make sense on screen: the selection, the **+** button, comment badges, link symbols, find highlights, the minimap and the dot grid. Items under Not connected are left out.
 

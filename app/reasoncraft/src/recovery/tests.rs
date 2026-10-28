@@ -89,6 +89,7 @@ fn discarding_the_last_entry_removes_the_orphan_folder() {
     b.wait_idle();
     assert!(orphan_dir.is_dir(), "one entry left");
     b.discard(&found[1]);
+    b.release(found);
     b.wait_idle();
     assert!(!orphan_dir.exists());
 }
@@ -106,10 +107,9 @@ fn empty_orphan_folders_are_tidied() {
 
 #[test]
 fn default_dir_is_a_recovery_folder() {
-    // Only computed, never created.
-    if let Some(dir) = RecoveryStore::default_dir() {
-        assert!(dir.ends_with("recovery"));
-    }
+    // Only computed, never created. Every test machine has one.
+    let dir = RecoveryStore::default_dir().expect("a recovery folder");
+    assert!(dir.ends_with("recovery"), "{dir:?}");
 }
 
 #[test]
@@ -119,11 +119,13 @@ fn restore_write_failure_keeps_the_orphan() {
     write(&a, "Robots");
     drop(a);
     let mut b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
-    let found = b.orphaned();
+    let offered = b.orphaned();
+    let found = offered.to_vec();
     let pkg = || Package::new(Document::new("Robots"));
     b.set_fail_writes(true);
     let key = Uuid::new_v4();
     b.write_then_discard(key, pkg(), meta("Robots"), &found[0]);
+    b.release(offered);
     b.wait_idle();
     assert!(found[0].package.is_file(), "the only copy is kept");
     let failures = b.failed_writes();
@@ -234,4 +236,69 @@ fn removed_copy_drops_its_kept_discard() {
     b.write(key, pkg(), meta("Robots"));
     b.wait_idle();
     assert!(found[0].package.is_file());
+}
+
+#[test]
+fn copies_are_written_through_unique_temp_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    let key = Uuid::new_v4();
+    // Files with the old fixed temp names are not ours: never touched.
+    let theirs = a.session_dir().join(format!("{key}.json.tmp"));
+    std::fs::write(&theirs, b"x").unwrap();
+    a.write(key, Package::new(Document::new("R")), meta("R"));
+    a.wait_idle();
+    assert_eq!(std::fs::read(&theirs).unwrap(), b"x");
+    assert!(a.session_dir().join(format!("{key}.json")).is_file());
+    assert_eq!(entries(&a.session_dir()), 4, "lock, copy, meta and theirs");
+}
+
+#[cfg(unix)]
+#[test]
+fn recovery_folder_and_copies_are_private() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("recovery");
+    let a = RecoveryStore::open(root.clone()).unwrap();
+    let key = write(&a, "Robots");
+    assert_eq!(mode(&root), 0o700);
+    assert_eq!(mode(&a.session_dir()), 0o700);
+    for ext in ["rcraft", "json"] {
+        assert_eq!(mode(&a.session_dir().join(format!("{key}.{ext}"))), 0o600);
+    }
+}
+
+#[test]
+fn offered_sessions_stay_locked_until_answered() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    write(&a, "Robots");
+    drop(a);
+    let b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    let offered = b.orphaned();
+    assert_eq!(offered.len(), 1);
+    let c = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    assert!(c.orphaned().is_empty(), "B's prompt is still open");
+    for doc in offered.iter() {
+        b.discard(doc);
+    }
+    b.release(offered);
+    b.wait_idle();
+    assert!(c.orphaned().is_empty(), "discarded");
+    assert_eq!(entries(dir.path()), 2, "A's folder went: B's and C's left");
+}
+
+#[test]
+fn later_hands_the_offer_on() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    write(&a, "Robots");
+    drop(a);
+    let b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    let offered = b.orphaned();
+    b.release(offered);
+    b.wait_idle();
+    let c = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    assert_eq!(c.orphaned().len(), 1, "offered again once B let go");
 }

@@ -37,54 +37,66 @@ pub(super) fn row(
     button_h: f32,
     add: impl FnOnce(&mut Ui),
 ) {
-    ui.scope(|ui| scrolling_row(ui, tk, tab, button_h, add));
+    let name = format!("{tab:?}");
+    let keys = ["ribbon.scroll_left", "ribbon.scroll_right"];
+    ui.scope(|ui| scrolling_row(ui, tk, &name, true, keys, button_h, add));
 }
 
+/// The row of ribbon tabs, filled by `add`: it scrolls sideways like a
+/// row of groups when the window is too narrow for every tab (its tabs
+/// call [`follow_focus`]). `height` is the row's.
+pub(super) fn tab_row(ui: &mut Ui, tk: &Tokens, height: f32, add: impl FnOnce(&mut Ui)) {
+    let keys = ["ribbon.tabs_left", "ribbon.tabs_right"];
+    ui.scope(|ui| scrolling_row(ui, tk, "tabs", false, keys, height, add));
+}
+
+/// A row named `name` that scrolls sideways; `fit` shrinks its groups
+/// first ([`super::fit`]); `keys` name its left and right chevrons.
 fn scrolling_row(
     ui: &mut Ui,
     tk: &Tokens,
-    tab: RibbonTab,
+    name: &str,
+    fit: bool,
+    keys: [&str; 2],
     button_h: f32,
     add: impl FnOnce(&mut Ui),
 ) {
     let ctx = ui.ctx().clone();
-    let jump_id = Id::unique(("ribbon_scroll_to", format!("{tab:?}")));
+    let jump_id = Id::unique(("ribbon_scroll_to", name));
     let jump: Option<f32> = ctx.data_mut(|d| d.remove_temp(jump_id));
     // The wheel scrolls the row without Shift.
     ui.style_mut().always_scroll_the_only_direction = true;
     // No spacing is added when a focused button is scrolled into view.
     ui.spacing_mut().item_spacing.x = 0.0;
     let mut area = ScrollArea::horizontal()
-        .id_salt(("ribbon_scroll", format!("{tab:?}")))
+        .id_salt(("ribbon_scroll", name))
         .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
         .auto_shrink([false, true])
         .max_width(ui.available_width());
     if let Some(x) = jump {
         area = area.horizontal_scroll_offset(x);
     }
-    fit::begin(&ctx, &format!("{tab:?}"), ui.available_width());
+    if fit {
+        fit::begin(&ctx, name, ui.available_width());
+    }
     ctx.data_mut(|d| d.remove_temp::<Vec<Id>>(buttons_id()));
     let out = area.show(ui, |ui| {
         ui.with_layout(Layout::left_to_right(Align::Min), add);
     });
-    fit::end(&ctx);
+    if fit {
+        fit::end(&ctx);
+    }
     let buttons: Vec<Id> = ctx.data_mut(|d| d.remove_temp(buttons_id()).unwrap_or_default());
     let view = out.inner_rect;
     let hidden = out.content_size.x - view.width();
     let x = out.state.clamped_offset().x;
     let ends = [
-        (
-            x > 1.0,
-            view.left(),
-            -1.0,
-            "ribbon.scroll_left",
-            buttons.first(),
-        ),
+        (x > 1.0, view.left(), -1.0, keys[0], buttons.first()),
         (
             hidden - x > 1.0,
             view.right() - STRIP_W,
             1.0,
-            "ribbon.scroll_right",
+            keys[1],
             buttons.last(),
         ),
     ];

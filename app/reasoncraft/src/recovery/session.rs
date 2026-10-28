@@ -100,6 +100,8 @@ pub(super) fn autosave_tab(
         doc: tab.doc.clone(),
         assets: tab.assets.clone(),
         other_entries: tab.other_entries.clone(),
+        cut_on_open: false,
+        parked_on_open: false,
     };
     match replaces {
         Some(doc) => store.write_then_discard(tab.recovery_key, pkg, meta, doc),
@@ -115,18 +117,6 @@ pub(crate) fn forget(app: &ReasonCraftApp, tab: &DocTab) {
     {
         store.remove(tab.recovery_key);
     }
-}
-
-/// Whether saving restored tab `tab` to `path` would overwrite its
-/// original file, changed since the copy was made (by someone else, or
-/// another app).
-pub(crate) fn original_changed(tab: &DocTab, path: &Path) -> bool {
-    let Some(meta) = &tab.recovered_from else {
-        return false;
-    };
-    meta.original.as_deref() == Some(path)
-        && path.exists()
-        && file_mtime(path) != meta.original_mtime
 }
 
 /// When `path` was last modified, if it can be read.

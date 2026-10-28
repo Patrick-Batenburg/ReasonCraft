@@ -11,9 +11,9 @@ use super::lex::Op;
 use super::parse::{EntryKind, Tree, parse};
 use super::report::{ArgdownError, ImportNoteKind as K, ImportReport, MAX_ARGDOWN_BYTES};
 use super::text::clean;
+use crate::lang::not_connected_forms;
 use crate::link::safe_link;
 use crate::model::{CardKind, Document};
-use crate::words::not_connected_heading;
 
 /// Read an Argdown text as a map, with a report of what could not be
 /// kept as written. See `docs/argdown.md`.
@@ -24,7 +24,17 @@ pub fn from_argdown(src: &str) -> Result<(Document, ImportReport), ArgdownError>
     let tree = parse(src)?;
     let mut report = ImportReport::default();
     let graph = Reader::new(&tree, &mut report).read();
-    let doc = super::build::build(&graph, &mut report)?;
+    let mut doc = super::build::build(&graph, &mut report)?;
+    // Titles can chain statements far deeper than relations nest; what
+    // lies deeper than a map allows is parked, as when a file is opened.
+    if doc.park_too_deep() {
+        report.note(1, super::ImportNoteKind::TooDeep);
+    }
+    // Comments, frontmatter and links from data keep the caps a file's
+    // open applies, so an imported map is not cut when it is opened again.
+    if doc.cap_texts() {
+        report.note(1, super::ImportNoteKind::TextCut);
+    }
     // A bug guard: the build only makes what the rules allow. Tests (debug
     // builds) stop here; a release build refuses the file instead.
     if let Err(e) = doc.validate() {
@@ -327,14 +337,13 @@ impl<'a> Reader<'a> {
 
     /// Find the "Not connected" heading and the items after it.
     fn parking(&mut self) {
-        let names = [not_connected_heading("en"), not_connected_heading("nl")];
         let mut after = false;
         let tree = self.tree;
         for &top in &tree.tops {
             let e = &tree.entries[top];
             match (&e.kind, self.class[top]) {
                 (EntryKind::Heading(h), _) if !after => {
-                    if names.iter().any(|n| n.eq_ignore_ascii_case(h)) {
+                    if not_connected_forms().any(|n| n.eq_ignore_ascii_case(h)) {
                         after = true;
                         self.g.heading = Some(e.line);
                     }

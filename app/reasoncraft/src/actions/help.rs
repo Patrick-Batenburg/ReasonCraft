@@ -1,29 +1,26 @@
 //! Help pages in the Text panel, F1's topic, and the About page.
 
-use super::Action;
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::help::{HelpPage, START};
 use crate::settings::TextTab;
 use crate::shell::panes::Pane;
 
-pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
-    match action {
-        Action::OpenHelp(page) => show(app, page),
-        Action::ContextHelp => show(app, HelpPage::Topic(context_topic(app))),
-        Action::HelpBack => app.help.back(),
-        Action::ShowAbout => {
-            app.ribbon_tab = RibbonTab::File;
-            if let Some(ctx) = &app.egui_ctx {
-                crate::shell::backstage::open_about(ctx);
-            }
-        }
-        _ => unreachable!("not a help action"),
+/// The About page of the File backstage.
+pub(super) fn show_about(app: &mut ReasonCraftApp) {
+    app.ribbon_tab = RibbonTab::File;
+    if let Some(ctx) = &app.egui_ctx {
+        crate::shell::backstage::open_about(ctx);
     }
+}
+
+/// F1: the help topic for the part of the window with the keyboard focus.
+pub(super) fn context(app: &mut ReasonCraftApp) {
+    show(app, HelpPage::Topic(context_topic(app)));
 }
 
 /// Show `page` in the Help tab of the Text panel, opening the panel (and
 /// leaving the backstage, which hides it).
-fn show(app: &mut ReasonCraftApp, page: HelpPage) {
+pub(super) fn show(app: &mut ReasonCraftApp, page: HelpPage) {
     if app.ribbon_tab == RibbonTab::File {
         app.ribbon_tab = RibbonTab::Home;
     }

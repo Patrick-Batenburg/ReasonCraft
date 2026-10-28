@@ -4,11 +4,11 @@
 
 use eframe::egui::{
     self, Align2, Area, EventFilter, FontId, Frame, Id, Key, Margin, Modifiers, Order, Response,
-    Role, Sense, Stroke, TextEdit, Ui, Vec2, WidgetInfo, pos2,
+    Role, Sense, Stroke, TextEdit, Ui, UiBuilder, Vec2, WidgetInfo, pos2,
 };
 
 use super::selected_fill;
-use crate::actions::{Action, is_enabled};
+use crate::actions::{Action, can_run};
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::canvas::input::{Os, shortcut_for, shortcut_text};
 use crate::commands::{Command, search};
@@ -71,7 +71,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 
     let field = Frame::new()
         .fill(tk.panel)
-        .stroke(Stroke::new(1.0, tk.attachment_line.gamma_multiply(0.6)))
+        .stroke(Stroke::new(1.0, tk.edge))
         .corner_radius(6)
         .inner_margin(Margin::symmetric(8, 4));
     let mut args = FluentArgs::new();
@@ -119,39 +119,59 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         st.refused = false;
     }
     let mut run = enter.then_some(st.highlight);
-    let enabled: Vec<bool> = results
-        .iter()
-        .map(|c| is_enabled(app.active_tab(), &c.action))
-        .collect();
+    let enabled: Vec<bool> = results.iter().map(|c| can_run(app, &c.action)).collect();
     if run.is_some_and(|i| !enabled[i]) {
         run = None;
         st.refused = true;
     }
 
+    let (mut highlighted, mut list_id) = (None, None);
     let list = Area::new(id.with("list"))
         .order(Order::Foreground)
         .fixed_pos(resp.rect.left_bottom() + Vec2::new(0.0, 4.0))
         .show(ui.ctx(), |ui| {
             Frame::popup(ui.style()).fill(tk.panel).show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
-                for (i, cmd) in results.iter().enumerate() {
-                    let row = result_row(ui, &tk, os, cmd, enabled[i], i == st.highlight);
-                    if row.hovered() && i != st.highlight {
-                        st.highlight = i;
-                        st.refused = false;
-                    }
-                    if row.clicked() {
-                        run = Some(i);
-                    }
-                    if i == st.highlight && st.refused {
-                        row.show_tooltip_text(t("command.disabled"));
-                    } else if !enabled[i] {
-                        row.on_hover_text(t("command.disabled"));
-                    }
-                }
+                let rows = UiBuilder::new()
+                    .accessibility_role(Role::List)
+                    .accessibility_label(t("command.results"));
+                list_id = Some(
+                    ui.scope_builder(rows, |ui| {
+                        for (i, cmd) in results.iter().enumerate() {
+                            let row = result_row(ui, &tk, os, cmd, enabled[i], i == st.highlight);
+                            if i == st.highlight {
+                                highlighted = Some(row.id);
+                            }
+                            if row.hovered() && i != st.highlight {
+                                st.highlight = i;
+                                st.refused = false;
+                            }
+                            if row.clicked() {
+                                run = Some(i);
+                            }
+                            if i == st.highlight && st.refused {
+                                row.show_tooltip_text(t("command.disabled"));
+                            } else if !enabled[i] {
+                                row.on_hover_text(t("command.disabled"));
+                            }
+                        }
+                    })
+                    .response
+                    .id,
+                );
             });
         });
     st.list_hovered = list.response.contains_pointer();
+    // The field keeps the focus while the arrows move the highlight: it
+    // names the highlighted row, so a screen reader reads that row.
+    ui.ctx().accesskit_node_builder(resp.id, |node| {
+        if let Some(list) = list_id {
+            node.push_controlled(list.accesskit_id());
+        }
+        if let Some(row) = highlighted {
+            node.set_active_descendant(row.accesskit_id());
+        }
+    });
 
     if let Some(i) = run {
         // Back to the map from the backstage, like its own commands.

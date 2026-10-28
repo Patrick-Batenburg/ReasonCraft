@@ -8,6 +8,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::caps::MAX_INDENT;
 use crate::ids::{CardId, Item, NodeId};
 use crate::layout::display_children;
 use crate::model::{BoxKind, CardStrength, Document, Role, SourceType};
@@ -102,12 +103,22 @@ fn letter(mut i: usize) -> String {
     String::from_utf8(out).unwrap_or_default()
 }
 
+/// What stands for the parts a deep number leaves out.
+const ELLIPSIS: char = '…';
+
+/// `prefix.part`, keeping at most [`MAX_INDENT`] parts: past that the
+/// first part goes and an ellipsis leads, so a number never grows with
+/// the depth (SEC-R4).
 fn join(prefix: &str, part: &str) -> String {
     if prefix.is_empty() {
-        part.to_owned()
-    } else {
-        format!("{prefix}.{part}")
+        return part.to_owned();
     }
+    let kept = prefix.trim_start_matches(ELLIPSIS);
+    if kept.split('.').count() < MAX_INDENT {
+        return format!("{prefix}.{part}");
+    }
+    let rest = kept.split_once('.').map_or("", |(_, rest)| rest);
+    format!("{ELLIPSIS}{rest}.{part}")
 }
 
 fn label_for(role: Role) -> LinkLabel {
@@ -191,7 +202,7 @@ pub fn build_outline(doc: &Document, opts: &OutlineOptions) -> Vec<OutlineLine> 
                     for (k, &child) in card.children.iter().enumerate() {
                         next.push(Task::Card {
                             id: child,
-                            number: format!("{number}.w{}", k + 1),
+                            number: join(&number, &format!("w{}", k + 1)),
                             depth: depth + 1,
                             whole_card: true,
                         });
@@ -295,7 +306,8 @@ pub fn box_numbers(doc: &Document, notes: bool) -> HashMap<NodeId, String> {
         .collect()
 }
 
-/// The outline as indented plain text, two spaces per depth. Further lines
+/// The outline as indented plain text, two spaces per depth up to
+/// [`MAX_INDENT`] levels (deeper lines stay at that indent). Further lines
 /// of a multi-line box text are indented like its first line; empty parts
 /// (no number, no label, no text) leave no stray spaces. The words are
 /// passed in so the core stays free of translations.
@@ -310,7 +322,7 @@ pub fn outline_plain_text(
         if i > 0 {
             out.push('\n');
         }
-        let indent = "  ".repeat(line.depth);
+        let indent = "  ".repeat(line.depth.min(MAX_INDENT));
         let mut parts: Vec<String> = Vec::with_capacity(3);
         if let LineKind::Source(source_type) = &line.kind {
             parts.push(format!("[{}]", source_word(source_type)));

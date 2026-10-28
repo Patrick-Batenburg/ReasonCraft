@@ -41,14 +41,14 @@ impl DocTab {
     /// End a session on snippet `id` that started at `before`: store its
     /// source tidied, and record `before` as one history step if the
     /// snippet changed.
-    pub(super) fn finish_snippet(&mut self, id: Uuid, before: &Document) -> bool {
+    pub(super) fn finish_snippet(&mut self, id: Uuid, before: Document) -> bool {
         if let Some(s) = snippet(&self.doc, id) {
             let tidy = tidy_source(s.source.clone());
             if s.source != tidy && self.doc.set_snippet_source(id, tidy).is_ok() {
                 self.bump_revision();
             }
         }
-        let changed = differs(before, &self.doc, id);
+        let changed = differs(&before, &self.doc, id);
         if changed {
             self.history.record(before);
         }

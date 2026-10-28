@@ -105,7 +105,10 @@ fn tables_have_unique_shortcuts_per_os() {
         .zip(shortcuts(Os::Mac))
         .filter(|((a, _), (b, _))| a != b)
         .count();
-    assert_eq!(changed, 7, "5 Alt+digit, Alt+Q and Ctrl+H");
+    assert_eq!(
+        changed, 11,
+        "5 Alt+digit, Alt+Q, Ctrl+H and the 4 next/previous tab keys"
+    );
 }
 
 /// Backspace and Shift+Backspace, like Delete and Shift+Delete, delete on
@@ -124,7 +127,12 @@ fn backspace_deletes_on_mac() {
         Some(Action::DeleteBranch)
     );
     // Control+key is never a context key on macOS.
-    for key in [Key::Backspace, Key::Tab, Key::Enter, Key::ArrowLeft] {
+    // Control+Tab is the table's next tab, not a context key.
+    assert_eq!(
+        key_to_action(Os::Mac, Key::Tab, Modifiers::CTRL, false),
+        Some(Action::NextTab)
+    );
+    for key in [Key::Backspace, Key::Enter, Key::ArrowLeft] {
         assert_eq!(
             key_to_action(Os::Mac, key, Modifiers::CTRL, false),
             None,

@@ -10,9 +10,10 @@ use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::{Item, SourceType};
 
 use crate::actions::Action;
-use crate::canvas::rating::{Mark, paint_mark};
+use crate::canvas::scene_paint::paint_mark;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
+use crate::scene::rating::Mark;
 use crate::shell::source_icons::paint_source_icon;
 use crate::shell::{hover_fill, selected_fill};
 use crate::spell::{FieldStyle, SpellFields};

@@ -4,58 +4,64 @@
 
 use std::collections::HashMap;
 
+use reasoncraft_core::caps::capped;
 use reasoncraft_core::find::search_order;
-use reasoncraft_core::{Document, EditError, FindHit, Item, NodeId};
+use reasoncraft_core::{Document, EditError, FindHit, FindOptions, Item, MAX_BOX_CHARS, NodeId};
 
 use super::Action;
 use crate::app::ReasonCraftApp;
-use crate::canvas::editor::MAX_BOX_CHARS;
 use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t, t_args};
 
-pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
+/// Show the find bar (with the replacement field when `replace`) and
+/// focus its query field.
+pub(super) fn open(tab: &mut DocTab, replace: bool) {
+    tab.find.open = true;
+    tab.find.replace = replace;
+    tab.find.focus = true;
+}
+
+/// Hide the find bar.
+pub(super) fn close(tab: &mut DocTab) {
+    tab.find.open = false;
+    tab.find.current = None;
+    tab.find.focus = false;
+}
+
+/// Replace the current hit, with a note when the box had to be cut.
+pub(super) fn replace_one(app: &mut ReasonCraftApp) {
+    if let Some(tab) = app.tabs.get_mut(app.active)
+        && replace_current(tab)
+    {
+        app.status_note = Some(t("status.text_cut"));
+    }
+}
+
+/// Replace every hit, with a note of how many (or that a box was cut).
+pub(super) fn replace_every(app: &mut ReasonCraftApp) {
     let Some(tab) = app.tabs.get_mut(app.active) else {
         return;
     };
-    match action {
-        Action::OpenFind { replace } => {
-            tab.find.open = true;
-            tab.find.replace = replace;
-            tab.find.focus = true;
-        }
-        Action::CloseFind => {
-            tab.find.open = false;
-            tab.find.current = None;
-            tab.find.focus = false;
-        }
-        Action::FindNext => step(tab, true),
-        Action::FindPrev => step(tab, false),
-        Action::ReplaceCurrent => {
-            if replace_current(tab) {
-                app.status_note = Some(t("status.text_cut"));
-            }
-        }
-        Action::ReplaceAll => {
-            let (count, cut) = replace_all(tab);
-            let mut args = FluentArgs::new();
-            args.set("count", count);
-            app.status_note = Some(if cut {
-                t("status.text_cut")
-            } else {
-                t_args("find.replaced", &args)
-            });
-        }
-        Action::SetFindQuery(query) => {
-            tab.find.query = query;
-            go_first(tab);
-        }
-        Action::SetReplaceText(text) => tab.find.replacement = text,
-        Action::SetFindOptions(opts) => {
-            tab.find.opts = opts;
-            go_first(tab);
-        }
-        _ => unreachable!("not a find action"),
-    }
+    let (count, cut) = replace_all(tab);
+    let mut args = FluentArgs::new();
+    args.set("count", count);
+    app.status_note = Some(if cut {
+        t("status.text_cut")
+    } else {
+        t_args("find.replaced", &args)
+    });
+}
+
+/// The query changed: go to its first hit.
+pub(super) fn set_query(tab: &mut DocTab, query: String) {
+    tab.find.query = query;
+    go_first(tab);
+}
+
+/// Match case and whole word changed: go to the first hit.
+pub(super) fn set_options(tab: &mut DocTab, opts: FindOptions) {
+    tab.find.opts = opts;
+    go_first(tab);
 }
 
 /// Replacing needs something to look for.
@@ -99,7 +105,7 @@ fn place_fn(doc: &Document) -> impl Fn(NodeId, usize) -> Place + use<> {
 /// where it was: Next goes to the first hit at or after its place,
 /// Previous to the last one before it. With no current hit, the first
 /// (or last). A closed bar opens.
-fn step(tab: &mut DocTab, forward: bool) {
+pub(super) fn step(tab: &mut DocTab, forward: bool) {
     if !tab.find.open {
         tab.find.open = true;
         tab.find.focus = tab.find.query.is_empty();
@@ -140,11 +146,12 @@ pub(crate) fn cap_box(d: &mut Document, node: NodeId) -> bool {
     let Some(text) = d.boxes.get(&node).map(|b| &b.text) else {
         return false;
     };
-    let Some((end, _)) = text.char_indices().nth(MAX_BOX_CHARS) else {
+    let kept = capped(text, MAX_BOX_CHARS);
+    if kept.len() == text.len() {
         return false;
-    };
-    let cut = text[..end].to_owned();
-    d.set_text(node, &cut).is_ok()
+    }
+    let kept = kept.to_owned();
+    d.set_text(node, &kept).is_ok()
 }
 
 /// Replace the current hit as one history step (none when the text is

@@ -23,7 +23,7 @@ const TABS: [&str; 6] = [
     "ribbon.tab.help",
 ];
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// The band of the window holding the ribbon's command row.
 fn band(h: &H) -> (f32, f32) {

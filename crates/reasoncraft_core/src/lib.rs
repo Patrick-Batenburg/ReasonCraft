@@ -1,6 +1,11 @@
 //! ReasonCraft core: document model, editing, layout and file format.
 
+// The docs are built with `--document-private-items` (see CI), where
+// links from public items to private ones resolve.
+#![allow(rustdoc::private_intra_doc_links)]
+
 pub mod argdown;
+pub mod caps;
 pub mod checks;
 pub mod connector;
 pub mod edit;
@@ -13,10 +18,12 @@ pub mod find;
 pub mod fixtures;
 pub mod history;
 pub mod ids;
+pub mod lang;
 pub mod layout;
 pub mod link;
 pub mod meta;
 pub mod model;
+pub mod nav;
 pub mod outline;
 pub mod outline_md;
 pub mod package;
@@ -29,7 +36,7 @@ pub use argdown::{
     ArgdownError, ImportNote, ImportNoteKind, ImportReport, from_argdown, to_argdown,
 };
 pub use connector::ConnectorStyle;
-pub use edit::{EditError, NewLoose, RemoveMode};
+pub use edit::{EditError, Fragment, MAX_DEPTH, NewLoose, RemoveMode};
 pub use essay::{EssayPlan, EssaySlot, essay_markdown, essay_order, essay_plain_text};
 pub use evaluate::ClearScope;
 pub use find::{FindHit, FindOptions, find_all};
@@ -43,7 +50,7 @@ pub use model::{
 };
 pub use package::{Assets, Package};
 pub use roles::{card_roles, owner_index, role_of};
-pub use rules::{NewItem, can_attach};
+pub use rules::{BoxRating, NewItem, can_attach, is_attachment, kind_accepts, same_display_group};
 pub use snippets::{MAX_SNIPPET_CHARS, Snippet, SnippetSource};
 /// Comment ids.
 pub use uuid::Uuid;

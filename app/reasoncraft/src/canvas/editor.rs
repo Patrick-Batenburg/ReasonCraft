@@ -9,19 +9,14 @@ use eframe::egui::{
 use reasoncraft_core::layout::BOX_TEXT_PAD;
 use reasoncraft_core::{BoxKind, Layout, NodeId};
 
-use super::images::content_rect;
-use super::measure::font_for;
-use super::paint::screen_font;
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::scene::SOURCE_HEADER;
+use crate::scene::metrics::content_rect;
+use crate::scene::metrics::{font_for, screen_font};
 use crate::spell::{FieldStyle, SpellFields};
 use crate::theme::Tokens;
-
-/// The most characters a box keeps from the editor: a longer paste is cut
-/// (with a note in the status bar).
-pub use reasoncraft_core::MAX_BOX_CHARS;
 
 /// The widget id of `tab`'s inline editor for box `b`.
 pub fn editor_id(tab: &DocTab, b: NodeId) -> Id {
@@ -91,6 +86,12 @@ pub(super) fn show(
         .align(Align2::CENTER_CENTER)
         .lock_focus(true);
     let response = ui.put(rect, editor);
+    // Named by the box it edits ("Text of Reason, …"), not by its hint.
+    if ui.ctx().accesskit_node_builder(id, |_| ()).is_some() {
+        let name = super::access::Tree::new(&tab.doc).editor_name(b);
+        ui.ctx()
+            .accesskit_node_builder(id, |node| node.set_label(name));
+    }
     if response.changed() {
         pending.push(Action::EditText {
             node: b,

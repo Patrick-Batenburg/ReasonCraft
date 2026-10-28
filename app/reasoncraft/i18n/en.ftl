@@ -15,6 +15,7 @@ window-close = Close window
 ## Document tabs
 tabs-new = New tab
 tabs-close = Close { $name }
+tabs-more = All open maps
 
 ## Ribbon tabs
 ribbon-tab-file = File
@@ -26,6 +27,8 @@ ribbon-tab-export = Export
 ribbon-tab-help = Help
 ribbon-scroll_left = Scroll the ribbon left
 ribbon-scroll_right = Scroll the ribbon right
+ribbon-tabs_left = Scroll the ribbon tabs left
+ribbon-tabs_right = Scroll the ribbon tabs right
 ribbon-group_more = { $group } (more)
 
 ## Ribbon groups
@@ -68,9 +71,14 @@ action-add_category = Category
 action-add_note = Note
 action-add_source = Source
 action-comment = Comment
-action-connect = Connect to…
+action-connect = Move to…
+action-park = Move to parking
 action-box_type = Type
 action-link = Link
+action-open_link = Open link
+action-next_tab = Next tab
+action-prev_tab = Previous tab
+action-close_tab = Close tab
 action-image = Image
 action-remove_image = Remove image
 action-delete = Delete
@@ -98,6 +106,7 @@ action-source_icons = Source icons (debug)
 
 ## Search commands (commands that have no ribbon button of their own)
 command-disabled = Not available right now
+command-results = Commands found
 command-whole_card_reason = Reason for the whole card
 command-whole_card_objection = Objection to the whole card
 command-edit = Edit text
@@ -134,6 +143,7 @@ spell-checking = Checking…
 spell-suggesting = …
 spell-done = Spelling check complete
 spell-no_suggestions = No suggestions
+spell-not_in_dictionary = Not in dictionary: { $word }.
 spell-change_to = Change to
 spell-change = Change
 spell-change_all = Change all
@@ -221,7 +231,8 @@ argdown-note-empty_argument = An argument without premises or text was left out.
 argdown-note-moved_to_parking = An item could not go where the file puts it and is in the parking area.
 argdown-note-relation_dropped = A relation to a conclusion that was left out was left out too; its statement is in the parking area.
 argdown-note-link_dropped = A link that is not a safe web or mail link was left out.
-argdown-note-text_cut = Text longer than { $max } characters was cut to fit a box.
+argdown-note-text_cut = Text longer than the map keeps was cut (a box keeps { $max } characters).
+argdown-note-too_deep = A branch nested more than { $max } levels deep is in the parking area.
 
 ## Backstage
 backstage-back = Back
@@ -344,7 +355,6 @@ connector_style-tapered = Tapered
 
 ## Side panels
 panel-building = Building
-panel-coming_later = Coming in a later version.
 text-tab-outline = Outline
 text-tab-essay = Essay
 text-tab-check = Check
@@ -359,6 +369,7 @@ essay-conclusion-field = Conclusion paragraph
 essay-conclusion-hint = Repeat the claim and the main reasons
 essay-section = Section { $n }
 essay-section_with = Section { $n }: { $premises }
+essay-grouping = A grouping map has no essay: an essay is written from the reasons and objections of a reasoning map. The Outline tab lists your categories.
 essay-no_sections = Add reasons or objections under the claim: each one becomes a section of the essay.
 essay-paragraph_for = Paragraph for: { $statement }
 essay-hint = Write this part of the essay
@@ -393,7 +404,7 @@ outline-toggle-indent = Indent
 outline-toggle-colour = Colour
 outline-toggle-notes = Notes
 outline-tip-numbering = Show the numbers (1, 1a, 1.w1, P1)
-outline-tip-labels = Show the linking words (because, but, however)
+outline-tip-labels = Show the linking words ({ $words })
 outline-tip-indent = Indent each line by its depth
 outline-tip-colour = Mark each line with its role colour
 outline-tip-notes = Include notes
@@ -447,6 +458,26 @@ building-item_name = { $item } (Building panel)
 ## Canvas
 canvas-empty_claim = Type your main claim
 canvas-label = Argument map
+a11y-map-claim = Claim
+a11y-map-supports = Reason
+a11y-map-opposes = Objection
+a11y-map-rebuts = Rebuttal
+a11y-map-category = Category
+a11y-map-note = Note
+a11y-map-source = Source: { $type }
+a11y-map-card = { $role } card
+a11y-map-premise = premise { $n } of { $total }
+a11y-map-accept = accepted
+a11y-map-unsure = doubted
+a11y-map-reject = rejected
+a11y-map-rated = rated { $rating }
+a11y-map-parked = not connected
+a11y-map-position = { $n } of { $total }
+a11y-map-empty = (empty)
+a11y-map-item = { $what }: { $text }
+a11y-map-nothing = Nothing selected
+a11y-map-moving = Moving { $item }: pick a place with the arrow keys and press Enter, or Esc to cancel.
+a11y-map-editing = Text of { $what }
 editor-hint = Type here
 plus-open = Add item
 plus-whole_card_reason = Reason for the whole card
@@ -520,7 +551,7 @@ status-tip-issues = Show the issues in the Check tab
 status-toggle_theme = Toggle theme
 status-zoom = Zoom
 status-zoom_value = { $percent }%
-connect-hint = Click a box or card to connect the parked item to it, or select one and press Enter — Esc to cancel
+connect-hint = Click a box or card to move the item there, or select one and press Enter — Esc to cancel
 
 ## Comments
 comment-anonymous = Anonymous
@@ -641,7 +672,14 @@ export-open_folder = Open folder
 export-copied = Copied to the clipboard.
 status-exporting = Exporting…
 status-preparing_image = Preparing image…
+status-saving = Saving…
+# Put on the system clipboard by Copy for an item without text (other
+# programs get it; Paste with it brings the item back).
+clipboard-empty_item = (empty)
 status-text_cut = Text was cut to 50 000 characters.
+status-open_cut = Some of this file was too large or unsafe: long texts were shortened and the rest left out.
+status-open_too_deep = Parts of this map were nested more than { $max } levels deep; they are in the parking area.
+status-too_deep = That would nest the map more than { $max } levels deep.
 status-jobs-exports = { $count ->
     [one] One export running
    *[other] { $count } exports running
@@ -651,7 +689,6 @@ status-jobs-images = { $count ->
    *[other] { $count } images being prepared
 }
 export-error-stopped = The export stopped unexpectedly. Please try again.
-export-error-unsupported = This kind of export is not available yet ({ $detail }).
 
 ## Help (Text panel tab, Help ribbon tab, F1) and About
 text-tab-help = Help
@@ -675,7 +712,11 @@ help-key-delete = Delete (what is under it moves to Not connected)
 help-key-delete_branch = Delete with everything under it
 help-key-jump_parking = Jump between the map and Not connected
 help-key-comments = Open the comments of the selected box
-help-key-connect = Connect to…: connect the selected parked item
+help-key-open_link = Open the link of the selected box
+help-key-next_tab = Switch to the next open map
+help-key-prev_tab = Switch to the previous open map
+help-key-close_tab = Close the open map
+help-key-connect = Move to…: move the selected item (a premise moves its card)
 help-key-move_left = Move the selection one place to the left
 help-key-move_right = Move the selection one place to the right
 help-key-move_up = Move the selection one place up
@@ -685,6 +726,9 @@ help-key-rate_mid = Rate mid: unsure, weak, shaky
 help-key-rate_low = Rate low: reject, nil
 help-key-rate_clear = Clear the selection's rating
 help-key-clear_map = Clear every rating in the map
+help-key-cut = Cut the selected item with everything under it
+help-key-copy = Copy the selected item with everything under it
+help-key-paste = Paste under the selection (text copied elsewhere becomes a new box)
 help-key-undo = Undo
 help-key-redo = Redo
 help-key-save = Save

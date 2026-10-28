@@ -6,7 +6,7 @@ use crate::a11y::{in_group, labelled};
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::commands;
-use crate::i18n::{UI_LANGUAGES, t};
+use crate::i18n::t;
 use crate::settings::{AUTOSAVE_DEFAULT, AUTOSAVE_MAX, AUTOSAVE_MIN, UI_SCALE_MAX, UI_SCALE_MIN};
 use crate::shell::text_panel::{check_help, check_key};
 use crate::theme::{ThemeChoice, Tokens};
@@ -65,6 +65,33 @@ fn default_page(app: &ReasonCraftApp) -> Page {
     } else {
         Page::Recent
     }
+}
+
+/// The keys on the File page: the file keys (see
+/// [`crate::canvas::input::file_keys`]: Ctrl+S, Ctrl+O, Ctrl+N, Alt+Q,
+/// F1, F6…) with or without a field focused, and, with none focused and no
+/// pop-up open, Esc back to the map. Commands that show something on the
+/// map return to it, like the page's own commands.
+pub fn keys(ctx: &egui::Context, app: &mut ReasonCraftApp) -> Vec<Action> {
+    let out = crate::canvas::input::file_keys(ctx, app);
+    // egui drops the focus as Esc arrives: a field's Esc (it leaves the
+    // field) is told by the focus at the end of last frame.
+    let field = crate::shell::spelling_panel::last_focus(ctx)
+        .is_some_and(|id| egui::text_edit::TextEditState::load(ctx, id).is_some());
+    let esc = !field
+        && !ctx.text_edit_focused()
+        && !egui::Popup::is_any_open(ctx)
+        && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+    let to_map = out.iter().any(|a| {
+        !matches!(
+            a,
+            Action::NextPane | Action::PrevPane | Action::OpenCommandSearch
+        )
+    });
+    if esc || to_map {
+        app.ribbon_tab = crate::app::RibbonTab::Home;
+    }
+    out
 }
 
 pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
@@ -216,9 +243,7 @@ fn ui_language(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
     ui.label(RichText::new(&group).color(tk.box_text));
     let current = app.settings.ui_language_choice();
     ui.horizontal(|ui| {
-        let langs = UI_LANGUAGES.map(|l| (l, Some(l)));
-        for (key, lang) in std::iter::once(("system", None)).chain(langs) {
-            let cmd = commands::get(&format!("view.language.{key}"));
+        for &(lang, cmd) in commands::ui_language_choices() {
             let on = current == lang;
             let resp = ui.selectable_label(on, t(cmd.label));
             if labelled(resp, in_group(&group, &t(cmd.label))).clicked() && !on {

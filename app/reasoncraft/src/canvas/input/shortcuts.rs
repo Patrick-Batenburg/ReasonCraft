@@ -1,6 +1,7 @@
 //! The keyboard shortcut tables, one per platform, and how they are shown.
 //!
-//! README's keyboard tables are checked against [`shortcuts`] by a test.
+//! README's keyboard tables are checked against [`shortcuts`] by a test:
+//! the same keys, each on the row of the action it runs.
 
 use std::sync::LazyLock;
 
@@ -103,6 +104,9 @@ const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     (Shortcut::new(Key::P, CMD_SHIFT), || Action::JumpParking),
     (Shortcut::new(Key::M, CMD_SHIFT), || Action::CommentSelected),
     (Shortcut::new(Key::K, CMD_SHIFT), || Action::StartConnect),
+    (Shortcut::new(Key::L, CMD_SHIFT), || {
+        Action::OpenSelectedLink
+    }),
     (Shortcut::new(Key::ArrowLeft, ALT), || {
         Action::Reorder(Dir::Left)
     }),
@@ -122,6 +126,11 @@ const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     (Shortcut::new(Key::Num0, ALT_SHIFT), || {
         Action::ClearEvaluation(ClearScope::Map)
     }),
+    // Display only: egui turns these keys into its Cut, Copy and Paste
+    // events (see `super::clipboard_events`), so `lookup` skips them.
+    (Shortcut::new(Key::X, CMD), || Action::Cut),
+    (Shortcut::new(Key::C, CMD), || Action::Copy),
+    (Shortcut::new(Key::V, CMD), || Action::Paste(None)),
     (Shortcut::new(Key::Z, CMD), || Action::Undo),
     (Shortcut::new(Key::Y, CMD), || Action::Redo),
     (Shortcut::new(Key::Z, CMD_SHIFT), || Action::Redo),
@@ -151,6 +160,12 @@ const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     (Shortcut::new(Key::F1, NONE), || Action::ContextHelp),
     (Shortcut::new(Key::F6, NONE), || Action::NextPane),
     (Shortcut::new(Key::F6, SHIFT), || Action::PrevPane),
+    (Shortcut::new(Key::Tab, CMD), || Action::NextTab),
+    (Shortcut::new(Key::Tab, CMD_SHIFT), || Action::PrevTab),
+    (Shortcut::new(Key::PageDown, CMD), || Action::NextTab),
+    (Shortcut::new(Key::PageUp, CMD), || Action::PrevTab),
+    (Shortcut::new(Key::W, CMD), || Action::CloseActiveTab),
+    (Shortcut::new(Key::F4, CMD), || Action::CloseActiveTab),
 ];
 
 /// The macOS table, [`SHORTCUTS`] with these changes:
@@ -160,7 +175,8 @@ const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
 ///   Control. Opt with an arrow key stays (Control with the arrows
 ///   switches desktops);
 /// - Cmd+H hides the app, so Replace is Cmd+Opt+F;
-/// - Search commands is Cmd+Shift+A.
+/// - Search commands is Cmd+Shift+A;
+/// - the next and previous tab take Control, as Cmd+Tab switches apps.
 static MAC: LazyLock<Vec<(Shortcut, ActionCtor)>> = LazyLock::new(|| {
     SHORTCUTS
         .iter()
@@ -172,6 +188,14 @@ fn mac_shortcut(s: Shortcut, action: &Action) -> Shortcut {
     match action {
         Action::OpenFind { replace: true } => Shortcut::new(Key::F, CMD_ALT),
         Action::OpenCommandSearch => Shortcut::new(Key::A, CMD_SHIFT),
+        Action::NextTab | Action::PrevTab => {
+            let mods = Modifiers {
+                command: false,
+                ctrl: true,
+                ..s.mods
+            };
+            Shortcut::new(s.key, mods)
+        }
         _ if s.mods.alt && is_digit(s.key) => Shortcut::new(s.key, s.mods.plus(CMD)),
         _ if s.mods.alt && types_with_opt(s.key) => {
             let mods = Modifiers {
@@ -196,38 +220,22 @@ fn is_digit(key: Key) -> bool {
     key.name().len() == 1 && key.name().chars().all(|c| c.is_ascii_digit())
 }
 
-/// The table's commands that also end an inline edit (see
-/// [`super::key_to_action`]).
-pub(super) fn works_while_editing(action: &Action) -> bool {
-    matches!(
-        action,
-        Action::TargetWholeCard(_)
-            | Action::AddSource(SourceType::Source)
-            | Action::Save
-            | Action::SaveAs
-            | Action::Open
-            | Action::New
-            | Action::OpenCommandSearch
-            | Action::OpenFind { .. }
-            | Action::FindNext
-            | Action::FindPrev
-            | Action::OpenSpelling
-            | Action::NextPane
-            | Action::PrevPane
-            | Action::ContextHelp
-    )
-}
-
-/// Paste (egui's own key, not in the table): Ctrl+V, or Cmd+V on macOS.
+/// Paste: Ctrl+V, or Cmd+V on macOS (a display-only entry of the table).
 pub fn paste_shortcut() -> Shortcut {
     Shortcut::new(Key::V, CMD)
+}
+
+/// Whether `action`'s entries are there to be shown only: egui delivers
+/// those keys as its own clipboard events, never as key presses.
+fn display_only(action: &Action) -> bool {
+    matches!(action, Action::Cut | Action::Copy | Action::Paste(_))
 }
 
 /// The action of the entry of `os`'s table that `key` with `mods` presses.
 pub(super) fn lookup(os: Os, key: Key, mods: Modifiers) -> Option<Action> {
     shortcuts(os)
         .iter()
-        .find(|(s, _)| s.matches(key, mods))
+        .find(|(s, ctor)| s.matches(key, mods) && !display_only(&ctor()))
         .map(|(_, ctor)| ctor())
 }
 

@@ -6,9 +6,10 @@ New here? The [user guide](docs/user-guide.md) is a short tour, and the full hel
 
 ## What you can do
 
-- **Start from an example or a template.** File → New offers a blank map, four templates (Blank reasoning map, Blank grouping map, Essay plan and Peer review) and two finished example maps, a reasoning map and a grouping map. The Building panel also lists the templates, and the Help ribbon tab the examples. They open as new, untitled maps in the interface language, so closing one you have not changed asks nothing. File → Recent lists the last ten maps you opened or saved.
-- **Build the argument.** Add reasons, objections, rebuttals and co-premises by keyboard or from the ribbon, attack a whole card, and group items under categories and notes. Items you have not connected yet wait in the parking area until you drag them into the map or use **Connect to…**.
+- **Start from an example or a template.** File → New offers a blank map, four templates (Blank reasoning map, Blank grouping map, Essay plan and Peer review) and two finished example maps, a reasoning map and a grouping map. The Building panel also lists the templates, and the Help ribbon tab the examples. They open as new maps without a file, so closing one you have not changed asks nothing: a template in the language of new documents (File → Settings), an example in the interface language. File → Recent lists the last ten maps you opened or saved.
+- **Build the argument.** Add reasons, objections, rebuttals and co-premises by keyboard or from the ribbon, attack a whole card, and group items under categories and notes. Items you have not connected yet wait in the parking area until you drag them into the map or use **Move to…**, which also moves connected items by keyboard (**Move to parking** takes one out of the map).
 - **Reorder.** Drag an item between its siblings, or press Alt+Left / Alt+Right (Alt+Up / Alt+Down in a left-to-right map).
+- **Cut, copy and paste.** Ctrl+X / Ctrl+C (or Cut and Copy in the Home ribbon) take the selected box or card with everything under it; Ctrl+V (Paste) puts a copy under the selected box or card, or in the parking area when nothing is selected, in the same map or another tab, images included. A copied premise comes back as the premise of a new card of the same kind. Other programs get the text, one box per line; text copied in another program pastes as a new box, like text dropped on the map.
 - **Back claims with sources.** Seventeen source types (expert opinion, statistic, publication, web, quote, personal experience and more), each with its own icon. Add a source from the Home ribbon, the "+" menu, Ctrl+Shift+E or the building panel, and change its type later.
 - **Use the building panel.** View → Building panel lists boxes, sources and preset comments. Click an entry to insert it at the selection, or drag it onto the map. Targets that cannot take it show red, and the drop does nothing.
 - **Evaluate.** On the Evaluate tab (or with Alt+1/2/3/0, and Alt+Shift+0 to clear the whole map), accept, doubt or reject claims and premises, rate cards strong, weak or nil, and rate sources solid, shaky or nil. Ratings tint boxes, colour borders, label cards and set connector weight. Markers and shading can be switched off, and you can clear one rating or all of them.
@@ -26,7 +27,7 @@ New here? The [user guide](docs/user-guide.md) is a short tour, and the full hel
   - Linux and other Unix: `$XDG_DATA_HOME/ReasonCraft/recovery`, or `~/.local/share/ReasonCraft/recovery` when that is not set
 - **Accessibility and comfort.** Every control has a name for screen readers. On the map Tab adds a reason; F6 and Shift+F6 move between the ribbon, the panels, the map and the status bar, and once a control has the focus Tab and Shift+Tab move through the controls, the find bar and the panels, including the long Essay and Check lists, which scroll along. File → Settings sets the interface size (80 % to 200 %, on top of the map's own zoom), and **Reset to defaults** puts every setting back as it was at the first start, keeping your recent maps and your personal dictionary.
 - **Change types.** Turn a reason into an objection or back again (its strength is kept), and change a source's type.
-- **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph, and only if it is a safe http, https or mailto link.
+- **Link.** Attach a web or mail link to a box. A link opens in your browser only when you click its glyph or use Insert → **Open link** (Ctrl+Shift+L), and only if it is a safe http, https or mailto link.
 - **Add images.** Put a PNG, JPEG or WebP image in a box. The image is prepared in the background, so a large photo never freezes the window: the box shows "Preparing image…" until it is ready. Images are stored as PNG inside the `.rcraft` file, scaled to at most 1600 px on the longest side, and kept out of undo history.
 - **Export and print.** The Export tab saves the map as PNG, SVG or PDF, copies it to the clipboard as an image, prints it, saves the outline or the essay as Markdown, plain text or Word, and saves the whole map as Argdown text (see [Export and print](#export-and-print)).
 - **Get help offline.** The Help tab of the Text panel explains the concepts (claims, premises, co-premises, objections, rebuttals, sources, rating, the checks) and how to do things, in English and Dutch, following the interface language. F1 opens the topic for the part you are in (the Outline, Essay, Check or Snippets tab, otherwise Getting started); the Help ribbon tab opens the topics, the keyboard shortcuts of your platform and **About** (version, licence and the third-party notices), which is also in the File backstage. The pages are Markdown files in `app/reasoncraft/help/<language>/`, built into the app.
@@ -49,7 +50,7 @@ Files from older versions open unchanged, and files from newer versions keep any
 
 ## The Essay tab
 
-The Essay tab in the Text panel turns the map into the outline of an essay and gives you a text field for each part:
+The Essay tab in the Text panel turns a reasoning map into the outline of an essay and gives you a text field for each part (a grouping map has no essay: the tab says so and Export → Essay is greyed out):
 
 - **Introduction** shows the claim; write the paragraph that introduces it.
 - **One section per branch** under the claim, strongest first: strong cards, then unrated ones, then weak, then nil, and within the same strength reasons before objections. A section lists its premises with their evidence, then the objections and the rebuttals that answer them, each with a field for its paragraph. The dots in a section's heading show the card's strength.
@@ -66,10 +67,10 @@ The essay is saved inside the `.rcraft` file. Earlier versions of ReasonCraft op
 Everything is on the **Export** tab of the ribbon. Exports run in the background: the status bar shows "Exporting…", then "Export done." with an **Open folder** link. Status messages go away after a few seconds, or when you next change the map or give a file or export command.
 
 - **PNG, SVG, PDF.** A dialog first asks what to export (the whole map or the selection and what is under it) and in which colours (the light theme, the default, or the theme you are using).
-  - *PNG:* scale 1× to 4×, and an optional transparent background. Images are limited to 16,384 px on a side and 256 megapixels; for larger maps, use SVG or PDF.
+  - *PNG:* scale 1× to 4×, and an optional transparent background. Images are limited to 16,384 px on a side and about 134 megapixels (512 MiB of pixels); for larger maps, use SVG or PDF.
   - *SVG:* text is turned into outlines by default, so the drawing looks the same on a computer without the font. Emoji are left out of outlined text. Untick the option to keep live, selectable text.
   - *PDF:* text stays selectable, and the font is embedded. **Page setup…** sets the paper (A4 or Letter), orientation, margin and fit: the whole map on one page (small maps are not enlarged beyond normal size), or across pages at a chosen scale, with each page labelled "row/column".
-- **Copy as image** puts a 2× PNG of the map, in the colours you see, on the clipboard (up to 64 megapixels).
+- **Copy as image** puts a 2× PNG on the clipboard (up to 64 megapixels), with the scope and colours last chosen in the export dialog: at first the whole map in the light theme.
 - **Print** makes a PDF with the page setup and opens it in your PDF viewer, where you print it.
 - **Outline** (menu): the outline as Markdown, plain text or a Word document, with the numbering and switches of the Outline tab.
 - **Essay** (menu): the essay as Markdown, plain text or a Word document, with the document's title and author and a heading for each part.
@@ -103,6 +104,7 @@ Run the checks with:
 ```sh
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items
 ```
 
 ### Separate profile (portable use and testing)
@@ -119,10 +121,12 @@ macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, a
 | --- | --- | --- |
 | Alt+Q | Shift+Cmd+A | Search commands, also while typing in a box or field: type part of a command's name, pick it with the arrow keys and press Enter (Esc closes the list) |
 | Ctrl+F | Cmd+F | Find in box text, sources and notes, also while typing in a box or field: the find bar opens above the map (in its field Enter / Shift+Enter go to the next / previous hit, Esc closes it) |
-| Ctrl+H | Option+Cmd+F | Find and replace |
-| F3 / Shift+F3 | F3 / Shift+F3 | Go to the next / previous hit |
+| Ctrl+H | Option+Cmd+F | Find and replace, also while typing in a box or field |
+| F3 / Shift+F3 | F3 / Shift+F3 | Go to the next / previous hit, also while typing in a box or field |
 | F7 | F7 | Spelling, also while typing in a box or field: check the spelling of box text, sources and notes from the selection, one misspelling at a time |
 | F6 / Shift+F6 | F6 / Shift+F6 | Move the keyboard focus to the next / previous pane, from any control: ribbon, Building panel, map, Text panel, status bar (hidden panels are skipped) |
+| Ctrl+Tab or Ctrl+PageDown / Ctrl+Shift+Tab or Ctrl+PageUp | Control+Tab or Control+PageDown / Control+Shift+Tab or Control+PageUp | Switch to the next / previous open map, also while typing in a box or field (round from the last to the first) |
+| Ctrl+W or Ctrl+F4 | Cmd+W or Cmd+F4 | Close the open map, also while typing in a box or field (asks first if it has unsaved changes) |
 | F1 | F1 | Help, also while typing in a box or field: the topic of the Text panel tab that has the focus (Outline, Essay, Check, Snippets), otherwise Getting started, in the Text panel's Help tab |
 
 ### While a box or card is selected
@@ -145,13 +149,15 @@ macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, a
 | Arrow keys | Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise). The arrows follow the layout direction: bottom-up, Down goes to the parent; left-to-right, Left goes to the parent and Up/Down move between siblings (context) |
 | Ctrl+Shift+P | Shift+Cmd+P | Jump between the main map and the parking area |
 | Ctrl+Shift+M | Shift+Cmd+M | Open the comments of the selected box (Esc closes them) |
-| Ctrl+Shift+K | Shift+Cmd+K | Connect to…: pick where the selected parked item goes (see below) |
+| Ctrl+Shift+L | Shift+Cmd+L | Open the link of the selected box in the browser |
+| Ctrl+Shift+K | Shift+Cmd+K | Move to…: pick where the selected item goes (see below) |
 | Alt+Left / Alt+Right / Alt+Up / Alt+Down | Option+Left / Option+Right / Option+Up / Option+Down | Move the selection one place among its siblings (a premise within its card): Left / Right in top-down and bottom-up maps, Up / Down in left-to-right maps, where siblings stack vertically |
 | Alt+1 | Option+Cmd+1 | Rate the selection high: accept a claim or premise, strong card, solid source |
 | Alt+2 | Option+Cmd+2 | Rate the selection mid: unsure, weak card, shaky source |
 | Alt+3 | Option+Cmd+3 | Rate the selection low: reject a claim or premise, nil card or source |
 | Alt+0 | Option+Cmd+0 | Clear the selection's rating |
 | Alt+Shift+0 | Option+Shift+Cmd+0 | Clear every rating in the map |
+| Ctrl+X / Ctrl+C / Ctrl+V | Cmd+X / Cmd+C / Cmd+V | Cut / copy / paste: cut or copy the selected item with everything under it; paste puts what was copied under the selected box or card (in the parking area with nothing selected), and text copied in another program becomes a new box |
 | Ctrl+Z | Cmd+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Cmd+Y or Shift+Cmd+Z | Redo |
 | Ctrl+S | Cmd+S | Save |
@@ -193,19 +199,19 @@ All other keys are typed into the box.
 
 All other keys stay with the field.
 
-### While connecting a parked item (Connect to…)
+### While moving an item (Move to…)
 
-Connect to… works on an item at the top of the parking area (or a premise of a parked card, which connects its card).
+Move to… works on any item but the root claim, in the map or in the parking area; a selected premise moves its card. Targets follow the same rules as dragging: an item cannot go into its own branch. Home > Move to parking (also in Search commands) takes the selected item out of the map.
 
 | Windows / Linux | macOS | Action |
 | --- | --- | --- |
-| Click a box or card | Click a box or card | Connect the parked item there (targets that refuse it show red and do nothing) (context) |
+| Click a box or card | Click a box or card | Move the item there (targets that refuse it show red and do nothing) (context) |
 | Arrow keys | Arrow keys | Move the selection in the map (context) |
-| Enter or F2 | Enter or F2 | Connect the parked item to the selected box or card (context) |
+| Enter or F2 | Enter or F2 | Move the item to the selected box or card (context) |
 | Ctrl+Shift+P, zoom keys | Shift+Cmd+P, zoom keys | Work as usual (context) |
 | Esc | Esc | Cancel (context) |
 
-Other keys do nothing until you connect or cancel.
+Other keys do nothing until you move the item or cancel.
 
 Dragging also reorders: drop an item between its siblings (an insertion bar shows where), or a premise between the premises of its card.
 
@@ -215,7 +221,9 @@ Dragging also reorders: drop an item between its siblings (an insertion bar show
 
 - In a narrow window (for example at 150 % interface size on a laptop screen) the ribbon groups shrink from the right, as in WordCraft: small buttons drop their labels, then a group folds into one drop-down ("Add ▾") that opens the whole group. Only if even that does not fit does the row scroll, with thin ‹ › arrows over its ends or the mouse wheel. The side panels then get narrower so the map keeps room.
 
-- In Dutch, at 150 % interface size in the smallest window (800 × 500), the Text panel's tabs wrap onto a second line.
+- The window can't be made smaller than 800 × 500 interface points (so at 150 % interface size it is at least 1200 × 750 screen points), and never more than 90 % of the screen. In Dutch, in that smallest window, the Text panel's tabs wrap onto a second line.
+
+- A map nests at most 512 levels deep. A file holding deeper branches opens with them in the parking area, and adding, moving or pasting something that would nest deeper is refused; the status bar says so either way. Past 32 levels, outline numbers keep their last 32 parts after "…", and copied or exported outline text indents no further.
 
 - macOS: the app has no app menu (About, Hide, Quit), so that Cmd+Q reaches the window and asks about unsaved changes first. Quitting from the Dock, or logging out or shutting down, still quits without asking; with autosave on, the next start offers to recover the work up to the last autosave.
 

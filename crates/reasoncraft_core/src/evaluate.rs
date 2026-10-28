@@ -2,12 +2,14 @@
 
 use uuid::Uuid;
 
+use crate::caps::{MAX_COMMENT_CHARS, MAX_META_CHARS, capped, link_fits};
 use crate::edit::EditError;
 use crate::ids::{CardId, Item, NodeId};
 use crate::model::{
     Acceptance, BoxKind, BoxNode, CardKind, CardStrength, Comment, Document, ImageRef,
     SourceRating, SourceType, Verdict, now_rfc3339,
 };
+use crate::rules::BoxRating;
 
 /// What [`Document::clear_evaluation`] resets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,16 +25,10 @@ impl Document {
         self.boxes.get_mut(&id).ok_or(EditError::NotFound)
     }
 
-    fn finish_edit(&mut self) {
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
-    }
-
     /// Accept, doubt or reject a claim or premise.
     pub fn set_acceptance(&mut self, id: NodeId, v: Option<Acceptance>) -> Result<(), EditError> {
         let node = self.node_mut(id)?;
-        if !matches!(node.kind, BoxKind::Claim | BoxKind::Premise) {
+        if node.kind.rating() != Some(BoxRating::Acceptance) {
             return Err(EditError::NotAllowed);
         }
         node.acceptance = v;
@@ -47,7 +43,7 @@ impl Document {
         v: Option<SourceRating>,
     ) -> Result<(), EditError> {
         let node = self.node_mut(id)?;
-        if !matches!(node.kind, BoxKind::Source { .. }) {
+        if node.kind.rating() != Some(BoxRating::Source) {
             return Err(EditError::NotAllowed);
         }
         node.source_rating = v;
@@ -85,14 +81,20 @@ impl Document {
     }
 
     /// Set or clear a box's link. The value is trimmed; empty means none.
+    /// A link longer than [`crate::caps::MAX_LINK_CHARS`] is refused
+    /// ([`EditError::NotAllowed`]).
     pub fn set_link(&mut self, id: NodeId, link: Option<String>) -> Result<(), EditError> {
+        if link.as_deref().is_some_and(|l| !link_fits(l.trim())) {
+            return Err(EditError::NotAllowed);
+        }
         let node = self.node_mut(id)?;
         node.link = link.map(|l| l.trim().to_owned()).filter(|l| !l.is_empty());
         self.finish_edit();
         Ok(())
     }
 
-    /// Add a comment to a box and return its id.
+    /// Add a comment to a box and return its id. The text is cut to
+    /// [`MAX_COMMENT_CHARS`] characters, the author to [`MAX_META_CHARS`].
     pub fn add_comment(
         &mut self,
         id: NodeId,
@@ -103,8 +105,8 @@ impl Document {
         let node = self.node_mut(id)?;
         let comment = Comment {
             id: Uuid::new_v4(),
-            author: author.to_owned(),
-            text: text.to_owned(),
+            author: capped(author, MAX_META_CHARS).to_owned(),
+            text: capped(text, MAX_COMMENT_CHARS).to_owned(),
             verdict,
             created: now_rfc3339(),
         };
@@ -130,7 +132,7 @@ impl Document {
     /// Set or clear a box's image. Notes cannot hold one.
     pub fn set_image(&mut self, id: NodeId, image: Option<ImageRef>) -> Result<(), EditError> {
         let node = self.node_mut(id)?;
-        if node.kind == BoxKind::Note {
+        if !node.kind.takes_image() {
             return Err(EditError::NotAllowed);
         }
         node.image = image;

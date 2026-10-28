@@ -1,22 +1,40 @@
 //! Reading and writing `.rcraft` files: a zip holding `document.json`,
 //! image assets under `images/` and any entries from newer builds.
 
+mod atomic;
 mod read;
+mod sanitize;
 mod write;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_hostile;
+#[cfg(test)]
+mod tests_save;
 
+pub use atomic::{atomic_write, create_first_new, create_first_new_with};
 pub use read::{open, open_package};
-pub use write::{save, save_package};
+pub use write::{save, save_package, save_package_private};
 
 use zip::result::ZipError;
 
 const DOCUMENT_ENTRY: &str = "document.json";
 const IMAGES_DIR: &str = "images/";
 
-/// Largest `document.json` that [`open`] will read (256 MiB).
-const MAX_DOCUMENT_BYTES: u64 = 256 << 20;
+/// Largest `document.json` that [`open`] will read (64 MiB, far beyond
+/// any real map: every text is capped, see [`crate::caps`]).
+const MAX_DOCUMENT_BYTES: u64 = 64 << 20;
+/// Largest total size of the unknown JSON fields kept from a newer
+/// build (1 MiB). Past it they are all left out: they are copied with
+/// every edit, undo step and autosave.
+const MAX_EXTRA_BYTES: usize = 1 << 20;
+/// Most JSON values (objects, arrays, numbers, strings, ...) a
+/// `document.json` may hold: parsed, each takes far more memory than its
+/// bytes, so a "newer version" field holding a huge array of tiny values
+/// is refused before it is parsed (SEC-R3). A map of 10,000 boxes holds
+/// about 400,000.
+const MAX_JSON_VALUES: usize = 2_000_000;
 /// Largest single image asset (32 MiB).
 const MAX_ASSET_BYTES: u64 = 32 << 20;
 /// Largest total of uncompressed bytes read from one file (512 MiB).

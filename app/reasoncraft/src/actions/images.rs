@@ -8,7 +8,7 @@
 
 use std::time::{Duration, Instant};
 
-use reasoncraft_core::{BoxKind, ImageRef, Item, NodeId};
+use reasoncraft_core::{ImageRef, Item, NodeId};
 
 use super::{Action, UnsavedChoice};
 use crate::app::ReasonCraftApp;
@@ -28,10 +28,7 @@ fn image_box(tab: &DocTab) -> Option<NodeId> {
 
 /// Whether box `b` exists and is a kind that can hold an image.
 fn holds_images(tab: &DocTab, b: NodeId) -> bool {
-    tab.doc
-        .boxes
-        .get(&b)
-        .is_some_and(|n| n.kind != BoxKind::Note)
+    tab.doc.boxes.get(&b).is_some_and(|n| n.kind.takes_image())
 }
 
 fn has_image(tab: &DocTab, b: NodeId) -> bool {
@@ -47,30 +44,25 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
     })
 }
 
-/// Carry out an image action on the active tab's selected box.
-pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
-    let Some(tab) = app.tabs.get(app.active) else {
+/// Pick an image file for the active tab's selected box and start
+/// preparing it; a newer insert for the same box replaces the older one.
+pub(super) fn insert(app: &mut ReasonCraftApp) {
+    let Some(b) = app.tabs.get(app.active).and_then(image_box) else {
         return;
     };
-    let Some(b) = image_box(tab) else {
+    let Some(path) = app.dialogs.pick_image() else {
         return;
     };
-    match action {
-        Action::InsertImage => {
-            let Some(path) = app.dialogs.pick_image() else {
-                return;
-            };
-            let job = app.image_jobs.start(b, path);
-            // A newer insert for the same box replaces the older one.
-            app.tabs[app.active].pending_images.insert(b, job);
-        }
-        Action::RemoveImage => {
-            let tab = &mut app.tabs[app.active];
-            if has_image(tab, b) {
-                tab.edit(|d| d.set_image(b, None));
-            }
-        }
-        _ => unreachable!("not an image action"),
+    let job = app.image_jobs.start(b, path);
+    app.tabs[app.active].pending_images.insert(b, job);
+}
+
+/// Take the image out of the selected box (no step when it has none).
+pub(super) fn remove(tab: &mut DocTab) {
+    if let Some(b) = image_box(tab)
+        && has_image(tab, b)
+    {
+        tab.edit(|d| d.set_image(b, None));
     }
 }
 
@@ -99,7 +91,8 @@ pub(super) fn prepared(app: &mut ReasonCraftApp, job: JobId, node: NodeId, resul
         }
         Err(failure) => Some(failure),
     };
-    let save_now = matches!(app.modal, Some(Modal::Unsaved { tab, waiting: true, .. }) if tab == i)
+    let key = app.tabs[i].recovery_key;
+    let save_now = matches!(app.modal, Some(Modal::Unsaved { tab, waiting: true, .. }) if tab == key)
         && app.tabs[i].pending_images.is_empty();
     if save_now {
         file_ops::resolve_unsaved(app, UnsavedChoice::Save);
@@ -183,12 +176,11 @@ pub(super) fn wait_before_save(app: &mut ReasonCraftApp) -> bool {
     let Some(Modal::Unsaved { tab, .. }) = app.modal else {
         return false;
     };
-    flush_tab(app, tab);
-    if app
-        .tabs
-        .get(tab)
-        .is_none_or(|t| t.pending_images.is_empty())
-    {
+    let Some(i) = file_ops::tab_index(app, tab) else {
+        return false;
+    };
+    flush_tab(app, i);
+    if app.tabs[i].pending_images.is_empty() {
         return false;
     }
     if let Some(Modal::Unsaved { waiting, .. }) = &mut app.modal {

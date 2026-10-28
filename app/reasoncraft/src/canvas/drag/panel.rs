@@ -6,8 +6,8 @@ use reasoncraft_core::{Document, Item, Layout, NodeId, Parent};
 use super::{DropTarget, far_edge_band, paint_target};
 use crate::actions::{Action, Insertable, target_allowed};
 use crate::canvas::hit::{Hit, hit_test};
-use crate::canvas::paint::parking_frame;
 use crate::doc_tab::DocTab;
+use crate::scene::metrics::parking_frame;
 use crate::theme::Tokens;
 
 /// Where dropping `what` from the building panel at `world` would insert

@@ -189,8 +189,9 @@ fn svg_with_control_characters_and_nan_is_valid() {
 }
 
 /// With `RC_PNG_PREVIEW=<dir>` set, writes the preview map at scale 2 as
-/// `task-4.png` there.
+/// `task-4.png` there, for looking at by eye.
 #[test]
+#[ignore = "manual: set RC_PNG_PREVIEW=<folder>"]
 fn png_preview_sample() {
     let Some(dir) = std::env::var_os("RC_PNG_PREVIEW") else {
         return;

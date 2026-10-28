@@ -31,7 +31,7 @@ A map is one or the other. Make a separate map (and file) for each. Categories t
 ## What works differently
 
 - The Outline lists the categories in order, with numbers if you like. See [Outline and essay](outline-and-essay).
-- The Essay tab and the rating checks are for reasoning maps only.
+- A grouping map has no essay: the Essay tab says so, and Export > Essay is greyed out. Paragraphs you wrote while the map had reasons stay listed below that note, and come back into the essay when the map has reasons again. The rating checks are for reasoning maps only too.
 - The Check tab reports a main category with nothing under it (**Empty categories**).
 - Exports and Argdown work as for any map. See [Exports and printing](exports-and-print).
 

@@ -8,7 +8,8 @@ use eframe::egui::{
 };
 use reasoncraft_core::LayoutDirection;
 
-use crate::scene::{Shape, ShapePen, paint_shapes};
+use crate::canvas::scene_paint::paint_shapes;
+use crate::scene::{Shape, ShapePen};
 
 /// The glyph for `dir` in `rect` (a square) in `colour`, as shapes.
 pub fn direction_shapes(rect: Rect, dir: LayoutDirection, colour: Color32) -> Vec<Shape> {

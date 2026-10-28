@@ -4,6 +4,7 @@
 use reasoncraft_core::{FindHit, FindOptions, find_all};
 
 use super::DocTab;
+use crate::memo::Memo;
 
 /// One tab's find and replace state.
 #[derive(Clone, Debug, Default)]
@@ -21,7 +22,7 @@ pub struct FindState {
     pub focus: bool,
     /// The hits last found, with the revision, query and options they were
     /// found for (see [`DocTab::find_hits`]).
-    cache: Option<(u64, String, FindOptions, Vec<FindHit>)>,
+    cache: Memo<(u64, String, FindOptions), Vec<FindHit>>,
 }
 
 impl DocTab {
@@ -29,15 +30,9 @@ impl DocTab {
     /// document, the query or the options changed since the last call.
     pub fn find_hits(&mut self) -> &[FindHit] {
         let f = &mut self.find;
-        let fresh = f
-            .cache
-            .as_ref()
-            .is_some_and(|(rev, q, o, _)| *rev == self.revision && *q == f.query && *o == f.opts);
-        if !fresh {
-            let hits = find_all(&self.doc, &f.query, f.opts);
-            f.cache = Some((self.revision, f.query.clone(), f.opts, hits));
-        }
-        f.cache.as_ref().map_or(&[], |(.., h)| h)
+        let key = (self.revision, f.query.clone(), f.opts);
+        let doc = &self.doc;
+        f.cache.get(key, || find_all(doc, &f.query, f.opts))
     }
 
     /// Where the current hit is among [`Self::find_hits`] (`None` when

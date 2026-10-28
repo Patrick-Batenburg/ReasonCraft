@@ -17,7 +17,7 @@ mod size;
 mod tree;
 
 pub use indicators::{IndicatorOptions, needs_indicator_row};
-pub(crate) use tree::display_children;
+pub use tree::display_children;
 
 use emath::{Pos2, Rect, Vec2};
 use indexmap::IndexMap;
@@ -33,6 +33,11 @@ pub const BOX_TEXT_PAD: f32 = 6.0;
 
 /// Vertical gap between a box's image and its text.
 pub const IMAGE_GAP: f32 = 6.0;
+
+/// The narrowest and widest a box may be made by its own `width` (a file
+/// may hold any number there; layout keeps it within these).
+pub const MIN_BOX_WIDTH: f32 = 40.0;
+pub const MAX_BOX_WIDTH: f32 = 2000.0;
 
 /// The height a box `width` wide reserves above its text for `image`:
 /// padding, the image at the text width, and [`IMAGE_GAP`]. Painters draw
@@ -56,6 +61,10 @@ pub struct LayoutParams {
     pub min_box_height: f32,
     pub card_pad: f32,
     pub card_label_height: f32,
+    /// Room below the premises inside a card frame, on top of
+    /// `card_pad`, so the frame's bottom edge stays clear of the premises'
+    /// borders.
+    pub card_bottom_extra: f32,
     pub premise_gap: f32,
     pub h_gap: f32,
     pub v_gap: f32,
@@ -77,6 +86,7 @@ impl Default for LayoutParams {
             min_box_height: 40.0,
             card_pad: 8.0,
             card_label_height: 24.0,
+            card_bottom_extra: 2.0,
             premise_gap: 8.0,
             h_gap: 18.0,
             v_gap: 70.0,

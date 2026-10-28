@@ -21,7 +21,7 @@ use resvg::usvg::fontdb;
 
 pub use assets::export_png_bytes;
 pub use docx::{essay_docx, outline_docx};
-pub use job::{ExportJobs, ExportWork, Notice, Outcome, SharedClipboard, Snapshot, Target};
+pub use job::{ExportJobs, ExportWork, Make, Notice, Outcome, Picture, SharedClipboard};
 pub use pdf::{
     Fit, MAX_PAGES, Orientation, PRINT_FILE_MAX_AGE, PageSetup, Paper, clean_old_print_files,
     clean_print_files, print_via_pdf, print_via_pdf_with, svg_to_pdf, write_print_file,
@@ -31,7 +31,10 @@ pub use raster::{
     SystemClipboard, copy_image, copy_png_to_clipboard, copy_scene_to_clipboard, png_to_rgba,
     scene_to_png, svg_to_png, svg_to_rgba,
 };
-pub use request::{ExportFormat, ExportOptions, ExportRequest, ExportScope, ExportTheme};
+pub use request::{
+    ExportFormat, ExportOptions, ExportRequest, ExportScope, ExportTheme, FormatKind, ImageFormat,
+    TextFormat,
+};
 pub use svg::{DEFAULT_MARGIN, SvgOptions, scene_to_svg, svg_size};
 
 /// Why an export failed. The app layer shows [`key`](Self::key) through
@@ -57,8 +60,6 @@ pub enum ExportError {
     Open(String),
     /// The export's worker stopped without a result.
     Stopped,
-    /// This build cannot make this export (yet).
-    Unsupported(ExportFormat),
 }
 
 impl ExportError {
@@ -73,7 +74,6 @@ impl ExportError {
             Self::Pdf(_) => "export-error-pdf",
             Self::Open(_) => "export-error-open",
             Self::Stopped => "export-error-stopped",
-            Self::Unsupported(_) => "export-error-unsupported",
         }
     }
 
@@ -84,7 +84,6 @@ impl ExportError {
             Self::Io(e) => e.to_string(),
             Self::Render(s) | Self::Clipboard(s) | Self::Pdf(s) | Self::Open(s) => s.clone(),
             Self::Stopped => String::new(),
-            Self::Unsupported(format) => format.extension().to_owned(),
         }
     }
 }

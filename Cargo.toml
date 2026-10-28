@@ -23,3 +23,11 @@ eframe = { version = "0.37", default-features = false, features = ["clipboard", 
 
 [workspace.lints.clippy]
 all = "warn"
+
+# Debug builds keep line numbers for backtraces but no full debug info:
+# test binaries link faster, and they and their PDBs are a fraction of the size.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false

@@ -4,14 +4,16 @@
 
 mod disk;
 mod folder;
+mod orphans;
 mod prompt;
 mod session;
 mod store;
 
+pub use orphans::Orphans;
 pub use prompt::RecoveryChoice;
 pub(crate) use prompt::{defer_offer, offer, resolve};
 pub use session::tick;
-pub(crate) use session::{due_in, file_mtime, forget, original_changed, shutdown};
+pub(crate) use session::{due_in, file_mtime, forget, shutdown};
 pub use store::{PackageSnapshot, RecoveredDoc, RecoveryMeta, RecoveryStore, WriteFailure};
 
 #[cfg(test)]

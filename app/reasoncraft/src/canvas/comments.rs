@@ -9,11 +9,12 @@ use eframe::egui::{
 use reasoncraft_core::{Comment, Layout, NodeId, Verdict};
 
 use super::links::{LINK_GLYPH, lead_of};
-use super::paint::{Pass, screen_font};
-use super::rating::{CORNER_INSET, MARKER_MIN_ZOOM, indicator_centre};
+use super::paint::Pass;
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t_args};
+use crate::scene::metrics::screen_font;
+use crate::scene::rating::{CORNER_INSET, MARKER_MIN_ZOOM, indicator_centre};
 use crate::theme::Tokens;
 
 mod popover;

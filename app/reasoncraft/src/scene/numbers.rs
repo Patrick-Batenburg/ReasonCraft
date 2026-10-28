@@ -9,10 +9,9 @@ use eframe::egui::{Align, Rect, pos2, vec2};
 use reasoncraft_core::{Layout, NodeId};
 
 use super::build::Builder;
+use super::metrics::{BOX_FONT_SIZE, screen_font};
+use super::rating::{CORNER_INSET, indicator_centre};
 use super::{Shape, TextRows};
-use crate::canvas::measure::BOX_FONT_SIZE;
-use crate::canvas::paint::screen_font;
-use crate::canvas::rating::{CORNER_INSET, indicator_centre};
 
 /// The numbers' text size: 0.8 × the box text size.
 pub const NUMBER_SIZE: f32 = 0.8 * BOX_FONT_SIZE;

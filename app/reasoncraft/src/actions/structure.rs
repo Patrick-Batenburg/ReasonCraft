@@ -1,31 +1,44 @@
 //! Adding cards, premises, categories and notes, deleting items, and
-//! moving them (drag and drop, "Connect to…", Alt+arrow reordering).
+//! moving them (drag and drop, "Move to…", Alt+arrow reordering).
 
-use reasoncraft_core::{BoxKind, CardId, CardKind, Document, Item, NewLoose, Parent, RemoveMode};
+use reasoncraft_core::{
+    BoxKind, CardId, CardKind, Document, Item, NewLoose, Parent, RemoveMode, same_display_group,
+};
 
 use super::{Action, Dir};
-use crate::canvas::input::nav_dir;
 use crate::doc_tab::DocTab;
+use reasoncraft_core::nav::nav_dir;
 
-/// Moves and reorders.
-pub(super) fn apply(tab: &mut DocTab, action: Action) {
-    match action {
-        Action::Move { item, to, index } => {
-            if tab.edit(|d| d.move_item(item, to, index)).is_some() {
-                tab.selection = Some(item);
-                tab.fix_selection();
-            }
-        }
-        Action::Reorder(screen) => {
-            // At an edge nothing moves and no history is recorded.
-            let dir = nav_dir(screen, tab.doc.layout_direction);
-            if let Some((item, to, index)) =
-                tab.selection.and_then(|s| reorder_target(&tab.doc, s, dir))
-            {
-                tab.edit(|d| d.move_item(item, to, Some(index)));
-            }
-        }
-        _ => unreachable!("not a move"),
+/// Add a loose item of `kind` to the parking area and select it.
+pub(super) fn add_loose(tab: &mut DocTab, kind: NewLoose) {
+    let item = tab.edit(|d| Ok(d.add_loose(kind, "")));
+    select_new(tab, item);
+}
+
+/// Add a card of `kind` that targets the whole selected card (or the card
+/// of the selected premise).
+pub(super) fn target_whole_card(tab: &mut DocTab, kind: CardKind) {
+    if let Some(c) = selected_card(tab) {
+        let new = tab.edit(|d| d.add_card(Parent::Card(c), kind, ""));
+        select_new(tab, new.map(|(_, p)| Item::Box(p)));
+    }
+}
+
+/// Connect, reattach, detach or reorder `item` (drag and drop, "Connect
+/// to…"), then select it.
+pub(super) fn move_item(tab: &mut DocTab, item: Item, to: Parent, index: Option<usize>) {
+    if tab.edit(|d| d.move_item(item, to, index)).is_some() {
+        tab.selection = Some(item);
+        tab.fix_selection();
+    }
+}
+
+/// Move the selection one place among its siblings (Alt+arrow). At an
+/// edge nothing moves and no history is recorded.
+pub(super) fn reorder(tab: &mut DocTab, screen: Dir) {
+    let dir = nav_dir(screen, tab.doc.layout_direction);
+    if let Some((item, to, index)) = tab.selection.and_then(|s| reorder_target(&tab.doc, s, dir)) {
+        tab.edit(|d| d.move_item(item, to, Some(index)));
     }
 }
 
@@ -66,12 +79,6 @@ pub fn sibling_list(doc: &Document, to: Parent, premise: bool) -> Vec<Item> {
     }
 }
 
-/// Sources and notes: the layout shows them before a box's other children.
-pub fn is_attachment(doc: &Document, item: Item) -> bool {
-    matches!(item, Item::Box(b) if doc.boxes.get(&b)
-        .is_some_and(|n| matches!(n.kind, BoxKind::Source { .. } | BoxKind::Note)))
-}
-
 fn is_premise(doc: &Document, item: Item) -> bool {
     matches!(item, Item::Box(b) if doc.boxes.get(&b).is_some_and(|n| n.kind == BoxKind::Premise))
 }
@@ -94,9 +101,7 @@ pub fn moves_nowhere(doc: &Document, item: Item, to: Parent, index: Option<usize
     after.insert(index, item);
     let shown = |list: Vec<Item>| -> Vec<Item> {
         list.into_iter()
-            .filter(|&x| {
-                !matches!(to, Parent::Box(_)) || is_attachment(doc, x) == is_attachment(doc, item)
-            })
+            .filter(|&x| same_display_group(doc, to, x, item))
             .collect()
     };
     shown(before) == shown(after)
@@ -123,9 +128,7 @@ fn reorder_target(doc: &Document, selected: Item, dir: Dir) -> Option<(Item, Par
     let to = doc.owner_of(item)?;
     let list = sibling_list(doc, to, is_premise(doc, item));
     let at = list.iter().position(|&x| x == item)?;
-    let group = |x: Item| {
-        !matches!(to, Parent::Box(_)) || is_attachment(doc, x) == is_attachment(doc, item)
-    };
+    let group = |x: Item| same_display_group(doc, to, x, item);
     let mut j = at;
     loop {
         j = j.checked_add_signed(step)?;

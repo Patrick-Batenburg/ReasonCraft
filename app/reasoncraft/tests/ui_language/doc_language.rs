@@ -9,7 +9,8 @@ use reasoncraft::actions::Action;
 use reasoncraft::i18n::t;
 use reasoncraft::settings::Settings;
 
-use super::{harness_with, lock};
+use super::lock;
+use crate::common::build;
 
 fn dutch_os() -> Option<String> {
     Some("nl-NL".to_owned())
@@ -29,7 +30,7 @@ fn first_run_on_a_dutch_computer_makes_dutch_documents() {
     let _lang = lock();
     let app = ReasonCraftApp::new_for_test_with_locale(Settings::default(), dutch_os);
     assert_eq!(app.tabs[0].doc.meta.language, "nl", "the first tab");
-    let mut h = harness_with(app);
+    let mut h = build(app);
     h.run();
     assert_eq!(ctrl_n(&mut h), "nl");
     // File → New → Blank map.
@@ -52,7 +53,7 @@ fn a_chosen_language_wins_until_reset() {
     };
     let app = ReasonCraftApp::new_for_test_with_locale(settings, dutch_os);
     assert_eq!(app.tabs[0].doc.meta.language, "en", "the first tab");
-    let mut h = harness_with(app);
+    let mut h = build(app);
     h.run();
     assert_eq!(ctrl_n(&mut h), "en");
     // Reset to defaults: new documents follow the (Dutch) interface again.

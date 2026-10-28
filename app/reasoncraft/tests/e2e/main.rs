@@ -1,10 +1,13 @@
 //! End to end: build and evaluate a map through actions only (ratings,
-//! sources, links, comments, an image, a reorder, a "Connect to…"), save
+//! sources, links, comments, an image, a reorder, a "Move to…"), save
 //! it, open it again and check that nothing was lost. The step-3 text
 //! panel flow is in [`text_panel`], the title/author session on the
 //! close paths in [`meta_sessions`], the step-4 essay and exports in
 //! [`output`], the step-5 interchange (find, spelling, Argdown, SVG,
 //! recovery) in [`interchange`].
+
+#[path = "../common/mod.rs"]
+mod common;
 
 mod build_reopen;
 mod interchange;
@@ -24,10 +27,12 @@ use reasoncraft_core::{
     Parent, Role, SourceRating, SourceType, Verdict, file, layout,
 };
 
-/// Apply each action in turn.
+/// Apply each action in turn, each save written before the next.
 fn run(app: &mut ReasonCraftApp, actions: impl IntoIterator<Item = Action>) {
     for a in actions {
         apply(app, a);
+        // Saves are written on a worker: the next step sees them done.
+        reasoncraft::file_ops::wait_for_saves(app);
     }
 }
 

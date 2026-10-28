@@ -2,7 +2,7 @@
 //! of things to add there.
 
 use eframe::egui::{self, Button, Popup, Rect, Role, Sense, Stroke, Vec2, WidgetInfo, vec2};
-use reasoncraft_core::{BoxKind, CardKind, Item, Layout, SourceType};
+use reasoncraft_core::{BoxKind, CardKind, Item, Layout, NewItem, SourceType, kind_accepts};
 
 use crate::actions::{Action, connect_item, is_enabled};
 use crate::doc_tab::DocTab;
@@ -22,7 +22,9 @@ pub fn entries(tab: &DocTab) -> Vec<(&'static str, Action)> {
         _ => None,
     };
     let premise = kind == Some(BoxKind::Premise);
-    let grouping = matches!(kind, Some(BoxKind::Claim | BoxKind::Category));
+    let grouping = kind
+        .as_ref()
+        .is_some_and(|k| kind_accepts(k, &NewItem::Category));
     let mut out = vec![
         ("action.add_reason", Action::AddReason),
         ("action.add_objection", Action::AddObjection),
@@ -58,7 +60,7 @@ pub fn source_entries(tab: &DocTab) -> Vec<SourceType> {
             .doc
             .boxes
             .get(&b)
-            .is_some_and(|n| matches!(n.kind, BoxKind::Claim | BoxKind::Premise)),
+            .is_some_and(|n| kind_accepts(&n.kind, &NewItem::Source)),
         _ => false,
     };
     if !takes_sources {

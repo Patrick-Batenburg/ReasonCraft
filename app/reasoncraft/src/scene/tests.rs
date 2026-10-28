@@ -361,3 +361,29 @@ fn numbers_never_overlap_text() {
     assert!(glyph.left() > number.right());
     assert!(!glyph.intersects(first_row));
 }
+
+/// A source box is edged, so it shows on the light canvas (a white box
+/// on a near-white canvas was 1.03:1) (ROB-16).
+#[test]
+fn source_boxes_have_an_edge() {
+    let mut doc = Document::new("Claim");
+    let root = doc.root;
+    let src = doc
+        .add_box(
+            Parent::Box(root),
+            BoxKind::Source {
+                source_type: reasoncraft_core::SourceType::Web,
+            },
+            "cite",
+        )
+        .unwrap();
+    let layout = lay_out(&doc);
+    let opts = SceneOptions::export(Tokens::light(), "en");
+    let scene = build_scene(&doc, &layout, &opts, &Fake);
+    let world = layout.boxes[&src];
+    let edged = scene.shapes.iter().any(|s| {
+        matches!(s, Shape::Rect { rect, stroke: Some((_, c)), .. }
+            if *rect == world && *c == Tokens::light().edge)
+    });
+    assert!(edged, "the source box has an edge");
+}

@@ -8,7 +8,7 @@ use super::{EditError, RemoveMode};
 
 impl Document {
     /// Take `item` out of the list of `owner` (not out of the maps).
-    fn detach(&mut self, owner: Parent, item: Item) {
+    pub(super) fn detach(&mut self, owner: Parent, item: Item) {
         match owner {
             Parent::Box(b) => {
                 if let Some(n) = self.boxes.get_mut(&b) {
@@ -72,12 +72,11 @@ impl Document {
             if owner != to && !can_attach(self, to, new) {
                 return Err(EditError::NotAllowed);
             }
+            self.check_depth(to, item, self.height(item))?;
             self.detach(owner, item);
             self.insert_into(to, item, index)?;
         }
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
+        self.finish_edit();
         Ok(())
     }
 
@@ -94,6 +93,7 @@ impl Document {
         if src != dst && self.descendants(item).contains(&Item::Card(dst)) {
             return Err(EditError::Cycle);
         }
+        self.check_depth(to, item, self.height(item))?;
         if src != dst && self.cards.get(&src).is_some_and(|c| c.premises.len() == 1) {
             // The card is about to vanish; label its paragraph while it
             // still lists the moved premise.
@@ -113,9 +113,7 @@ impl Document {
     /// Removing a card's last premise removes the card, in the same mode.
     pub fn remove_item(&mut self, item: Item, mode: RemoveMode) -> Result<(), EditError> {
         self.remove_inner(item, mode)?;
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
+        self.finish_edit();
         Ok(())
     }
 

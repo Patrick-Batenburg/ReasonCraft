@@ -10,7 +10,8 @@ use reasoncraft_core::{
 use super::*;
 use crate::canvas::comments::badge_rect;
 use crate::canvas::links::link_rect;
-use crate::canvas::rating::marker_circle;
+use crate::canvas::scene_paint::paint_shapes;
+use crate::scene::rating::marker_circle;
 
 const LINE: f32 = 15.0;
 

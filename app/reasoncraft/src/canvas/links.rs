@@ -12,10 +12,10 @@ use std::collections::HashMap;
 use reasoncraft_core::{Layout, NodeId};
 
 use super::paint::Pass;
-use super::rating::{CORNER_INSET, MARKER_MIN_ZOOM, indicator_centre};
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t_args};
+use crate::scene::rating::{CORNER_INSET, MARKER_MIN_ZOOM, indicator_centre};
 use crate::shell::icons::{self, Icon};
 use crate::shell::link_modal::{safe_link, visible_link};
 
@@ -39,7 +39,7 @@ pub(super) fn lead_of(leads: &HashMap<NodeId, f32>, id: NodeId) -> f32 {
 }
 
 /// The glyph's accessible name for stored link `url`, e.g. "Open link:
-/// https://example.org", or one saying it cannot be opened (not a safe
+/// <https://example.org>", or one saying it cannot be opened (not a safe
 /// link: see [`safe_link`]).
 pub fn link_label(url: &str) -> String {
     let mut args = FluentArgs::new();

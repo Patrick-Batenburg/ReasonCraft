@@ -49,6 +49,8 @@ pub enum Icon {
     PanelLeft,
     PanelRight,
     Plus,
+    /// A chevron pointing down (a list of more items).
+    More,
     Close,
     Minimize,
     Maximize,
@@ -69,8 +71,10 @@ pub enum Icon {
     Source,
     /// A speech bubble (comments).
     Comment,
-    /// A box with a line up to another box ("Connect to…").
+    /// A box with a line up to another box ("Move to…").
     Connect,
+    /// A box going down into a tray ("Move to parking").
+    Park,
     /// A box between turning arrows (change a box's type).
     BoxType,
     /// Two chain links (a box's link).
@@ -325,6 +329,7 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
             pen.line(&[(0.5, 0.2), (0.5, 0.8)]);
             pen.line(&[(0.2, 0.5), (0.8, 0.5)]);
         }
+        Icon::More => pen.line(&[(0.22, 0.38), (0.5, 0.66), (0.78, 0.38)]),
         Icon::Minimize => pen.line(&[(0.25, 0.55), (0.75, 0.55)]),
         Icon::Maximize => pen.rect(0.25, 0.25, 0.75, 0.75, fg),
         Icon::Restore => {
@@ -371,7 +376,8 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         | Icon::Source
         | Icon::Shading
         | Icon::Comment
-        | Icon::Connect => evaluate::paint(&pen, icon, fg, t),
+        | Icon::Connect
+        | Icon::Park => evaluate::paint(&pen, icon, fg, t),
         Icon::BoxType | Icon::Link | Icon::Image | Icon::RemoveImage => {
             box_group::paint(&pen, icon, fg, t)
         }

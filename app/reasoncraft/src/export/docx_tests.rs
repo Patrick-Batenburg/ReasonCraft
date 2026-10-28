@@ -246,30 +246,30 @@ fn outline_docx_options_and_parked_heading() {
 
 #[test]
 fn text_formats_run_through_the_export_job() {
-    use super::{ExportFormat, ExportOptions, ExportWork, Outcome, PageSetup, Snapshot, Target};
+    use super::{ExportOptions, ExportWork, Make, Outcome, PageSetup, TextFormat};
 
     let (mut doc, _) = sample();
     doc.set_essay_text(EssaySlot::Intro, "Intro text").unwrap();
     let dir = tempfile::tempdir().unwrap();
     for (format, name) in [
-        (ExportFormat::OutlineDocx, "outline.docx"),
-        (ExportFormat::EssayDocx, "essay.docx"),
-        (ExportFormat::EssayMarkdown, "essay.md"),
+        (TextFormat::OutlineDocx, "outline.docx"),
+        (TextFormat::EssayDocx, "essay.docx"),
+        (TextFormat::EssayMarkdown, "essay.md"),
     ] {
         let path = dir.path().join(name);
         let work = ExportWork {
-            format,
             options: ExportOptions::default(),
             page: PageSetup::default(),
-            snapshot: Snapshot::Doc {
+            make: Make::Text {
+                format,
                 doc: Box::new(doc.clone()),
                 outline: OutlineOptions::default(),
+                path: path.clone(),
             },
-            target: Target::File(path.clone()),
         };
         assert_eq!(work.run().unwrap(), Outcome::Saved(path.clone()));
         let bytes = std::fs::read(&path).unwrap();
-        if format == ExportFormat::EssayMarkdown {
+        if format == TextFormat::EssayMarkdown {
             assert!(String::from_utf8(bytes).unwrap().contains("Intro text"));
         } else {
             part(&bytes, "word/document.xml");

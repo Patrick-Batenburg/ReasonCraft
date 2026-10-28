@@ -30,7 +30,7 @@ The table lists the other term choices (ruling S6-T4-2). They are open to review
 | Delete / Delete branch | Verwijderen / Tak verwijderen | |
 | Remove image | Afbeelding wissen | "Afbeelding verwijderen" did not fit the ribbon |
 | Copy as image | Kopiëren als beeld | "… als afbeelding" did not fit the ribbon |
-| Connect to… | Verbinden… | |
+| Move to… / Move to parking | Verplaatsen… / Naar Niet verbonden | the command was called Connect to… / Verbinden… before |
 | Type (box type) | Soort | |
 | Layout direction / Connectors | Richting / Lijnen | Curved/Elbow/Tapered = Gebogen/Haaks/Taps toelopend |
 | Minimap / Overview map | Minikaart / Overzichtskaart | |

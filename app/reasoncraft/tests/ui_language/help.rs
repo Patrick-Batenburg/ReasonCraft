@@ -10,14 +10,15 @@ use reasoncraft::a11y::in_group;
 use reasoncraft::actions::Action;
 use reasoncraft::i18n::t;
 
-use super::{harness_with, lock};
+use super::lock;
+use crate::common::build;
 
 /// The help shows the pages of the UI language, and switches with it.
 #[test]
 fn help_follows_the_ui_language() {
     use reasoncraft::help::{HelpPage, title};
     let _lang = lock();
-    let mut h = harness_with(ReasonCraftApp::new_for_test());
+    let mut h = build(ReasonCraftApp::new_for_test());
     h.state_mut()
         .push(Action::OpenHelp(HelpPage::Topic("checks")));
     h.run();
@@ -41,7 +42,7 @@ fn help_follows_the_ui_language() {
 #[test]
 fn dutch_text_tabs_fit_on_one_line() {
     let _lang = lock();
-    let mut h = harness_with(ReasonCraftApp::new_for_test());
+    let mut h = build(ReasonCraftApp::new_for_test());
     h.state_mut()
         .push(Action::SetUiLanguage(Some("nl".to_owned())));
     h.run();

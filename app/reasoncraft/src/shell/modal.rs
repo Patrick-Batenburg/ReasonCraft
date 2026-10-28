@@ -22,58 +22,81 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
     };
     let tk = app.tokens;
     let (heading, body) = texts(app, &modal);
-    let (buttons, dismiss) = buttons(&modal);
+    let (buttons, dismiss, default) = buttons(&modal);
+    let id = egui::Id::unique("file_modal");
+    let opened = crate::a11y::dialog_opened(ctx, id, &identity(&modal, &heading));
+    // Enter with no button focused (say after a click on the text) takes
+    // the default answer; with a button focused, egui presses that one.
+    let enter = ctx.memory(|m| m.focused().is_none())
+        && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter));
     let frame = egui::Frame::popup(&ctx.global_style())
         .fill(tk.panel)
         .inner_margin(egui::Margin::same(20));
-    let response = egui::Modal::new(egui::Id::unique("file_modal"))
-        .frame(frame)
-        .show(ctx, |ui| {
-            ui.set_max_width(440.0);
-            ui.spacing_mut().item_spacing.y = 10.0;
-            ui.label(
-                egui::RichText::new(heading)
-                    .strong()
-                    .size(16.0)
-                    .color(tk.box_text),
-            );
-            // A long report scrolls instead of growing past the window.
-            egui::ScrollArea::vertical()
-                .max_height(320.0)
-                .show(ui, |ui| {
-                    ui.label(egui::RichText::new(body).color(tk.box_text));
-                });
-            // Save (or the close) goes ahead by itself once the work is done.
-            let waiting = match modal {
-                Modal::Unsaved { waiting: true, .. } => Some("unsaved.waiting_images"),
-                Modal::ExportsRunning => Some("closing.exports.waiting"),
-                _ => None,
-            };
-            if let Some(key) = waiting {
-                ui.horizontal(|ui| {
-                    ui.add(egui::Spinner::new().size(14.0).color(tk.accent));
-                    ui.label(egui::RichText::new(t(key)).color(tk.box_text));
-                });
-            }
-            let mut answer = None;
-            // Laid out right to left, so the first button sits rightmost.
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                for (text, name, action) in buttons {
-                    let resp = ui.button(t(text));
-                    // A name of its own, so it differs from the title bar's Save.
-                    resp.widget_info(|| WidgetInfo::labeled(Role::Button, true, t(name)));
-                    if resp.clicked() {
-                        answer = Some(action);
-                    }
-                }
+    let response = egui::Modal::new(id).frame(frame).show(ctx, |ui| {
+        ui.set_max_width(440.0);
+        crate::a11y::name_dialog(ui, &heading);
+        ui.spacing_mut().item_spacing.y = 10.0;
+        ui.label(
+            egui::RichText::new(&heading)
+                .strong()
+                .size(16.0)
+                .color(tk.box_text),
+        );
+        // A long report scrolls instead of growing past the window.
+        egui::ScrollArea::vertical()
+            .max_height(320.0)
+            .show(ui, |ui| {
+                ui.label(egui::RichText::new(body).color(tk.box_text));
             });
-            answer
+        // Save (or the close) goes ahead by itself once the work is done.
+        let waiting = match modal {
+            Modal::Unsaved { waiting: true, .. } => Some("unsaved.waiting_images"),
+            Modal::ExportsRunning => Some("closing.exports.waiting"),
+            _ => None,
+        };
+        if let Some(key) = waiting {
+            ui.horizontal(|ui| {
+                ui.add(egui::Spinner::new().size(14.0).color(tk.accent));
+                ui.label(egui::RichText::new(t(key)).color(tk.box_text));
+            });
+        }
+        let mut answer = None;
+        // Laid out right to left, so the first button sits rightmost.
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            for (i, (text, name, action)) in buttons.into_iter().enumerate() {
+                let resp = ui.button(t(text));
+                // A name of its own, so it differs from the title bar's Save.
+                resp.widget_info(|| WidgetInfo::labeled(Role::Button, true, t(name)));
+                if i == default && opened {
+                    resp.request_focus();
+                }
+                if resp.clicked() || (i == default && enter) {
+                    answer = Some(action);
+                }
+            }
         });
-    // Esc or a click outside the modal dismisses / cancels it.
-    let close = response.should_close();
+        answer
+    });
+    // Esc or a click outside the modal dismisses / cancels it. The
+    // recovery prompt goes only by Esc or its buttons: a click that just
+    // focuses the window must not put the offer off until the next start.
+    let beside = response.backdrop_response.clicked();
+    let keep = beside && matches!(modal, Modal::Recover(_));
+    let close = response.should_close() && !keep;
     let answer = response.inner.or_else(|| close.then_some(dismiss));
     if let Some(action) = answer {
         app.push(action);
+    }
+}
+
+/// What tells `modal` apart from the dialog before it: its heading, and
+/// the tab it is about (two "Untitled" tabs ask in turn with one heading).
+fn identity(modal: &Modal, heading: &str) -> String {
+    match modal {
+        Modal::Unsaved { tab, .. } | Modal::ConfirmReplace { tab, .. } => {
+            format!("{heading}\n{tab}")
+        }
+        _ => heading.to_owned(),
     }
 }
 
@@ -83,7 +106,10 @@ fn texts(app: &ReasonCraftApp, modal: &Modal) -> (String, String) {
         Modal::Error { title, message } => (title.clone(), message.clone()),
         Modal::Unsaved { tab, .. } => {
             let mut args = FluentArgs::new();
-            let name = app.tabs.get(*tab).map(DocTab::name).unwrap_or_default();
+            let name = (app.tabs.iter())
+                .find(|t| t.recovery_key == *tab)
+                .map(DocTab::name)
+                .unwrap_or_default();
             args.set("name", name);
             (t_args("unsaved.title", &args), t("unsaved.message"))
         }
@@ -131,8 +157,21 @@ fn recover_body(docs: &[RecoveredDoc]) -> String {
     body
 }
 
+/// The buttons of `modal`, the action for Esc or a click outside it, and
+/// the index of its default button, which takes the focus when it opens:
+/// Save, Restore all and OK, or Cancel where the answer replaces, quits
+/// or resets something.
+fn buttons(modal: &Modal) -> (Vec<Button>, Action, usize) {
+    let (buttons, dismiss) = buttons_and_dismiss(modal);
+    let default = match modal {
+        Modal::Unsaved { waiting: false, .. } | Modal::Recover(_) => buttons.len() - 1,
+        _ => 0,
+    };
+    (buttons, dismiss, default)
+}
+
 /// The buttons of `modal`, and the action for Esc or a click outside it.
-fn buttons(modal: &Modal) -> (Vec<Button>, Action) {
+fn buttons_and_dismiss(modal: &Modal) -> (Vec<Button>, Action) {
     let unsaved = Action::ResolveUnsaved;
     match modal {
         Modal::Error { .. } | Modal::ImportReport(_) => (

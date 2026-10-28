@@ -20,13 +20,7 @@ use crate::recovery::RecoveryChoice;
 use crate::settings::{MinimapMode, OutlineToggle, TextTab};
 use crate::theme::ThemeChoice;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Dir {
-    Up,
-    Down,
-    Left,
-    Right,
-}
+pub use reasoncraft_core::nav::Dir;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Panel {
@@ -82,6 +76,8 @@ pub enum Action {
     SetLink(Option<String>),
     /// Open box `node`'s link in the browser (a click on its link glyph).
     OpenLink(NodeId),
+    /// Open the selected box's link (Open link, Ctrl+Shift+L).
+    OpenSelectedLink,
     /// Pick an image file and put it in the selected box (replacing its image).
     InsertImage,
     /// The image prepared by `job` for box `node` (pushed by the frame
@@ -160,8 +156,11 @@ pub enum Action {
     /// like [`Action::Navigate`]: Left/Right top-down and bottom-up, Up/Down
     /// left-to-right, where siblings stack vertically.
     Reorder(Dir),
-    /// Pick a target for the selected parking item ("Connect to…").
+    /// Pick where the selected item goes ("Move to…"; a premise moves
+    /// its card).
     StartConnect,
+    /// Move the selected item (a premise: its card) to the parking area.
+    MoveToParking,
     CancelConnect,
     Select(Option<Item>),
     /// Pan the selection into view on the next canvas frame (after a
@@ -262,6 +261,13 @@ pub enum Action {
     SetDefaultDocLanguage(Option<String>),
     /// Switch to the tab at this index.
     ActivateTab(usize),
+    /// Switch to the next (previous) tab, round from the last to the
+    /// first (Ctrl+Tab, Ctrl+Shift+Tab, Ctrl+PgDn, Ctrl+PgUp).
+    NextTab,
+    PrevTab,
+    /// Close the active tab, asking first if it has unsaved changes
+    /// (Ctrl+W, Ctrl+F4).
+    CloseActiveTab,
     /// Open the export dialog for an image format; a text format asks
     /// for a file right away.
     OpenExport(ExportFormat),
@@ -274,6 +280,16 @@ pub enum Action {
     OpenPageSetup,
     /// Remember the page setup for PDF export and printing.
     SetPageSetup(PageSetup),
+    /// Copy the selected box or card with everything under it (not the
+    /// root claim): to the app's clipboard, and as text to the system's.
+    Copy,
+    /// Copy the selection, then delete it with everything under it.
+    Cut,
+    /// Paste the copied item under the selection (in the parking area
+    /// with nothing selected), or, when the system clipboard holds other
+    /// text (`Some` from Ctrl+V; read from the clipboard for `None`), that
+    /// text as a new box.
+    Paste(Option<String>),
     /// Put the map on the clipboard as an image, in the export scope and
     /// theme like the image exports (2x; the whole map when the scope is
     /// the selection and nothing is selected).

@@ -8,8 +8,8 @@ use serde::Deserialize;
 use zip::result::ZipError;
 
 use super::{
-    DOCUMENT_ENTRY, FileError, IMAGES_DIR, MAX_ASSET_BYTES, MAX_DOCUMENT_BYTES, MAX_TOTAL_BYTES,
-    zip_to_io,
+    DOCUMENT_ENTRY, FileError, IMAGES_DIR, MAX_ASSET_BYTES, MAX_DOCUMENT_BYTES, MAX_JSON_VALUES,
+    MAX_TOTAL_BYTES, sanitize, zip_to_io,
 };
 use crate::essay::EssaySlot;
 use crate::ids::Item;
@@ -29,6 +29,13 @@ pub fn open(path: &Path) -> Result<Document, FileError> {
 
 /// Open a `.rcraft` file. A damaged file whose JSON parses but whose
 /// structure is inconsistent is refused as [`FileError::Malformed`].
+///
+/// What a hostile or damaged file holds is bounded, and
+/// [`Package::cut_on_open`] says when something had to give: texts are cut
+/// to their caps ([`crate::caps`]); branches nested deeper than
+/// [`crate::MAX_DEPTH`] levels are moved to the parking area; links that are too long, unknown JSON
+/// fields past [`super::MAX_EXTRA_BYTES`] in all, entries with unsafe names
+/// and image entries whose name is not a content key are left out.
 pub fn open_package(path: &Path) -> Result<Package, FileError> {
     open_package_with_limits(path, MAX_DOCUMENT_BYTES, MAX_ASSET_BYTES, MAX_TOTAL_BYTES)
 }
@@ -64,6 +71,26 @@ fn read_capped(
     Ok(buf)
 }
 
+/// An upper bound on the JSON values in `json`, without parsing it: one,
+/// plus one for each `,`, `[` and `{` outside strings (every value but the
+/// first in an array or object follows one of them; `:` pairs a key with
+/// its value). Malformed JSON is left for the parser to refuse.
+fn json_values(json: &str) -> usize {
+    let (mut n, mut in_string, mut escaped) = (1, false, false);
+    for b in json.bytes() {
+        match (in_string, escaped, b) {
+            (true, true, _) => escaped = false,
+            (true, false, b'\\') => escaped = true,
+            (true, false, b'"') => in_string = false,
+            (true, false, _) => {}
+            (false, _, b'"') => in_string = true,
+            (false, _, b',' | b'[' | b'{') => n += 1,
+            (false, _, _) => {}
+        }
+    }
+    n
+}
+
 /// Whether `key` is `"<sha256 of bytes>.<ext>"`.
 fn key_matches(key: &str, bytes: &[u8]) -> bool {
     key.split_once('.')
@@ -90,6 +117,11 @@ pub(super) fn open_package_with_limits(
         Err(e) => return Err(zip_to_io(e)),
     };
     let text = String::from_utf8(bytes).map_err(|e| FileError::Malformed(e.to_string()))?;
+    if json_values(&text) > MAX_JSON_VALUES {
+        return Err(FileError::Malformed(format!(
+            "the document holds more than {MAX_JSON_VALUES} values"
+        )));
+    }
     let probe: Probe =
         serde_json::from_str(&text).map_err(|e| FileError::Malformed(e.to_string()))?;
     if probe.schema_version > SCHEMA_VERSION {
@@ -107,8 +139,9 @@ pub(super) fn open_package_with_limits(
         EssaySlot::Item(Item::Card(c)) => cards.contains_key(c),
         EssaySlot::Intro | EssaySlot::Conclusion => true,
     });
-    doc.cap_snippet_texts();
-    doc.cap_essay_texts();
+    let parked_on_open = doc.park_too_deep();
+    let mut cut_on_open = doc.cap_texts();
+    cut_on_open |= sanitize::drop_large_extras(&mut doc);
 
     let mut assets = Assets::default();
     let mut other_entries = Vec::new();
@@ -121,6 +154,12 @@ pub(super) fn open_package_with_limits(
         if name == DOCUMENT_ENTRY || name == IMAGES_DIR {
             continue;
         }
+        // Names are written back on save: a path that could leave the
+        // folder it is unpacked in (`../x`, `/x`, `C:\x`) is left out.
+        if !sanitize::safe_entry_name(&name) {
+            cut_on_open = true;
+            continue;
+        }
         if let Some(key) = name.strip_prefix(IMAGES_DIR) {
             if entry.is_dir() {
                 continue;
@@ -129,19 +168,23 @@ pub(super) fn open_package_with_limits(
             // Keys are content hashes and the image cache is shared by all
             // tabs: an entry whose bytes do not match its key is dropped
             // (shown as missing) so it cannot stand in for another image.
-            if key_matches(key, &bytes) {
+            if !sanitize::valid_asset_key(key) {
+                cut_on_open = true;
+            } else if key_matches(key, &bytes) {
                 assets.insert_raw(key.to_string(), bytes);
             }
         } else if entry.is_dir() {
-            other_entries.push((name, Vec::new()));
+            other_entries.push((name, Vec::new().into()));
         } else {
             let bytes = read_capped(entry, &name, total_limit, &mut total, total_limit)?;
-            other_entries.push((name, bytes));
+            other_entries.push((name, bytes.into()));
         }
     }
     Ok(Package {
         doc,
         assets,
         other_entries,
+        cut_on_open,
+        parked_on_open,
     })
 }

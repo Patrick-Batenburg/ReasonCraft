@@ -107,12 +107,51 @@ fn round_trip_preserves_structure() {
     round_trip(&Document::new(""));
 }
 
-/// A long chain of objections, in non-Latin script: nothing recurses.
+/// Titles drop `[]<>{}:#@` and the backslash; what is left must not form a comment
+/// (`//`, `/*`), or the rest of the line (or file) would be lost.
+#[test]
+fn titles_never_start_a_comment() {
+    let texts = [
+        "See https://app.example.com/#/report for details",
+        "Files matching src/{*}.rs are generated",
+        "x/#/y",
+        "a/@/b",
+        "a/[*]b and /</c",
+    ];
+    let mut d = Document::new(texts[0]);
+    let (card, _) = d
+        .add_card(Parent::Box(d.root), CardKind::Reason, texts[1])
+        .unwrap();
+    for text in &texts[2..] {
+        d.add_premise(card, None, text).unwrap();
+    }
+    for text in texts {
+        d.add_loose(NewLoose::Card(CardKind::Objection), text);
+    }
+    round_trip(&d);
+}
+
+/// A language tag such as `nl-NL` is Dutch: written as `nl`, read as `nl`.
+#[test]
+fn language_tags_round_trip_by_primary_language() {
+    let mut d = Document::new("Stelling");
+    d.meta.language = "nl-NL".to_owned();
+    let text = to_argdown(&d);
+    assert!(text.contains("language: \"nl\""), "{text}");
+    assert!(text.contains("# Niet verbonden") || d.parking.is_empty());
+    let (back, _) = import(&text);
+    assert_eq!(back.meta.language, "nl");
+    let (back, _) = import(&text.replace("\"nl\"", "\"NL_be\""));
+    assert_eq!(back.meta.language, "nl");
+}
+
+/// A chain of objections as deep as a map goes, in non-Latin script:
+/// nothing recurses.
 #[test]
 fn deep_chain_round_trips() {
     let mut d = Document::new("Wurzel — 日本語");
     let mut p = d.root;
-    for k in 0..600 {
+    for k in 0..crate::MAX_DEPTH {
         let (_, next) = d
             .add_card(
                 Parent::Box(p),
@@ -128,7 +167,8 @@ fn deep_chain_round_trips() {
 /// The ```argdown blocks of `docs/argdown.md`.
 fn docs_blocks() -> Vec<String> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/argdown.md");
-    let docs = std::fs::read_to_string(path).unwrap();
+    // CRLF on a checkout that converts line ends.
+    let docs = std::fs::read_to_string(path).unwrap().replace("\r\n", "\n");
     let blocks: Vec<String> = docs
         .split("```argdown\n")
         .skip(1)
@@ -323,5 +363,27 @@ fn reports_the_other_constructs() {
     assert_eq!(
         kinds,
         [CardKind::Objection, CardKind::Reason, CardKind::Reason]
+    );
+}
+
+#[test]
+fn a_chain_of_titles_deeper_than_the_map_allows_is_parked() {
+    let n = crate::MAX_DEPTH + 40;
+    let src: String = (0..n)
+        .map(|k| format!("[S{k}]: s{k}\n    <+ [S{}]: s{}\n\n", k + 1, k + 1))
+        .collect();
+    let (d, report) = from_argdown(&src).unwrap();
+    d.validate().unwrap();
+    let deepest = d
+        .boxes
+        .keys()
+        .filter_map(|b| d.depth_of(crate::Item::Box(*b)));
+    assert_eq!(deepest.max(), Some(crate::MAX_DEPTH));
+    assert!(!d.parking.is_empty());
+    assert!(
+        report
+            .notes
+            .iter()
+            .any(|n| n.kind == super::ImportNoteKind::TooDeep)
     );
 }

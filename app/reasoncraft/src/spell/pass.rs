@@ -8,13 +8,10 @@
 use std::time::{Duration, Instant};
 
 use reasoncraft_core::find::search_order;
-use reasoncraft_core::{Document, EditError, FindHit, FindOptions, Item, NodeId, find_all};
+use reasoncraft_core::{Document, FindHit, Item, NodeId};
 
 use super::SpellService;
-use crate::actions::{Action, cap_box};
-use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
-use crate::i18n::t;
 
 /// How many suggestions the panel offers.
 pub const MAX_SUGGESTIONS: usize = 6;
@@ -62,7 +59,7 @@ pub struct SpellPass {
 
 impl SpellPass {
     /// A pass from `selection` (from the top with nothing selected).
-    fn new(doc: &Document, selection: Option<Item>) -> Self {
+    pub(super) fn new(doc: &Document, selection: Option<Item>) -> Self {
         let start = match selection {
             Some(Item::Box(b)) => Some(b),
             Some(Item::Card(c)) => doc.cards.get(&c).and_then(|c| c.premises.first().copied()),
@@ -215,7 +212,7 @@ pub(super) fn take_suggestions(pass: &mut SpellPass, service: &mut SpellService,
 
 /// The current misspelling and its word, while its box still holds the
 /// word there and `word` (when given) is that word.
-fn current(tab: &DocTab, word: Option<&str>) -> Option<(FindHit, String)> {
+pub(super) fn current(tab: &DocTab, word: Option<&str>) -> Option<(FindHit, String)> {
     let pass = tab.spelling.as_ref()?;
     let found = pass.current_word(&tab.doc)?;
     let hit = pass.current.clone()?;
@@ -224,115 +221,11 @@ fn current(tab: &DocTab, word: Option<&str>) -> Option<(FindHit, String)> {
 }
 
 /// Look on from byte `offset` of the current box.
-fn resume_at(tab: &mut DocTab, service: &mut SpellService, offset: usize) {
+pub(super) fn resume_at(tab: &mut DocTab, service: &mut SpellService, offset: usize) {
     if let Some(pass) = &mut tab.spelling {
         pass.at.offset = offset;
     }
     advance(tab, service);
-}
-
-/// Carry out a spelling action in the active tab.
-pub(crate) fn apply(app: &mut ReasonCraftApp, action: Action) {
-    let ReasonCraftApp {
-        tabs,
-        active,
-        spell,
-        settings,
-        status_note,
-        right_panel,
-        ..
-    } = app;
-    let Some(tab) = tabs.get_mut(*active) else {
-        return;
-    };
-    match action {
-        Action::OpenSpelling => {
-            if settings.spellcheck {
-                *right_panel = true;
-                tab.spelling = Some(SpellPass::new(&tab.doc, tab.selection));
-                advance(tab, spell);
-            }
-        }
-        Action::CloseSpelling => tab.spelling = None,
-        // The rest act on the current misspelling: when the document
-        // changed under it (or the action names another word), the pass
-        // looks again from where it is instead.
-        Action::SpellIgnore => match current(tab, None) {
-            Some((hit, _)) => resume_at(tab, spell, hit.range.end),
-            None => advance(tab, spell),
-        },
-        Action::SpellIgnoreAll(word) => match current(tab, Some(&word)) {
-            Some((hit, word)) => {
-                spell.ignore_all(&word);
-                resume_at(tab, spell, hit.range.end);
-            }
-            None => advance(tab, spell),
-        },
-        Action::SpellAddWord(word) => match current(tab, Some(&word)) {
-            Some((hit, word)) => {
-                match spell.add_word(&word) {
-                    Some(word) if !settings.spell_words.contains(&word) => {
-                        settings.spell_words.push(word);
-                    }
-                    Some(_) => {}
-                    None => *status_note = Some(t("spell.add_refused")),
-                }
-                resume_at(tab, spell, hit.range.end);
-            }
-            None => advance(tab, spell),
-        },
-        Action::SpellChange { hit, with } => {
-            let Some((_, word)) = current(tab, None).filter(|(h, _)| *h == hit) else {
-                return advance(tab, spell);
-            };
-            if word != with {
-                let done = tab.edit(|d| {
-                    d.replace_range(hit.node, hit.range.clone(), &with)?;
-                    Ok(cap_box(d, hit.node))
-                });
-                if done == Some(true) {
-                    *status_note = Some(t("status.text_cut"));
-                }
-            }
-            resume_at(tab, spell, hit.range.start + with.len());
-        }
-        Action::SpellChangeAll { word, with } => {
-            let Some((hit, word)) = current(tab, Some(&word)) else {
-                return advance(tab, spell);
-            };
-            let opts = FindOptions {
-                match_case: true,
-                whole_word: true,
-            };
-            let hits = find_all(&tab.doc, &word, opts);
-            let before = hits
-                .iter()
-                .filter(|h| h.node == hit.node && h.range.start < hit.range.start)
-                .count();
-            let mut nodes: Vec<NodeId> = hits.iter().map(|h| h.node).collect();
-            nodes.dedup();
-            let changed = word != with
-                && tab
-                    .edit(|d| match d.replace_all(&word, &with, opts) {
-                        0 => Err(EditError::NotFound),
-                        _ => Ok(nodes.into_iter().fold(false, |cut, n| cap_box(d, n) | cut)),
-                    })
-                    .inspect(|&cut| {
-                        if cut {
-                            *status_note = Some(t("status.text_cut"));
-                        }
-                    })
-                    .is_some();
-            let offset = if changed {
-                let shift = with.len() as isize - word.len() as isize;
-                (hit.range.start as isize + before as isize * shift) as usize + with.len()
-            } else {
-                hit.range.end
-            };
-            resume_at(tab, spell, offset);
-        }
-        _ => unreachable!("not a spelling action"),
-    }
 }
 
 /// The word at `range` of `text` with up to [`CONTEXT_CHARS`] characters

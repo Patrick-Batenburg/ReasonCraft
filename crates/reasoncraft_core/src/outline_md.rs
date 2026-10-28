@@ -1,5 +1,6 @@
 //! The outline as Markdown, and as plain text in the document language.
 
+use crate::caps::MAX_INDENT;
 use crate::model::SourceType;
 use crate::outline::{LineKind, OutlineLine, OutlineOptions, outline_plain_text};
 use crate::words::{linking_words, not_connected_heading};
@@ -144,7 +145,7 @@ pub fn outline_markdown(
             } else {
                 line.depth.saturating_sub(1)
             };
-            push_item(&mut out, line, level * 2, opts, lang, label);
+            push_item(&mut out, line, level.min(MAX_INDENT) * 2, opts, lang, label);
         }
     }
     out.truncate(out.trim_end().len());

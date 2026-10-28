@@ -8,7 +8,7 @@ mod templates;
 
 use crate::edit::EditError;
 use crate::ids::{CardId, NodeId, Parent};
-use crate::meta::primary_language;
+use crate::meta::language_code;
 use crate::model::{
     Acceptance, BoxKind, CardKind, CardStrength, Document, SourceRating, SourceType,
 };
@@ -74,7 +74,7 @@ struct Lang {
 impl Lang {
     fn of(tag: &str) -> Self {
         Self {
-            dutch: primary_language(tag).eq_ignore_ascii_case("nl"),
+            dutch: language_code(tag) == "nl",
         }
     }
 

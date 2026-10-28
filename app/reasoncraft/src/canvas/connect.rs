@@ -1,6 +1,6 @@
-//! The canvas side of "Connect to…": while a parked item waits for a
-//! target, hovering a box or card outlines it green (allowed) or red
-//! (refused), a click on an allowed target connects, Enter connects to the
+//! The canvas side of "Move to…": while an item waits for a target,
+//! hovering a box or card outlines it green (allowed) or red (refused), a
+//! click on an allowed target moves the item there, Enter moves it to the
 //! selection and Esc cancels.
 
 use eframe::egui::{self, CursorIcon, Pos2, Response, Stroke, StrokeKind};
@@ -8,9 +8,9 @@ use reasoncraft_core::{Item, Layout, Parent};
 
 use super::drag::paint_target;
 use super::hit::{Hit, hit_test};
-use super::paint::FRAME_RADIUS;
 use crate::actions::{Action, is_enabled};
 use crate::doc_tab::DocTab;
+use crate::scene::metrics::FRAME_RADIUS;
 use crate::theme::Tokens;
 
 /// The parent that box or card `target` offers: a box takes the item as a
@@ -22,7 +22,7 @@ pub fn parent_of(target: Item) -> Parent {
     }
 }
 
-/// The connecting move for a click at `world`: what is under the pointer
+/// The move for a click at `world`: what is under the pointer
 /// (a box, or a card frame for a whole-card target). `None` over empty canvas.
 pub fn click_target(layout: &Layout, item: Item, world: Pos2, zoom: f32) -> Option<Action> {
     let hit = hit_test(layout, world, zoom)?;
@@ -38,7 +38,7 @@ pub fn click_target(layout: &Layout, item: Item, world: Pos2, zoom: f32) -> Opti
 }
 
 /// Rewrite this frame's key actions while `item` waits for a target: Enter
-/// (and F2) connect to the selection, Esc cancels, the arrows, Ctrl+Shift+P
+/// (and F2) move it to the selection, Esc cancels, the arrows, Ctrl+Shift+P
 /// and the zoom keys work as usual, and every other key does nothing.
 pub fn map_keys(item: Item, selection: Option<Item>, out: &mut Vec<Action>) {
     out.retain_mut(|a| {
@@ -67,7 +67,7 @@ pub fn map_keys(item: Item, selection: Option<Item>, out: &mut Vec<Action>) {
     });
 }
 
-/// While a parked item waits for a target: outline it in the accent colour,
+/// While an item waits for a target ("Move to…"): outline it in the accent colour,
 /// outline the target under the pointer green or red, and turn a click on
 /// an allowed target into the connecting move (the canvas does not select
 /// while the mode is on).

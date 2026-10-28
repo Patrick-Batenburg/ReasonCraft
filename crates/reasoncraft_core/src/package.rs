@@ -31,10 +31,15 @@ impl Assets {
         self.entries.get(key).cloned()
     }
 
-    /// Drop every asset that no box in `doc` refers to.
-    pub fn retain_referenced(&mut self, doc: &Document) {
-        let used = referenced_keys(doc);
-        self.entries.retain(|k, _| used.contains(k.as_str()));
+    /// Copy asset `key` from `other`, if it has it (a pasted image).
+    ///
+    /// Assets are never dropped while a document is open: undo and redo
+    /// may bring back a box that shows one. Saving writes only the assets
+    /// the document refers to (see [`Self::referenced`]).
+    pub fn copy_from(&mut self, other: &Assets, key: &str) {
+        if let Some(bytes) = other.entries.get(key) {
+            self.entries.insert(key.to_owned(), bytes.clone());
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -83,12 +88,20 @@ pub fn asset_key(ext: &str, bytes: &[u8]) -> String {
 ///
 /// `other_entries` holds every zip entry that is neither `document.json`
 /// nor under `images/`, in original order, so files from newer builds keep
-/// their extras across open and save.
+/// their extras across open and save. Their bytes are shared: cloning a
+/// package (each autosave does) copies no entry.
+///
+/// `cut_on_open` is true when opening the file cut an over-long text or
+/// left out data that was too large or unsafe (see [`crate::file::open`]);
+/// `parked_on_open` is true when it moved branches nested deeper than
+/// [`crate::MAX_DEPTH`] levels to the parking area. Saving ignores both.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Package {
     pub doc: Document,
     pub assets: Assets,
-    pub other_entries: Vec<(String, Vec<u8>)>,
+    pub other_entries: Vec<(String, Arc<[u8]>)>,
+    pub cut_on_open: bool,
+    pub parked_on_open: bool,
 }
 
 impl Package {
@@ -97,6 +110,8 @@ impl Package {
             doc,
             assets: Assets::default(),
             other_entries: Vec::new(),
+            cut_on_open: false,
+            parked_on_open: false,
         }
     }
 }

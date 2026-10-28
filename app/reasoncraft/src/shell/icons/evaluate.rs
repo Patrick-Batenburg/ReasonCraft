@@ -100,6 +100,13 @@ pub(super) fn paint(pen: &Pen, icon: Icon, fg: Color32, t: &Tokens) {
             pen.arrow_up(0.5, 0.33, accent);
             pen.line(&[(0.06, 0.92), (0.06, 0.66), (0.32, 0.66)]);
         }
+        Icon::Park => {
+            pen.rect(0.3, 0.06, 0.7, 0.32, fg);
+            let accent = muted(t.accent);
+            pen.line_c(&[(0.5, 0.36), (0.5, 0.7)], accent);
+            pen.line_c(&[(0.38, 0.58), (0.5, 0.7), (0.62, 0.58)], accent);
+            pen.line(&[(0.08, 0.6), (0.08, 0.92), (0.92, 0.92), (0.92, 0.6)]);
+        }
         // Command icons are drawn by the caller.
         _ => {}
     }

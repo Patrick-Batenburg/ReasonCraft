@@ -17,9 +17,9 @@ use super::essay_slot::{self, Paragraph, Statement};
 use super::virtual_rows::{self, Rows};
 use crate::a11y::{in_group, labelled};
 use crate::actions::Action;
-use crate::canvas::rating::{Mark, card_colour, mark_for, rating_dots, rating_label};
 use crate::doc_tab::{DocTab, EssayRow, EssayView};
 use crate::i18n::{FluentArgs, t, t_args, ui_language};
+use crate::scene::rating::{Mark, card_colour, mark_for, rating_dots, rating_label};
 use crate::settings::Settings;
 use crate::spell::SpellFields;
 use crate::theme::Tokens;
@@ -55,7 +55,7 @@ pub fn show(
     tab.essay();
     let mut heights = std::mem::take(&mut tab.essay_heights);
     let tab_ref = &*tab;
-    if let Some((_, view)) = &tab_ref.essay_cache {
+    if let Some(view) = tab_ref.essay_cache.last() {
         let cx = Ctx {
             tab: tab_ref,
             doc: &tab_ref.doc,
@@ -70,6 +70,7 @@ pub fn show(
             keys: &keys,
             estimate: ROW_ESTIMATE,
             revision: tab_ref.revision(),
+            pinned: None,
             draw: |ui: &mut Ui, i: usize| part(ui, &cx, &parts[i], spell, out),
         };
         virtual_rows::show(ui, &mut heights, rows);
@@ -92,6 +93,9 @@ fn part(ui: &mut Ui, cx: &Ctx, part: &Part, spell: &mut SpellFields, out: &mut V
         }
         Part::NoSections => {
             ui.label(RichText::new(t("essay.no_sections")).color(cx.tk.text_muted));
+        }
+        Part::Grouping => {
+            ui.label(RichText::new(t("essay.grouping")).color(cx.tk.text_muted));
         }
         Part::Section(n, section) => {
             ui.add_space(10.0);

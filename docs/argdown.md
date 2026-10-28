@@ -38,14 +38,14 @@ generator: "ReasonCraft"
 ===
 ```
 
-All four values are YAML double-quoted strings (see 5). An `=` in a value is written as `\u003D`, so a title such as `A === B` never ends the frontmatter. `language` is `en` or `nl`.
+All four values are YAML double-quoted strings (see 5). An `=` in a value is written as `\u003D`, so a title such as `A === B` never ends the frontmatter. `language` is `en` or `nl`; a Dutch tag such as `nl-NL` is written as `nl`.
 
 ### 2. Titles
 
 - Every box written as a statement gets a title made from the first five words of its text.
-  - The characters `[ ] < > { } : # @`, the backslash and a `/` that would start a comment (`//`, `/*`) are left out, and so are hyphens at the start (Argdown does not read `[-…]` as a statement reference).
+  - The characters `[ ] < > { } : # @` and the backslash are left out, and so is a `/` that would start a comment (`//`, `/*`) once they are gone (`x/#/y` becomes `x/y`), and so are hyphens at the start (Argdown does not read `[-…]` as a statement reference).
   - Whitespace is collapsed, and the title is cut at 40 characters.
-  - A title that is already taken gets " 2", " 3", … appended. A box without text gets `Statement N`, where N counts the statements in the order they are written.
+  - A title that is already taken gets " 2", " 3", … appended. A box without text gets `Statement N`, where N counts the statements in the order of the Outline: the main tree first, then the parking area.
 - Every card becomes an argument titled `R<n>` (a reason) or `O<n>` (an objection). Reasons and objections are counted separately, in the order of the Outline: the main tree first, then the parking area.
 
 ### 3. The main tree
@@ -135,16 +135,17 @@ The parking area follows the main tree's arguments under the heading `# Not conn
 
 File → **Import Argdown…** reads any Argdown file, not just ReasonCraft's own, into a new, unsaved tab. A file ReasonCraft wrote reads back as the same map. For other files:
 
-- **The root** is the statement with the most relations pointing at it (directly, or as the conclusion of an argument), among the top-level statements and the statements that support or attack nothing; on a tie, the first one. Only statements before a `# Not connected` (or `# Niet verbonden`) heading count. Every other top-level tree goes to the parking area, in file order, after the items under that heading.
+- **The root** is the statement with the most relations pointing at it (directly, or as the conclusion of an argument), among the top-level statements and the statements that support or attack nothing; on a tie, the first one. Premises, statements marked as a source, category or note, and statements after a `# Not connected` (or `# Niet verbonden`) heading do not count.
+- **The parking area** gets the items under that heading first, in file order. Then whatever is still not placed: first the statements and arguments that support or attack nothing (whole trees), then the rest, each group in file order.
 - **Statements under statements**: `+ [X]` or `<+ [X]` under a statement makes a reason card with X as its premise, `-` an objection. With `{source: …}` X becomes a source of that type (an unknown type is kept by name), with `{category: true}` a category (where a category may go).
 - **Arguments** become cards. Their premises are the PCS statements, except conclusions; an argument without a PCS gets one premise with its text, or its title. An argument concluding a statement supports it; a conclusion with `-> [S]` (or `- [S]`) under it attacks S.
 - **Whole cards**: `_` under an argument or its inference line makes an objection to the whole card, `+` under the inference line a reason for it.
 - **The kind of a card** comes from its `kind` data, else the shape of its conclusion, else an `R1`/`O1` title, else the relation it hangs on.
 - **Text**: escapes are read, inline formatting is removed, `[text](url)` keeps its text and the first link becomes the box's link (if it is a safe link), and mentions `@[T]` and `@<T>` become `T`.
-- **Data**: the keys of section 5 and `kind` and `strength` are read; other keys are ignored. The frontmatter gives the title, author and language (`en` or `nl`, otherwise `en`). Without a title, the file's name is used.
-- **Reported changes**, each with its line: a contradiction (`><`, left out), another wording of a statement already defined or another description or PCS of an argument (the first is used), a statement used in a second place (copied there), a relation that would make a circle (left out), a reference to a title defined nowhere (the title becomes the text), an intermediate conclusion (left out), an inference rule (left out), tags (left out), an undercut of a statement (read as an objection), an argument with no premises, text or title (left out), an item that cannot go where the file puts it, such as a reason under a category (moved to the parking area), a relation to a conclusion that was left out (left out; its statement goes to the parking area) and a link that is not a safe web or mail link (left out). The report groups them by kind.
+- **Data**: the keys of section 5 and `kind` and `strength` are read; other keys are ignored. The frontmatter gives the title, author and language (`nl` for `nl` or a Dutch tag such as `nl-NL`, in any case; otherwise `en`). Without a title, the file's name is used.
+- **Reported changes**, each with its line: a contradiction (`><`, left out), another wording of a statement already defined or another description or PCS of an argument (the first is used), a statement used in a second place (copied there), a relation that would make a circle (left out), a reference to a title defined nowhere (the title becomes the text), an intermediate conclusion (left out), an inference rule (left out), tags (left out), an undercut of a statement (read as an objection), an argument with no premises, text or title (left out), an item that cannot go where the file puts it, such as a reason under a category (moved to the parking area), a relation to a conclusion that was left out (left out; its statement goes to the parking area), a link that is not a safe web or mail link (left out) and a text longer than the map keeps (cut: a box keeps 50 000 characters, a comment 50 000, a title or author 1 000; a link longer than 8 192 characters is left out). The report groups them by kind.
 - **An inference rule over several lines** (`--`, the rule, `--`) also ends at a blank line or at the next statement, argument, relation or heading, so a stray `--` hides nothing.
-- **Limits**: files up to 2 MB, maps up to 5000 boxes and relations nested up to 64 levels.
+- **Limits**: files up to 2 MB, maps up to 5000 boxes and relations nested up to 64 levels. Titles can chain statements deeper than that; what lies more than 512 levels deep (as deep as a map goes) goes to the parking area, with a note in the report.
 
 ## Example: a map written as Argdown
 

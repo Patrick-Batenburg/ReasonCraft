@@ -16,6 +16,7 @@ window-close = Venster sluiten
 ## Document tabs
 tabs-new = Nieuw tabblad
 tabs-close = { $name } sluiten
+tabs-more = Alle open kaarten
 
 ## Ribbon tabs
 ribbon-tab-file = Bestand
@@ -27,6 +28,8 @@ ribbon-tab-export = Exporteren
 ribbon-tab-help = Help
 ribbon-scroll_left = Lint naar links schuiven
 ribbon-scroll_right = Lint naar rechts schuiven
+ribbon-tabs_left = Linttabbladen naar links schuiven
+ribbon-tabs_right = Linttabbladen naar rechts schuiven
 ribbon-group_more = { $group } (meer)
 
 ## Ribbon groups
@@ -69,9 +72,14 @@ action-add_category = Categorie
 action-add_note = Notitie
 action-add_source = Bron
 action-comment = Opmerking
-action-connect = Verbinden…
+action-connect = Verplaatsen…
+action-park = Naar Niet verbonden
 action-box_type = Soort
 action-link = Link
+action-open_link = Link openen
+action-next_tab = Volgend tabblad
+action-prev_tab = Vorig tabblad
+action-close_tab = Tabblad sluiten
 action-image = Afbeelding
 action-remove_image = Afbeelding wissen
 action-delete = Verwijderen
@@ -99,6 +107,7 @@ action-source_icons = Bronpictogrammen (debug)
 
 ## Search commands (commands that have no ribbon button of their own)
 command-disabled = Nu niet beschikbaar
+command-results = Gevonden opdrachten
 command-whole_card_reason = Reden voor het hele blok
 command-whole_card_objection = Bezwaar tegen het hele blok
 command-edit = Tekst bewerken
@@ -135,6 +144,7 @@ spell-checking = Controleren…
 spell-suggesting = …
 spell-done = Spellingcontrole klaar
 spell-no_suggestions = Geen suggesties
+spell-not_in_dictionary = Niet in het woordenboek: { $word }.
 spell-change_to = Wijzigen in
 spell-change = Wijzigen
 spell-change_all = Alles wijzigen
@@ -222,7 +232,8 @@ argdown-note-empty_argument = Een argument zonder premissen of tekst is weggelat
 argdown-note-moved_to_parking = Een onderdeel kon niet op de plek uit het bestand komen en staat nu bij Niet verbonden.
 argdown-note-relation_dropped = Een relatie naar een weggelaten conclusie is ook weggelaten; de uitspraak staat nu bij Niet verbonden.
 argdown-note-link_dropped = Een link die geen veilige web- of e-maillink is, is weggelaten.
-argdown-note-text_cut = Tekst van meer dan { $max } tekens is ingekort zodat hij in een vak past.
+argdown-note-text_cut = Tekst die langer is dan de kaart bewaart, is ingekort (een vak bewaart { $max } tekens).
+argdown-note-too_deep = Een tak die meer dan { $max } niveaus diep zit, staat nu bij Niet verbonden.
 
 ## Backstage
 backstage-back = Terug
@@ -345,7 +356,6 @@ connector_style-tapered = Taps toelopend
 
 ## Side panels
 panel-building = Bouwstenen
-panel-coming_later = Komt in een latere versie.
 text-tab-outline = Opzet
 text-tab-essay = Betoog
 text-tab-check = Controle
@@ -360,6 +370,7 @@ essay-conclusion-field = Alinea van de conclusie
 essay-conclusion-hint = Herhaal de bewering en de belangrijkste redenen
 essay-section = Deel { $n }
 essay-section_with = Deel { $n }: { $premises }
+essay-grouping = Een groeperingskaart heeft geen betoog: een betoog schrijf je vanuit de redenen en bezwaren van een argumentkaart. Het tabblad Opzet zet je categorieën op een rij.
 essay-no_sections = Zet redenen of bezwaren onder de bewering: elk wordt een deel van het betoog.
 essay-paragraph_for = Alinea bij: { $statement }
 essay-hint = Schrijf dit deel van het betoog
@@ -394,7 +405,7 @@ outline-toggle-indent = Inspringen
 outline-toggle-colour = Kleur
 outline-toggle-notes = Notities
 outline-tip-numbering = Toon de nummers (1, 1a, 1.w1, P1)
-outline-tip-labels = Toon de signaalwoorden (omdat, maar, echter)
+outline-tip-labels = Toon de signaalwoorden ({ $words })
 outline-tip-indent = Laat elke regel inspringen naar zijn diepte
 outline-tip-colour = Markeer elke regel met de kleur van zijn rol
 outline-tip-notes = Notities opnemen
@@ -415,7 +426,7 @@ check-kind-empty_category = Lege categorieën
 check-kind-incomplete_evaluation = Nog niet beoordeeld
 check-kind-inconsistent_evaluation = Beoordelingen die botsen
 check-kind-not_connected = Niet verbonden
-check-help-key_term = Elk kernwoord van een uitspraak hoort terug te komen in de premissen van de reden of het bezwaar eronder (de kernwoordregel): voeg een medepremisse toe die de ontbrekende woorden dekt. Korte woorden in enkelvoud en meervoud (baan, banen) kunnen gemeld worden, ook als ze gedekt zijn.
+check-help-key_term = Elk kernwoord van een uitspraak hoort terug te komen in de premissen van de reden of het bezwaar eronder (de kernwoordregel): voeg een medepremisse toe die de ontbrekende woorden dekt. Korte woorden in enkelvoud en meervoud (les, lessen) kunnen gemeld worden, ook als ze gedekt zijn.
 check-help-compound = Elk vak zegt één ding. Een uitspraak met “{ $and }” of “{ $or }” erin kan er twee zeggen: als je het ene deel kunt aanvaarden en het andere verwerpen, zijn het er eigenlijk twee.
 check-help-question = Beweringen en premissen zijn uitspraken: je kunt ze aanvaarden of verwerpen, maar een vraag niet.
 check-help-unsupported = Elke premisse heeft steun nodig: een reden of een bron eronder.
@@ -448,6 +459,26 @@ building-item_name = { $item } (Bouwstenen)
 ## Canvas
 canvas-empty_claim = Typ je hoofdbewering
 canvas-label = Argumentkaart
+a11y-map-claim = Bewering
+a11y-map-supports = Reden
+a11y-map-opposes = Bezwaar
+a11y-map-rebuts = Weerlegging
+a11y-map-category = Categorie
+a11y-map-note = Notitie
+a11y-map-source = Bron: { $type }
+a11y-map-card = Blok: { $role }
+a11y-map-premise = premisse { $n } van { $total }
+a11y-map-accept = aanvaard
+a11y-map-unsure = betwijfeld
+a11y-map-reject = verworpen
+a11y-map-rated = beoordeling: { $rating }
+a11y-map-parked = niet verbonden
+a11y-map-position = { $n } van { $total }
+a11y-map-empty = (leeg)
+a11y-map-item = { $what }: { $text }
+a11y-map-nothing = Niets gekozen
+a11y-map-moving = { $item } verplaatsen: kies een plek met de pijltjestoetsen en druk op Enter, of Esc om te annuleren.
+a11y-map-editing = Tekst van { $what }
 editor-hint = Typ hier
 plus-open = Onderdeel toevoegen
 plus-whole_card_reason = Reden voor het hele blok
@@ -521,7 +552,7 @@ status-tip-issues = Toon de tips in het tabblad Controle
 status-toggle_theme = Thema wisselen
 status-zoom = Zoom
 status-zoom_value = { $percent }%
-connect-hint = Klik op een vak of blok om het niet-verbonden onderdeel ermee te verbinden, of kies er een en druk op Enter — Esc om te annuleren
+connect-hint = Klik op een vak of blok om het onderdeel daarheen te verplaatsen, of kies er een en druk op Enter — Esc om te annuleren
 
 ## Comments
 comment-anonymous = Anoniem
@@ -642,7 +673,12 @@ export-open_folder = Map openen
 export-copied = Gekopieerd naar het klembord.
 status-exporting = Exporteren…
 status-preparing_image = Afbeelding voorbereiden…
+status-saving = Opslaan…
+clipboard-empty_item = (leeg)
 status-text_cut = Tekst is ingekort tot 50 000 tekens.
+status-open_cut = Een deel van dit bestand was te groot of onveilig: lange teksten zijn ingekort en de rest is weggelaten.
+status-open_too_deep = Delen van deze kaart zaten meer dan { $max } niveaus diep; ze staan nu bij Niet verbonden.
+status-too_deep = Dan zou de kaart meer dan { $max } niveaus diep worden.
 status-jobs-exports = { $count ->
     [one] Eén export bezig
    *[other] { $count } exports bezig
@@ -652,7 +688,6 @@ status-jobs-images = { $count ->
    *[other] { $count } afbeeldingen in voorbereiding
 }
 export-error-stopped = Het exporteren is onverwacht gestopt. Probeer het opnieuw.
-export-error-unsupported = Dit soort export is nog niet beschikbaar ({ $detail }).
 
 ## Help (Text panel tab, Help ribbon tab, F1) and About
 text-tab-help = Help
@@ -676,7 +711,11 @@ help-key-delete = Verwijderen (wat eronder staat, gaat naar Niet verbonden)
 help-key-delete_branch = Verwijderen met alles eronder
 help-key-jump_parking = Heen en weer tussen de kaart en Niet verbonden
 help-key-comments = De opmerkingen bij het gekozen vak openen
-help-key-connect = Verbinden…: het gekozen losse onderdeel verbinden
+help-key-open_link = De link van het gekozen vak openen
+help-key-next_tab = Naar de volgende open kaart
+help-key-prev_tab = Naar de vorige open kaart
+help-key-close_tab = De open kaart sluiten
+help-key-connect = Verplaatsen…: het gekozen onderdeel verplaatsen (een premisse neemt haar blok mee)
 help-key-move_left = De selectie één plek naar links schuiven
 help-key-move_right = De selectie één plek naar rechts schuiven
 help-key-move_up = De selectie één plek omhoog schuiven
@@ -686,6 +725,9 @@ help-key-rate_mid = Midden beoordelen: betwijfelen, zwak, wankel
 help-key-rate_low = Laag beoordelen: verwerpen, geen
 help-key-rate_clear = De beoordeling van de selectie wissen
 help-key-clear_map = Alle beoordelingen op de kaart wissen
+help-key-cut = Het gekozen onderdeel met alles eronder knippen
+help-key-copy = Het gekozen onderdeel met alles eronder kopiëren
+help-key-paste = Onder de selectie plakken (elders gekopieerde tekst wordt een nieuw vak)
 help-key-undo = Ongedaan maken
 help-key-redo = Opnieuw
 help-key-save = Opslaan

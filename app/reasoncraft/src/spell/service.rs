@@ -7,13 +7,12 @@ use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::sync::Arc;
-use std::time::Duration;
 
 use reasoncraft_spell::Speller;
 
 use super::MAX_SUGGESTIONS;
 use super::line_cache::LineCache;
-use crate::jobs::{Job, JobState};
+use crate::jobs::{Hold, Job, JobState};
 
 /// How many words keep their suggestions.
 const SUGGESTION_CACHE: usize = 64;
@@ -56,9 +55,9 @@ pub struct SpellService {
     checks: u64,
     /// Load failures not reported yet.
     errors: Vec<String>,
-    /// Wait this long before each dictionary load and each suggestion
-    /// job (tests only).
-    pub delay: Option<Duration>,
+    /// Hold each dictionary load and each suggestion job back until
+    /// released (tests only).
+    pub hold: Option<Hold>,
     /// Let the spelling pass check this many boxes a frame instead of
     /// going by time (tests only).
     pub slice_boxes: Option<usize>,
@@ -76,7 +75,7 @@ impl SpellService {
             suggestions: HashMap::new(),
             checks: 0,
             errors: Vec::new(),
-            delay: None,
+            hold: None,
             slice_boxes: None,
         }
     }
@@ -93,7 +92,7 @@ impl SpellService {
                 let words = self.personal.clone();
                 let n = words.len();
                 let owned = lang.to_owned();
-                let job = Job::spawn(self.delay, move || load(&owned, &words));
+                let job = Job::spawn(self.hold.clone(), move || load(&owned, &words));
                 self.dicts
                     .insert(lang.to_owned(), Dict::Loading { job, words: n });
                 None
@@ -232,7 +231,9 @@ impl SpellService {
                 .retain(|_, s| matches!(s, Suggestions::Pending(_)));
         }
         let owned = word.to_owned();
-        let job = Job::spawn(self.delay, move || speller.suggest(&owned, MAX_SUGGESTIONS));
+        let job = Job::spawn(self.hold.clone(), move || {
+            speller.suggest(&owned, MAX_SUGGESTIONS)
+        });
         self.suggestions.insert(key, Suggestions::Pending(job));
         None
     }

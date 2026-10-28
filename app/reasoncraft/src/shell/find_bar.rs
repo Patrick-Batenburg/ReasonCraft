@@ -131,17 +131,20 @@ fn bar(ui: &mut Ui, tab: &mut DocTab, tk: &Tokens, out: &mut Vec<Action>) {
                 ..opts
             }));
         }
-        if !tab.find.query.is_empty() {
-            let text = if found {
-                let mut args = FluentArgs::new();
-                args.set("current", position.map_or(0, |i| i + 1));
-                args.set("total", total);
-                t_args("find.count", &args)
-            } else {
-                t("find.none")
-            };
-            ui.label(RichText::new(text).size(12.0).color(tk.text_muted));
-        }
+        // The count is read out as it changes.
+        crate::a11y::live_region(ui, "find_count", |ui| {
+            if !tab.find.query.is_empty() {
+                let text = if found {
+                    let mut args = FluentArgs::new();
+                    args.set("current", position.map_or(0, |i| i + 1));
+                    args.set("total", total);
+                    t_args("find.count", &args)
+                } else {
+                    t("find.none")
+                };
+                ui.label(RichText::new(text).size(12.0).color(tk.text_muted));
+            }
+        });
         if ui.add_enabled(found, Button::new(t("find.prev"))).clicked() {
             out.push(Action::FindPrev);
         }

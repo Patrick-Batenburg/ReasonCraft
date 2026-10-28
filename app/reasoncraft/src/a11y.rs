@@ -75,3 +75,49 @@ pub fn paint_focus_ring(ctx: &egui::Context, colour: egui::Color32) {
             .rect_stroke(rect, 4.0, stroke, egui::StrokeKind::Inside);
     }
 }
+
+/// Name the dialog `ui` is drawn in after its `heading`, so a screen
+/// reader announces it when the focus moves into it.
+pub fn name_dialog(ui: &egui::Ui, heading: &str) {
+    let dialog = ui
+        .stack()
+        .iter()
+        .find(|s| matches!(s.kind(), Some(egui::UiKind::Modal | egui::UiKind::Popup)))
+        .map(|s| s.unique_id);
+    if let Some(id) = dialog {
+        ui.ctx()
+            .accesskit_node_builder(id, |node| node.set_label(heading));
+    }
+}
+
+/// Whether dialog `id` showing `identity` is new this frame: it was not
+/// shown last frame, or it showed another dialog. `identity` tells two
+/// dialogs apart that may follow each other with the same heading (its
+/// heading, plus the tab a prompt is about). Its default control then
+/// takes the keyboard focus.
+pub fn dialog_opened(ctx: &egui::Context, id: Id, identity: &str) -> bool {
+    let pass = ctx.cumulative_pass_nr();
+    let key = id.with("dialog_opened");
+    let last: Option<(u64, String)> = ctx.data(|d| d.get_temp(key));
+    ctx.data_mut(|d| d.insert_temp(key, (pass, identity.to_owned())));
+    !last.is_some_and(|(seen, shown)| seen + 1 >= pass && shown == identity)
+}
+
+/// A polite live region holding what `add` shows: a screen reader reads
+/// it out when it changes, without moving the focus (find counts, status
+/// notes, the Move to… hint). The region is there every frame, empty or
+/// not, so a note that appears is read too.
+pub fn live_region<R>(
+    ui: &mut egui::Ui,
+    id_salt: &'static str,
+    add: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    let builder = egui::UiBuilder::new()
+        .id_salt(id_salt)
+        .accessibility_role(Role::Status);
+    let shown = ui.scope_builder(builder, add);
+    ui.ctx().accesskit_node_builder(shown.response.id, |node| {
+        node.set_live(accesskit::Live::Polite);
+    });
+    shown.inner
+}

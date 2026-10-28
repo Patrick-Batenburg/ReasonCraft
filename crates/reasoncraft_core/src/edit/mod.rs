@@ -1,6 +1,8 @@
 //! Editing operations on a [`Document`].
 
 mod add;
+mod depth;
+mod fragment;
 mod move_remove;
 #[cfg(test)]
 mod tests;
@@ -10,8 +12,12 @@ mod validate_tests;
 
 use thiserror::Error;
 
+pub use depth::MAX_DEPTH;
+pub use fragment::Fragment;
+
+use crate::caps::capped;
 use crate::ids::{Item, NodeId, Parent};
-use crate::model::{BoxKind, CardKind, Document, SourceType, now_rfc3339};
+use crate::model::{BoxKind, CardKind, Document, MAX_BOX_CHARS, SourceType, now_rfc3339};
 
 /// Why an edit was refused.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -24,6 +30,9 @@ pub enum EditError {
     LastPremiseOfRoot,
     #[error("this move would create a cycle")]
     Cycle,
+    /// The item would sit deeper than [`MAX_DEPTH`] levels.
+    #[error("the map would nest more than {MAX_DEPTH} levels deep")]
+    TooDeep,
 }
 
 /// A loose item to create in the parking area.
@@ -45,8 +54,16 @@ pub enum RemoveMode {
 }
 
 impl Document {
-    pub(crate) fn touch(&mut self) {
+    fn touch(&mut self) {
         self.meta.modified = now_rfc3339();
+    }
+
+    /// The end of every successful edit: stamp the modification time and,
+    /// in debug builds, check the document's invariants.
+    pub(crate) fn finish_edit(&mut self) {
+        self.touch();
+        #[cfg(debug_assertions)]
+        self.check_invariants();
     }
 
     /// Insert `item` under `parent` at `index` (clamped); `None` appends.
@@ -88,13 +105,14 @@ impl Document {
         }
     }
 
-    /// Replace a box's text.
-    pub fn set_text(&mut self, id: NodeId, text: &str) -> Result<(), EditError> {
-        self.boxes.get_mut(&id).ok_or(EditError::NotFound)?.text = text.to_owned();
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
-        Ok(())
+    /// Replace a box's text, cut to [`MAX_BOX_CHARS`] characters; true
+    /// when it was cut.
+    pub fn set_text(&mut self, id: NodeId, text: &str) -> Result<bool, EditError> {
+        let node = self.boxes.get_mut(&id).ok_or(EditError::NotFound)?;
+        let kept = capped(text, MAX_BOX_CHARS);
+        kept.clone_into(&mut node.text);
+        self.finish_edit();
+        Ok(kept.len() < text.len())
     }
 
     /// Everything under `item` (not including it): premises, whole-card

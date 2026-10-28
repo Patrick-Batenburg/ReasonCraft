@@ -22,17 +22,17 @@ View > Building panel and View > Text panel show or hide the side panels.
 - Add a source under a premise with Ctrl+Shift+E, or pick a type from Home > Source.
 - Save with Ctrl+S. Maps are saved as `.rcraft` files.
 
-On a Mac, use Cmd where this help says Ctrl, and Option where it says Alt. The page [Keyboard shortcuts](keyboard) lists the keys of your computer.
+On a Mac, use Cmd where this help says Ctrl, and Option where it says Alt. A few keys differ: Replace (Ctrl+H) is Option+Cmd+F and Search commands (Alt+Q) is Shift+Cmd+A. The page [Keyboard shortcuts](keyboard) lists the keys of your computer.
 
 You can also select a box and use the small **+** button next to it, or the Home tab: Reason, Objection, Co-premise, Source, Category and Note are all there.
 
 ## Items that are not connected yet
 
-Anything you drop on empty canvas, or that is left over when you delete the box above it, goes to the area marked **Not connected**. It is saved with the map, but it is not part of the argument yet. Drag it onto a box to connect it, or select it and use Home > **Connect to…** (Ctrl+Shift+K), then click where it belongs. Ctrl+Shift+P jumps between the map and this area.
+Anything you drop on empty canvas, or that is left over when you delete the box above it, goes to the area marked **Not connected**. It is saved with the map, but it is not part of the argument yet. Drag it onto a box to connect it, or select it and use Home > **Move to…** (Ctrl+Shift+K), then click where it belongs (or pick the place with the arrow keys and press Enter). Move to… moves connected items too, and Home > **Move to parking** takes one out of the map. Ctrl+Shift+P jumps between the map and this area.
 
 ## Undo, find and more
 
-- Every change can be undone with Ctrl+Z and redone with Ctrl+Y.
+- Changes can be undone with Ctrl+Z and redone with Ctrl+Y: the last 500 of them, or fewer in a very large map (about 150 in a map of 2,000 boxes), as the undo history keeps at most a set amount of memory.
 - Ctrl+F finds text in boxes, sources and notes; Ctrl+H also replaces it.
 - The **Search commands** box in the title bar (Alt+Q) finds any command by name.
 - F6 moves the keyboard focus between the ribbon, the panels, the map and the status bar.

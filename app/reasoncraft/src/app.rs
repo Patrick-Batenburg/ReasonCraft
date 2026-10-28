@@ -12,7 +12,7 @@ use crate::canvas::input::Os;
 use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
 use crate::export::{ExportJobs, SharedClipboard, SystemClipboard};
-use crate::file_ops::{FileDialogs, Modal, RfdDialogs};
+use crate::file_ops::{FileDialogs, Modal, RfdDialogs, SaveJobs};
 pub use crate::settings::{SETTINGS_KEY, Settings};
 use crate::shell;
 use crate::shell::export_dialog::ExportDialog;
@@ -20,6 +20,20 @@ use crate::shell::link_modal::LinkEdit;
 use crate::spell::SpellService;
 use crate::theme::{self, Tokens};
 use eframe::egui;
+
+/// The smallest window at 100 % interface size, in screen points.
+pub const MIN_WINDOW: [f32; 2] = [800.0, 500.0];
+
+/// The smallest window, in the interface's own points: [`MIN_WINDOW`], so
+/// a larger interface keeps the room it is laid out for, but never more
+/// than 90 % of the `monitor` (when known). egui-winit turns these points
+/// into pixels with the interface size (egui's zoom factor times the
+/// display scale) and gives the monitor's size in the same points, so no
+/// scale is applied here.
+pub fn min_window_size(monitor: Option<egui::Vec2>) -> egui::Vec2 {
+    let base = egui::Vec2::from(MIN_WINDOW);
+    monitor.map_or(base, |m| base.min(m * 0.9))
+}
 
 /// Which ribbon tab is showing. `File` shows the backstage instead of the map.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -62,12 +76,16 @@ pub struct ReasonCraftApp {
     pub modal: Option<Modal>,
     /// The link editor, when open.
     pub link_edit: Option<LinkEdit>,
+    /// What Copy and Cut kept, shared by every tab.
+    pub clipboard: Option<actions::Copied>,
     /// Opens links in the browser: the platform's handler, or a fake in tests.
     pub link_opener: Box<dyn LinkOpener>,
     /// Exports running in the background, and the last one's notice.
     pub export: ExportJobs,
     /// Inserted images being prepared in the background.
     pub image_jobs: ImageJobs,
+    /// Saves being written (Save, Save As, a save before a close).
+    pub saves: SaveJobs,
     /// Spelling dictionaries (loaded in the background) and the
     /// misspellings found, shared by all tabs.
     pub spell: SpellService,
@@ -85,7 +103,7 @@ pub struct ReasonCraftApp {
     /// tick.
     pub(crate) autosave_clock: Option<f64>,
     /// The recovery prompt, waiting for another message to be closed first.
-    pub(crate) recovery_offer: Option<Vec<crate::recovery::RecoveredDoc>>,
+    pub(crate) recovery_offer: Option<crate::recovery::Orphans>,
     /// The export or page setup dialog, when open.
     pub export_dialog: Option<ExportDialog>,
     /// The page the Text panel's Help tab shows.
@@ -134,9 +152,11 @@ impl ReasonCraftApp {
             dialogs,
             modal: None,
             link_edit: None,
+            clipboard: None,
             link_opener,
             export: ExportJobs::new(clipboard, std::env::temp_dir()),
             image_jobs: ImageJobs::default(),
+            saves: SaveJobs::default(),
             status_note: None,
             notes_shown: None,
             recovery: None,
@@ -204,6 +224,13 @@ impl ReasonCraftApp {
         }
     }
 
+    /// Whether a dialog is open: a message or prompt, the export dialog
+    /// or the link editor. Keys go to it, and what a finished save was
+    /// part of waits until it is closed.
+    pub fn dialog_open(&self) -> bool {
+        self.modal.is_some() || self.link_edit.is_some() || self.export_dialog.is_some()
+    }
+
     /// True once the user has answered every unsaved-changes question of a
     /// window close; the window then closes.
     pub fn close_confirmed(&self) -> bool {
@@ -227,6 +254,20 @@ impl ReasonCraftApp {
         &self.tabs[self.active]
     }
 
+    /// Whether work runs in the background whose result a later frame
+    /// picks up: exports, images being prepared or decoded, saves,
+    /// spelling dictionaries and suggestions, and autosave writes. The
+    /// frame loop keeps looking (see [`Self::show`]); tests step frames
+    /// until it is done.
+    pub fn background_busy(&self) -> bool {
+        self.export.busy()
+            || self.image_jobs.busy()
+            || self.images.busy()
+            || self.saves.busy()
+            || self.spell.busy()
+            || self.recovery.as_ref().is_some_and(|r| r.busy())
+    }
+
     pub fn push(&mut self, action: Action) {
         self.pending.push(action);
     }
@@ -237,6 +278,7 @@ impl ReasonCraftApp {
         self.egui_ctx = Some(ctx.clone());
         actions::poll_exports(self);
         actions::poll_images(self);
+        crate::file_ops::poll_saves(self);
         crate::spell::poll(self);
         shell::statusbar::expire_notes(&ctx, self);
         self.sync_theme(&ctx);
@@ -253,19 +295,13 @@ impl ReasonCraftApp {
         }
         // Shortcuts are taken out first, so no widget sees (or moves focus
         // with) them, but run after the widgets' own actions (see `handle_keys`).
-        // A modal takes all keys (Esc closes it). In the backstage only a
-        // focused field (the document title or author) passes on the file
-        // keys; F6 / Shift+F6 always move between the panes.
-        let modal =
-            self.modal.is_some() || self.link_edit.is_some() || self.export_dialog.is_some();
-        let keys = if modal {
+        // A modal takes all keys (Esc closes it). In the backstage only the
+        // file keys work, and Esc goes back to the map (see
+        // `backstage::keys`).
+        let keys = if self.dialog_open() {
             Vec::new()
         } else if self.ribbon_tab == RibbonTab::File {
-            if ctx.text_edit_focused() {
-                crate::canvas::input::file_keys(&ctx, self)
-            } else {
-                shell::panes::pane_keys(&ctx)
-            }
+            shell::backstage::keys(&ctx, self)
         } else {
             crate::canvas::input::handle_keys(&ctx, self)
         };
@@ -300,7 +336,7 @@ impl ReasonCraftApp {
         if let Some(secs) = crate::recovery::due_in(self, now) {
             ctx.request_repaint_after(Duration::from_secs_f64(secs));
         }
-        if self.export.busy() || self.image_jobs.busy() || self.spell.busy() {
+        if self.background_busy() {
             // Look for the result again soon, without spinning.
             ctx.request_repaint_after(Duration::from_millis(30));
         }
@@ -331,11 +367,25 @@ impl ReasonCraftApp {
     }
 
     /// The whole interface at the size the settings ask for (egui's zoom
-    /// factor). The map's zoom works in points, so it comes on top.
+    /// factor). The map's zoom works in points, so it comes on top. The
+    /// window's minimum size, in these points, grows with it on screen
+    /// (see [`min_window_size`]), once the screen's size is known.
     fn sync_ui_scale(&self, ctx: &egui::Context) {
         let scale = self.settings.ui_scale_factor();
         if ctx.zoom_factor() != scale {
             ctx.set_zoom_factor(scale);
+        }
+        let Some(monitor) = ctx.input(|i| i.viewport().monitor_size) else {
+            return;
+        };
+        // Sent again once the interface size changes (egui applies a new
+        // zoom factor from the next pass on, and egui-winit turns the
+        // points into pixels with the zoom factor in force).
+        let min = (min_window_size(Some(monitor)), ctx.zoom_factor());
+        let sent = egui::Id::unique("min_window_sent");
+        if ctx.data(|d| d.get_temp::<(egui::Vec2, f32)>(sent)) != Some(min) {
+            ctx.data_mut(|d| d.insert_temp(sent, min));
+            ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min.0));
         }
     }
 

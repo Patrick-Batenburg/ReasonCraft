@@ -30,6 +30,7 @@ fn harness(n: usize) -> Harness<'static, List> {
                     keys: &l.keys,
                     estimate: 20.0,
                     revision: 1,
+                    pinned: None,
                     draw,
                 };
                 show(ui, &mut l.heights, rows);

@@ -4,9 +4,11 @@
 
 - Een kaart wordt bewaard als één `.rcraft`-bestand. Daarin staan de kaart, de afbeeldingen, de fragmenten en het betoog.
 - Bestand > **Opslaan** (Ctrl+S) bewaart de kaart; de eerste keer vraagt het waar. **Opslaan als** (Ctrl+Shift+S) bewaart de kaart onder een nieuwe naam; daarna werk je in dat bestand.
+- Het bestand wordt op de achtergrond geschreven, dus je kunt doorwerken; de statusbalk toont intussen **Opslaan…**. Wat je verandert terwijl het wordt geschreven, staat niet in het bestand: de kaart blijft dan gemarkeerd als niet opgeslagen tot je opnieuw opslaat.
 - Bestand > **Openen** (Ctrl+O) opent een kaart in een nieuw tabblad. Bestand > **Recent** toont de laatste tien kaarten die je hebt geopend of opgeslagen; klik erop om er een weer te openen.
 - Bestand > **Nieuw** biedt een lege kaart, sjablonen om mee te beginnen en de voorbeeldkaarten. Elk ervan opent in een nieuw tabblad, als kaart die nog niet is opgeslagen. Met Ctrl+N begin je meteen een lege kaart.
 - Elke open kaart heeft een eigen tabblad boven het lint. Sluit je een tabblad, of het venster, met niet-opgeslagen wijzigingen, dan wordt eerst gevraagd of je ze wilt opslaan.
+- Met veel open kaarten worden de tabbladen smaller; passen ze niet meer, dan toont de rij de tabbladen rond het tabblad waarin je bent, en de knop **Alle open kaarten** aan het eind toont ze allemaal. Met Ctrl+Tab en Ctrl+Shift+Tab ga je naar de volgende of vorige kaart, met Ctrl+W sluit je de kaart waarin je bent; Opdrachten zoeken kent ze ook, als **Volgend tabblad**, **Vorig tabblad** en **Tabblad sluiten**.
 - Bestand > **Document** bevat de titel, de auteur en de taal van de open kaart.
 
 Bestanden uit oudere versies van ReasonCraft gaan gewoon open. Is een bestand met een nieuwere versie gemaakt, dan meldt ReasonCraft dat en vraagt het je om bij te werken.

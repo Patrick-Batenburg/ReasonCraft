@@ -5,16 +5,17 @@
 
 use std::collections::{HashMap, HashSet};
 
-use eframe::egui::{Color32, FontId, Painter, Rect, Shape, Stroke, StrokeKind, pos2, vec2};
-use reasoncraft_core::{ConnectorStyle, Document, Item, Layout, NodeId, Role};
+use eframe::egui::{Painter, Rect, Shape, Stroke, StrokeKind, pos2};
+use reasoncraft_core::{ConnectorStyle, Document, Item, Layout, NodeId};
 
 use super::Camera;
 use super::images::ImageCache;
-use crate::scene::{BOX_RADIUS, SceneOptions, TextRows, box_radius, build_scene, paint_scene};
+use super::scene_paint::paint_scene;
+use crate::scene::metrics::{FRAME_RADIUS, parking_frame};
+use crate::scene::{BOX_RADIUS, SceneOptions, TextRows, box_radius, build_scene};
 use crate::shell::link_modal::safe_link;
 use crate::theme::Tokens;
 
-pub const FRAME_RADIUS: f32 = 10.0;
 const SELECT_OFFSET: f32 = 2.0;
 const SELECT_WIDTH: f32 = 2.0;
 /// The find-hit outline sits right on the box edge, inside the selection ring.
@@ -22,40 +23,10 @@ const FIND_HIT_WIDTH: f32 = 2.0;
 const DOT_SPACING: f32 = 24.0;
 /// Dots closer than this many screen px are thinned out.
 const MIN_DOT_SPACING: f32 = 14.0;
-const PARKING_PAD: f32 = 24.0;
-const PARKING_HEADING: f32 = 26.0;
-/// Text smaller than this many screen px is not drawn.
-const MIN_TEXT_PX: f32 = 3.0;
-
-pub fn role_colour(t: &Tokens, role: Role) -> Color32 {
-    match role {
-        Role::Supports => t.reason,
-        Role::Opposes => t.objection,
-        Role::Rebuts => t.rebuttal,
-    }
-}
-
-/// The dashed frame around the parking area, heading included (world units).
-pub fn parking_frame(layout: &Layout) -> Option<Rect> {
-    layout.parking_bounds.map(|b| {
-        Rect::from_min_max(
-            b.min - vec2(PARKING_PAD, PARKING_PAD + PARKING_HEADING),
-            b.max + vec2(PARKING_PAD, PARKING_PAD),
-        )
-    })
-}
 
 /// Everything that is drawn, in world units: the layout plus the parking frame.
 pub fn content_bounds(layout: &Layout) -> Rect {
     parking_frame(layout).map_or(layout.bounds, |p| p.union(layout.bounds))
-}
-
-/// Screen font size for a world size, rounded down to half pixels so zooming
-/// does not rasterise glyphs at every possible size. Rounding down keeps
-/// rows inside their box.
-pub fn screen_font(size: f32, zoom: f32) -> Option<FontId> {
-    let px = (size * zoom * 2.0).floor() / 2.0;
-    (px >= MIN_TEXT_PX).then(|| FontId::proportional(px))
 }
 
 /// Display settings that affect painting.

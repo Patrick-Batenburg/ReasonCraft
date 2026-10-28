@@ -4,25 +4,29 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use eframe::egui::{Id, Rect};
-use reasoncraft_core::checks::{CheckSet, Issue, run_checks};
+use reasoncraft_core::checks::{CheckSet, Issue};
 use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::meta::LANGUAGES;
-use reasoncraft_core::outline::{OutlineLine, OutlineOptions, build_outline};
+use reasoncraft_core::outline::{OutlineLine, OutlineOptions};
 use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Package, Uuid};
 
 use crate::canvas::Camera;
 use crate::i18n::t;
 use crate::jobs::JobId;
+use crate::memo::Memo;
 
+mod derived;
 mod essay_edit;
 mod find_state;
 mod meta_edit;
 mod row_heights;
 mod session;
 mod snippet_edit;
+pub use derived::ISSUE_SETTLE;
 pub use essay_edit::EssayView;
 pub use find_state::FindState;
 pub use row_heights::{CheckRow, EssayRow, RowHeights};
@@ -31,6 +35,10 @@ pub use snippet_edit::{cap_snippet, tidy_source};
 
 /// The next [`DocTab::ui_key`].
 static NEXT_UI_KEY: AtomicU64 = AtomicU64::new(0);
+
+/// The longest file name (in characters, without extension) a Save or
+/// Export suggests from a document title.
+pub const FILE_STEM_CHARS: usize = 100;
 
 /// How many undo steps a tab keeps.
 pub const HISTORY_LIMIT: usize = 500;
@@ -44,8 +52,9 @@ pub struct DocTab {
     /// save writes only the referenced ones.
     pub assets: Assets,
     /// Zip entries of the opened file that this build does not understand,
-    /// written back unchanged on save.
-    pub other_entries: Vec<(String, Vec<u8>)>,
+    /// written back unchanged on save. The bytes are shared, so autosave
+    /// copies none.
+    pub other_entries: Vec<(String, Arc<[u8]>)>,
     /// Where the document was last saved or opened from.
     pub path: Option<PathBuf>,
     pub selection: Option<Item>,
@@ -72,9 +81,13 @@ pub struct DocTab {
     /// Pan the selection into view on the next canvas frame (set by
     /// keyboard navigation and adds, so it uses the fresh layout).
     pub reveal_pending: bool,
+    /// The last edit was refused because the map would nest deeper than
+    /// [`reasoncraft_core::MAX_DEPTH`] levels; [`crate::actions::apply`]
+    /// says so in the status bar.
+    pub refused_too_deep: bool,
     /// The box whose comment popover is showing.
     pub comments_open: Option<NodeId>,
-    /// The parked item waiting for a target ("Connect to…").
+    /// The item waiting for a target ("Move to…").
     pub connect_mode: Option<Item>,
     /// The snippet whose text field should take keyboard focus next frame.
     pub snippet_focus: Option<Uuid>,
@@ -86,18 +99,23 @@ pub struct DocTab {
     revision: u64,
     /// The outline last built, with the revision and options it was built
     /// for (see [`Self::outline`]).
-    pub outline_cache: Option<(u64, OutlineOptions, Vec<OutlineLine>)>,
+    pub outline_cache: Memo<(u64, OutlineOptions), Vec<OutlineLine>>,
     /// The issues last found, with the revision and checks they were found
     /// for (see [`Self::issues`]).
-    pub issue_cache: Option<(u64, CheckSet, Vec<Issue>)>,
+    pub issue_cache: Memo<(u64, CheckSet), Vec<Issue>>,
+    /// The revision [`Self::settled_issues`] last saw, and when it first
+    /// saw it (in seconds of UI time).
+    seen_revision: (u64, f64),
     /// The Essay tab's view, with the revision it was built for (see
     /// [`Self::essay`]).
-    pub essay_cache: Option<(u64, EssayView)>,
+    pub essay_cache: Memo<u64, EssayView>,
     /// The heights of the Essay tab's rows, so it lays out only those in
     /// view; [`RowHeights::laid_out`] counts the rows of the last frame.
     pub essay_heights: RowHeights<EssayRow>,
     /// The same for the Check tab.
     pub check_heights: RowHeights<CheckRow>,
+    /// The same for the Snippets tab, by snippet.
+    pub snippet_heights: RowHeights<Uuid>,
     /// The boxes whose inserted image is being prepared, with the job
     /// preparing it; a newer insert for the same box replaces the entry,
     /// so the older result is dropped when it arrives.
@@ -159,6 +177,8 @@ impl DocTab {
             doc,
             assets,
             other_entries,
+            cut_on_open: _,
+            parked_on_open: _,
         } = pkg;
         let selection = Some(Item::Box(doc.root));
         Self {
@@ -177,16 +197,19 @@ impl DocTab {
             fit_selection_pending: false,
             minimap: Default::default(),
             reveal_pending: false,
+            refused_too_deep: false,
             comments_open: None,
             connect_mode: None,
             snippet_focus: None,
             snippet_capped: None,
             revision: 0,
-            outline_cache: None,
-            issue_cache: None,
-            essay_cache: None,
+            outline_cache: Memo::default(),
+            issue_cache: Memo::default(),
+            seen_revision: (0, 0.0),
+            essay_cache: Memo::default(),
             essay_heights: RowHeights::default(),
             check_heights: RowHeights::default(),
+            snippet_heights: RowHeights::default(),
             pending_images: HashMap::new(),
             find: FindState::default(),
             spelling: None,
@@ -217,34 +240,6 @@ impl DocTab {
         self.revision += 1;
     }
 
-    /// The document's outline for `opts`, rebuilt only when the document or
-    /// the options changed since the last call.
-    pub fn outline(&mut self, opts: OutlineOptions) -> &[OutlineLine] {
-        let fresh = self
-            .outline_cache
-            .as_ref()
-            .is_some_and(|(rev, o, _)| *rev == self.revision && *o == opts);
-        if !fresh {
-            let lines = build_outline(&self.doc, &opts);
-            self.outline_cache = Some((self.revision, opts, lines));
-        }
-        self.outline_cache.as_ref().map_or(&[], |(_, _, l)| l)
-    }
-
-    /// The document's issues for the checks in `set`, found again only when
-    /// the document or the set changed since the last call.
-    pub fn issues(&mut self, set: &CheckSet) -> &[Issue] {
-        let fresh = self
-            .issue_cache
-            .as_ref()
-            .is_some_and(|(rev, s, _)| *rev == self.revision && s == set);
-        if !fresh {
-            let issues = run_checks(&self.doc, set);
-            self.issue_cache = Some((self.revision, set.clone(), issues));
-        }
-        self.issue_cache.as_ref().map_or(&[], |(_, _, i)| i)
-    }
-
     /// Note that a file was loaded into this tab, in place of a tab at
     /// revision `replaced` (0 for none). The new revision is past both, so
     /// nothing cached for the replaced document is reused.
@@ -263,12 +258,37 @@ impl DocTab {
         self.is_dirty() || !self.pending_images.is_empty()
     }
 
-    /// The file stem, or "Untitled".
+    /// The file stem; without a file, the document's title (an imported
+    /// map, an example), else "Untitled".
     pub fn name(&self) -> String {
-        self.path
-            .as_deref()
-            .and_then(|p| p.file_stem())
-            .map_or_else(|| t("untitled"), |s| s.to_string_lossy().into_owned())
+        if let Some(stem) = self.path.as_deref().and_then(|p| p.file_stem()) {
+            return stem.to_string_lossy().into_owned();
+        }
+        match self.doc.meta.title.trim() {
+            "" => t("untitled"),
+            title => title.to_owned(),
+        }
+    }
+
+    /// [`Self::name`] as the file name a Save or Export suggests: without
+    /// the characters file names cannot hold, at most [`FILE_STEM_CHARS`]
+    /// long ("Untitled" when nothing is left).
+    pub fn file_stem(&self) -> String {
+        let name = self.name();
+        let kept = name
+            .chars()
+            .map(|c| match c {
+                '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => ' ',
+                c if c.is_control() => ' ',
+                c => c,
+            })
+            .collect::<String>();
+        let words: Vec<&str> = kept.split_whitespace().collect();
+        let stem: String = words.join(" ").chars().take(FILE_STEM_CHARS).collect();
+        match stem.trim_end_matches(['.', ' ']) {
+            "" => t("untitled"),
+            stem => stem.to_owned(),
+        }
     }
 
     /// [`Self::name`], marked when restored after a crash (until saved),
@@ -288,15 +308,36 @@ impl DocTab {
     }
 
     /// Run `edit` as one undoable step. A refused edit changes nothing and
-    /// leaves no history entry.
+    /// leaves no history entry; in debug builds an error no command should
+    /// cause stops the app.
     pub fn edit<T>(
         &mut self,
         edit: impl FnOnce(&mut Document) -> Result<T, EditError>,
     ) -> Option<T> {
         let mut draft = self.doc.clone();
-        let out = edit(&mut draft).ok()?;
-        self.history.record(&self.doc);
-        self.doc = draft;
+        let out = match edit(&mut draft) {
+            Ok(out) => out,
+            // A rule refusing (or nothing to change), a target that is
+            // gone (an id from an earlier frame) and a branch that would
+            // nest too deep are expected. A cycle, or a claim losing its
+            // last premise, means a command skipped the check that should
+            // have greyed it out.
+            Err(e) => {
+                debug_assert!(
+                    matches!(
+                        e,
+                        EditError::NotAllowed | EditError::NotFound | EditError::TooDeep
+                    ),
+                    "unexpected edit error: {e:?}"
+                );
+                self.refused_too_deep = e == EditError::TooDeep;
+                return None;
+            }
+        };
+        // The document before the edit becomes the snapshot: one copy per
+        // edit (the draft), none for the history.
+        let before = std::mem::replace(&mut self.doc, draft);
+        self.history.record(before);
         self.bump_revision();
         Some(out)
     }

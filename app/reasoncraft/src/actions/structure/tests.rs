@@ -164,17 +164,19 @@ fn connect_mode_starts_for_parked_items_and_ends_on_move() {
         .add_card(Parent::Box(q), CardKind::Reason, "deep")
         .unwrap();
     let mut a = app_with(d);
-    // Only top-level parking items (or the premise of a parked card).
+    // Every item but the root (a premise moves its card), connected or
+    // not, at the top of the parking area or deeper (ROB-5).
     for (sel, ok) in [
         (Item::Box(root), false),
-        (Item::Card(ca), false),
-        (Item::Box(deep), false),
+        (Item::Card(ca), true),
+        (Item::Box(deep), true),
         (Item::Card(parked), true),
         (Item::Box(q), true),
     ] {
         a.tabs[0].selection = Some(sel);
         assert_eq!(is_enabled(tab(&a), &Action::StartConnect), ok, "{sel:?}");
     }
+    a.tabs[0].selection = Some(Item::Box(q));
     apply(&mut a, Action::StartConnect);
     assert_eq!(tab(&a).connect_mode, Some(Item::Card(parked)));
     assert_eq!(tab(&a).selection, Some(Item::Box(root)), "picks in the map");
@@ -308,7 +310,7 @@ fn move_that_only_changes_hidden_order_is_disabled() {
     assert!(is_enabled(tab(&a), &mv(Item::Card(ca), 2)));
 }
 
-/// The inline editor losing focus (to the ribbon's "Connect to…") must not
+/// The inline editor losing focus (to the ribbon's "Move to…") must not
 /// end the mode it just started; the edit is committed first.
 #[test]
 fn stop_editing_keeps_connect_mode() {
@@ -331,4 +333,52 @@ fn stop_editing_keeps_connect_mode() {
     apply(&mut a, Action::StopEditing);
     assert_eq!(tab(&a).connect_mode, Some(note));
     assert_eq!(tab(&a).doc.boxes[&nb].text, "typed");
+}
+
+/// "Move to…" moves a connected card by keyboard: Enter on another box
+/// moves it there as one step; its own branch is refused (no cycle).
+/// "Move to parking" parks the selection (ROB-5).
+#[test]
+fn move_to_works_for_connected_items_and_park_parks() {
+    let (d, [ca, cb, _]) = three_cards();
+    let root = d.root;
+    let mut a = app_with(d);
+    let pa = tab(&a).doc.cards[&ca].premises[0];
+    let pb = tab(&a).doc.cards[&cb].premises[0];
+    a.tabs[0].selection = Some(Item::Box(pa));
+    apply(&mut a, Action::StartConnect);
+    assert_eq!(
+        tab(&a).connect_mode,
+        Some(Item::Card(ca)),
+        "a premise moves its card"
+    );
+    // Its own premise is no target.
+    let into_itself = Action::Move {
+        item: Item::Card(ca),
+        to: Parent::Box(pa),
+        index: None,
+    };
+    assert!(!is_enabled(tab(&a), &into_itself));
+    let to_b = Action::Move {
+        item: Item::Card(ca),
+        to: Parent::Box(pb),
+        index: None,
+    };
+    apply(&mut a, to_b);
+    assert_eq!(tab(&a).connect_mode, None);
+    assert_eq!(tab(&a).doc.boxes[&pb].children, vec![Item::Card(ca)]);
+    assert_eq!(tab(&a).history.undo.len(), 1);
+
+    // Move to parking: the card (of the selected premise) leaves the map.
+    a.tabs[0].selection = Some(Item::Box(pa));
+    assert!(is_enabled(tab(&a), &Action::MoveToParking));
+    apply(&mut a, Action::MoveToParking);
+    assert_eq!(tab(&a).doc.parking, vec![Item::Card(ca)]);
+    assert!(tab(&a).doc.boxes[&pb].children.is_empty());
+    assert_eq!(tab(&a).selection, Some(Item::Card(ca)));
+    assert_eq!(tab(&a).history.undo.len(), 2);
+    // Already parked, or the root: nothing to do.
+    assert!(!is_enabled(tab(&a), &Action::MoveToParking));
+    a.tabs[0].selection = Some(Item::Box(root));
+    assert!(!is_enabled(tab(&a), &Action::MoveToParking));
 }

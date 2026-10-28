@@ -51,7 +51,7 @@ fn native_options(
         .with_title(reasoncraft::i18n::t("app.name"))
         .with_app_id("nl.reasoncraft.app")
         .with_inner_size([1280.0, 800.0])
-        .with_min_inner_size([800.0, 500.0]);
+        .with_min_inner_size(reasoncraft::app::MIN_WINDOW);
     viewport = if cfg!(target_os = "macos") {
         // Keep the native traffic lights; our title bar draws under them.
         viewport

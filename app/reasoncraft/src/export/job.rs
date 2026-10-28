@@ -10,51 +10,60 @@
 use std::collections::VecDeque;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::Duration;
 
 use reasoncraft_core::outline::{OutlineOptions, build_outline};
 use reasoncraft_core::outline_md::{outline_markdown, outline_plain_text_lang};
-use reasoncraft_core::{Assets, Document, to_argdown};
+use reasoncraft_core::{Assets, Document, file, to_argdown};
 use reasoncraft_core::{essay_markdown, essay_plain_text};
+use resvg::usvg::fontdb;
 
 use super::docx::{essay_docx, outline_docx};
 use super::{
-    ClipboardSink, ExportError, ExportFormat, ExportOptions, PageSetup, PngOptions, SvgOptions,
-    bundled_font_family, copy_scene_to_clipboard, scene_to_png, scene_to_svg, shared_fontdb,
-    svg_to_pdf, write_print_file,
+    ClipboardSink, ExportError, ExportOptions, ImageFormat, PageSetup, PngOptions, SvgOptions,
+    TextFormat, bundled_font_family, copy_scene_to_clipboard, scene_to_png, scene_to_svg,
+    shared_fontdb, svg_to_pdf, write_print_file,
 };
 use crate::i18n::t_lang;
-use crate::jobs::{Job, JobState};
+use crate::jobs::{Hold, Job, JobState};
 use crate::scene::Scene;
 use crate::theme::Tokens;
 
 /// A clipboard the worker can reach.
 pub type SharedClipboard = Arc<Mutex<dyn ClipboardSink + Send>>;
 
-/// A snapshot of what an export draws from.
-pub enum Snapshot {
-    /// A picture of the map: its scene (drawn at zoom 1), the images it
-    /// shows and the colours it is drawn in.
-    Scene {
-        scene: Scene,
-        assets: Assets,
-        tokens: Tokens,
-    },
-    /// The document, for text exports, with the outline's switches.
-    Doc {
-        doc: Box<Document>,
-        outline: OutlineOptions,
-    },
+/// A picture of the map: its scene (drawn at zoom 1), the images it shows
+/// and the colours it is drawn in.
+pub struct Picture {
+    pub scene: Scene,
+    pub assets: Assets,
+    pub tokens: Tokens,
 }
 
-/// Where an export goes.
-pub enum Target {
-    File(PathBuf),
-    Clipboard(SharedClipboard),
-    /// A print file in this folder, opened afterwards by the UI thread.
-    Print(PathBuf),
+/// What an export makes, from a snapshot taken on the UI thread, and where
+/// it goes. Each kind holds only what it is made from, so no format meets
+/// a snapshot it cannot be made from.
+pub enum Make {
+    /// An image file of the map.
+    Image {
+        format: ImageFormat,
+        picture: Picture,
+        path: PathBuf,
+    },
+    /// A PDF print file in folder `dir`, opened afterwards by the UI thread.
+    Print { picture: Picture, dir: PathBuf },
+    /// The map as a PNG on the clipboard.
+    Copy {
+        picture: Picture,
+        sink: SharedClipboard,
+    },
+    /// A text file of the document, with the outline's switches.
+    Text {
+        format: TextFormat,
+        doc: Box<Document>,
+        outline: OutlineOptions,
+        path: PathBuf,
+    },
 }
 
 /// How an export ended.
@@ -73,11 +82,9 @@ pub enum Outcome {
 
 /// One export, ready to run on a worker.
 pub struct ExportWork {
-    pub format: ExportFormat,
     pub options: ExportOptions,
     pub page: PageSetup,
-    pub snapshot: Snapshot,
-    pub target: Target,
+    pub make: Make,
 }
 
 impl ExportWork {
@@ -89,88 +96,110 @@ impl ExportWork {
     /// Like [`Self::run`], writing the file only while `gate` is open.
     fn run_gated(self, gate: &WriteGate) -> Result<Outcome, ExportError> {
         let fonts = shared_fontdb();
-        let note = match (&self.snapshot, self.format) {
-            (Snapshot::Doc { doc, .. }, ExportFormat::Argdown)
-                if doc.boxes.values().any(|b| b.image.is_some()) =>
-            {
-                Some("export.argdown_no_images")
-            }
-            _ => None,
-        };
-        let bytes = match (&self.snapshot, self.format) {
-            (
-                Snapshot::Scene {
+        let (opts, page) = (&self.options, &self.page);
+        let (bytes, print, path, note) = match self.make {
+            Make::Copy { picture, sink } => {
+                // A copy that panicked earlier leaves nothing half done in
+                // the sink, so a poisoned lock is safe to take over.
+                let mut sink = sink.lock().unwrap_or_else(|e| e.into_inner());
+                let Picture {
                     scene,
                     assets,
                     tokens,
-                },
-                format,
-            ) => {
-                if let Target::Clipboard(sink) = &self.target {
-                    let opts = png_options(&self.options);
-                    // A copy that panicked earlier leaves nothing half done in
-                    // the sink, so a poisoned lock is safe to take over.
-                    let mut sink = sink.lock().unwrap_or_else(|e| e.into_inner());
-                    copy_scene_to_clipboard(scene, assets, tokens, &opts, &fonts, &mut *sink)?;
-                    return Ok(Outcome::Copied);
-                }
-                match format {
-                    ExportFormat::Png => {
-                        scene_to_png(scene, assets, tokens, &png_options(&self.options), &fonts)?
-                    }
-                    ExportFormat::Svg => {
-                        let opts = SvgOptions {
-                            text_as_paths: self.options.svg_outlines,
-                            ..SvgOptions::new(tokens)
-                        };
-                        scene_to_svg(scene, assets, &opts, &bundled_font_family()).into_bytes()
-                    }
-                    // The PDF embeds the fonts and keeps text selectable.
-                    ExportFormat::Pdf => {
-                        let opts = SvgOptions::for_pdf(tokens);
-                        let svg = scene_to_svg(scene, assets, &opts, &bundled_font_family());
-                        svg_to_pdf(&svg, &self.page, &fonts)?
-                    }
-                    other => return Err(ExportError::Unsupported(other)),
-                }
+                } = &picture;
+                let png = png_options(opts);
+                copy_scene_to_clipboard(scene, assets, tokens, &png, &fonts, &mut *sink)?;
+                return Ok(Outcome::Copied);
             }
-            (Snapshot::Doc { doc, outline }, format) => {
-                let lines = build_outline(doc, outline);
-                let lang = doc.meta.language.as_str();
-                let label = |key: &str| t_lang(lang, key);
-                match format {
-                    ExportFormat::OutlineMarkdown => {
-                        outline_markdown(&lines, outline, lang, &label).into_bytes()
-                    }
-                    ExportFormat::OutlineText => {
-                        outline_plain_text_lang(&lines, outline, lang, &label).into_bytes()
-                    }
-                    ExportFormat::OutlineDocx => {
-                        outline_docx(&lines, outline, lang, &doc.meta.author)?
-                    }
-                    ExportFormat::EssayMarkdown => essay_markdown(doc, lang).into_bytes(),
-                    ExportFormat::EssayText => essay_plain_text(doc, lang).into_bytes(),
-                    ExportFormat::EssayDocx => essay_docx(doc, lang)?,
-                    ExportFormat::Argdown => to_argdown(doc).into_bytes(),
-                    other => return Err(ExportError::Unsupported(other)),
-                }
+            Make::Image {
+                format,
+                picture,
+                path,
+            } => {
+                let bytes = image_bytes(format, &picture, opts, page, &fonts)?;
+                (bytes, false, path, None)
+            }
+            Make::Print { picture, dir } => {
+                let bytes = image_bytes(ImageFormat::Pdf, &picture, opts, page, &fonts)?;
+                (bytes, true, dir, None)
+            }
+            Make::Text {
+                format,
+                doc,
+                outline,
+                path,
+            } => {
+                let note = (format == TextFormat::Argdown
+                    && doc.boxes.values().any(|b| b.image.is_some()))
+                .then_some("export.argdown_no_images");
+                (text_bytes(format, &doc, &outline)?, false, path, note)
             }
         };
         // Held until the file is complete, so a closed gate never leaves a
         // half-written file behind.
         let _writing = gate.enter()?;
-        match self.target {
-            Target::File(path) => {
-                write_atomically(&path, &bytes)?;
-                Ok(match note {
-                    Some(key) => Outcome::SavedWithNote(path, key),
-                    None => Outcome::Saved(path),
-                })
-            }
-            Target::Print(dir) => Ok(Outcome::ReadyToPrint(write_print_file(&bytes, &dir)?)),
-            Target::Clipboard(_) => Err(ExportError::Unsupported(self.format)),
+        if print {
+            return Ok(Outcome::ReadyToPrint(write_print_file(&bytes, &path)?));
         }
+        write_atomically(&path, &bytes)?;
+        Ok(match note {
+            Some(key) => Outcome::SavedWithNote(path, key),
+            None => Outcome::Saved(path),
+        })
     }
+}
+
+/// `picture` as a PNG, an SVG or a PDF (which embeds the fonts and keeps
+/// text selectable).
+fn image_bytes(
+    format: ImageFormat,
+    picture: &Picture,
+    options: &ExportOptions,
+    page: &PageSetup,
+    fonts: &Arc<fontdb::Database>,
+) -> Result<Vec<u8>, ExportError> {
+    let Picture {
+        scene,
+        assets,
+        tokens,
+    } = picture;
+    Ok(match format {
+        ImageFormat::Png => scene_to_png(scene, assets, tokens, &png_options(options), fonts)?,
+        ImageFormat::Svg => {
+            let opts = SvgOptions {
+                text_as_paths: options.svg_outlines,
+                ..SvgOptions::new(tokens)
+            };
+            scene_to_svg(scene, assets, &opts, &bundled_font_family()).into_bytes()
+        }
+        ImageFormat::Pdf => {
+            let opts = SvgOptions::for_pdf(tokens);
+            let svg = scene_to_svg(scene, assets, &opts, &bundled_font_family());
+            svg_to_pdf(&svg, page, fonts)?
+        }
+    })
+}
+
+/// `doc` as an outline, an essay or Argdown, in the document's language.
+fn text_bytes(
+    format: TextFormat,
+    doc: &Document,
+    outline: &OutlineOptions,
+) -> Result<Vec<u8>, ExportError> {
+    let lines = build_outline(doc, outline);
+    let lang = doc.meta.language.as_str();
+    let label = |key: &str| t_lang(lang, key);
+    Ok(match format {
+        TextFormat::OutlineMarkdown => outline_markdown(&lines, outline, lang, &label).into_bytes(),
+        TextFormat::OutlineText => {
+            outline_plain_text_lang(&lines, outline, lang, &label).into_bytes()
+        }
+        TextFormat::OutlineDocx => outline_docx(&lines, outline, lang, &doc.meta.author)?,
+        TextFormat::EssayMarkdown => essay_markdown(doc, lang).into_bytes(),
+        TextFormat::EssayText => essay_plain_text(doc, lang).into_bytes(),
+        TextFormat::EssayDocx => essay_docx(doc, lang)?,
+        TextFormat::Argdown => to_argdown(doc).into_bytes(),
+    })
 }
 
 fn png_options(options: &ExportOptions) -> PngOptions {
@@ -180,83 +209,10 @@ fn png_options(options: &ExportOptions) -> PngOptions {
     }
 }
 
-/// How many names in a row may be refused with `PermissionDenied` before
-/// [`create_first_new`] gives up (a folder that refuses every name).
-const MAX_DENIED_NAMES: usize = 16;
-
-/// Makes a new, empty file at the first of `candidates` that does not
-/// exist yet. `create_new` means an existing file (or a link) with that
-/// name is never opened, let alone overwritten. `private`: on Unix, only
-/// the user may read the file (mode 0600).
-pub(super) fn create_first_new(
-    candidates: impl IntoIterator<Item = PathBuf>,
-    private: bool,
-) -> std::io::Result<(PathBuf, std::fs::File)> {
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    if private {
-        use std::os::unix::fs::OpenOptionsExt as _;
-        options.mode(0o600);
-    }
-    #[cfg(not(unix))]
-    let _ = private;
-    create_first_new_with(candidates, |path| options.open(path))
-}
-
-/// [`create_first_new`] making each file with `open`. A name that exists
-/// is skipped, and so is one refused with `PermissionDenied`: Windows
-/// refuses a name whose file is still being deleted. After
-/// [`MAX_DENIED_NAMES`] refusals in a row that error is returned.
-pub(super) fn create_first_new_with(
-    candidates: impl IntoIterator<Item = PathBuf>,
-    mut open: impl FnMut(&Path) -> std::io::Result<std::fs::File>,
-) -> std::io::Result<(PathBuf, std::fs::File)> {
-    use std::io::ErrorKind;
-    let mut denied = 0;
-    for path in candidates {
-        match open(&path) {
-            Ok(file) => return Ok((path, file)),
-            Err(e) if e.kind() == ErrorKind::AlreadyExists => denied = 0,
-            Err(e) if e.kind() == ErrorKind::PermissionDenied && denied + 1 < MAX_DENIED_NAMES => {
-                denied += 1;
-            }
-            Err(e) => return Err(e),
-        }
-    }
-    Err(std::io::Error::other("no free file name"))
-}
-
-/// Makes a new, empty temporary file next to `path`, named
-/// `<name>.<pid>-<counter>.tmp`; a file that already has that name (the
-/// user's, or another export's) is never touched.
-fn create_temp(path: &Path) -> std::io::Result<(PathBuf, std::fs::File)> {
-    static COUNTER: AtomicUsize = AtomicUsize::new(0);
-    let pid = std::process::id();
-    let candidates = std::iter::repeat_with(|| {
-        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let mut name = path.as_os_str().to_owned();
-        name.push(format!(".{pid}-{n}.tmp"));
-        PathBuf::from(name)
-    });
-    create_first_new(candidates, false)
-}
-
 /// Writes `bytes` to `path` through a temporary file next to it, so an
 /// existing file is replaced whole or not at all.
 pub(super) fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), ExportError> {
-    let (tmp, mut file) = create_temp(path)?;
-    let result = file
-        .write_all(bytes)
-        .and_then(|()| file.sync_all())
-        .and_then(|()| {
-            drop(file);
-            std::fs::rename(&tmp, path)
-        });
-    if result.is_err() {
-        let _ = std::fs::remove_file(&tmp);
-    }
-    Ok(result?)
+    Ok(file::atomic_write(path, false, |f| f.write_all(bytes))?)
 }
 
 /// Lets exports write their files until it is closed. Closing waits for a
@@ -296,8 +252,9 @@ pub enum Notice {
 /// the status bar says about the last one.
 pub struct ExportJobs {
     running: Vec<Job<Result<Outcome, ExportError>>>,
-    /// Wait this long before each export starts (tests only).
-    pub delay: Option<Duration>,
+    /// Hold each export back until released before it starts (tests
+    /// only).
+    pub hold: Option<Hold>,
     /// Where "Copy as image" puts the image: the system clipboard, or a
     /// fake in tests.
     pub clipboard: SharedClipboard,
@@ -311,10 +268,17 @@ pub struct ExportJobs {
 }
 
 impl ExportJobs {
+    /// The text on the clipboard Copy as image uses, if any.
+    pub fn read_clipboard_text(&self) -> Option<String> {
+        // A copy that panicked earlier leaves nothing half done.
+        let mut board = self.clipboard.lock().unwrap_or_else(|e| e.into_inner());
+        board.text()
+    }
+
     pub fn new(clipboard: SharedClipboard, print_dir: PathBuf) -> Self {
         Self {
             running: Vec::new(),
-            delay: None,
+            hold: None,
             clipboard,
             print_dir,
             notice: None,
@@ -338,7 +302,7 @@ impl ExportJobs {
         self.notice = None;
         let gate = self.gate.clone();
         self.running
-            .push(Job::spawn(self.delay, move || work.run_gated(&gate)));
+            .push(Job::spawn(self.hold.clone(), move || work.run_gated(&gate)));
     }
 
     /// For quitting while exports run: no export writes a file from now

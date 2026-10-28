@@ -143,8 +143,16 @@ fn text_field(
         ui.memory_mut(|m| m.request_focus(id));
     }
     let mut text = snippet.text.clone();
+    // The wheel scrolls the list, not a long text it passes over; it
+    // scrolls the text while it is being edited (the scroll bar always).
+    let editing = focus || ui.memory(|m| m.has_focus(id));
+    let wheel = egui::scroll_area::ScrollSource {
+        mouse_wheel: editing,
+        ..Default::default()
+    };
     let output = ScrollArea::vertical()
         .id_salt(("snippet_scroll", snippet.id))
+        .scroll_source(wheel)
         .max_height(TEXT_MAX_H)
         .auto_shrink([false, true])
         .show(ui, |ui| {
@@ -158,11 +166,9 @@ fn text_field(
             edit.show(ui)
         })
         .inner;
+    // A new snippet at the end of a long list comes into view: the list
+    // scrolls to the row that takes the focus (see `virtual_rows`).
     let resp = output.response.response;
-    if focus {
-        // A new snippet at the end of a long list comes into view.
-        resp.scroll_to_me(None);
-    }
     let label = t("snippet.text");
     resp.widget_info(|| WidgetInfo::labeled(Role::MultilineTextInput, true, &label));
     if resp.changed() {

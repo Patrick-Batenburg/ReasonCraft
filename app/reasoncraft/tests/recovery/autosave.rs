@@ -1,11 +1,10 @@
 //! Autosave while the app runs: when copies are written and removed.
 
-use std::time::Duration;
-
 use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{self, Action, UnsavedChoice};
 use reasoncraft::i18n::t;
+use reasoncraft::jobs::Hold;
 use reasoncraft::recovery;
 
 use super::*;
@@ -85,6 +84,7 @@ fn save_removes_recovery() {
     let copy = recovery_file(&app, 0);
     assert!(copy.is_file());
     actions::apply(&mut app, Action::Save);
+    reasoncraft::file_ops::wait_for_saves(&mut app);
     assert!(!app.tabs[0].is_dirty());
     recovery::tick(&mut app, 50.0);
     wait(&app);
@@ -136,17 +136,19 @@ fn autosave_interval_clamped() {
 fn autosave_never_blocks_ui() {
     let rec = tempfile::tempdir().unwrap();
     let mut app = app_with_recovery(rec.path());
+    let hold = Hold::default();
     app.recovery
         .as_mut()
         .unwrap()
-        .set_write_delay(Some(Duration::from_millis(400)));
+        .set_write_hold(Some(hold.clone()));
     set_claim(&mut app, "Robots help");
     recovery::tick(&mut app, 0.0);
     recovery::tick(&mut app, 46.0);
-    // The write runs on a worker: tick returned while it is pending.
+    // The write runs on a worker: tick returned while it is held.
     let copy = recovery_file(&app, 0);
     assert!(app.recovery.as_ref().unwrap().busy());
     assert!(!copy.exists());
+    hold.release();
     wait(&app);
     assert!(!app.recovery.as_ref().unwrap().busy());
     assert!(copy.is_file());
@@ -167,7 +169,7 @@ fn unavailable_recovery_folder_is_noted() {
 
 #[test]
 fn settings_page_sets_the_autosave_interval() {
-    let mut h = harness(ReasonCraftApp::new_for_test());
+    let mut h = crate::common::build(ReasonCraftApp::new_for_test());
     h.state_mut().ribbon_tab = reasoncraft::app::RibbonTab::File;
     h.run();
     h.get_by_label(&t("backstage.settings")).click();

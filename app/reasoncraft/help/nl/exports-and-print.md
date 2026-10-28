@@ -8,7 +8,7 @@ Alles om in te leveren en te delen staat op het tabblad **Exporteren** van het l
 - PNG: kies een schaal van 1× tot 4×, en eventueel een doorzichtige achtergrond. Een PNG is hooguit 16.384 pixels breed of hoog; gebruik voor een heel grote kaart SVG of PDF.
 - SVG: tekst wordt standaard omgezet in contouren, zodat de tekening er ook op een computer zonder het lettertype hetzelfde uitziet. Zet het vinkje uit om tekst te houden die je kunt selecteren.
 - PDF: de tekst blijft selecteerbaar. **Pagina-instelling…** stelt het papier in (A4 of Letter), de afdrukstand, de marge en hoe de kaart past: de hele kaart op één pagina, of verdeeld over pagina's op een schaal die je kiest.
-- **Kopiëren als beeld** zet een afbeelding van de kaart op het klembord, in de kleuren die je ziet, om in een ander programma te plakken.
+- **Kopiëren als beeld** zet een afbeelding op het klembord om in een ander programma te plakken. Het gebruikt de keuzes die je het laatst in het exportvenster maakte (hele kaart of selectie, licht of huidig thema); tot je die maakt, kopieert het de hele kaart in het lichte thema.
 
 Een export toont wat de kaart toont, zonder wat alleen op het scherm zin heeft: de selectie, het **+**-knopje, de badges van opmerkingen, linksymbolen, gemarkeerde zoekresultaten, de minikaart en het stippenraster. Wat bij Niet verbonden staat, gaat niet mee.
 

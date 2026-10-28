@@ -13,7 +13,7 @@ An example. Claim: "Schools should forbid phones in class." Reason: "Phones dist
 How the words are compared:
 
 - Short words (fewer than four letters) and common words such as "the", "should" or "with" do not count.
-- Close forms count as the same word, such as "robot" and "robots". Words under four letters are skipped, so "jobs" in the claim can be reported even when a premise says "job".
+- Close forms count as the same word, such as "robot" and "robots". Words under four letters are skipped, so "jobs" in the claim can be reported even when a premise says "job". Forms that differ early in the word, such as "mouse" and "mice", count as two words.
 - The check looks at reasons and objections aimed at a claim or premise, not at cards aimed at a whole card.
 - It uses the language of the document (English or Dutch). See [Languages and spelling](languages).
 

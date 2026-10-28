@@ -42,6 +42,7 @@ fn description(action: &Action) -> Option<&'static str> {
         A::JumpParking => "help.key.jump_parking",
         A::CommentSelected => "help.key.comments",
         A::StartConnect => "help.key.connect",
+        A::OpenSelectedLink => "help.key.open_link",
         A::Reorder(Dir::Left) => "help.key.move_left",
         A::Reorder(Dir::Right) => "help.key.move_right",
         A::Reorder(Dir::Up) => "help.key.move_up",
@@ -51,6 +52,9 @@ fn description(action: &Action) -> Option<&'static str> {
         A::Rate(Rate::Low) => "help.key.rate_low",
         A::Rate(Rate::Clear) => "help.key.rate_clear",
         A::ClearEvaluation(ClearScope::Map) => "help.key.clear_map",
+        A::Cut => "help.key.cut",
+        A::Copy => "help.key.copy",
+        A::Paste(_) => "help.key.paste",
         A::Undo => "help.key.undo",
         A::Redo => "help.key.redo",
         A::Save => "help.key.save",
@@ -71,6 +75,9 @@ fn description(action: &Action) -> Option<&'static str> {
         A::NextPane => "help.key.next_pane",
         A::PrevPane => "help.key.prev_pane",
         A::ContextHelp => "help.key.help",
+        A::NextTab => "help.key.next_tab",
+        A::PrevTab => "help.key.prev_tab",
+        A::CloseActiveTab => "help.key.close_tab",
         _ => return None,
     })
 }

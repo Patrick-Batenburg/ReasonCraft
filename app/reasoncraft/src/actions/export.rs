@@ -10,12 +10,11 @@ use std::path::PathBuf;
 use eframe::egui;
 use reasoncraft_core::{Item, layout};
 
-use super::Action;
 use crate::app::ReasonCraftApp;
 use crate::canvas::measure::{EguiMeasure, MeasureCache};
 use crate::export::{
     ExportError, ExportFormat, ExportOptions, ExportRequest, ExportScope, ExportTheme, ExportWork,
-    Notice, Outcome, Snapshot, Target,
+    FormatKind, Make, Notice, Outcome, PageSetup, Picture,
 };
 use crate::file_ops::{Modal, with_extension};
 use crate::i18n::{FluentArgs, language_of, t, t_args};
@@ -23,88 +22,100 @@ use crate::scene::{Scene, SceneOptions, build_scene};
 use crate::shell::export_dialog::ExportDialog;
 use crate::theme::Tokens;
 
-/// Carry out an export action.
-pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
-    match action {
-        Action::OpenExport(format) if format.is_image() => {
-            let mut options = app.settings.export;
-            if app.active_tab().selection.is_none() {
-                options.scope = ExportScope::Map;
-            }
-            let dialog = ExportDialog::export(format, options, app.settings.page_setup);
-            app.export_dialog = Some(dialog);
+/// Open the export dialog for an image format; a text format asks for a
+/// file right away.
+pub(super) fn open(app: &mut ReasonCraftApp, format: ExportFormat) {
+    if format.is_image() {
+        let mut options = app.settings.export;
+        if app.active_tab().selection.is_none() {
+            options.scope = ExportScope::Map;
         }
-        Action::OpenExport(format) => {
-            let request = ExportRequest {
-                format,
-                options: app.settings.export,
-                page: app.settings.page_setup,
-            };
-            run(app, request);
-        }
-        Action::RunExport(request) => {
-            app.export_dialog = None;
-            app.settings.export = request.options;
-            if request.format == ExportFormat::Pdf {
-                app.settings.page_setup = request.page;
-            }
-            run(app, request);
-        }
-        Action::CloseExportDialog => app.export_dialog = None,
-        Action::OpenPageSetup => {
-            app.export_dialog = Some(ExportDialog::page_setup(app.settings.page_setup));
-        }
-        Action::SetPageSetup(page) => {
-            app.settings.page_setup = page;
-            app.export_dialog = None;
-        }
-        Action::CopyAsImage => {
-            let tokens = tokens_for(app, app.settings.export.theme);
-            let only = scope_item(app, app.settings.export.scope);
-            let snapshot = scene_snapshot(app, only, tokens);
-            let target = Target::Clipboard(app.export.clipboard.clone());
-            let options = ExportOptions {
-                png_scale: 2,
-                transparent: false,
-                ..ExportOptions::default()
-            };
-            start(app, ExportFormat::Png, options, snapshot, target);
-        }
-        Action::Print => {
-            let options = app.settings.export;
-            let tokens = tokens_for(app, options.theme);
-            let snapshot = scene_snapshot(app, None, tokens);
-            let target = Target::Print(app.export.print_dir.clone());
-            start(app, ExportFormat::Pdf, options, snapshot, target);
-        }
-        Action::ResolveExportReplace(replace) => {
-            let Some(Modal::ConfirmExportReplace { path, request }) = app.modal.take() else {
-                return;
-            };
-            if replace {
-                export_to(app, request, path);
-            }
-        }
-        Action::ResolveClosingExports(quit) => {
-            if app.modal != Some(Modal::ExportsRunning) {
-                return;
-            }
-            app.modal = None;
-            if quit {
-                app.export.stop();
-                app.confirm_close();
-            }
-        }
-        Action::OpenExportFolder => {
-            let Some(Notice::Saved(path)) = &app.export.notice else {
-                return;
-            };
-            let Some(dir) = path.parent() else { return };
-            if let Err(e) = app.link_opener.open(&dir.to_string_lossy()) {
-                show_error(app, ExportError::Open(e));
-            }
-        }
-        _ => {}
+        let dialog = ExportDialog::export(format, options, app.settings.page_setup);
+        app.export_dialog = Some(dialog);
+    } else {
+        let request = ExportRequest {
+            format,
+            options: app.settings.export,
+            page: app.settings.page_setup,
+        };
+        run(app, request);
+    }
+}
+
+/// Remember the request's options, ask where to save and start the export.
+pub(super) fn run_request(app: &mut ReasonCraftApp, request: ExportRequest) {
+    app.export_dialog = None;
+    app.settings.export = request.options;
+    if request.format == ExportFormat::Pdf {
+        app.settings.page_setup = request.page;
+    }
+    run(app, request);
+}
+
+pub(super) fn open_page_setup(app: &mut ReasonCraftApp) {
+    app.export_dialog = Some(ExportDialog::page_setup(app.settings.page_setup));
+}
+
+pub(super) fn set_page_setup(app: &mut ReasonCraftApp, page: PageSetup) {
+    app.settings.page_setup = page;
+    app.export_dialog = None;
+}
+
+/// Put the map on the clipboard as an image (2x, in the export scope and
+/// theme).
+pub(super) fn copy_as_image(app: &mut ReasonCraftApp) {
+    let tokens = tokens_for(app, app.settings.export.theme);
+    let only = scope_item(app, app.settings.export.scope);
+    let picture = picture(app, only, tokens);
+    let sink = app.export.clipboard.clone();
+    let options = ExportOptions {
+        png_scale: 2,
+        transparent: false,
+        ..ExportOptions::default()
+    };
+    start(app, options, Make::Copy { picture, sink });
+}
+
+/// Make a PDF with the saved page setup and open it to print.
+pub(super) fn print(app: &mut ReasonCraftApp) {
+    let options = app.settings.export;
+    let tokens = tokens_for(app, options.theme);
+    let picture = picture(app, None, tokens);
+    let dir = app.export.print_dir.clone();
+    start(app, options, Make::Print { picture, dir });
+}
+
+/// The answer to "replace the existing file?" for an export.
+pub(super) fn resolve_replace(app: &mut ReasonCraftApp, replace: bool) {
+    let Some(Modal::ConfirmExportReplace { path, request }) = app.modal.take() else {
+        return;
+    };
+    if replace {
+        export_to(app, request, path);
+    }
+}
+
+/// The answer to "finishing exports" while the window closes: true quits
+/// now, false keeps the window open.
+pub(super) fn resolve_closing(app: &mut ReasonCraftApp, quit: bool) {
+    if app.modal != Some(Modal::ExportsRunning) {
+        return;
+    }
+    app.modal = None;
+    if quit {
+        app.export.stop();
+        app.confirm_close();
+    }
+}
+
+/// Show the folder of the last exported file.
+pub(super) fn open_folder(app: &mut ReasonCraftApp) {
+    let Some(Notice::Saved(path)) = &app.export.notice else {
+        return;
+    };
+    let Some(dir) = path.parent() else { return };
+    if let Err(e) = app.link_opener.open(&dir.to_string_lossy()) {
+        show_error(app, ExportError::Open(e));
     }
 }
 
@@ -113,7 +124,7 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
 /// replacing it: the dialog only checked the name without it.
 fn run(app: &mut ReasonCraftApp, request: ExportRequest) {
     let format = request.format;
-    let suggested = format!("{}.{}", app.active_tab().name(), format.extension());
+    let suggested = format!("{}.{}", app.active_tab().file_stem(), format.extension());
     let Some(chosen) = app.dialogs.pick_export(format, &suggested) else {
         return;
     };
@@ -132,38 +143,37 @@ fn export_to(app: &mut ReasonCraftApp, request: ExportRequest, path: PathBuf) {
         options,
         page,
     } = request;
-    let snapshot = if format.is_image() {
-        let only = scope_item(app, options.scope);
-        scene_snapshot(app, only, tokens_for(app, options.theme))
-    } else {
-        Snapshot::Doc {
+    let make = match format.kind() {
+        FormatKind::Image(format) => {
+            let only = scope_item(app, options.scope);
+            let picture = picture(app, only, tokens_for(app, options.theme));
+            Make::Image {
+                format,
+                picture,
+                path,
+            }
+        }
+        FormatKind::Text(format) => Make::Text {
+            format,
             doc: Box::new(app.active_tab().doc.clone()),
             outline: app.settings.outline,
-        }
+            path,
+        },
     };
     app.export.start(ExportWork {
-        format,
         options,
         page,
-        snapshot,
-        target: Target::File(path),
+        make,
     });
 }
 
-fn start(
-    app: &mut ReasonCraftApp,
-    format: ExportFormat,
-    options: ExportOptions,
-    snapshot: Snapshot,
-    target: Target,
-) {
+/// Start `make` with the saved page setup.
+fn start(app: &mut ReasonCraftApp, options: ExportOptions, make: Make) {
     let page = app.settings.page_setup;
     app.export.start(ExportWork {
-        format,
         options,
         page,
-        snapshot,
-        target,
+        make,
     });
 }
 
@@ -186,7 +196,7 @@ fn tokens_for(app: &ReasonCraftApp, theme: ExportTheme) -> Tokens {
 
 /// The active map (or `only` and what is under it) as the canvas shows
 /// it, at zoom 1 in the colours of `tokens`, with a copy of its images.
-fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) -> Snapshot {
+fn picture(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) -> Picture {
     let ReasonCraftApp {
         tabs,
         active,
@@ -234,7 +244,7 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
         shapes: Vec::new(),
         bounds: egui::Rect::ZERO,
     });
-    Snapshot::Scene {
+    Picture {
         scene,
         assets: tab.assets.clone(),
         tokens,

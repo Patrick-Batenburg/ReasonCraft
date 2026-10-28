@@ -4,39 +4,48 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InvalidLink;
 
-/// The invisible format characters (Unicode general category Cf, as of
-/// Unicode 16, plus the unassigned U+2065 inside a Cf block): bidi
-/// controls, zero-width marks, the soft hyphen, the BOM, Arabic and
-/// Mongolian marks, interlinear annotations and tag characters. Any of
-/// them can make a link read as another.
-const FORMAT_CHARS: &[(char, char)] = &[
-    ('\u{00AD}', '\u{00AD}'),
-    ('\u{0600}', '\u{0605}'),
-    ('\u{061C}', '\u{061C}'),
-    ('\u{06DD}', '\u{06DD}'),
-    ('\u{070F}', '\u{070F}'),
-    ('\u{0890}', '\u{0891}'),
-    ('\u{08E2}', '\u{08E2}'),
-    ('\u{180E}', '\u{180E}'),
-    ('\u{200B}', '\u{200F}'),
-    ('\u{202A}', '\u{202E}'),
-    ('\u{2060}', '\u{206F}'),
-    ('\u{FEFF}', '\u{FEFF}'),
-    ('\u{FFF9}', '\u{FFFB}'),
-    ('\u{110BD}', '\u{110BD}'),
-    ('\u{110CD}', '\u{110CD}'),
-    ('\u{13430}', '\u{1343F}'),
-    ('\u{1BCA0}', '\u{1BCA3}'),
-    ('\u{1D173}', '\u{1D17A}'),
-    ('\u{E0001}', '\u{E0001}'),
-    ('\u{E0020}', '\u{E007F}'),
+/// The invisible marks, as of Unicode 16: every format character
+/// (general category Cf) and every `Default_Ignorable_Code_Point`
+/// (Unicode's `DerivedCoreProperties.txt`), which includes the code
+/// points reserved as ignorable. Bidi controls, zero-width marks, the
+/// soft hyphen, the BOM, Arabic and Mongolian marks, the combining
+/// grapheme joiner, Hangul fillers, Khmer inherent vowels, interlinear
+/// annotations, tag characters and variation selectors. They render as
+/// nothing (or are meant to), so any of them can make a link read as
+/// another. Cf = format character, DI = default ignorable.
+const INVISIBLE_MARKS: &[(char, char)] = &[
+    ('\u{00AD}', '\u{00AD}'),   // Cf, DI: soft hyphen
+    ('\u{034F}', '\u{034F}'),   // DI: combining grapheme joiner
+    ('\u{0600}', '\u{0605}'),   // Cf: Arabic number signs
+    ('\u{061C}', '\u{061C}'),   // Cf, DI: Arabic letter mark
+    ('\u{06DD}', '\u{06DD}'),   // Cf: Arabic end of ayah
+    ('\u{070F}', '\u{070F}'),   // Cf: Syriac abbreviation mark
+    ('\u{0890}', '\u{0891}'),   // Cf: Arabic pound and piastre marks
+    ('\u{08E2}', '\u{08E2}'),   // Cf: Arabic disputed end of ayah
+    ('\u{115F}', '\u{1160}'),   // DI: Hangul choseong and jungseong fillers
+    ('\u{17B4}', '\u{17B5}'),   // DI: Khmer inherent vowels
+    ('\u{180B}', '\u{180F}'),   // Cf, DI: Mongolian variation selectors, vowel separator
+    ('\u{200B}', '\u{200F}'),   // Cf, DI: zero-width marks, LRM, RLM
+    ('\u{202A}', '\u{202E}'),   // Cf, DI: bidi embeddings and overrides
+    ('\u{2060}', '\u{206F}'), // Cf, DI: word joiner, invisible operators, isolates (U+2065 reserved)
+    ('\u{3164}', '\u{3164}'), // DI: Hangul filler
+    ('\u{FE00}', '\u{FE0F}'), // DI: variation selectors
+    ('\u{FEFF}', '\u{FEFF}'), // Cf, DI: byte order mark
+    ('\u{FFA0}', '\u{FFA0}'), // DI: halfwidth Hangul filler
+    ('\u{FFF0}', '\u{FFFB}'), // DI: reserved; Cf: interlinear annotations
+    ('\u{110BD}', '\u{110BD}'), // Cf: Kaithi number sign
+    ('\u{110CD}', '\u{110CD}'), // Cf: Kaithi number sign above
+    ('\u{13430}', '\u{1343F}'), // Cf: Egyptian hieroglyph format controls
+    ('\u{1BCA0}', '\u{1BCA3}'), // Cf, DI: shorthand format controls
+    ('\u{1D173}', '\u{1D17A}'), // Cf, DI: musical beam and slur controls
+    ('\u{E0000}', '\u{E0FFF}'), // Cf, DI: tags, variation selectors 17-256, reserved
 ];
 
-/// An invisible mark: a format character (see [`FORMAT_CHARS`]) or a
-/// variation selector.
+/// An invisible mark (see [`INVISIBLE_MARKS`]).
 fn is_invisible_mark(c: char) -> bool {
-    FORMAT_CHARS.iter().any(|&(lo, hi)| (lo..=hi).contains(&c))
-        || matches!(c, '\u{FE00}'..='\u{FE0F}' | '\u{E0100}'..='\u{E01EF}')
+    INVISIBLE_MARKS
+        .iter()
+        .any(|&(lo, hi)| (lo..=hi).contains(&c))
 }
 
 /// Control characters and invisible marks.
@@ -126,13 +135,26 @@ fn mailto_unsafe_params(s: &str) -> bool {
     })
 }
 
+/// Whether a `mailto:` link, `rest` after the scheme with `address` up to
+/// its `?` or `#`, could make a mail program misuse it: an escaped `?`,
+/// `&` or `#` in the address (a program that decodes before it splits
+/// reads parameters there), or an unsafe parameter (see
+/// [`mailto_unsafe_params`]) before or after decoding.
+fn mailto_unsafe(address: &str, rest: &str) -> bool {
+    let address = address.to_ascii_lowercase();
+    ["%3f", "%26", "%23"].iter().any(|e| address.contains(e))
+        || mailto_unsafe_params(rest)
+        || mailto_unsafe_params(&decoded_lower(rest))
+}
+
 /// Check a typed link. `http://`, `https://` and `mailto:` links are kept;
 /// a bare domain such as `example.org/x` gets `https://`; empty means no
-/// link. Invisible marks (format characters, variation selectors) after
-/// the host are percent-encoded. Anything else (other schemes, UNC paths
-/// and backslashes, spaces, control characters, invisible marks in the
-/// host, `mailto:` links that attach a file or hide escapes in a
-/// parameter name) is refused.
+/// link. Invisible marks (see [`INVISIBLE_MARKS`]) after the host are
+/// percent-encoded. Anything else (other schemes, UNC paths and
+/// backslashes, spaces, control characters, invisible marks in the host,
+/// a user name (`user@`) before an http(s) host, `mailto:` links with an
+/// escaped `?`, `&` or `#` in the address, that attach a file or hide
+/// escapes in a parameter name) is refused.
 pub fn normalize_link(s: &str) -> Result<Option<String>, InvalidLink> {
     let s = s.trim();
     if s.is_empty() {
@@ -153,7 +175,15 @@ pub fn normalize_link(s: &str) -> Result<Option<String>, InvalidLink> {
                 .chars()
                 .next()
                 .is_some_and(|c| c.is_alphanumeric() || c == '[');
-            if scheme == "mailto:" && mailto_unsafe_params(rest) {
+            let authority = &s[scheme.len()..host_end(s)];
+            let unsafe_part = if scheme == "mailto:" {
+                mailto_unsafe(authority, rest)
+            } else {
+                // A user name: `https://www.bank.example@evil.example/`
+                // goes to evil.example.
+                authority.contains('@')
+            };
+            if unsafe_part {
                 return Err(InvalidLink);
             }
             return if host_first {
@@ -195,106 +225,4 @@ pub fn visible_link(s: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Every invisible format character (Unicode category Cf) and
-    /// variation selector: bidi controls, zero-width marks, the soft
-    /// hyphen, Arabic and Mongolian marks, interlinear annotations and tag
-    /// characters. Refused in the host, percent-encoded after it.
-    #[test]
-    fn cf_characters_refused_in_links() {
-        for c in [
-            '\u{202E}',
-            '\u{00AD}',
-            '\u{0600}',
-            '\u{061C}',
-            '\u{06DD}',
-            '\u{070F}',
-            '\u{0890}',
-            '\u{08E2}',
-            '\u{180E}',
-            '\u{200B}',
-            '\u{2064}',
-            '\u{206A}',
-            '\u{FEFF}',
-            '\u{FFF9}',
-            '\u{110BD}',
-            '\u{13430}',
-            '\u{1BCA0}',
-            '\u{1D173}',
-            '\u{E0001}',
-            '\u{E0041}',
-            '\u{FE0F}',
-            '\u{E0100}',
-        ] {
-            let code = format!("U+{:04X}", c as u32);
-            for host in [
-                format!("https://exa{c}mple.org/x"),
-                format!("exa{c}mple.org/x"),
-                format!("mailto:a{c}b@example.org"),
-                format!("{c}https://example.org"),
-            ] {
-                assert_eq!(normalize_link(&host), Err(InvalidLink), "{code} {host:?}");
-                assert_eq!(safe_link(&host), None, "{code}");
-            }
-            let mut escaped = String::new();
-            for b in c.to_string().bytes() {
-                escaped.push_str(&format!("%{b:02X}"));
-            }
-            for (url, want) in [
-                ("https://example.org/a{c}b", "https://example.org/a{e}b"),
-                (
-                    "example.org/a?q={c}#f{c}",
-                    "https://example.org/a?q={e}#f{e}",
-                ),
-                (
-                    "mailto:a@example.org?subject={c}",
-                    "mailto:a@example.org?subject={e}",
-                ),
-            ] {
-                let url = url.replace("{c}", &c.to_string());
-                let want = want.replace("{e}", &escaped);
-                assert_eq!(safe_link(&url).as_deref(), Some(want.as_str()), "{code}");
-            }
-            let url = format!("https://example.org/a{c}b");
-            assert_eq!(visible_link(&url), "https://example.org/a\u{FFFD}b");
-        }
-        // A Persian word with a zero-width non-joiner keeps working in a
-        // path; a bidi override in the host is refused.
-        let persian = "https://fa.example.org/\u{0645}\u{06CC}\u{200C}\u{062E}\u{0648}\u{0627}\u{0647}\u{0645}";
-        assert_eq!(
-            safe_link(persian).as_deref(),
-            Some(
-                "https://fa.example.org/\u{0645}\u{06CC}%E2%80%8C\u{062E}\u{0648}\u{0627}\u{0647}\u{0645}"
-            )
-        );
-        assert_eq!(safe_link("https://evil\u{202E}gro.example/"), None);
-        // Visible text in other scripts is fine.
-        let fine = "https://example.org/caf\u{E9}/\u{0645}\u{0631}\u{062D}\u{0628}\u{0627}";
-        assert_eq!(safe_link(fine), Some(fine.to_owned()));
-    }
-
-    /// An invisible mark in a `mailto:` parameter name cannot hide an
-    /// attachment, typed or escaped.
-    #[test]
-    fn mailto_attach_with_invisible_marks_refused() {
-        for bad in [
-            "mailto:x@y.z?attach\u{FEFF}=/etc/passwd",
-            "mailto:x@y.z?attach\u{200B}=/etc/passwd",
-            "mailto:x@y.z?\u{200B}attach=/x",
-            "mailto:x@y.z?subject=a&attachment\u{FEFF}=/x",
-            "mailto:x@y.z?attach%EF%BB%BF=/etc/passwd",
-            "mailto:x@y.z?attach%E2%80%8B=/etc/passwd",
-            "mailto:x@y.z?%E2%80%8Battach=/x",
-        ] {
-            assert_eq!(normalize_link(bad), Err(InvalidLink), "{bad:?}");
-            assert_eq!(safe_link(bad), None, "{bad:?}");
-        }
-        // In a value the mark is only escaped.
-        assert_eq!(
-            safe_link("mailto:x@y.z?subject=a\u{200B}b").as_deref(),
-            Some("mailto:x@y.z?subject=a%E2%80%8Bb")
-        );
-    }
-}
+mod tests;

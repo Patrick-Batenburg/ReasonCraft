@@ -284,7 +284,7 @@ fn undo_restores_paragraph_slot() {
         .unwrap();
     let before = d.clone();
     let mut h = History::new(10);
-    h.record(&d);
+    h.record(d.clone());
     d.remove_item(Item::Card(card), RemoveMode::Branch).unwrap();
     assert_eq!(d.essay.unplaced.len(), 1);
     assert!(h.undo(&mut d));

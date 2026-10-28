@@ -1,6 +1,8 @@
 use std::path::Path;
 
-use super::job::{create_first_new_with, write_atomically};
+use reasoncraft_core::file::create_first_new_with;
+
+use super::job::write_atomically;
 
 fn names(dir: &Path) -> Vec<String> {
     let mut v: Vec<String> = std::fs::read_dir(dir)

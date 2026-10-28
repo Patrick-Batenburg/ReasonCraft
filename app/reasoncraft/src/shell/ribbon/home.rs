@@ -5,9 +5,9 @@ use eframe::egui::{Button, Ui};
 use reasoncraft_core::{BoxKind, CardKind, Item, SourceType};
 
 use super::{
-    command, group, large, large_menu, menu_item, menu_popup, small, small_column, small_command,
+    command, group, large, large_menu, menu_item, menu_popup, small_column, small_command,
 };
-use crate::actions::{Action, is_enabled, selected_card};
+use crate::actions::{Action, can_run, is_enabled, selected_card};
 use crate::app::ReasonCraftApp;
 use crate::canvas::plus_menu::source_button;
 use crate::commands;
@@ -23,57 +23,45 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let mut out = Vec::new();
 
     group(ui, &tk, Icon::Paste, &t("group.clipboard"), |ui| {
-        large(ui, &tk, Icon::Paste, &t("action.paste"), false, false);
+        let paste = can_run(app, &commands::get("home.paste").action);
+        command(ui, &tk, "home.paste", paste, false, &mut out);
         small_column(ui, |ui| {
-            small(ui, &tk, Icon::Cut, &t("action.cut"), false);
-            small(ui, &tk, Icon::Copy, &t("action.copy"), false);
-            small_command(
-                ui,
-                &tk,
-                Icon::CopyImage,
-                "export.copy_image",
-                true,
-                &mut out,
-            );
+            for id in ["home.cut", "home.copy"] {
+                small_command(ui, &tk, id, enabled(id), &mut out);
+            }
+            small_command(ui, &tk, "export.copy_image", true, &mut out);
         });
     });
     group(ui, &tk, Icon::Reason, &t("group.add"), |ui| {
         let adds = [
-            (Icon::Reason, "home.add_reason"),
-            (Icon::Objection, "home.add_objection"),
-            (Icon::CoPremise, "home.add_co_premise"),
+            "home.add_reason",
+            "home.add_objection",
+            "home.add_co_premise",
         ];
-        for (icon, id) in adds {
-            command(ui, &tk, icon, id, enabled(id), false, &mut out);
+        for id in adds {
+            command(ui, &tk, id, enabled(id), false, &mut out);
         }
         source_menu(ui, &tk, tab, &mut out);
         // The other items in a column of small buttons, so that the Home
         // tab fits 1280 px in the longer Dutch labels too.
         small_column(ui, |ui| {
-            let others = [
-                (Icon::Category, "home.add_category"),
-                (Icon::Note, "home.add_note"),
-                (Icon::Comment, "home.comment"),
-            ];
-            for (icon, id) in others {
-                small_command(ui, &tk, icon, id, enabled(id), &mut out);
+            let others = ["home.add_category", "home.add_note", "home.comment"];
+            for id in others {
+                small_command(ui, &tk, id, enabled(id), &mut out);
             }
         });
     });
     group(ui, &tk, Icon::Undo, &t("group.editing"), |ui| {
         small_column(ui, |ui| {
-            for (icon, id) in [
-                (Icon::Delete, "home.delete"),
-                (Icon::DeleteBranch, "home.delete_branch"),
-            ] {
-                small_command(ui, &tk, icon, id, enabled(id), &mut out);
+            for id in ["home.delete", "home.delete_branch", "home.park"] {
+                small_command(ui, &tk, id, enabled(id), &mut out);
             }
         });
         let connect = commands::get("home.connect");
         let label = t(connect.label);
         let on = tab.connect_mode.is_some();
         let can = is_enabled(tab, &connect.action) || on;
-        if large(ui, &tk, Icon::Connect, &label, can, on).clicked() {
+        if large(ui, &tk, connect.ribbon_icon(), &label, can, on).clicked() {
             out.push(if on {
                 Action::CancelConnect
             } else {
@@ -81,16 +69,16 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             });
         }
         small_column(ui, |ui| {
-            for (icon, id) in [(Icon::Undo, "home.undo"), (Icon::Redo, "home.redo")] {
-                small_command(ui, &tk, icon, id, enabled(id), &mut out);
+            for id in ["home.undo", "home.redo"] {
+                small_command(ui, &tk, id, enabled(id), &mut out);
             }
         });
         small_column(ui, |ui| {
-            for (icon, id) in [(Icon::Find, "home.find"), (Icon::Replace, "home.replace")] {
-                small_command(ui, &tk, icon, id, true, &mut out);
+            for id in ["home.find", "home.replace"] {
+                small_command(ui, &tk, id, true, &mut out);
             }
-            let spelling = app.settings.spellcheck;
-            small_command(ui, &tk, Icon::Spelling, "home.spelling", spelling, &mut out);
+            let spelling = can_run(app, &commands::get("home.spelling").action);
+            small_command(ui, &tk, "home.spelling", spelling, &mut out);
         });
     });
     box_group(ui, app, &mut out);
@@ -157,14 +145,10 @@ fn box_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
             }
         });
         small_column(ui, |ui| {
-            let buttons = [
-                (Icon::Link, "home.link"),
-                (Icon::Image, "home.image"),
-                (Icon::RemoveImage, "home.remove_image"),
-            ];
-            for (icon, id) in buttons {
+            let buttons = ["home.link", "home.image", "home.remove_image"];
+            for id in buttons {
                 let on = is_enabled(tab, &commands::get(id).action);
-                small_command(ui, &tk, icon, id, on, out);
+                small_command(ui, &tk, id, on, out);
             }
         });
     });

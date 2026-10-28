@@ -211,7 +211,8 @@ fn deep_chain_200_no_overflow() {
     let lines = build_outline(&d, &OutlineOptions::default());
     assert_eq!(lines.len(), 201);
     assert_eq!(lines[200].depth, 200);
-    assert_eq!(lines[200].number, vec!["1"; 200].join("."));
+    // The number keeps its last 32 parts.
+    assert_eq!(lines[200].number, format!("…{}", vec!["1"; 32].join(".")));
 }
 
 #[test]
@@ -227,4 +228,27 @@ fn outline_500_boxes_fast() {
         assert!(lines.len() >= 400);
     }
     assert!(best.as_micros() < 5_000, "took {best:?}");
+}
+
+/// Numbers and indents stop growing with the depth (SEC-R4): a number
+/// keeps its last parts after an ellipsis, and the plain text indents at
+/// most `MAX_INDENT` levels, so a deep map's outline grows with its box
+/// count, not its square.
+#[test]
+fn deep_numbers_and_indents_stay_short() {
+    use reasoncraft_core::caps::MAX_INDENT;
+    let (d, _) = reasoncraft_core::fixtures::deep_chain(reasoncraft_core::MAX_DEPTH);
+    let opts = OutlineOptions::default();
+    let lines = build_outline(&d, &opts);
+    assert_eq!(lines[3].number, "1.1.1");
+    assert_eq!(lines[MAX_INDENT].number.split('.').count(), MAX_INDENT);
+    assert!(!lines[MAX_INDENT].number.starts_with('…'));
+    let deep = &lines.last().unwrap().number;
+    assert!(deep.starts_with("…1.1"), "{deep}");
+    assert_eq!(deep.trim_start_matches('…').split('.').count(), MAX_INDENT);
+    let text = outline_plain_text(&lines, &opts, &label_word, &source_word);
+    let last = text.lines().last().unwrap();
+    let indent = last.len() - last.trim_start().len();
+    assert_eq!(indent, 2 * MAX_INDENT);
+    assert!(text.len() < lines.len() * (2 * MAX_INDENT + 4 * MAX_INDENT + 32));
 }

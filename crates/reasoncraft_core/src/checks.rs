@@ -7,6 +7,8 @@ pub(crate) mod stopwords;
 mod tokens;
 pub(crate) mod walk;
 
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 
 use crate::ids::{CardId, Item, NodeId, Parent};
@@ -328,24 +330,28 @@ impl<'a> Run<'a> {
         let Some(target) = self.doc.boxes.get(&target) else {
             return Vec::new();
         };
-        let mut present: Vec<String> = Vec::new();
+        let mut present = tokens::TermSet::default();
         for p in card.premises.iter().filter_map(|p| self.doc.boxes.get(p)) {
             for word in tokens::words(&p.text) {
                 let joined = word.joined();
-                present.extend(joined.into_iter().chain(word.parts));
+                for t in joined.into_iter().chain(word.parts) {
+                    if tokens::is_term(&t, self.lang) {
+                        present.insert(t);
+                    }
+                }
             }
         }
-        present.retain(|t| tokens::is_term(t, self.lang));
-        let found = |t: &str| present.iter().any(|p| tokens::same_term(t, p));
         let mut missing: Vec<String> = Vec::new();
+        let mut listed: HashSet<String> = HashSet::new();
         for word in tokens::words(&target.text) {
-            let joined_found = word.joined().is_some_and(|j| found(&j));
+            let joined_found = word.joined().is_some_and(|j| present.has_same(&j));
             for part in word.parts {
                 if tokens::is_term(&part, self.lang)
                     && !joined_found
-                    && !found(&part)
-                    && !missing.contains(&part)
+                    && !listed.contains(&part)
+                    && !present.has_same(&part)
                 {
+                    listed.insert(part.clone());
                     missing.push(part);
                 }
             }
@@ -355,13 +361,9 @@ impl<'a> Run<'a> {
 }
 
 /// The conjunctions the Compound check looks for in a document in `lang`:
-/// "and"/"or" in English, "en"/"of" in Dutch (see [`stopwords::is_dutch`]).
+/// "and"/"or" in English, "en"/"of" in Dutch (see [`crate::lang::pack`]).
 pub fn compound_conjunctions(lang: &str) -> [&'static str; 2] {
-    if stopwords::is_dutch(lang) {
-        ["en", "of"]
-    } else {
-        ["and", "or"]
-    }
+    crate::lang::pack(lang).conjunctions
 }
 
 /// The distinct standalone conjunctions of [`compound_conjunctions`] in

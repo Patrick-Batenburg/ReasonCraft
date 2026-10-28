@@ -1,10 +1,11 @@
 //! Edit operations for the document's metadata: title, author, language.
 
+use crate::caps::{MAX_META_CHARS, capped};
 use crate::edit::EditError;
 use crate::model::Document;
 
-/// The languages checks know about.
-pub const LANGUAGES: [&str; 2] = ["en", "nl"];
+/// The document languages (see [`crate::lang`]).
+pub use crate::lang::LANGUAGES;
 
 /// The language part of a language tag: `nl` of `nl`, `nl-NL`, `nl_BE`,
 /// `nl_BE.UTF-8` or `nl@euro`. The one rule for reading tags, in the core
@@ -13,8 +14,15 @@ pub fn primary_language(tag: &str) -> &str {
     tag.split(['-', '_', '.', '@']).next().unwrap_or_default()
 }
 
+/// The language of [`LANGUAGES`] that `tag` names: `"nl"` for Dutch in any
+/// case or region (`nl-NL`, `NL_be`), `"en"` for anything else (see
+/// [`crate::lang::pack`]).
+pub fn language_code(tag: &str) -> &'static str {
+    crate::lang::pack(tag).code
+}
+
 impl Document {
-    /// Set the document language: `"en"` or `"nl"`, else
+    /// Set the document language: one of [`LANGUAGES`], else
     /// [`EditError::NotAllowed`]. Setting the current language changes
     /// nothing, not even the modified time.
     pub fn set_language(&mut self, lang: &str) -> Result<(), EditError> {
@@ -23,26 +31,25 @@ impl Document {
         }
         if self.meta.language != lang {
             lang.clone_into(&mut self.meta.language);
-            self.finish_meta();
+            self.finish_edit();
         }
         Ok(())
     }
 
-    /// Set the title and author as given. Leaving both as they are changes
-    /// nothing, not even the modified time.
+    /// Set the title and author as given, each cut to [`MAX_META_CHARS`]
+    /// characters. Leaving both as they are changes nothing, not even the
+    /// modified time.
     pub fn set_meta(&mut self, title: &str, author: &str) -> Result<(), EditError> {
+        let (title, author) = (
+            capped(title, MAX_META_CHARS),
+            capped(author, MAX_META_CHARS),
+        );
         if self.meta.title != title || self.meta.author != author {
             title.clone_into(&mut self.meta.title);
             author.clone_into(&mut self.meta.author);
-            self.finish_meta();
+            self.finish_edit();
         }
         Ok(())
-    }
-
-    fn finish_meta(&mut self) {
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
     }
 }
 
