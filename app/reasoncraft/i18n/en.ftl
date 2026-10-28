@@ -344,7 +344,6 @@ connector_style-tapered = Tapered
 
 ## Side panels
 panel-building = Building
-panel-coming_later = Coming in a later version.
 text-tab-outline = Outline
 text-tab-essay = Essay
 text-tab-check = Check

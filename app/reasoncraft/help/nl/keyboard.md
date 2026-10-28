@@ -11,6 +11,7 @@ Deze toetsen werken als er een vak of blok op de kaart gekozen is:
 - **Esc** stopt met bewerken. Esc sluit ook de zoekbalk en de opmerkingen, en op de pagina Bestand ga je ermee terug naar de kaart.
 - De **pijltjestoetsen** verplaatsen de selectie. Omhoog vanaf een premisse kiest haar blok; Omlaag vanaf een blok kiest de eerste premisse. De pijltjes volgen de richting van de kaart.
 - Op een Mac verwijdert **Backspace** net als Delete.
+- **Ctrl+C**, **Ctrl+X** en **Ctrl+V** kopiëren, knippen en plakken het gekozen onderdeel met alles eronder.
 
 ## Terwijl je in een vak typt
 

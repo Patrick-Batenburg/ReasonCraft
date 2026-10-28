@@ -206,6 +206,8 @@ pub fn show_central(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         return;
     }
     find_bar::show(ui, app);
+    let clip = crate::canvas::input::clipboard_events(ui.ctx(), app);
+    app.pending.extend(clip);
     let tk = app.tokens;
     let map = egui::CentralPanel::default()
         .frame(Frame::new().fill(tk.canvas))

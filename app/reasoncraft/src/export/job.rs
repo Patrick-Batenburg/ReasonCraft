@@ -268,6 +268,13 @@ pub struct ExportJobs {
 }
 
 impl ExportJobs {
+    /// The text on the clipboard Copy as image uses, if any.
+    pub fn read_clipboard_text(&self) -> Option<String> {
+        // A copy that panicked earlier leaves nothing half done.
+        let mut board = self.clipboard.lock().unwrap_or_else(|e| e.into_inner());
+        board.text()
+    }
+
     pub fn new(clipboard: SharedClipboard, print_dir: PathBuf) -> Self {
         Self {
             running: Vec::new(),

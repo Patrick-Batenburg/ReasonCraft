@@ -179,6 +179,36 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     out
 }
 
+/// Take this frame's Cut, Copy and Paste (Ctrl+X, Ctrl+C, Ctrl+V and the
+/// platform's other keys for them, which egui hands over as events) for
+/// the map: when no text field has the focus, no box is edited inline and
+/// no menu or dialog is open. Called after the side panels, so a paste
+/// over the Snippets tab becomes a snippet first.
+pub fn clipboard_events(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
+    let busy = app.modal.is_some() || app.link_edit.is_some() || app.export_dialog.is_some();
+    let Some(tab) = app.tabs.get(app.active) else {
+        return Vec::new();
+    };
+    if busy || tab.editing().is_some() || ctx.text_edit_focused() || Popup::is_any_open(ctx) {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    ctx.input_mut(|i| {
+        i.events.retain(|e| {
+            let action = match e {
+                Event::Copy => Action::Copy,
+                Event::Cut => Action::Cut,
+                Event::Paste(text) => Action::Paste(Some(text.clone())),
+                _ => return true,
+            };
+            out.push(action);
+            false
+        });
+    });
+    out.retain(|a| can_run(app, a));
+    out
+}
+
 /// The file keys while a text field other than the box editor has focus
 /// (a snippet's text, citation or link, the document title or author, an
 /// essay paragraph, the find bar):

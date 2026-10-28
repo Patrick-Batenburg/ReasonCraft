@@ -13,6 +13,8 @@ pub use box_group::{FakeOpener, LinkOpener, SystemOpener};
 pub use enabled::{can_run, is_enabled};
 mod argdown;
 pub use argdown::report_text as import_report_text;
+mod clipboard;
+pub use clipboard::Copied;
 mod comments;
 mod editing;
 mod essay;

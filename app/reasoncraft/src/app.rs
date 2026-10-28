@@ -62,6 +62,8 @@ pub struct ReasonCraftApp {
     pub modal: Option<Modal>,
     /// The link editor, when open.
     pub link_edit: Option<LinkEdit>,
+    /// What Copy and Cut kept, shared by every tab.
+    pub clipboard: Option<actions::Copied>,
     /// Opens links in the browser: the platform's handler, or a fake in tests.
     pub link_opener: Box<dyn LinkOpener>,
     /// Exports running in the background, and the last one's notice.
@@ -134,6 +136,7 @@ impl ReasonCraftApp {
             dialogs,
             modal: None,
             link_edit: None,
+            clipboard: None,
             link_opener,
             export: ExportJobs::new(clipboard, std::env::temp_dir()),
             image_jobs: ImageJobs::default(),

@@ -5,7 +5,7 @@ use eframe::egui::{Button, Ui};
 use reasoncraft_core::{BoxKind, CardKind, Item, SourceType};
 
 use super::{
-    command, group, large, large_menu, menu_item, menu_popup, small, small_column, small_command,
+    command, group, large, large_menu, menu_item, menu_popup, small_column, small_command,
 };
 use crate::actions::{Action, can_run, is_enabled, selected_card};
 use crate::app::ReasonCraftApp;
@@ -23,10 +23,12 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let mut out = Vec::new();
 
     group(ui, &tk, Icon::Paste, &t("group.clipboard"), |ui| {
-        large(ui, &tk, Icon::Paste, &t("action.paste"), false, false);
+        let paste = can_run(app, &commands::get("home.paste").action);
+        command(ui, &tk, "home.paste", paste, false, &mut out);
         small_column(ui, |ui| {
-            small(ui, &tk, Icon::Cut, &t("action.cut"), false);
-            small(ui, &tk, Icon::Copy, &t("action.copy"), false);
+            for id in ["home.cut", "home.copy"] {
+                small_command(ui, &tk, id, enabled(id), &mut out);
+            }
             small_command(ui, &tk, "export.copy_image", true, &mut out);
         });
     });

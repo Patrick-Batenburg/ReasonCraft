@@ -345,7 +345,6 @@ connector_style-tapered = Taps toelopend
 
 ## Side panels
 panel-building = Bouwstenen
-panel-coming_later = Komt in een latere versie.
 text-tab-outline = Opzet
 text-tab-essay = Betoog
 text-tab-check = Controle

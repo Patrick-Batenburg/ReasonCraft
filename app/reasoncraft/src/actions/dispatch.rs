@@ -5,8 +5,8 @@ use reasoncraft_core::{BoxKind, CardKind, NewLoose, RemoveMode};
 
 use super::structure::{self, add_box, add_card, add_co_premise, delete};
 use super::{
-    Action, UnsavedChoice, box_group, comments, connect, editing, essay, evaluate, examples,
-    export, find, help, images, insert, meta, snippets, sources, view,
+    Action, UnsavedChoice, box_group, clipboard, comments, connect, editing, essay, evaluate,
+    examples, export, find, help, images, insert, meta, snippets, sources, view,
 };
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
@@ -215,6 +215,11 @@ pub(super) fn run(app: &mut ReasonCraftApp, action: Action) {
                 crate::shell::command_search::focus(ctx);
             }
         }
+
+        // The clipboard.
+        Action::Copy => clipboard::copy(app),
+        Action::Cut => clipboard::cut(app),
+        Action::Paste(text) => clipboard::paste(app, text),
 
         // Exports.
         Action::OpenExport(format) => export::open(app, format),

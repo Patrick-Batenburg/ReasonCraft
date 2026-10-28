@@ -11,6 +11,7 @@ These keys work when a box or card on the map is selected:
 - **Esc** stops editing. It also closes the find bar and the comments, and on the File page it goes back to the map.
 - The **arrow keys** move the selection. Up from a premise selects its card; Down from a card selects its first premise. The arrows follow the layout direction of the map.
 - On a Mac, **Backspace** deletes like Delete.
+- **Ctrl+C**, **Ctrl+X** and **Ctrl+V** copy, cut and paste the selected item with everything under it.
 
 ## While you type in a box
 

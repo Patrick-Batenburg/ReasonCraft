@@ -31,6 +31,7 @@ A box should say one thing. "Cycling is healthy and cheap" holds two statements:
 - Text wraps by itself and the box grows to fit it.
 - The Home tab's **Box** group gives a box a web link (Link), puts a picture in it (Image) or takes the picture out again (Remove image). A link opens only when you click its small link symbol.
 - Delete removes the selected item; what was under it moves to Not connected. Shift+Delete removes it with everything under it.
+- Ctrl+C (Copy) and Ctrl+X (Cut) take the selected box or card with everything under it; Ctrl+V (Paste) puts a copy under the selected box or card, or in Not connected when nothing is selected, also in another map. A copied premise comes back as the premise of a new card. Other programs get the text, one box per line, and text copied in another program is pasted as a new box. The buttons are in the Home tab's **Clipboard** group.
 - Drag a box between its neighbours to change their order, or press Alt+Left and Alt+Right.
 
 ## Read on

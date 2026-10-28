@@ -17,6 +17,7 @@ mod box_group;
 mod building;
 mod canvas_scene;
 mod check;
+mod clipboard;
 mod close_request;
 mod close_waits;
 mod command_search;

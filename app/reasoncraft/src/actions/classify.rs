@@ -209,6 +209,9 @@ impl Action {
             | Action::OpenPageSetup
             | Action::SetPageSetup(_)
             | Action::CopyAsImage
+            | Action::Copy
+            | Action::Cut
+            | Action::Paste(_)
             | Action::Print
             | Action::ResolveExportReplace(_)
             | Action::ResolveClosingExports(_)

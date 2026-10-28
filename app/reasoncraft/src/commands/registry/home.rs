@@ -11,6 +11,12 @@ pub(super) fn commands() -> Vec<Command> {
     use Action as A;
     let mut out = Vec::new();
     let add = "group.add";
+    let clip = "group.clipboard";
+    out.extend([
+        cmd("home.paste", "action.paste", clip, A::Paste(None)).with_icon(Icon::Paste),
+        cmd("home.cut", "action.cut", clip, A::Cut).with_icon(Icon::Cut),
+        cmd("home.copy", "action.copy", clip, A::Copy).with_icon(Icon::Copy),
+    ]);
     out.extend([
         cmd("home.add_reason", "action.add_reason", add, A::AddReason).with_icon(Icon::Reason),
         cmd(

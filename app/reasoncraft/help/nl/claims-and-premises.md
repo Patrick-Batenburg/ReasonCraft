@@ -31,6 +31,7 @@ Een vak zegt één ding. "Fietsen is gezond en goedkoop" bevat twee uitspraken: 
 - De tekst loopt vanzelf door op de volgende regel en het vak groeit mee.
 - De groep **Vak** op het tabblad Start geeft een vak een weblink (Link), zet er een afbeelding in (Afbeelding) of haalt die er weer uit (Afbeelding wissen). Een link gaat alleen open als je op het kleine linksymbool klikt.
 - Delete haalt het gekozen onderdeel weg; wat eronder stond, gaat naar Niet verbonden. Shift+Delete haalt het weg met alles eronder.
+- Ctrl+C (Kopiëren) en Ctrl+X (Knippen) nemen het gekozen vak of blok mee met alles eronder; Ctrl+V (Plakken) zet een kopie onder het gekozen vak of blok, of in Niet verbonden als er niets gekozen is, ook in een andere kaart. Een gekopieerde premisse komt terug als premisse van een nieuw blok. Andere programma's krijgen de tekst, één vak per regel, en tekst die je in een ander programma kopieerde, wordt geplakt als nieuw vak. De knoppen staan in de groep **Klembord** op het tabblad Start.
 - Sleep een vak tussen zijn buren om de volgorde te veranderen, of druk op Alt+Links en Alt+Rechts.
 
 ## Lees verder

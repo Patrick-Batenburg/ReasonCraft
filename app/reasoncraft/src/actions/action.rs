@@ -268,6 +268,16 @@ pub enum Action {
     OpenPageSetup,
     /// Remember the page setup for PDF export and printing.
     SetPageSetup(PageSetup),
+    /// Copy the selected box or card with everything under it (not the
+    /// root claim): to the app's clipboard, and as text to the system's.
+    Copy,
+    /// Copy the selection, then delete it with everything under it.
+    Cut,
+    /// Paste the copied item under the selection (in the parking area
+    /// with nothing selected), or, when the system clipboard holds other
+    /// text (`Some` from Ctrl+V; read from the clipboard for `None`), that
+    /// text as a new box.
+    Paste(Option<String>),
     /// Put the map on the clipboard as an image, in the export scope and
     /// theme like the image exports (2x; the whole map when the scope is
     /// the selection and nothing is selected).
