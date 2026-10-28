@@ -86,7 +86,8 @@ Downloads are named `reasoncraft-<version>-<os>-<architecture>`, and `SHA256SUMS
 - **macOS** (11 or later, Apple silicon and Intel): open `reasoncraft-<version>-macos-universal.dmg` and drag ReasonCraft to Applications. While the app is not signed, open it the first time with right-click (or Control-click) → **Open**. Double-clicking a `.rcraft` file starts the app but does not open the file yet; use File → Open.
 - **Linux** (x86_64 or aarch64), any of:
   - Debian, Ubuntu and derivatives: `sudo apt install ./reasoncraft-<version>-linux-x86_64.deb`;
-  - Fedora, openSUSE and other rpm distributions: `sudo dnf install ./reasoncraft-<version>-linux-x86_64.rpm`;
+  - Fedora, RHEL and derivatives: `sudo dnf install ./reasoncraft-<version>-linux-x86_64.rpm`;
+  - openSUSE: `sudo zypper install ./reasoncraft-<version>-linux-x86_64.rpm`;
   - Flatpak: `flatpak install --user reasoncraft-<version>-linux-x86_64.flatpak`;
   - any distribution: make `reasoncraft-<version>-linux-x86_64.AppImage` executable (`chmod +x`) and run it, or unpack the `.tar.gz`.
 

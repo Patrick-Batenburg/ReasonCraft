@@ -80,6 +80,13 @@ fn mime_and_metainfo_declare_rcraft() {
         ty.children()
             .any(|n| n.has_tag_name("glob") && n.attribute("pattern") == Some("*.rcraft"))
     );
+    // Without an icon a file manager shows the parent type's (a zip archive).
+    let icons: Vec<_> = ty
+        .children()
+        .filter(|n| n.has_tag_name("icon"))
+        .map(|n| n.attribute("name"))
+        .collect();
+    assert_eq!(icons, [Some(APP_ID)], "the map files show the app's icon");
 
     let metainfo = read(&format!("{APP_ID}.metainfo.xml.in"));
     let metainfo = roxmltree::Document::parse(&metainfo).expect("well-formed metainfo");
@@ -106,7 +113,7 @@ fn mime_and_metainfo_declare_rcraft() {
 /// winit, wgpu and glow open the windowing and graphics libraries at run
 /// time, so dpkg and rpm cannot see them and the packages have to name them.
 #[test]
-fn deb_names_its_runtime_libraries() {
+fn packages_name_their_runtime_libraries() {
     let yaml = read("nfpm.yaml");
     assert!(yaml.lines().any(|l| l == "name: reasoncraft"));
     assert!(
@@ -146,27 +153,34 @@ fn deb_names_its_runtime_libraries() {
     );
     assert_eq!(deb_recommends, ["xdg-desktop-portal"]);
 
+    // The rpm names the libraries by soname, which every rpm distribution
+    // provides under its own package names (Fedora `libxkbcommon`,
+    // openSUSE `libxkbcommon0`); `(64bit)` is rpm's marker for any 64-bit
+    // ELF library, aarch64 included (ruling PK-15).
     let rpm = yaml_items(&yaml, "  rpm:", "");
     assert_eq!(
         rpm,
         [
-            "libxkbcommon",
-            "libxkbcommon-x11",
-            "(libglvnd-egl or mesa-libEGL)",
-            "libX11",
-            "libX11-xcb",
-            "libXcursor",
-            "libXi",
-            "libwayland-client",
-            "libwayland-egl",
+            "libxkbcommon.so.0()(64bit)",
+            "libxkbcommon-x11.so.0()(64bit)",
+            "libEGL.so.1()(64bit)",
+            "libX11.so.6()(64bit)",
+            "libX11-xcb.so.1()(64bit)",
+            "libXcursor.so.1()(64bit)",
+            "libXi.so.6()(64bit)",
+            "libwayland-client.so.0()(64bit)",
+            "libwayland-egl.so.1()(64bit)",
             "xdg-desktop-portal",
         ]
     );
 }
 
+/// Only the configuration: nfpm's semver schema turns 0.2.0-rc.1 into
+/// 0.2.0~rc.1 in the deb and rpm. That dpkg and rpm then sort a pre-release
+/// before its release is checked on real packages by
+/// `packaging/linux/check-version-order.sh` (packaging lint, Docker).
 #[test]
-fn prerelease_versions_sort_before_release() {
-    // semver turns 0.2.0-rc.1 into 0.2.0~rc.1 in the deb and rpm.
+fn nfpm_takes_the_version_as_semver() {
     let yaml = read("nfpm.yaml");
     assert!(yaml.lines().any(|l| l == "version_schema: semver"));
     assert!(yaml.lines().any(|l| l == "version: ${VERSION}"));

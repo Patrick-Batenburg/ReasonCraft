@@ -75,8 +75,15 @@ copy_docs "$STAGE/usr/share/doc/reasoncraft"
 if command -v desktop-file-validate >/dev/null; then
   desktop-file-validate "$STAGE/usr/share/applications/$APP_ID.desktop"
 fi
+# No homepage yet (owner's decision 2026-10-28): AppStream 1.0 and later fail the metainfo for its
+# missing <url type="homepage">; the override lowers that to a note, as in the packaging lint
+# (ruling PK-13). AppStream 0.15 (Ubuntu 22.04, the build image) neither warns nor knows the option.
 if command -v appstreamcli >/dev/null; then
-  appstreamcli validate --no-net --explain "$STAGE/usr/share/metainfo/$APP_ID.metainfo.xml"
+  as_args=(--no-net --explain)
+  if [[ "$(appstreamcli validate --help 2>&1)" == *--override* ]]; then
+    as_args+=(--override=url-homepage-missing=info)
+  fi
+  appstreamcli validate "${as_args[@]}" "$STAGE/usr/share/metainfo/$APP_ID.metainfo.xml"
 fi
 
 has() { local item="$1"; case " $FORMATS " in *" $item "*) return 0 ;; *) return 1 ;; esac; }

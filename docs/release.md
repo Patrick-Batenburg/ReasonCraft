@@ -27,7 +27,7 @@ cargo xtask version set 0.2.0-rc.1  # changes it, then updates Cargo.lock
 `version set` takes `X.Y.Z` or `X.Y.Z-pre` (no leading zeros, no `+build`), and refuses `v1.0`, `1.0` and `1.0.0+meta`.
 A script also takes `REASONCRAFT_VERSION` from the environment, to package an existing build under another version (the VM check's older MSI does that).
 Formats that only know numbers get the numeric part: the MSI's ProductVersion and macOS's `CFBundleShortVersionString` of `0.2.0-rc.1` are `0.2.0`, and the MSI allows a same-version upgrade, so one release candidate replaces the previous one.
-deb and rpm write it as `0.2.0~rc.1`, which sorts before `0.2.0` (nfpm's `version_schema: semver`).
+deb and rpm write it as `0.2.0~rc.1`, which sorts before `0.2.0` (nfpm's `version_schema: semver`); `packaging/linux/check-version-order.sh` checks that on placeholder packages with dpkg's and rpm's own comparison (packaging lint, or in the Docker image).
 
 ## Prerequisites on a development machine
 
@@ -132,7 +132,8 @@ The script builds for the host's architecture (x86_64 or aarch64), stages one FH
 - the readme, the licences and `THIRD-PARTY.md` in `/usr/share/doc/reasoncraft/`.
 
 `desktop-file-validate` and `appstreamcli validate` check the staged files when they are installed.
-The binary links only libc: winit, wgpu and glow open the X11, Wayland, xkbcommon, EGL and OpenGL libraries at run time, so the `.deb` and `.rpm` name them in `packaging/linux/nfpm.yaml`, and a test checks the deb's list.
+The binary links only libc: winit, wgpu and glow open the X11, Wayland, xkbcommon, EGL and OpenGL libraries at run time, so the `.deb` and `.rpm` name them in `packaging/linux/nfpm.yaml`, and a test checks both lists.
+The `.deb` names Debian's packages; the `.rpm` names the libraries by soname (`libxkbcommon.so.0()(64bit)`, …), which Fedora and openSUSE both resolve to their own package names (ruling PK-15).
 The packages' maintainer is `REASONCRAFT_MAINTAINER` (default "ReasonCraft contributors").
 The AppImage embeds the pinned static runtime, so users need no libfuse2; it is built with `APPIMAGE_EXTRACT_AND_RUN=1`, so the build needs no FUSE either.
 In GitHub Actions it also carries update information and gets a `.zsync` beside it for delta updates; a local build has neither.
@@ -200,7 +201,7 @@ For a dry run, start the release workflow by hand (workflow_dispatch) on any bra
   A Linux job runs `cargo deny check` and checks that `crates.txt` is current (see [Licence notices](#licence-notices)).
   Run by hand, it also runs the timing tests: the `#[ignore]`d tests, in a release build (`cargo test --workspace --release -j 4 -- --ignored`).
   The tests marked `#[ignore = "manual: …"]` write sample files for looking at by eye when their environment variable is set, and do nothing otherwise.
-- `.github/workflows/packaging-lint.yml` runs when the workflows, `packaging/` or the icons change: actionlint (1.7.12, checked by SHA-256), shellcheck on `packaging/**/*.sh`, xmllint on the WiX, plist and Linux XML files, `desktop-file-validate`, `appstreamcli validate` on the metainfo, a PowerShell parse of `packaging/windows/*.ps1`, a check that no WiX GUID is used twice, and, on Windows, `test-install-policy.ps1`.
+- `.github/workflows/packaging-lint.yml` runs when the workflows, `packaging/` or the icons change: actionlint (1.7.12, checked by SHA-256), shellcheck on `packaging/**/*.sh`, xmllint on the WiX, plist and Linux XML files, `desktop-file-validate`, `appstreamcli validate` on the metainfo, `check-version-order.sh` (nfpm 2.47.0, checked by SHA-256), a PowerShell parse of `packaging/windows/*.ps1`, a check that no WiX GUID is used twice, and, on Windows, `test-install-policy.ps1`.
 - `.github/workflows/release.yml` is described [above](#the-release-flow). Its jobs: `version` (the input or Cargo.toml's version, checked), `windows` (x64, x86 and arm64; x64 also runs `test-packaging-script.ps1`), `macos`, `linux` (x86_64 on `ubuntu-22.04`, aarch64 on `ubuntu-22.04-arm`, so the binaries need only glibc 2.35), `flatpak` (both architectures, on Ubuntu 24.04) and `draft`.
 
 The workflows are self-contained: they use no reusable workflow and nothing outside this repository.
@@ -276,7 +277,7 @@ The packaging scripts build from the workspace, so the installers are unaffected
    - check the known gap: double-clicking a `.rcraft` file starts the app without opening the file.
 6. Linux, on a desktop (X11 and Wayland if possible):
    - install the `.deb` with `sudo apt install ./reasoncraft-<v>-linux-x86_64.deb` and start ReasonCraft from the app menu;
-   - install the `.rpm` on Fedora (`sudo dnf install ./reasoncraft-<v>-linux-x86_64.rpm`) and start it;
+   - install the `.rpm` on Fedora (`sudo dnf install ./reasoncraft-<v>-linux-x86_64.rpm`) and on openSUSE (`sudo zypper install ./reasoncraft-<v>-linux-x86_64.rpm`), and start it;
    - install the Flatpak with `flatpak install --user reasoncraft-<v>-linux-x86_64.flatpak` and start it; open and save a map in Documents;
    - start the AppImage on a second distribution;
    - double-click a `.rcraft` file: it opens in ReasonCraft;

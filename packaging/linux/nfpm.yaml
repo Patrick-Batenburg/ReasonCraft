@@ -33,6 +33,11 @@ description: |-
 # entries and the packages have to name them. No libxrandr2: the binary never opens it (ruling
 # S6-T13-3). The file dialogs go through the XDG desktop portal (rfd 0.17), hence the
 # recommendation.
+#
+# The rpm names the libraries by soname, as rpm's own dependency generator would: package names
+# differ between rpm distributions (Fedora's libxkbcommon is openSUSE's libxkbcommon0), the
+# sonames are the same everywhere (ruling PK-15). `()(64bit)` is rpm's marker for a library of
+# any 64-bit ELF architecture, so the same names hold for x86_64 and aarch64.
 overrides:
   deb:
     depends:
@@ -52,16 +57,16 @@ overrides:
       - xdg-desktop-portal
   rpm:
     depends:
-      - libxkbcommon
-      - libxkbcommon-x11
-      - (libglvnd-egl or mesa-libEGL)
+      - libxkbcommon.so.0()(64bit)
+      - libxkbcommon-x11.so.0()(64bit)
+      - libEGL.so.1()(64bit)
     recommends:
-      - libX11
-      - libX11-xcb
-      - libXcursor
-      - libXi
-      - libwayland-client
-      - libwayland-egl
+      - libX11.so.6()(64bit)
+      - libX11-xcb.so.1()(64bit)
+      - libXcursor.so.1()(64bit)
+      - libXi.so.6()(64bit)
+      - libwayland-client.so.0()(64bit)
+      - libwayland-egl.so.1()(64bit)
       - xdg-desktop-portal
 
 contents:

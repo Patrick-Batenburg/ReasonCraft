@@ -40,7 +40,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            shellcheck libxml2-utils desktop-file-utils appstream
+            shellcheck libxml2-utils desktop-file-utils appstream rpm
 
       # actionlint 1.7.12, checked against the SHA-256 from its release's
       # checksums.txt. It runs shellcheck on the workflows' scripts too.
@@ -76,6 +76,18 @@ jobs:
           sed -e 's/@VERSION@/0.0.0/g' -e "s/@DATE@/$(date -u +%Y-%m-%d)/g" \
             packaging/linux/nl.reasoncraft.app.metainfo.xml.in > "$metainfo"
           appstreamcli validate --no-net --explain --override=url-homepage-missing=info "$metainfo"
+
+      # A pre-release sorts before its release in dpkg and rpm: placeholder
+      # packages (never installed) built with nfpm.yaml as 0.2.0-rc.1,
+      # 0.2.0-rc.2 and 0.2.0. nfpm 2.47.0, checked against the SHA-256 from
+      # its release's checksums.txt.
+      - name: Pre-release version order (nfpm, dpkg, rpm)
+        run: |
+          file=nfpm_2.47.0_Linux_x86_64.tar.gz
+          curl --proto '=https' -fsSL -o "$RUNNER_TEMP/$file"             "https://github.com/goreleaser/nfpm/releases/download/v2.47.0/$file"
+          echo "0660ca602b2d2d2ae4781a06c692b3eeb9d437ffea05b831d76e41f4a3188783  $RUNNER_TEMP/$file"             | sha256sum -c -
+          sudo tar -xzf "$RUNNER_TEMP/$file" -C /usr/local/bin nfpm
+          packaging/linux/check-version-order.sh
 
       - name: PowerShell scripts parse
         shell: pwsh
