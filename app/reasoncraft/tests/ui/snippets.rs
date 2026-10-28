@@ -74,24 +74,41 @@ fn snippet_edit_is_one_history_entry() {
     assert_eq!(texts(&h), ["Robots"]);
 }
 
+/// A paste into a snippet over its cap is cut, with a notice.
 #[test]
 fn oversized_paste_is_capped() {
+    let mut h = oversized_snippet();
+    let len = h.state().tabs[0].doc.snippets[0].text.chars().count();
+    assert_eq!(len, MAX_SNIPPET_CHARS);
+    h.get_by_label(&capped_notice());
+    h.event(egui::Event::PointerMoved(egui::pos2(700.0, 300.0)));
+    h.run();
+    assert_eq!(h.state().tabs[0].doc.snippets[0].text.chars().count(), len);
+}
+
+/// A harness with one snippet whose text field holds a paste far over
+/// its cap.
+fn oversized_snippet() -> H {
     let mut h = harness_with(doc_with(&[""]));
     h.run();
     assert!(h.query_by_label(&capped_notice()).is_none());
     h.get_by_label(&t("snippet.text")).click();
     h.run();
     assert!(focused_text_field(&h));
-
-    let start = Instant::now();
     h.event(egui::Event::Paste("word ".repeat(24_000)));
     h.run();
-    let paste_time = start.elapsed();
-    let len = h.state().tabs[0].doc.snippets[0].text.chars().count();
-    assert_eq!(len, MAX_SNIPPET_CHARS);
-    h.get_by_label(&capped_notice());
+    h
+}
 
-    // Later frames with the long snippet stay fast.
+/// Frames with a long snippet stay fast: it is not laid out again in full
+/// each frame. Measured; run with `--release -- --ignored` (a debug
+/// build, or a busy machine, takes longer).
+#[test]
+#[ignore = "timing: run in release"]
+fn frames_with_a_long_snippet_stay_fast() {
+    let start = Instant::now();
+    let mut h = oversized_snippet();
+    let paste_time = start.elapsed();
     let start = Instant::now();
     for i in 0..5 {
         h.event(egui::Event::PointerMoved(egui::pos2(
@@ -102,11 +119,9 @@ fn oversized_paste_is_capped() {
     }
     let frame = start.elapsed() / 5;
     eprintln!("paste {paste_time:?}, frame {frame:?}");
-    // Generous bounds (a debug build, other tests running alongside): a
-    // long snippet laid out again in full each frame takes far longer.
-    assert!(frame < Duration::from_secs(1), "frame took {frame:?}");
+    assert!(frame < Duration::from_millis(200), "frame took {frame:?}");
     assert!(
-        paste_time < Duration::from_secs(10),
+        paste_time < Duration::from_secs(5),
         "paste took {paste_time:?}"
     );
 }

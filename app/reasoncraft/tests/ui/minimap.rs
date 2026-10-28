@@ -2,7 +2,6 @@
 //! selection.
 
 use crate::common::harness;
-use std::time::{Duration, Instant};
 
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
@@ -116,12 +115,7 @@ fn export_svg(h: &mut H, dialogs: &FakeDialogs, path: std::path::PathBuf) -> Str
             page: PageSetup::default(),
         }),
     );
-    let start = Instant::now();
-    while h.state().export.busy() {
-        assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    crate::common::step_until(h, |app| !app.export.busy(), "the export");
     std::fs::read_to_string(path).unwrap()
 }
 

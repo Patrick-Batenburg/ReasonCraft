@@ -2,8 +2,7 @@
 //! language, and the spelling pass (F7) with Change, Change all, Ignore
 //! and Add to dictionary.
 
-use crate::common::{app_with_doc, harness};
-use std::time::{Duration, Instant};
+use crate::common::{app_with_doc, harness, poll_until, settle, step_until};
 
 use eframe::egui::{self, Key, Shape};
 use egui_kittest::kittest::Queryable;
@@ -31,18 +30,13 @@ fn essay_doc(intro: &str, lang: &str) -> Document {
     d
 }
 
-/// Run frames until `lang`'s dictionary is loaded (at most 20 s).
+/// Run frames until `lang`'s dictionary is loaded, then until the
+/// frames settle (the misspellings found with it).
 pub(crate) fn wait_dictionary(h: &mut H, lang: &str) {
-    let start = Instant::now();
-    while h.state_mut().spell.get(lang).is_none() {
-        assert!(
-            start.elapsed() < Duration::from_secs(20),
-            "{lang} never loaded"
-        );
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    h.run();
+    h.state_mut().spell.get(lang);
+    step_until(h, |app| !app.spell.is_loading(lang), "the dictionary");
+    assert!(h.state_mut().spell.get(lang).is_some(), "{lang} failed");
+    settle(h);
 }
 
 /// The text of every underlined section painted last frame.
@@ -134,18 +128,14 @@ pub(crate) fn current_word(h: &H) -> Option<String> {
     pass.current.as_ref().map(|_| pass.word.clone())
 }
 
-/// Run frames until the pass has its suggestions (at most 20 s).
+/// Run frames until the pass has its suggestions.
 fn wait_suggestions(h: &mut H) -> Vec<String> {
-    let start = Instant::now();
-    loop {
-        let pass = h.state().tabs[0].spelling.as_ref().expect("a pass runs");
-        if let Some(found) = &pass.suggestions {
-            return found.clone();
-        }
-        assert!(start.elapsed() < Duration::from_secs(20), "none came");
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    let found = |app: &ReasonCraftApp| {
+        let pass = app.tabs[0].spelling.as_ref().expect("a pass runs");
+        pass.suggestions.clone()
+    };
+    step_until(h, |app| found(app).is_some(), "the suggestions");
+    found(h.state()).unwrap_or_default()
 }
 
 fn open_pass(h: &mut H) {
@@ -231,11 +221,7 @@ fn add_to_dictionary_persists_in_settings() {
     let json = serde_json::to_string(&settings).unwrap();
     let restored: Settings = serde_json::from_str(&json).unwrap();
     let mut service = SpellService::new(&restored.spell_words);
-    let start = Instant::now();
-    while service.misspelled("en", "x").is_none() {
-        assert!(start.elapsed() < Duration::from_secs(20));
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    poll_until("the dictionary", || service.misspelled("en", "x").is_some());
     assert!(
         service
             .misspelled("en", "Reasoncraftish")
@@ -333,7 +319,7 @@ fn suggestions_never_block_ui() {
     h.state_mut().spell.hold = Some(hold.clone());
     // (Opening the pass waited for its suggestions if this took until the
     // hold gives up.)
-    let start = Instant::now();
+    let start = std::time::Instant::now();
     apply(h.state_mut(), Action::OpenSpelling);
     assert!(start.elapsed() < Hold::MAX_WAIT / 2, "no wait");
     h.run();
@@ -375,10 +361,5 @@ fn abandoned_suggestions_leave_the_service_idle() {
     assert!(h.state().tabs[0].spelling.as_ref().unwrap().done);
     assert!(h.state().spell.busy());
     hold.release();
-    let start = Instant::now();
-    while h.state().spell.busy() {
-        assert!(start.elapsed() < Duration::from_secs(20), "busy for ever");
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    step_until(&mut h, |app| !app.spell.busy(), "the suggestions");
 }

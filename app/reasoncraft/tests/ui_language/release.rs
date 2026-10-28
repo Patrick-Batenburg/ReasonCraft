@@ -7,8 +7,6 @@
 //! It switches the UI language, so it lives in this test binary and holds
 //! the language lock (see `main.rs`).
 
-use std::time::{Duration, Instant};
-
 use eframe::egui::{Key, accesskit};
 use egui_kittest::kittest::{AccessKitNode, NodeT, Queryable};
 use reasoncraft::ReasonCraftApp;
@@ -21,14 +19,16 @@ use reasoncraft_core::examples::{Example, Template, example, template};
 use reasoncraft_core::{BoxKind, Document, Item};
 
 use super::{lock, painted_texts};
-use crate::common::build;
+use crate::common::{build, settle};
 
 use crate::common::H;
 
-/// Apply `action` through the frame loop, as a widget would.
+/// Apply `action` through the frame loop, as a widget would, and let the
+/// work it starts (an export, a dictionary) end.
 fn act(h: &mut H, action: Action) {
     h.state_mut().push(action);
-    h.run();
+    h.step();
+    settle(h);
 }
 
 /// The names of the source types in `doc`, in `lang`, that read
@@ -182,12 +182,7 @@ fn release_flow() {
             page: PageSetup::default(),
         }),
     );
-    let start = Instant::now();
-    while h.state().export.busy() {
-        assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    crate::common::step_until(&mut h, |app| !app.export.busy(), "the export");
     assert!(h.state().modal.is_none(), "{:?}", h.state().modal);
     let svg = std::fs::read_to_string(&svg).unwrap();
     for en in &english {

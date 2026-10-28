@@ -2,7 +2,6 @@
 //! sets the personal setting (no history), and exports draw it.
 
 use crate::common;
-use std::time::{Duration, Instant};
 
 use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
@@ -80,12 +79,7 @@ fn export_boxes_match_the_screen_layout() {
                 page: PageSetup::default(),
             }),
         );
-        let start = Instant::now();
-        while h.state().export.busy() {
-            assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
-            h.step();
-            std::thread::sleep(Duration::from_millis(5));
-        }
+        crate::common::step_until(&mut h, |app| !app.export.busy(), "the export");
         let svg = std::fs::read_to_string(path).unwrap();
         // The layout the canvas draws with these settings.
         let mut cache = MeasureCache::default();
@@ -123,12 +117,7 @@ fn svg_export_draws_the_connector_style() {
                 page: PageSetup::default(),
             }),
         );
-        let start = Instant::now();
-        while h.state().export.busy() {
-            assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
-            h.step();
-            std::thread::sleep(Duration::from_millis(5));
-        }
+        crate::common::step_until(h, |app| !app.export.busy(), "the export");
         std::fs::read_to_string(path).unwrap()
     };
     let curved = export(&mut h, ConnectorStyle::Curved);

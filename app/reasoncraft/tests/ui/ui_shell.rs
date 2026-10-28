@@ -325,12 +325,7 @@ fn backstage_has_export_and_print() {
     h.run();
     h.get_by_label(&t(reasoncraft::commands::get("export.print").label))
         .click();
-    let start = std::time::Instant::now();
-    while opener.opened.borrow().is_empty() {
-        assert!(start.elapsed().as_secs() < 60, "print hangs");
-        h.step();
-        std::thread::sleep(std::time::Duration::from_millis(5));
-    }
+    crate::common::step_until(&mut h, |_| !opener.opened.borrow().is_empty(), "the print");
     assert_eq!(h.state().ribbon_tab, RibbonTab::Home);
     let printed = std::path::PathBuf::from(&opener.opened.borrow()[0]);
     assert_eq!(printed.parent().unwrap(), dir.path());

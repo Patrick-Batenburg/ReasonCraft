@@ -2,9 +2,8 @@
 //! keep the window open behind a waiting prompt (with Quit anyway), and
 //! several tabs whose Save waits for images close one after the other.
 
-use crate::common::harness;
+use crate::common::{harness, step_until};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
 
 use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
@@ -28,18 +27,6 @@ fn tab_with_premise() -> (DocTab, NodeId) {
     let mut tab = DocTab::from_document(doc);
     tab.selection = Some(Item::Box(premise));
     (tab, premise)
-}
-
-/// Steps frames until `done` holds (at most 60 s); no frame may block.
-fn step_until(h: &mut H, done: impl Fn(&ReasonCraftApp) -> bool) {
-    let start = Instant::now();
-    while !done(h.state()) {
-        assert!(start.elapsed() < Duration::from_secs(60), "never happened");
-        let frame = Instant::now();
-        h.step();
-        assert!(frame.elapsed() < Duration::from_secs(10), "a frame blocked");
-        std::thread::sleep(Duration::from_millis(5));
-    }
 }
 
 fn names(dir: &Path) -> Vec<String> {
@@ -89,7 +76,7 @@ fn window_close_waits_for_a_running_export() {
     let file = dir.path().join("map.png");
     let (mut h, hold) = close_while_exporting(&fake, file.clone());
     hold.release();
-    step_until(&mut h, ReasonCraftApp::close_confirmed);
+    step_until(&mut h, ReasonCraftApp::close_confirmed, "the close");
     assert!(!h.state().export.busy());
     assert!(file.exists(), "the export finished before the close");
     assert_eq!(names(dir.path()), ["map.png"]);
@@ -108,7 +95,7 @@ fn quit_anyway_closes_at_once_and_leaves_no_file() {
     assert!(h.state().modal.is_none());
     // The worker ends without writing anything, not even a temp file.
     hold.release();
-    step_until(&mut h, |app| !app.export.busy());
+    step_until(&mut h, |app| !app.export.busy(), "the export");
     assert!(names(dir.path()).is_empty(), "{:?}", names(dir.path()));
 }
 
@@ -123,7 +110,7 @@ fn cancel_keeps_the_window_and_the_export() {
     assert!(h.state().modal.is_none());
     assert!(h.state().export.busy(), "the export keeps running");
     hold.release();
-    step_until(&mut h, |app| !app.export.busy());
+    step_until(&mut h, |app| !app.export.busy(), "the export");
     h.step();
     assert!(file.exists());
     assert!(!h.state().close_confirmed());
@@ -136,7 +123,7 @@ fn a_failed_export_during_the_wait_shows_and_keeps_the_window() {
     let file = dir.path().join("missing-folder").join("map.png");
     let (mut h, hold) = close_while_exporting(&fake, file);
     hold.release();
-    step_until(&mut h, |app| !app.export.busy());
+    step_until(&mut h, |app| !app.export.busy(), "the export");
     h.step();
     assert!(
         matches!(h.state().modal, Some(Modal::Error { .. })),
@@ -163,14 +150,15 @@ fn saved_image(path: &Path, premise: NodeId) -> bool {
 /// Waits for the close prompt of tab `i` (not yet waiting), then answers
 /// Save with `path`.
 fn save_tab_when_asked(h: &mut H, fake: &FakeDialogs, i: usize, path: PathBuf) {
-    step_until(h, |app| {
+    let asked = |app: &ReasonCraftApp| {
         app.modal
             == Some(Modal::Unsaved {
                 tab: app.tabs[i].recovery_key,
                 window: true,
                 waiting: false,
             })
-    });
+    };
+    step_until(h, asked, "the close prompt");
     fake.set_save(path);
     h.state_mut()
         .push(Action::ResolveUnsaved(UnsavedChoice::Save));
@@ -234,7 +222,7 @@ fn two_tabs_waiting_for_images_both_save_then_the_window_closes() {
     );
     assert!(!h.state().close_confirmed());
     hold_b.release();
-    step_until(&mut h, ReasonCraftApp::close_confirmed);
+    step_until(&mut h, ReasonCraftApp::close_confirmed, "the close");
     assert!(saved_image(&a, premise_a));
     assert!(saved_image(&b, premise_b));
 }
@@ -265,7 +253,7 @@ fn an_export_failing_behind_the_unsaved_prompt_still_shows() {
     ));
     // The export fails while the prompt is open: its message waits.
     hold.release();
-    step_until(&mut h, |app| !app.export.busy());
+    step_until(&mut h, |app| !app.export.busy(), "the export");
     assert_eq!(h.state().export.waiting_errors.len(), 1);
     h.state_mut()
         .push(Action::ResolveUnsaved(UnsavedChoice::Discard));
