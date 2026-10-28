@@ -81,7 +81,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 /// scrolls sideways like the groups (chevrons, wheel, keyboard focus).
 fn tab_strip(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
-    let shown_id = egui::Id::new("ribbon_tab_shown");
+    let shown_id = egui::Id::unique("ribbon_tab_shown");
     let shown: Option<RibbonTab> = ui.data(|d| d.get_temp(shown_id));
     ui.data_mut(|d| d.insert_temp(shown_id, app.ribbon_tab));
     overflow::tab_row(ui, &tk, STRIP_H, |ui| {

@@ -359,7 +359,7 @@ impl ReasonCraftApp {
             return;
         };
         let min = min_window_size(scale, Some(monitor));
-        let sent = egui::Id::new("min_window_sent");
+        let sent = egui::Id::unique("min_window_sent");
         if ctx.data(|d| d.get_temp::<egui::Vec2>(sent)) != Some(min) {
             ctx.data_mut(|d| d.insert_temp(sent, min));
             ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min));
