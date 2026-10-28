@@ -11,9 +11,9 @@ use super::lex::Op;
 use super::parse::{EntryKind, Tree, parse};
 use super::report::{ArgdownError, ImportNoteKind as K, ImportReport, MAX_ARGDOWN_BYTES};
 use super::text::clean;
+use crate::lang::not_connected_forms;
 use crate::link::safe_link;
 use crate::model::{CardKind, Document};
-use crate::lang::not_connected_forms;
 
 /// Read an Argdown text as a map, with a report of what could not be
 /// kept as written. See `docs/argdown.md`.

@@ -60,7 +60,10 @@ fn ui_spell_and_document_languages_agree() {
     // The core language table, the dictionaries and the .ftl files must
     // list the same languages, or a new one gets English words somewhere.
     assert_eq!(UI_LANGUAGES, reasoncraft_core::meta::LANGUAGES);
-    assert_eq!(reasoncraft_spell::LANGUAGES, reasoncraft_core::meta::LANGUAGES);
+    assert_eq!(
+        reasoncraft_spell::LANGUAGES,
+        reasoncraft_core::meta::LANGUAGES
+    );
 }
 
 #[test]
