@@ -8,8 +8,8 @@ use serde::Deserialize;
 use zip::result::ZipError;
 
 use super::{
-    DOCUMENT_ENTRY, FileError, IMAGES_DIR, MAX_ASSET_BYTES, MAX_DOCUMENT_BYTES, MAX_TOTAL_BYTES,
-    sanitize, zip_to_io,
+    DOCUMENT_ENTRY, FileError, IMAGES_DIR, MAX_ASSET_BYTES, MAX_DOCUMENT_BYTES, MAX_JSON_VALUES,
+    MAX_TOTAL_BYTES, sanitize, zip_to_io,
 };
 use crate::essay::EssaySlot;
 use crate::ids::Item;
@@ -70,6 +70,26 @@ fn read_capped(
     Ok(buf)
 }
 
+/// An upper bound on the JSON values in `json`, without parsing it: one,
+/// plus one for each `,`, `[` and `{` outside strings (every value but the
+/// first in an array or object follows one of them; `:` pairs a key with
+/// its value). Malformed JSON is left for the parser to refuse.
+fn json_values(json: &str) -> usize {
+    let (mut n, mut in_string, mut escaped) = (1, false, false);
+    for b in json.bytes() {
+        match (in_string, escaped, b) {
+            (true, true, _) => escaped = false,
+            (true, false, b'\\') => escaped = true,
+            (true, false, b'"') => in_string = false,
+            (true, false, _) => {}
+            (false, _, b'"') => in_string = true,
+            (false, _, b',' | b'[' | b'{') => n += 1,
+            (false, _, _) => {}
+        }
+    }
+    n
+}
+
 /// Whether `key` is `"<sha256 of bytes>.<ext>"`.
 fn key_matches(key: &str, bytes: &[u8]) -> bool {
     key.split_once('.')
@@ -96,6 +116,11 @@ pub(super) fn open_package_with_limits(
         Err(e) => return Err(zip_to_io(e)),
     };
     let text = String::from_utf8(bytes).map_err(|e| FileError::Malformed(e.to_string()))?;
+    if json_values(&text) > MAX_JSON_VALUES {
+        return Err(FileError::Malformed(format!(
+            "the document holds more than {MAX_JSON_VALUES} values"
+        )));
+    }
     let probe: Probe =
         serde_json::from_str(&text).map_err(|e| FileError::Malformed(e.to_string()))?;
     if probe.schema_version > SCHEMA_VERSION {

@@ -4,12 +4,20 @@
 //! width (box width minus `2 * BOX_TEXT_PAD`). The painter wraps the same
 //! text at the same width with the same font, via [`wrapped_rows`], so the
 //! painted rows always fit the measured box.
+//!
+//! Heights are measured with fonts of the cache's own, without egui's
+//! galley cache: a measured galley is dropped at once. egui's cache keeps
+//! every galley laid out in a frame until the next one, and the layout
+//! measures every box of a map at once, so a map full of long texts would
+//! hold gigabytes of galleys (SEC-R1). Only the boxes on screen are laid
+//! out for painting.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
 
+use eframe::egui::epaint::text::{Fonts, ViewportKey};
 use eframe::egui::{self, Color32, FontId, Galley, text::LayoutJob};
 use reasoncraft_core::{BoxKind, Measure};
 
@@ -49,6 +57,8 @@ pub struct MeasureCache {
     heights: HashMap<(u32, u32), HashMap<String, f32>>,
     /// How many heights [`Self::heights`] holds.
     len: usize,
+    /// Fonts like the context's, for measuring without keeping galleys.
+    fonts: Option<Fonts>,
 }
 
 impl MeasureCache {
@@ -60,15 +70,43 @@ impl MeasureCache {
         self.len == 0
     }
 
-    /// Forget everything if the fonts changed since the last frame.
+    /// Forget everything if the fonts changed since the last frame, and
+    /// start a pass of the measuring fonts (which tidies their glyph
+    /// atlas when it fills up).
     fn sync(&mut self, ctx: &egui::Context) {
         let stamp = fonts_stamp(ctx);
+        let options = text_options(ctx);
         if self.fonts_stamp != Some(stamp) || self.len > CACHE_LIMIT {
             self.heights.clear();
             self.len = 0;
-            self.fonts_stamp = Some(stamp);
+        }
+        if self.fonts_stamp != Some(stamp) || self.fonts.is_none() {
+            let definitions = ctx.fonts(|f| f.definitions().clone());
+            self.fonts = Some(Fonts::new(options, definitions));
+        }
+        self.fonts_stamp = Some(stamp);
+        if let Some(fonts) = &mut self.fonts {
+            fonts.begin_pass(options, ViewportKey::default());
         }
     }
+
+    /// The height of `job` laid out at `pixels_per_point`, with the
+    /// galley dropped at once.
+    fn measure(&mut self, pixels_per_point: f32, job: LayoutJob) -> f32 {
+        let fonts = self.fonts.as_mut().expect("synced before measuring");
+        fonts
+            .layout_uncached(pixels_per_point, Arc::new(job))
+            .size()
+            .y
+    }
+}
+
+/// The text options egui lays text out with in `ctx` (as egui sets them
+/// up for each pass).
+fn text_options(ctx: &egui::Context) -> egui::epaint::text::TextOptions {
+    let mut options = ctx.global_style().visuals.text_options;
+    options.max_texture_side = ctx.input(|i| i.max_texture_side);
+    options
 }
 
 /// A cheap fingerprint of the font setup: font names, families and scale.
@@ -118,8 +156,9 @@ impl Measure for EguiMeasure<'_> {
         if let Some(h) = known {
             return h;
         }
-        let h = galley(self.ctx, text, width, kind).size().y;
+        let job = LayoutJob::simple(text.to_owned(), font_for(kind), Color32::PLACEHOLDER, width);
         let mut cache = self.cache.borrow_mut();
+        let h = cache.measure(self.ctx.pixels_per_point(), job);
         cache
             .heights
             .entry(key)
@@ -200,6 +239,37 @@ mod tests {
             // Cached: a second lookup adds nothing.
             EguiMeasure::new(ctx, &mut cache).text_height(text, 144.0, &BoxKind::Premise);
             assert_eq!(cache.len(), 1);
+        });
+    }
+
+    /// Measuring keeps no galley in egui's cache (a map of long texts
+    /// would hold them all until the next frame), and gives the height
+    /// painting lays out, also for paragraphs and long words.
+    #[test]
+    fn measuring_keeps_no_galleys_and_matches_painting() {
+        with_ctx(|ctx| {
+            let mut cache = MeasureCache::default();
+            let m = EguiMeasure::new(ctx, &mut cache);
+            let before = ctx.fonts(|f| f.num_galleys_in_cache());
+            let texts = [
+                "A study of 2,000 households found fewer break-ins".to_owned(),
+                "First paragraph
+
+Second one, a little longer than a row"
+                    .to_owned(),
+                "x".repeat(300),
+                "word ".repeat(2_000),
+            ];
+            let mut heights = Vec::new();
+            for text in &texts {
+                heights.push(m.text_height(text, 144.0, &BoxKind::Premise));
+            }
+            let after = ctx.fonts(|f| f.num_galleys_in_cache());
+            assert_eq!(after, before, "no galley kept");
+            for (text, h) in texts.iter().zip(heights) {
+                let painted = galley(ctx, text, 144.0, &BoxKind::Premise).size().y;
+                assert_eq!(h, painted, "{:?}", &text[..20.min(text.len())]);
+            }
         });
     }
 

@@ -29,6 +29,12 @@ const MAX_DOCUMENT_BYTES: u64 = 64 << 20;
 /// build (1 MiB). Past it they are all left out: they are copied with
 /// every edit, undo step and autosave.
 const MAX_EXTRA_BYTES: usize = 1 << 20;
+/// Most JSON values (objects, arrays, numbers, strings, ...) a
+/// `document.json` may hold: parsed, each takes far more memory than its
+/// bytes, so a "newer version" field holding a huge array of tiny values
+/// is refused before it is parsed (SEC-R3). A map of 10,000 boxes holds
+/// about 400,000.
+const MAX_JSON_VALUES: usize = 2_000_000;
 /// Largest single image asset (32 MiB).
 const MAX_ASSET_BYTES: u64 = 32 << 20;
 /// Largest total of uncompressed bytes read from one file (512 MiB).

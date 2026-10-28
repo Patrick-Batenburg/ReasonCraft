@@ -180,3 +180,68 @@ fn document_limit_is_modest() {
     let limit = MAX_DOCUMENT_BYTES;
     assert!(limit <= 64 << 20, "{limit}");
 }
+
+/// All of a document's texts together keep at most
+/// [`crate::caps::MAX_DOCUMENT_CHARS`] characters: a file of many full
+/// boxes is cut on open (in document order), so laying it out and
+/// painting it stay bounded (SEC-R1).
+#[test]
+fn a_documents_total_text_is_cut_on_open() {
+    use crate::caps::MAX_DOCUMENT_CHARS;
+    use crate::ids::Parent;
+    use crate::model::CardKind;
+    let mut d = Document::new("c");
+    let full = "x".repeat(MAX_BOX_CHARS);
+    let n = MAX_DOCUMENT_CHARS / MAX_BOX_CHARS + 10;
+    let mut premises = Vec::new();
+    for _ in 0..n {
+        premises.push(
+            d.add_card(Parent::Box(d.root), CardKind::Reason, &full)
+                .unwrap()
+                .1,
+        );
+    }
+    d.add_snippet(&"s".repeat(1000));
+    let pkg = open_doc(&d, &[]);
+    assert!(pkg.cut_on_open);
+    let d = &pkg.doc;
+    let total: usize = (d.boxes.values().map(|b| chars(&b.text)))
+        .chain(d.snippets.iter().map(|s| chars(&s.text)))
+        .sum();
+    assert_eq!(total, MAX_DOCUMENT_CHARS);
+    assert_eq!(
+        chars(&d.boxes[&premises[0]].text),
+        MAX_BOX_CHARS,
+        "kept in order"
+    );
+    assert_eq!(d.boxes[&premises[n - 1]].text, "", "the last ones are cut");
+    // A document under the cap opens untouched.
+    let small = open_doc(&Document::new("c"), &[]);
+    assert!(!small.cut_on_open);
+}
+
+/// A document of millions of tiny JSON values (an unknown field from a
+/// "newer version" holding a huge array) is refused before it is parsed,
+/// as each value would take far more memory than its bytes (SEC-R3).
+#[test]
+fn a_flood_of_json_values_is_refused() {
+    let mut json = serde_json::to_value(Document::new("c")).unwrap();
+    let flood = vec![0u8; MAX_JSON_VALUES + 10];
+    json["future"] = serde_json::to_value(flood).unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let p = dir.path().join("x.rcraft");
+    let mut z = zip::ZipWriter::new(std::fs::File::create(&p).unwrap());
+    z.start_file("document.json", zip::write::SimpleFileOptions::default())
+        .unwrap();
+    std::io::Write::write_all(&mut z, json.to_string().as_bytes()).unwrap();
+    z.finish().unwrap();
+    assert!(
+        matches!(open_package(&p), Err(FileError::Malformed(_))),
+        "refused"
+    );
+    // Strings full of commas and brackets are not values.
+    let mut d = Document::new("c");
+    let root = d.root;
+    d.boxes[&root].text = "[,]{:}".repeat(MAX_BOX_CHARS / 6);
+    assert!(!open_doc(&d, &[]).cut_on_open);
+}

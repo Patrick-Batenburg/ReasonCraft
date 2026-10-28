@@ -8,6 +8,11 @@ use crate::model::{BoxKind, Document, MAX_BOX_CHARS, SourceType};
 pub const MAX_COMMENT_CHARS: usize = 50_000;
 /// The most characters a title, an author's name or a date keeps.
 pub const MAX_META_CHARS: usize = 1_000;
+/// The most characters all of a document's texts keep together when it
+/// is opened (box texts, comments, snippets, citations and essay
+/// paragraphs, in that order): about 1,600 pages. A longer file is cut,
+/// so laying it out and painting it stay bounded (SEC-R1).
+pub const MAX_DOCUMENT_CHARS: usize = 8_000_000;
 /// The longest link kept, in characters. A longer link is refused, not
 /// cut: a cut link would lead somewhere else.
 pub const MAX_LINK_CHARS: usize = 8_192;
@@ -31,6 +36,14 @@ pub fn cap_chars(text: &mut String, max: usize) -> bool {
     let end = capped_len(text, max);
     let cut = end < text.len();
     text.truncate(end);
+    cut
+}
+
+/// Keep at most `left` characters of `text`, and take what it keeps from
+/// `left`; true when it was cut.
+fn take_chars(text: &mut String, left: &mut usize) -> bool {
+    let cut = cap_chars(text, *left);
+    *left -= if cut { *left } else { text.chars().count() };
     cut
 }
 
@@ -90,6 +103,34 @@ impl Document {
         }
         cut |= self.cap_snippet_texts();
         cut |= self.cap_essay_texts();
+        cut |= self.cap_total_text();
+        cut
+    }
+
+    /// Cut the texts past [`MAX_DOCUMENT_CHARS`] all together, in
+    /// document order; true when anything was cut.
+    fn cap_total_text(&mut self) -> bool {
+        let mut left = MAX_DOCUMENT_CHARS;
+        let mut cut = false;
+        for node in self.boxes.values_mut() {
+            cut |= take_chars(&mut node.text, &mut left);
+            for c in &mut node.comments {
+                cut |= take_chars(&mut c.text, &mut left);
+            }
+        }
+        for s in &mut self.snippets {
+            cut |= take_chars(&mut s.text, &mut left);
+            if let Some(source) = &mut s.source {
+                cut |= take_chars(&mut source.citation, &mut left);
+            }
+        }
+        let plan = &mut self.essay;
+        for text in plan.paragraphs.values_mut() {
+            cut |= take_chars(text, &mut left);
+        }
+        for (_, text) in &mut plan.unplaced {
+            cut |= take_chars(text, &mut left);
+        }
         cut
     }
 }
