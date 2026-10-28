@@ -184,10 +184,13 @@ fn is_untouched(tab: &DocTab) -> bool {
 
 /// Open `path`: activate its tab if it is already open, else load it into
 /// the active tab when that one is untouched, else into a new tab. Either
-/// way it goes first in the recent files.
+/// way it goes first in the recent files. A relative path (from the
+/// command line) is made absolute first: the tab, the recent files and a
+/// recovered copy must not depend on the folder the app was started in.
 fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
-    open_or_activate(app, path)?;
-    app.settings.push_recent(path);
+    let path = std::path::absolute(path)?;
+    open_or_activate(app, &path)?;
+    app.settings.push_recent(&path);
     Ok(())
 }
 
@@ -200,7 +203,11 @@ fn open_or_activate(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileErr
         app.active = i;
         return Ok(());
     }
-    let mut tab = DocTab::from_package(file::open_package(path)?);
+    let pkg = file::open_package(path)?;
+    if pkg.cut_on_open {
+        app.status_note = Some(crate::i18n::t("status.open_cut"));
+    }
+    let mut tab = DocTab::from_package(pkg);
     tab.path = Some(path.to_path_buf());
     tab.disk_mtime = crate::recovery::file_mtime(path);
     place_tab(app, tab);

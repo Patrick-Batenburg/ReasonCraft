@@ -296,3 +296,45 @@ fn retry_keeps_then_discard() {
     );
     assert!(!orphan.parent().unwrap().exists());
 }
+
+/// A copy whose original path is relative (from an older build) cannot
+/// tell which folder it meant: it is restored untitled, never saved to
+/// wherever the app happens to start.
+#[test]
+fn relative_original_path_restores_untitled() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("r.rcraft"));
+    let metas: Vec<_> = walk(rec.path())
+        .into_iter()
+        .filter(|p| p.extension().is_some_and(|e| e == "json"))
+        .collect();
+    assert_eq!(metas.len(), 1);
+    let mut meta: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&metas[0]).unwrap()).unwrap();
+    meta["original"] = "r.rcraft".into();
+    std::fs::write(&metas[0], meta.to_string()).unwrap();
+
+    let mut app = app_with_recovery(rec.path());
+    actions::apply(
+        &mut app,
+        Action::ResolveRecovery(RecoveryChoice::RestoreAll),
+    );
+    wait(&app);
+    let tab = app.active_tab();
+    assert_eq!(tab.doc.boxes[&tab.doc.root].text, "Edited");
+    assert_eq!(tab.path, None);
+}
+
+fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut out = Vec::new();
+    for e in std::fs::read_dir(dir).unwrap().flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            out.extend(walk(&p));
+        } else {
+            out.push(p);
+        }
+    }
+    out
+}

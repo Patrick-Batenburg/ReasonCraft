@@ -1,7 +1,7 @@
 //! Inline editing of a box's text: starting, live text, typing into the
 //! selected box. [`super::apply`] commits a running edit first, so
 //! stopping needs nothing more. Text past
-//! [`MAX_BOX_CHARS`](crate::canvas::editor::MAX_BOX_CHARS) is cut.
+//! [`MAX_BOX_CHARS`](reasoncraft_core::MAX_BOX_CHARS) is cut.
 
 use reasoncraft_core::Item;
 

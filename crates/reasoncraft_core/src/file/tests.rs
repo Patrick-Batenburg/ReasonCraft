@@ -7,7 +7,7 @@ use crate::model::Document;
 use crate::package::{Assets, Package, asset_key};
 use crate::{CardKind, Parent};
 
-fn write_zip(path: &Path, json: &str) {
+pub(super) fn write_zip(path: &Path, json: &str) {
     let f = std::fs::File::create(path).unwrap();
     let mut z = zip::ZipWriter::new(f);
     let o = zip::write::SimpleFileOptions::default();
@@ -178,7 +178,7 @@ fn save_leaves_no_temp_file() {
     assert!(!dir.path().join("map.rcraft.tmp").exists());
 }
 
-fn zip_with(path: &Path, doc: &Document, extra: &[(&str, &[u8])]) {
+pub(super) fn zip_with(path: &Path, doc: &Document, extra: &[(&str, &[u8])]) {
     let mut z = zip::ZipWriter::new(std::fs::File::create(path).unwrap());
     let o = zip::write::SimpleFileOptions::default();
     z.start_file("document.json", o).unwrap();
@@ -231,7 +231,8 @@ fn package_roundtrip_keeps_ratings_comments_links() {
     let pkg = Package {
         doc: d,
         assets,
-        other_entries: vec![("extra/x.bin".into(), vec![7; 10])],
+        other_entries: vec![("extra/x.bin".into(), vec![7; 10].into())],
+        cut_on_open: false,
     };
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("m.rcraft");
@@ -306,7 +307,8 @@ fn image_entries_are_stored_uncompressed() {
         asset: key.clone(),
         aspect: 1.0,
     });
-    pkg.other_entries.push(("extra.bin".into(), vec![0; 4096]));
+    pkg.other_entries
+        .push(("extra.bin".into(), vec![0; 4096].into()));
     let dir = tempfile::tempdir().unwrap();
     let p = dir.path().join("x.rcraft");
     save_package(&pkg, &p).unwrap();

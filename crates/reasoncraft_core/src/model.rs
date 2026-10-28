@@ -131,11 +131,12 @@ pub struct BoxNode {
 }
 
 impl BoxNode {
+    /// A box with `text` cut to [`MAX_BOX_CHARS`] characters.
     pub fn new(id: NodeId, kind: BoxKind, text: &str) -> Self {
         Self {
             id,
             kind,
-            text: text.to_owned(),
+            text: crate::caps::capped(text, MAX_BOX_CHARS).to_owned(),
             width: None,
             children: Vec::new(),
             acceptance: None,

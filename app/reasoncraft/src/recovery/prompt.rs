@@ -80,11 +80,15 @@ pub(crate) fn resolve(app: &mut ReasonCraftApp, choice: RecoveryChoice) {
 
 /// Open `doc` in a tab: unsaved, under its original path, marked as
 /// recovered. It is autosaved under this session at once; the orphaned
-/// copy is deleted only once that write succeeded.
+/// copy is deleted only once that write succeeded. A relative original
+/// path (from an older build) is dropped: it named a folder that is not
+/// known any more, so the tab is untitled.
 fn restore(app: &mut ReasonCraftApp, doc: &RecoveredDoc) -> Result<(), FileError> {
     let mut tab = DocTab::from_package(file::open_package(&doc.package)?);
-    tab.path = doc.meta.original.clone();
-    tab.disk_mtime = doc.meta.original_mtime;
+    tab.path = doc.meta.original.clone().filter(|p| p.is_absolute());
+    if tab.path.is_some() {
+        tab.disk_mtime = doc.meta.original_mtime;
+    }
     tab.history.saved_marker = None;
     tab.recovered_from = Some(doc.meta.clone());
     let i = file_ops::place_tab(app, tab);

@@ -2,6 +2,7 @@
 
 use uuid::Uuid;
 
+use crate::caps::{MAX_COMMENT_CHARS, MAX_META_CHARS, capped, link_fits};
 use crate::edit::EditError;
 use crate::ids::{CardId, Item, NodeId};
 use crate::model::{
@@ -85,14 +86,20 @@ impl Document {
     }
 
     /// Set or clear a box's link. The value is trimmed; empty means none.
+    /// A link longer than [`MAX_LINK_CHARS`] is refused
+    /// ([`EditError::NotAllowed`]).
     pub fn set_link(&mut self, id: NodeId, link: Option<String>) -> Result<(), EditError> {
+        if link.as_deref().is_some_and(|l| !link_fits(l.trim())) {
+            return Err(EditError::NotAllowed);
+        }
         let node = self.node_mut(id)?;
         node.link = link.map(|l| l.trim().to_owned()).filter(|l| !l.is_empty());
         self.finish_edit();
         Ok(())
     }
 
-    /// Add a comment to a box and return its id.
+    /// Add a comment to a box and return its id. The text is cut to
+    /// [`MAX_COMMENT_CHARS`] characters, the author to [`MAX_META_CHARS`].
     pub fn add_comment(
         &mut self,
         id: NodeId,
@@ -103,8 +110,8 @@ impl Document {
         let node = self.node_mut(id)?;
         let comment = Comment {
             id: Uuid::new_v4(),
-            author: author.to_owned(),
-            text: text.to_owned(),
+            author: capped(author, MAX_META_CHARS).to_owned(),
+            text: capped(text, MAX_COMMENT_CHARS).to_owned(),
             verdict,
             created: now_rfc3339(),
         };

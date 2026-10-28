@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use eframe::egui::{Id, Rect};
@@ -44,8 +45,9 @@ pub struct DocTab {
     /// save writes only the referenced ones.
     pub assets: Assets,
     /// Zip entries of the opened file that this build does not understand,
-    /// written back unchanged on save.
-    pub other_entries: Vec<(String, Vec<u8>)>,
+    /// written back unchanged on save. The bytes are shared, so autosave
+    /// copies none.
+    pub other_entries: Vec<(String, Arc<[u8]>)>,
     /// Where the document was last saved or opened from.
     pub path: Option<PathBuf>,
     pub selection: Option<Item>,
@@ -159,6 +161,7 @@ impl DocTab {
             doc,
             assets,
             other_entries,
+            cut_on_open: _,
         } = pkg;
         let selection = Some(Item::Box(doc.root));
         Self {

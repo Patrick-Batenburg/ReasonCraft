@@ -12,7 +12,7 @@ fn e2e_unknown_zip_entry_survives_open_edit_save_as() {
     let thumb = vec![0x89, b'P', b'N', b'G', 0, 1, 2, 3];
     let mut pkg = reasoncraft_core::Package::new(reasoncraft_core::Document::new("A claim"));
     pkg.other_entries
-        .push(("thumbnail.png".to_owned(), thumb.clone()));
+        .push(("thumbnail.png".to_owned(), thumb.clone().into()));
     file::save_package(&pkg, &newer).unwrap();
 
     let fake = FakeDialogs::default();
@@ -38,7 +38,7 @@ fn e2e_unknown_zip_entry_survives_open_edit_save_as() {
     assert_eq!(saved.doc.boxes.len(), 2, "the edit was saved");
     assert_eq!(
         saved.other_entries,
-        vec![("thumbnail.png".to_owned(), thumb)]
+        vec![("thumbnail.png".to_owned(), thumb.into())]
     );
     // The tab still holds the entry for a later save.
     assert_eq!(app.active_tab().other_entries.len(), 1);

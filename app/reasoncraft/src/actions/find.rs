@@ -4,12 +4,12 @@
 
 use std::collections::HashMap;
 
+use reasoncraft_core::caps::capped;
 use reasoncraft_core::find::search_order;
-use reasoncraft_core::{Document, EditError, FindHit, Item, NodeId};
+use reasoncraft_core::{Document, EditError, FindHit, Item, MAX_BOX_CHARS, NodeId};
 
 use super::Action;
 use crate::app::ReasonCraftApp;
-use crate::canvas::editor::MAX_BOX_CHARS;
 use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t, t_args};
 
@@ -140,11 +140,12 @@ pub(crate) fn cap_box(d: &mut Document, node: NodeId) -> bool {
     let Some(text) = d.boxes.get(&node).map(|b| &b.text) else {
         return false;
     };
-    let Some((end, _)) = text.char_indices().nth(MAX_BOX_CHARS) else {
+    let kept = capped(text, MAX_BOX_CHARS);
+    if kept.len() == text.len() {
         return false;
-    };
-    let cut = text[..end].to_owned();
-    d.set_text(node, &cut).is_ok()
+    }
+    let kept = kept.to_owned();
+    d.set_text(node, &kept).is_ok()
 }
 
 /// Replace the current hit as one history step (none when the text is

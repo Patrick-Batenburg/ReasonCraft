@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
+use crate::caps::{cap_chars, capped_len};
 use crate::edit::EditError;
 use crate::model::{Document, SourceType};
 
@@ -50,24 +51,16 @@ fn capped(text: &str) -> String {
     text[..capped_len(text, MAX_SNIPPET_CHARS)].to_owned()
 }
 
-/// The byte length of `text` cut to at most `max` characters (always on
-/// a char boundary).
-pub(crate) fn capped_len(text: &str, max: usize) -> usize {
-    match text.char_indices().nth(max) {
-        Some((end, _)) => end,
-        None => text.len(),
-    }
-}
-
 impl Document {
     /// Cut every snippet's text to [`MAX_SNIPPET_CHARS`] characters, as
     /// editing does, so an oversized text from a file never reaches the
     /// UI. Not an edit: the modified time is left alone.
-    pub(crate) fn cap_snippet_texts(&mut self) {
+    pub(crate) fn cap_snippet_texts(&mut self) -> bool {
+        let mut cut = false;
         for s in &mut self.snippets {
-            let end = capped_len(&s.text, MAX_SNIPPET_CHARS);
-            s.text.truncate(end);
+            cut |= cap_chars(&mut s.text, MAX_SNIPPET_CHARS);
         }
+        cut
     }
 
     fn finish_snippet_edit(&mut self) {

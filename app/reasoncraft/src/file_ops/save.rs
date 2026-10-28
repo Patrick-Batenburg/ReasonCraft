@@ -60,11 +60,10 @@ pub(super) fn write_tab(tab: &mut DocTab, path: PathBuf) -> Result<(), (PathBuf,
     let pkg = Package {
         doc: tab.doc.clone(),
         assets: tab.assets.clone(),
-        other_entries: std::mem::take(&mut tab.other_entries),
+        other_entries: tab.other_entries.clone(),
+        cut_on_open: false,
     };
-    let result = file::save_package(&pkg, &path);
-    tab.other_entries = pkg.other_entries;
-    result.map_err(|err| (path.clone(), err))?;
+    file::save_package(&pkg, &path).map_err(|err| (path.clone(), err))?;
     tab.history.mark_saved();
     tab.disk_mtime = crate::recovery::file_mtime(&path);
     tab.path = Some(path);

@@ -2,10 +2,13 @@
 //! image assets under `images/` and any entries from newer builds.
 
 mod read;
+mod sanitize;
 mod write;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_hostile;
 
 pub use read::{open, open_package};
 pub use write::{save, save_package};
@@ -15,8 +18,13 @@ use zip::result::ZipError;
 const DOCUMENT_ENTRY: &str = "document.json";
 const IMAGES_DIR: &str = "images/";
 
-/// Largest `document.json` that [`open`] will read (256 MiB).
-const MAX_DOCUMENT_BYTES: u64 = 256 << 20;
+/// Largest `document.json` that [`open`] will read (64 MiB, far beyond
+/// any real map: every text is capped, see [`crate::caps`]).
+const MAX_DOCUMENT_BYTES: u64 = 64 << 20;
+/// Largest total size of the unknown JSON fields kept from a newer
+/// build (1 MiB). Past it they are all left out: they are copied with
+/// every edit, undo step and autosave.
+const MAX_EXTRA_BYTES: usize = 1 << 20;
 /// Largest single image asset (32 MiB).
 const MAX_ASSET_BYTES: u64 = 32 << 20;
 /// Largest total of uncompressed bytes read from one file (512 MiB).

@@ -642,6 +642,7 @@ export-copied = Copied to the clipboard.
 status-exporting = Exporting…
 status-preparing_image = Preparing image…
 status-text_cut = Text was cut to 50 000 characters.
+status-open_cut = Some of this file was too large or unsafe: long texts were shortened and the rest left out.
 status-jobs-exports = { $count ->
     [one] One export running
    *[other] { $count } exports running

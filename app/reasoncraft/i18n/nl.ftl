@@ -643,6 +643,7 @@ export-copied = Gekopieerd naar het klembord.
 status-exporting = Exporteren…
 status-preparing_image = Afbeelding voorbereiden…
 status-text_cut = Tekst is ingekort tot 50 000 tekens.
+status-open_cut = Een deel van dit bestand was te groot of onveilig: lange teksten zijn ingekort en de rest is weggelaten.
 status-jobs-exports = { $count ->
     [one] Eén export bezig
    *[other] { $count } exports bezig

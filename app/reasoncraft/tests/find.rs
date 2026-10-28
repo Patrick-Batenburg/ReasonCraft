@@ -8,12 +8,12 @@ use eframe::egui::{self, Key, Modifiers};
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, apply};
-use reasoncraft::canvas::editor::MAX_BOX_CHARS;
 use reasoncraft::doc_tab::DocTab;
 use reasoncraft::export::{ExportFormat, ExportOptions, ExportRequest, PageSetup};
 use reasoncraft::file_ops::FakeDialogs;
 use reasoncraft::i18n::t;
 use reasoncraft::theme::Tokens;
+use reasoncraft_core::MAX_BOX_CHARS;
 use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent};
 
 type H = Harness<'static, ReasonCraftApp>;

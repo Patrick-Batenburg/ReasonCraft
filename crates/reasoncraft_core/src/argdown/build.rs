@@ -273,7 +273,7 @@ impl Builder<'_> {
                 return;
             };
             let id = NodeId::new();
-            if !self.insert_box(BoxNode::new(id, BoxKind::Premise, &text), arg.line) {
+            if !self.insert_box(BoxNode::new(id, BoxKind::Premise, &text), &text, arg.line) {
                 return;
             }
             premises.push(Some(id));

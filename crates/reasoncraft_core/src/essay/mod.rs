@@ -15,10 +15,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
+use crate::caps::{cap_chars, capped_len};
 use crate::edit::EditError;
 use crate::ids::{CardId, Item, NodeId};
 use crate::model::Document;
-use crate::snippets::capped_len;
 
 pub use order::{ElementRole, EssayElement, EssaySection, essay_order};
 pub use text::{essay_markdown, essay_plain_text};
@@ -217,19 +217,17 @@ impl Document {
     /// Cut every paragraph and unplaced note to [`MAX_ESSAY_CHARS`] and
     /// every unplaced label to [`LABEL_CHARS`], as editing does, so an
     /// oversized text from a file never reaches the UI. Not an edit.
-    pub(crate) fn cap_essay_texts(&mut self) {
-        fn cap(text: &mut String, max: usize) {
-            let end = capped_len(text, max);
-            text.truncate(end);
-        }
+    pub(crate) fn cap_essay_texts(&mut self) -> bool {
+        let mut cut = false;
         let plan = &mut self.essay;
         for text in plan.paragraphs.values_mut() {
-            cap(text, MAX_ESSAY_CHARS);
+            cut |= cap_chars(text, MAX_ESSAY_CHARS);
         }
         for (label, text) in &mut plan.unplaced {
-            cap(label, LABEL_CHARS);
-            cap(text, MAX_ESSAY_CHARS);
+            cut |= cap_chars(label, LABEL_CHARS);
+            cut |= cap_chars(text, MAX_ESSAY_CHARS);
         }
+        cut
     }
 }
 

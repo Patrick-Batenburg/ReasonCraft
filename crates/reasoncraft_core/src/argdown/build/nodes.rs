@@ -5,6 +5,7 @@ use super::super::fields;
 
 use super::super::report::{ImportNoteKind as K, MAX_IMPORT_BOXES};
 use super::Builder;
+use crate::caps::cap_chars;
 use crate::ids::{CardId, Item, NodeId, Parent};
 use crate::model::{BoxKind, BoxNode, Card, CardKind, CardStrength, MAX_BOX_CHARS};
 use crate::rules::NewItem;
@@ -21,7 +22,7 @@ impl Builder<'_> {
         let id = NodeId::new();
         let text = self.g.stmts[x].text.clone().unwrap_or_default();
         let line = self.g.stmts[x].line;
-        if !self.insert_box(BoxNode::new(id, kind, &text), line) {
+        if !self.insert_box(BoxNode::new(id, kind, &text), &text, line) {
             return None;
         }
         if let Some(s) = data {
@@ -30,14 +31,15 @@ impl Builder<'_> {
         Some(id)
     }
 
-    /// Add `node`, made from the item at `line`, with its text cut to
-    /// [`MAX_BOX_CHARS`] (noted). False past [`MAX_IMPORT_BOXES`].
-    pub(super) fn insert_box(&mut self, mut node: BoxNode, line: usize) -> bool {
+    /// Add `node`, made from the item at `line` with `text`, which
+    /// [`BoxNode::new`] cut to [`MAX_BOX_CHARS`] (noted). False past
+    /// [`MAX_IMPORT_BOXES`].
+    pub(super) fn insert_box(&mut self, node: BoxNode, text: &str, line: usize) -> bool {
         if self.doc.boxes.len() >= MAX_IMPORT_BOXES {
             self.too_many = true;
             return false;
         }
-        if cut_text(&mut node.text) {
+        if node.text.len() < text.len() {
             self.report.note(line, K::TextCut);
         }
         self.doc.boxes.insert(node.id, node);
@@ -86,7 +88,7 @@ impl Builder<'_> {
         for note in fields::set_fields(node, &self.g.stmts[s]) {
             let n = NodeId::new();
             let line = self.g.stmts[s].line;
-            if !self.insert_box(BoxNode::new(n, BoxKind::Note, &note), line) {
+            if !self.insert_box(BoxNode::new(n, BoxKind::Note, &note), &note, line) {
                 return;
             }
             self.attach(Parent::Box(id), Item::Box(n));
@@ -96,13 +98,7 @@ impl Builder<'_> {
 
 /// Cut `text` to [`MAX_BOX_CHARS`] characters; true when it was longer.
 pub(super) fn cut_text(text: &mut String) -> bool {
-    match text.char_indices().nth(MAX_BOX_CHARS) {
-        Some((end, _)) => {
-            text.truncate(end);
-            true
-        }
-        None => false,
-    }
+    cap_chars(text, MAX_BOX_CHARS)
 }
 
 pub(super) fn new_item(kind: &BoxKind) -> NewItem {

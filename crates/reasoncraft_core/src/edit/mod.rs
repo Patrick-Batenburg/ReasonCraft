@@ -10,8 +10,9 @@ mod validate_tests;
 
 use thiserror::Error;
 
+use crate::caps::capped;
 use crate::ids::{Item, NodeId, Parent};
-use crate::model::{BoxKind, CardKind, Document, SourceType, now_rfc3339};
+use crate::model::{BoxKind, CardKind, Document, MAX_BOX_CHARS, SourceType, now_rfc3339};
 
 /// Why an edit was refused.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -88,13 +89,16 @@ impl Document {
         }
     }
 
-    /// Replace a box's text.
-    pub fn set_text(&mut self, id: NodeId, text: &str) -> Result<(), EditError> {
-        self.boxes.get_mut(&id).ok_or(EditError::NotFound)?.text = text.to_owned();
+    /// Replace a box's text, cut to [`MAX_BOX_CHARS`] characters; true
+    /// when it was cut.
+    pub fn set_text(&mut self, id: NodeId, text: &str) -> Result<bool, EditError> {
+        let node = self.boxes.get_mut(&id).ok_or(EditError::NotFound)?;
+        let kept = capped(text, MAX_BOX_CHARS);
+        kept.clone_into(&mut node.text);
         self.touch();
         #[cfg(debug_assertions)]
         self.check_invariants();
-        Ok(())
+        Ok(kept.len() < text.len())
     }
 
     /// Everything under `item` (not including it): premises, whole-card

@@ -1,5 +1,6 @@
 //! Edit operations for the document's metadata: title, author, language.
 
+use crate::caps::{MAX_META_CHARS, capped};
 use crate::edit::EditError;
 use crate::model::Document;
 
@@ -38,9 +39,14 @@ impl Document {
         Ok(())
     }
 
-    /// Set the title and author as given. Leaving both as they are changes
-    /// nothing, not even the modified time.
+    /// Set the title and author as given, each cut to [`MAX_META_CHARS`]
+    /// characters. Leaving both as they are changes nothing, not even the
+    /// modified time.
     pub fn set_meta(&mut self, title: &str, author: &str) -> Result<(), EditError> {
+        let (title, author) = (
+            capped(title, MAX_META_CHARS),
+            capped(author, MAX_META_CHARS),
+        );
         if self.meta.title != title || self.meta.author != author {
             title.clone_into(&mut self.meta.title);
             author.clone_into(&mut self.meta.author);

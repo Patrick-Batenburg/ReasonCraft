@@ -268,7 +268,7 @@ fn unknown_zip_entries_survive_open_and_save_in_the_app() {
     let path = dir.path().join("newer.rcraft");
     let mut pkg = Package::new(reasoncraft_core::Document::new("Claim"));
     pkg.other_entries
-        .push(("thumbnail.png".into(), vec![1, 2, 3, 4]));
+        .push(("thumbnail.png".into(), vec![1, 2, 3, 4].into()));
     file::save_package(&pkg, &path).unwrap();
 
     let mut app = ReasonCraftApp::new_for_test();
@@ -280,7 +280,7 @@ fn unknown_zip_entries_survive_open_and_save_in_the_app() {
     assert_eq!(saved.doc.boxes.len(), 2, "the edit was saved");
     assert_eq!(
         saved.other_entries,
-        vec![("thumbnail.png".to_owned(), vec![1, 2, 3, 4])]
+        vec![("thumbnail.png".to_owned(), vec![1, 2, 3, 4].into())]
     );
 }
 
@@ -345,4 +345,47 @@ fn image_actions_commit_a_running_text_edit_first() {
     let node = &app.active_tab().doc.boxes[&premise];
     assert!(node.image.is_some());
     assert_eq!(node.text, "typed before RemoveImage");
+}
+
+#[test]
+fn opening_a_file_with_oversized_text_says_it_was_cut() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("huge.rcraft");
+    let mut doc = reasoncraft_core::Document::new("c");
+    let root = doc.root;
+    // Saved unchecked, as a hostile file would hold it.
+    doc.boxes[&root].text = "x".repeat(reasoncraft_core::MAX_BOX_CHARS + 1);
+    file::save(&doc, &path).unwrap();
+
+    let mut app = ReasonCraftApp::new_for_test();
+    open_into_app(&mut app, &path);
+    let tab = app.active_tab();
+    assert_eq!(
+        tab.doc.boxes[&tab.doc.root].text.chars().count(),
+        reasoncraft_core::MAX_BOX_CHARS
+    );
+    assert_eq!(app.status_note, Some(crate::i18n::t("status.open_cut")));
+
+    let normal = dir.path().join("normal.rcraft");
+    file::save(&reasoncraft_core::Document::new("n"), &normal).unwrap();
+    let mut app = ReasonCraftApp::new_for_test();
+    open_into_app(&mut app, &normal);
+    assert_eq!(app.status_note, None);
+}
+
+#[test]
+fn command_line_paths_are_stored_absolute() {
+    let cwd = std::env::current_dir().unwrap();
+    let dir = tempfile::tempdir_in(&cwd).unwrap();
+    let file = dir.path().join("rel.rcraft");
+    reasoncraft_core::file::save(&reasoncraft_core::Document::new("R"), &file).unwrap();
+    let relative = file.strip_prefix(&cwd).unwrap().to_path_buf();
+    assert!(relative.is_relative());
+
+    let mut app = ReasonCraftApp::new_for_test();
+    open_paths(&mut app, [relative.into_os_string()]);
+    let stored = app.active_tab().path.clone().unwrap();
+    assert!(stored.is_absolute(), "{stored:?}");
+    assert!(same_file(&stored, &file));
+    assert!(app.settings.recent_files.iter().all(|p| p.is_absolute()));
 }

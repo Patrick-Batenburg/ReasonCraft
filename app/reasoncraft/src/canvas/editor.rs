@@ -19,10 +19,6 @@ use crate::scene::SOURCE_HEADER;
 use crate::spell::{FieldStyle, SpellFields};
 use crate::theme::Tokens;
 
-/// The most characters a box keeps from the editor: a longer paste is cut
-/// (with a note in the status bar).
-pub use reasoncraft_core::MAX_BOX_CHARS;
-
 /// The widget id of `tab`'s inline editor for box `b`.
 pub fn editor_id(tab: &DocTab, b: NodeId) -> Id {
     tab.widget_id(("inline_editor", b))

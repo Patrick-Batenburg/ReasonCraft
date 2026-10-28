@@ -3,11 +3,11 @@
 //! document, and the whole session becomes one history step when it ends.
 //! Starting a session ends the one before.
 
+use reasoncraft_core::caps::cap_chars;
 use reasoncraft_core::essay::EssaySlot;
-use reasoncraft_core::{Document, Item, NodeId, Uuid};
+use reasoncraft_core::{Document, Item, MAX_BOX_CHARS, NodeId, Uuid};
 
 use super::{DocTab, essay_edit, meta_edit, snippet_edit};
-use crate::canvas::editor::MAX_BOX_CHARS;
 
 /// What the running edit session edits.
 #[derive(Clone, Debug, PartialEq)]
@@ -141,11 +141,7 @@ impl DocTab {
         if self.editing() != Some(b) {
             return false;
         }
-        let end = text.char_indices().nth(MAX_BOX_CHARS).map(|(i, _)| i);
-        if let Some(end) = end {
-            text.truncate(end);
-        }
-        let cut = end.is_some();
+        let cut = cap_chars(&mut text, MAX_BOX_CHARS);
         let changed = self.doc.boxes.get(&b).is_some_and(|n| n.text != text);
         if self.doc.set_text(b, &text).is_ok() {
             self.edit_text = text;
