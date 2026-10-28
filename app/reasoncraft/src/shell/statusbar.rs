@@ -27,7 +27,13 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         .exact_size(26.0)
         .show(ui, |ui| {
             ui.horizontal_centered(|ui| {
-                let issues = app.tabs[app.active].issues(&app.settings.checks).len();
+                let now = std::time::Instant::now();
+                let tab = &mut app.tabs[app.active];
+                let (found, due) = tab.settled_issues(&app.settings.checks, now);
+                let issues = found.len();
+                if let Some(due) = due {
+                    ui.ctx().request_repaint_after(due);
+                }
                 let tab = app.active_tab();
                 let mut args = FluentArgs::new();
                 args.set("count", tab.doc.boxes.len());

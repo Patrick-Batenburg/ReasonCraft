@@ -6,12 +6,13 @@ use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Instant;
 
 use eframe::egui::{Id, Rect};
-use reasoncraft_core::checks::{CheckSet, Issue, run_checks};
+use reasoncraft_core::checks::{CheckSet, Issue};
 use reasoncraft_core::essay::EssaySlot;
 use reasoncraft_core::meta::LANGUAGES;
-use reasoncraft_core::outline::{OutlineLine, OutlineOptions, build_outline};
+use reasoncraft_core::outline::{OutlineLine, OutlineOptions};
 use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Package, Uuid};
 
 use crate::canvas::Camera;
@@ -19,12 +20,14 @@ use crate::i18n::t;
 use crate::jobs::JobId;
 use crate::memo::Memo;
 
+mod derived;
 mod essay_edit;
 mod find_state;
 mod meta_edit;
 mod row_heights;
 mod session;
 mod snippet_edit;
+pub use derived::ISSUE_SETTLE;
 pub use essay_edit::EssayView;
 pub use find_state::FindState;
 pub use row_heights::{CheckRow, EssayRow, RowHeights};
@@ -97,6 +100,8 @@ pub struct DocTab {
     /// The issues last found, with the revision and checks they were found
     /// for (see [`Self::issues`]).
     pub issue_cache: Memo<(u64, CheckSet), Vec<Issue>>,
+    /// When [`Self::revision`] last moved on (see [`Self::settled_issues`]).
+    changed_at: Instant,
     /// The Essay tab's view, with the revision it was built for (see
     /// [`Self::essay`]).
     pub essay_cache: Memo<u64, EssayView>,
@@ -192,6 +197,7 @@ impl DocTab {
             revision: 0,
             outline_cache: Memo::default(),
             issue_cache: Memo::default(),
+            changed_at: Instant::now(),
             essay_cache: Memo::default(),
             essay_heights: RowHeights::default(),
             check_heights: RowHeights::default(),
@@ -223,22 +229,7 @@ impl DocTab {
     /// a file loaded into the tab). Selection and view changes do not count.
     pub fn bump_revision(&mut self) {
         self.revision += 1;
-    }
-
-    /// The document's outline for `opts`, rebuilt only when the document or
-    /// the options changed since the last call.
-    pub fn outline(&mut self, opts: OutlineOptions) -> &[OutlineLine] {
-        let doc = &self.doc;
-        self.outline_cache
-            .get((self.revision, opts), || build_outline(doc, &opts))
-    }
-
-    /// The document's issues for the checks in `set`, found again only when
-    /// the document or the set changed since the last call.
-    pub fn issues(&mut self, set: &CheckSet) -> &[Issue] {
-        let doc = &self.doc;
-        self.issue_cache
-            .get((self.revision, set.clone()), || run_checks(doc, set))
+        self.changed_at = Instant::now();
     }
 
     /// Note that a file was loaded into this tab, in place of a tab at

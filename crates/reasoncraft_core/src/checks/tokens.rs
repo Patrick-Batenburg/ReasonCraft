@@ -6,6 +6,8 @@
 //! into parts, but their joined form is kept aside so "e-mail" and "email"
 //! still match.
 
+use std::collections::{HashMap, HashSet};
+
 use super::stopwords;
 
 /// Shortest term that counts.
@@ -52,6 +54,44 @@ pub(super) fn same_term(a: &str, b: &str) -> bool {
     let shorter = a.chars().count().min(b.chars().count());
     let shared = a.chars().zip(b.chars()).take_while(|(x, y)| x == y).count();
     shared >= MIN_TERM_CHARS.max(shorter.saturating_sub(2))
+}
+
+/// Terms looked up by [`same_term`] without comparing against each one:
+/// equal terms are found by hash, and the others are compared only with
+/// terms sharing their first [`MIN_TERM_CHARS`] characters (which
+/// [`same_term`] needs anyway).
+#[derive(Debug, Default)]
+pub(super) struct TermSet {
+    exact: HashSet<String>,
+    by_start: HashMap<String, Vec<String>>,
+}
+
+impl TermSet {
+    pub(super) fn insert(&mut self, term: String) {
+        if self.exact.contains(&term) {
+            return;
+        }
+        let start = start(&term).to_owned();
+        self.by_start.entry(start).or_default().push(term.clone());
+        self.exact.insert(term);
+    }
+
+    /// Whether some term in the set is the [`same_term`] as `term`.
+    pub(super) fn has_same(&self, term: &str) -> bool {
+        self.exact.contains(term)
+            || self
+                .by_start
+                .get(start(term))
+                .is_some_and(|ts| ts.iter().any(|t| same_term(term, t)))
+    }
+}
+
+/// The first [`MIN_TERM_CHARS`] characters of `term` (all of a shorter one).
+fn start(term: &str) -> &str {
+    match term.char_indices().nth(MIN_TERM_CHARS) {
+        Some((i, _)) => &term[..i],
+        None => term,
+    }
 }
 
 /// Split `text` into words of lowercased, folded parts. Nothing is dropped

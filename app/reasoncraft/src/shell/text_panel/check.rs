@@ -103,7 +103,10 @@ pub fn show(
     tk: &Tokens,
     out: &mut Vec<Action>,
 ) {
-    tab.issues(&settings.checks);
+    let (_, due) = tab.settled_issues(&settings.checks, std::time::Instant::now());
+    if let Some(due) = due {
+        ui.ctx().request_repaint_after(due);
+    }
     let mut heights = std::mem::take(&mut tab.check_heights);
     let tab_ref = &*tab;
     let issues = tab_ref.issue_cache.last().map_or(&[][..], Vec::as_slice);
