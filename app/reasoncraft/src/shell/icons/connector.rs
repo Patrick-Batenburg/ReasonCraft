@@ -10,7 +10,8 @@ use eframe::egui::{
 use reasoncraft_core::connector::{Segment, curved_path, elbow_path, tapered_band};
 use reasoncraft_core::{ConnectorStyle, LayoutDirection};
 
-use crate::scene::{PathEl, Shape, ShapePen, paint_shapes};
+use crate::canvas::scene_paint::paint_shapes;
+use crate::scene::{PathEl, Shape, ShapePen};
 
 /// The glyph for `style` in `rect` (a square) in `colour`, as shapes.
 pub fn connector_shapes(rect: Rect, style: ConnectorStyle, colour: Color32) -> Vec<Shape> {

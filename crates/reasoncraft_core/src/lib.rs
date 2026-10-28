@@ -18,6 +18,7 @@ pub mod layout;
 pub mod link;
 pub mod meta;
 pub mod model;
+pub mod nav;
 pub mod outline;
 pub mod outline_md;
 pub mod package;

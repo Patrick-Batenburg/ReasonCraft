@@ -9,9 +9,9 @@ use reasoncraft_core::{Item, LayoutDirection};
 
 use super::{Dir, Panel};
 use crate::app::ReasonCraftApp;
-use crate::canvas::input::{nav_dir, navigate, parking_jump};
 use crate::doc_tab::DocTab;
 use crate::i18n::UI_LANGUAGES;
+use reasoncraft_core::nav::{nav_dir, navigate, parking_jump};
 
 const ZOOM_STEP: f32 = 1.25;
 

@@ -10,12 +10,12 @@ use std::collections::{HashMap, HashSet};
 use eframe::egui::{Align, Color32, Pos2, Rect, Vec2, pos2, vec2};
 use reasoncraft_core::{CardStrength, Document, Item, Layout, NodeId, Role};
 
-use super::{PathEl, Scene, SceneOptions, Shape, StrokeSpec, TextRows};
-use crate::canvas::paint::{FRAME_RADIUS, parking_frame, screen_font};
-use crate::canvas::rating::{
+use super::metrics::{FRAME_RADIUS, parking_frame, screen_font};
+use super::rating::{
     MARKER_MIN_ZOOM, Mark, card_colour, frame_alpha, frame_border, mark_for, mark_shapes,
     marker_circle, rating_dots, rating_label,
 };
+use super::{PathEl, Scene, SceneOptions, Shape, StrokeSpec, TextRows};
 use crate::i18n::t_lang;
 
 const FRAME_STROKE_ALPHA: f32 = 0.55;

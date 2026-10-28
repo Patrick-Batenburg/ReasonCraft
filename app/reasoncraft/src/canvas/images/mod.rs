@@ -12,7 +12,7 @@ mod tests;
 
 pub use cache::{ImageCache, ImageState, MAX_STORED_SIDE, MAX_TEXTURE_SIDE, decode_stored};
 pub use job::{ImageJobs, ImageResult, Prepared};
-pub use paint::{content_rect, image_rect, paint_image, preparing};
+pub use paint::{paint_image, preparing};
 pub use prepare::{
     FailureKind, ImageError, ImageFailure, MAX_DIMENSION, MAX_INPUT_BYTES, MAX_SIDE, PreparedImage,
     prepare_file, prepare_image,

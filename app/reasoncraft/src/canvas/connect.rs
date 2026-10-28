@@ -8,9 +8,9 @@ use reasoncraft_core::{Item, Layout, Parent};
 
 use super::drag::paint_target;
 use super::hit::{Hit, hit_test};
-use super::paint::FRAME_RADIUS;
 use crate::actions::{Action, is_enabled};
 use crate::doc_tab::DocTab;
+use crate::scene::metrics::FRAME_RADIUS;
 use crate::theme::Tokens;
 
 /// The parent that box or card `target` offers: a box takes the item as a

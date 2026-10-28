@@ -4,8 +4,8 @@
 use reasoncraft_core::{BoxKind, CardId, CardKind, Document, Item, NewLoose, Parent, RemoveMode};
 
 use super::{Action, Dir};
-use crate::canvas::input::nav_dir;
 use crate::doc_tab::DocTab;
+use reasoncraft_core::nav::nav_dir;
 
 /// Add a loose item of `kind` to the parking area and select it.
 pub(super) fn add_loose(tab: &mut DocTab, kind: NewLoose) {

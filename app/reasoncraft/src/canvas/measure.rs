@@ -14,21 +14,10 @@ use eframe::egui::{self, Color32, FontId, Galley, text::LayoutJob};
 use reasoncraft_core::{BoxKind, Measure};
 
 use crate::scene::TextRows;
+use crate::scene::metrics::font_for;
 
-/// Box text size at 100% zoom.
-pub const BOX_FONT_SIZE: f32 = 13.0;
-/// Citation text size in source boxes at 100% zoom.
-pub const SOURCE_FONT_SIZE: f32 = 11.5;
 /// Entries kept before the cache starts over (old texts pile up while typing).
 const CACHE_LIMIT: usize = 20_000;
-
-/// The font box text of `kind` is measured and painted with, at 100% zoom.
-pub fn font_for(kind: &BoxKind) -> FontId {
-    match kind {
-        BoxKind::Source { .. } => FontId::proportional(SOURCE_FONT_SIZE),
-        _ => FontId::proportional(BOX_FONT_SIZE),
-    }
-}
 
 /// `text` wrapped at `width` in the font for `kind`, at 100% zoom.
 ///
@@ -153,6 +142,7 @@ impl TextRows for EguiMeasure<'_> {
 mod tests {
     use super::*;
     use crate::scene::TextRows;
+    use crate::scene::metrics::font_for;
     use eframe::egui;
     use reasoncraft_core::{BoxKind, Measure};
 

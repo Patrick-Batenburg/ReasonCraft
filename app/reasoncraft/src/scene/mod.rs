@@ -1,7 +1,7 @@
 //! A backend-neutral picture of a map: the shapes the canvas paints, in
 //! world units, so exporters (SVG, PDF, PNG) draw exactly what the screen
 //! shows. [`build_scene`] turns a laid-out document into a [`Scene`];
-//! [`paint_scene`] draws it with egui.
+//! the canvas draws it with egui ([`crate::canvas::scene_paint`]).
 //!
 //! Screen-only overlays (selection ring, "+" button, comment badges, link
 //! glyphs, dot grid, minimap) are never part of a scene: the canvas paints them on
@@ -16,16 +16,17 @@
 mod boxes;
 mod build;
 mod connectors;
-mod egui_paint;
+pub mod metrics;
 mod numbers;
 mod pen;
+pub mod rating;
+pub mod source_icons;
 
 use eframe::egui::{Align, Color32, Pos2, Rect};
 use reasoncraft_core::{BoxKind, ConnectorStyle, Item, Measure, NodeId};
 
 pub use boxes::{BOX_RADIUS, SOURCE_HEADER, box_radius};
 pub use build::build_scene;
-pub use egui_paint::{paint_scene, paint_shapes};
 pub use numbers::{NUMBER_SIZE, marks_leads, number_rect};
 pub(crate) use pen::ShapePen;
 

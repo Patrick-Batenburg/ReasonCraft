@@ -239,7 +239,7 @@ mod tests {
     /// the strongest tint (strong cards) still leaves 4.5:1.
     #[test]
     fn label_contrast_on_tinted_frames() {
-        use crate::canvas::rating::{FRAME_ALPHA, STRONG_ALPHA};
+        use crate::scene::rating::{FRAME_ALPHA, STRONG_ALPHA};
         for t in [Tokens::dark(), Tokens::light()] {
             let labels = [
                 (t.reason, STRONG_ALPHA),

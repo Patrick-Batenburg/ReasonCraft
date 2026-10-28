@@ -11,7 +11,7 @@ use reasoncraft_core::{Connector, ConnectorKind, ConnectorStyle};
 
 use super::build::{Builder, polyline};
 use super::{PathEl, Shape, StrokeSpec};
-use crate::canvas::rating::connector_strength;
+use crate::scene::rating::connector_strength;
 use crate::theme::Tokens;
 
 /// Opposes/rebuts end bar: length and thickness in screen px.

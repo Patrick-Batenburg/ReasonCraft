@@ -12,9 +12,10 @@ use reasoncraft_core::words::linking_words;
 use reasoncraft_core::{Item, SourceType};
 
 use crate::actions::Action;
-use crate::canvas::rating::{Mark, card_colour, mark_for, paint_mark};
+use crate::canvas::scene_paint::paint_mark;
 use crate::doc_tab::DocTab;
 use crate::i18n::{t, t_lang};
+use crate::scene::rating::{Mark, card_colour, mark_for};
 use crate::settings::{OutlineToggle, Settings};
 use crate::shell::source_icons::paint_source_icon;
 use crate::shell::{hover_fill, selected_fill};

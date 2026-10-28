@@ -9,13 +9,12 @@ use eframe::egui::{
 use reasoncraft_core::layout::BOX_TEXT_PAD;
 use reasoncraft_core::{BoxKind, Layout, NodeId};
 
-use super::images::content_rect;
-use super::measure::font_for;
-use super::paint::screen_font;
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
 use crate::scene::SOURCE_HEADER;
+use crate::scene::metrics::content_rect;
+use crate::scene::metrics::{font_for, screen_font};
 use crate::spell::{FieldStyle, SpellFields};
 use crate::theme::Tokens;
 

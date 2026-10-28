@@ -7,8 +7,8 @@ use super::{
     structure,
 };
 use crate::app::ReasonCraftApp;
-use crate::canvas::input::parking_jump;
 use crate::doc_tab::DocTab;
+use reasoncraft_core::nav::parking_jump;
 
 /// Whether `action` may run in `app` right now: enabled for the active
 /// tab, and the spelling pass (F7) only with spellcheck on. The ribbon,

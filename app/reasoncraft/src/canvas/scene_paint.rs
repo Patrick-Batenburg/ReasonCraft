@@ -1,11 +1,13 @@
-//! Drawing a [`Scene`] with egui, through the canvas camera.
+//! Drawing a [`Scene`] with egui, through the canvas camera (and, in
+//! screen px, icons and rating markers).
 
 use eframe::egui::{Align, Align2, Color32, Painter, Pos2, Stroke, StrokeKind, epaint, vec2};
 
-use super::{DASH_LEN, GAP_LEN, PathEl, Scene, Shape, StrokeSpec, bold_offset};
-use crate::canvas::Camera;
-use crate::canvas::images::{ImageCache, paint_image};
-use crate::canvas::paint::screen_font;
+use super::Camera;
+use super::images::{ImageCache, paint_image};
+use crate::scene::metrics::screen_font;
+use crate::scene::rating::{Mark, mark_shapes};
+use crate::scene::{DASH_LEN, GAP_LEN, PathEl, Scene, Shape, StrokeSpec, bold_offset};
 use crate::theme::Tokens;
 
 /// Draw `scene` through `cam`. Shapes outside the painter's clip rect are
@@ -49,6 +51,12 @@ pub fn paint_shapes(painter: &Painter, shapes: &[Shape]) {
     for shape in shapes {
         paint_shape(painter, shape, &cam);
     }
+}
+
+/// A ✓ / ? / × marker: a circle of radius `r` (screen px) centred on `c`,
+/// with strokes scaled to the canvas marker's at that size.
+pub fn paint_mark(painter: &Painter, c: Pos2, r: f32, mark: Mark, t: &Tokens) {
+    paint_shapes(painter, &mark_shapes(c, r, mark, t, 1.0));
 }
 
 fn stroke(spec: &Option<StrokeSpec>, zoom: f32) -> Stroke {

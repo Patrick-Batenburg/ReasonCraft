@@ -1,16 +1,24 @@
 //! Rating visuals (spec §5): card tint and border by strength, the rating
 //! label, and the ✓ / ? / × markers on rated boxes.
 
-use eframe::egui::{Color32, Painter, Pos2, Rect, vec2};
+use eframe::egui::{Color32, Pos2, Rect, vec2};
 use reasoncraft_core::connector::Strength;
 use reasoncraft_core::{Acceptance, BoxNode, CardStrength, Role, SourceRating};
 
 use reasoncraft_core::layout::BOX_TEXT_PAD;
 
-use super::paint::role_colour;
+use super::{PathEl, Shape};
 use crate::i18n::t_lang;
-use crate::scene::{PathEl, Shape, paint_shapes};
 use crate::theme::Tokens;
+
+/// The colour of a card in `role`.
+pub fn role_colour(t: &Tokens, role: Role) -> Color32 {
+    match role {
+        Role::Supports => t.reason,
+        Role::Opposes => t.objection,
+        Role::Rebuts => t.rebuttal,
+    }
+}
 
 /// Card frame fill alpha without evaluation shading (and when unrated).
 pub const FRAME_ALPHA: f32 = 0.12;
@@ -131,12 +139,6 @@ pub fn marker_circle(world: Rect, row: f32) -> (Pos2, f32) {
     let r = MARKER_SIZE / 2.0;
     let x = world.right() - CORNER_INSET - r;
     (Pos2::new(x, indicator_centre(world, row)), r)
-}
-
-/// A ✓ / ? / × marker: a circle of radius `r` (screen px) centred on `c`,
-/// with strokes scaled to the canvas marker's at that size.
-pub fn paint_mark(painter: &Painter, c: Pos2, r: f32, mark: Mark, t: &Tokens) {
-    paint_shapes(painter, &mark_shapes(c, r, mark, t, 1.0));
 }
 
 /// A ✓ / ? / × marker as shapes: a circle of radius `r` centred on `c`,

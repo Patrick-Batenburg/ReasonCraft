@@ -5,12 +5,10 @@ use reasoncraft_core::layout::BOX_TEXT_PAD;
 use reasoncraft_core::{BoxKind, BoxNode, SourceType};
 
 use super::build::Builder;
+use super::metrics::{content_rect, font_for, image_rect, screen_font};
+use super::source_icons::source_icon_shapes_px;
 use super::{PathEl, Shape};
-use crate::canvas::images::{content_rect, image_rect};
-use crate::canvas::measure::font_for;
-use crate::canvas::paint::screen_font;
 use crate::i18n::{t, t_lang};
-use crate::shell::source_icons::source_icon_shapes_px;
 
 pub const BOX_RADIUS: f32 = 7.0;
 const SOURCE_RADIUS: f32 = 5.0;

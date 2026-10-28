@@ -8,9 +8,9 @@ use eframe::egui::{
 use reasoncraft_core::{BoxKind, Document, Item, Layout, LayoutDirection, LayoutParams, Parent};
 
 use super::hit::{Hit, far_edge_band, hit_test};
-use super::paint::{FRAME_RADIUS, parking_frame};
 use crate::actions::{Action, is_attachment, is_enabled, moves_nowhere, sibling_list};
 use crate::doc_tab::DocTab;
+use crate::scene::metrics::{FRAME_RADIUS, parking_frame};
 use crate::theme::Tokens;
 
 /// Pointer travel, in screen px, before a press on an item becomes a drag.

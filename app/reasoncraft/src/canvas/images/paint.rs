@@ -4,35 +4,15 @@
 use eframe::egui::{
     self, Align2, Painter, Rect, Role, Sense, Shape, Stroke, StrokeKind, WidgetInfo, pos2,
 };
-use reasoncraft_core::layout::{BOX_TEXT_PAD, IMAGE_GAP, image_height};
-use reasoncraft_core::{BoxNode, ImageRef, Layout};
+use reasoncraft_core::Layout;
+use reasoncraft_core::layout::BOX_TEXT_PAD;
 
 use super::{ImageCache, ImageState};
-use crate::canvas::paint::screen_font;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
+use crate::scene::metrics::screen_font;
 use crate::scene::missing_image;
 use crate::theme::Tokens;
-
-/// Where `image` is drawn in a box at `world` (world units).
-pub fn image_rect(world: Rect, image: &ImageRef) -> Rect {
-    let width = world.width() - 2.0 * BOX_TEXT_PAD;
-    let height = image_height(world.width(), image) - BOX_TEXT_PAD - IMAGE_GAP;
-    Rect::from_min_size(
-        world.min + egui::vec2(BOX_TEXT_PAD, BOX_TEXT_PAD),
-        egui::vec2(width, height),
-    )
-}
-
-/// The part of box `world` below its image: where its text (and a source's
-/// header) goes. The whole box when it has no image.
-pub fn content_rect(world: Rect, node: &BoxNode) -> Rect {
-    let mut rest = world;
-    if let Some(img) = &node.image {
-        rest.min.y += image_height(world.width(), img);
-    }
-    rest
-}
 
 /// Asset `asset`'s image in screen rect `r`: a plain block while it waits
 /// to be decoded, a dashed placeholder labelled `missing` when it is

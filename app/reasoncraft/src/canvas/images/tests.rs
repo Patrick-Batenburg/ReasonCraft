@@ -10,6 +10,7 @@ use reasoncraft_core::{BoxKind, BoxNode, CardKind, ImageRef, NodeId, Parent};
 use super::*;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
+use crate::scene::metrics::{content_rect, image_rect};
 
 /// A `w`×`h` PNG with a gradient.
 fn png(w: u32, h: u32) -> Vec<u8> {

@@ -20,13 +20,7 @@ use crate::recovery::RecoveryChoice;
 use crate::settings::{MinimapMode, OutlineToggle, TextTab};
 use crate::theme::ThemeChoice;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Dir {
-    Up,
-    Down,
-    Left,
-    Right,
-}
+pub use reasoncraft_core::nav::Dir;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Panel {

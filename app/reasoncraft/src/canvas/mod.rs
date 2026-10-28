@@ -16,7 +16,7 @@ pub mod measure;
 pub mod minimap;
 pub mod paint;
 pub mod plus_menu;
-pub mod rating;
+pub mod scene_paint;
 
 use eframe::egui::{self, Key, PointerButton, Rect, Response, Role, Sense, WidgetInfo};
 use reasoncraft_core::{Document, Item, Layout, layout};

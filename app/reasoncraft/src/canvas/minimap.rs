@@ -10,9 +10,9 @@ use reasoncraft_core::layout::IndicatorOptions;
 use reasoncraft_core::{BoxKind, Document, Layout, LayoutDirection, Role as MapRole};
 
 use super::paint::content_bounds;
-use super::rating::card_colour;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
+use crate::scene::rating::card_colour;
 use crate::settings::MinimapMode;
 use crate::theme::Tokens;
 

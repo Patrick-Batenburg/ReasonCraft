@@ -12,10 +12,10 @@ use std::collections::HashMap;
 use reasoncraft_core::{Layout, NodeId};
 
 use super::paint::Pass;
-use super::rating::{CORNER_INSET, MARKER_MIN_ZOOM, indicator_centre};
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t_args};
+use crate::scene::rating::{CORNER_INSET, MARKER_MIN_ZOOM, indicator_centre};
 use crate::shell::icons::{self, Icon};
 use crate::shell::link_modal::{safe_link, visible_link};
 
