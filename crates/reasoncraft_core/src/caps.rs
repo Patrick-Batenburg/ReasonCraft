@@ -54,7 +54,7 @@ pub(crate) fn link_fits(link: &str) -> bool {
 
 /// Cut the name of a source type from a newer build to
 /// [`MAX_META_CHARS`]; true when it was longer.
-fn cap_source_type(source_type: &mut SourceType) -> bool {
+pub(crate) fn cap_source_type(source_type: &mut SourceType) -> bool {
     match source_type {
         SourceType::Other(name) => cap_chars(name, MAX_META_CHARS),
         _ => false,

@@ -150,3 +150,25 @@ fn import_caps_long_text_with_note() {
     assert!(cut.iter().all(|t| t.chars().count() == MAX_BOX_CHARS));
     assert!(texts(&d).contains(&"Short reason."));
 }
+
+/// Texts the import takes from data and frontmatter (comments, a title,
+/// an author, a too-long link) keep the caps a file's open applies, so a
+/// map saved as Argdown and imported again is not cut on its next open
+/// (CORE-R2).
+#[test]
+fn import_caps_comments_frontmatter_and_links() {
+    use crate::caps::{MAX_COMMENT_CHARS, MAX_LINK_CHARS, MAX_META_CHARS};
+    let comment = "c".repeat(MAX_COMMENT_CHARS + 5);
+    let title = "t".repeat(MAX_META_CHARS + 5);
+    let link = format!("https://example.org/{}", "a".repeat(MAX_LINK_CHARS));
+    let src = format!(
+        "===\ntitle: {title}\nauthor: {title}\n===\n\n[Claim]: c {{comments: [{{author: \"Bo\", text: \"{comment}\"}}], link: \"{link}\"}}\n"
+    );
+    let (d, notes) = import(&src);
+    assert!(notes.contains(&K::TextCut), "{notes:?}");
+    let root = &d.boxes[&d.root];
+    assert_eq!(root.comments[0].text.chars().count(), MAX_COMMENT_CHARS);
+    assert_eq!(root.link, None, "a cut link would lead elsewhere");
+    assert_eq!(d.meta.title.chars().count(), MAX_META_CHARS);
+    assert_eq!(d.meta.author.chars().count(), MAX_META_CHARS);
+}

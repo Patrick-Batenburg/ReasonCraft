@@ -24,7 +24,12 @@ pub fn from_argdown(src: &str) -> Result<(Document, ImportReport), ArgdownError>
     let tree = parse(src)?;
     let mut report = ImportReport::default();
     let graph = Reader::new(&tree, &mut report).read();
-    let doc = super::build::build(&graph, &mut report)?;
+    let mut doc = super::build::build(&graph, &mut report)?;
+    // Comments, frontmatter and links from data keep the caps a file's
+    // open applies, so an imported map is not cut when it is opened again.
+    if doc.cap_texts() {
+        report.note(1, super::ImportNoteKind::TextCut);
+    }
     // A bug guard: the build only makes what the rules allow. Tests (debug
     // builds) stop here; a release build refuses the file instead.
     if let Err(e) = doc.validate() {

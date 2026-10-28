@@ -232,7 +232,7 @@ argdown-note-empty_argument = Een argument zonder premissen of tekst is weggelat
 argdown-note-moved_to_parking = Een onderdeel kon niet op de plek uit het bestand komen en staat nu bij Niet verbonden.
 argdown-note-relation_dropped = Een relatie naar een weggelaten conclusie is ook weggelaten; de uitspraak staat nu bij Niet verbonden.
 argdown-note-link_dropped = Een link die geen veilige web- of e-maillink is, is weggelaten.
-argdown-note-text_cut = Tekst van meer dan { $max } tekens is ingekort zodat hij in een vak past.
+argdown-note-text_cut = Tekst die langer is dan de kaart bewaart, is ingekort (een vak bewaart { $max } tekens).
 
 ## Backstage
 backstage-back = Terug

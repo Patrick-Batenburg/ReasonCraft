@@ -91,20 +91,30 @@ impl Document {
         Ok(())
     }
 
-    /// Set or clear a snippet's source. The link is trimmed; empty means none.
+    /// Set or clear a snippet's source. The link is trimmed; empty means
+    /// none. The citation is capped like a box's text; a link too long to
+    /// keep ([`crate::caps::MAX_LINK_CHARS`]) is refused with
+    /// [`EditError::NotAllowed`], as a cut link would lead elsewhere.
     pub fn set_snippet_source(
         &mut self,
         id: Uuid,
         source: Option<SnippetSource>,
     ) -> Result<(), EditError> {
         let i = self.snippet_index(id)?;
-        self.snippets[i].source = source.map(|mut s| {
+        let source = source.map(|mut s| {
             s.link = s
                 .link
                 .map(|l| l.trim().to_owned())
                 .filter(|l| !l.is_empty());
+            crate::caps::cap_chars(&mut s.citation, crate::model::MAX_BOX_CHARS);
+            crate::caps::cap_source_type(&mut s.source_type);
             s
         });
+        let link = source.as_ref().and_then(|s| s.link.as_deref());
+        if link.is_some_and(|l| !crate::caps::link_fits(l)) {
+            return Err(EditError::NotAllowed);
+        }
+        self.snippets[i].source = source;
         self.finish_edit();
         Ok(())
     }
@@ -134,6 +144,28 @@ mod tests {
 
     fn src(link: Option<&str>) -> SnippetSource {
         SnippetSource::new(SourceType::Publication, "Doe 2020", link)
+    }
+
+    /// A source's citation keeps the cap a file's open applies, and a link
+    /// too long to keep is refused, not cut (CORE-R2).
+    #[test]
+    fn snippet_source_texts_are_capped() {
+        use crate::caps::MAX_LINK_CHARS;
+        use crate::model::MAX_BOX_CHARS;
+        let mut d = Document::new("C");
+        let id = d.add_snippet("a");
+        let long = "é".repeat(MAX_BOX_CHARS + 5);
+        let source = SnippetSource::new(SourceType::Publication, &long, None);
+        d.set_snippet_source(id, Some(source)).unwrap();
+        let citation = d.snippets[0].source.as_ref().unwrap().citation.clone();
+        assert_eq!(citation.chars().count(), MAX_BOX_CHARS);
+        let link = format!("https://example.org/{}", "a".repeat(MAX_LINK_CHARS));
+        let source = SnippetSource::new(SourceType::Publication, "Doe", Some(&link));
+        assert_eq!(
+            d.set_snippet_source(id, Some(source)),
+            Err(EditError::NotAllowed)
+        );
+        assert_eq!(d.snippets[0].source.as_ref().unwrap().citation, citation);
     }
 
     #[test]

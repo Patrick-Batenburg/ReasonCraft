@@ -52,8 +52,10 @@ pub enum ImportNoteKind {
     RelationDropped,
     /// A link that is not a safe web or mail link was left out.
     LinkDropped,
-    /// Text longer than [`MAX_BOX_CHARS`](crate::model::MAX_BOX_CHARS)
-    /// characters was cut to fit a box.
+    /// Text longer than a map keeps was cut: a box's text past
+    /// [`MAX_BOX_CHARS`](crate::model::MAX_BOX_CHARS) characters, or a
+    /// comment, title or author past its cap (see [`crate::caps`]); a
+    /// link too long to keep was left out.
     TextCut,
 }
 
