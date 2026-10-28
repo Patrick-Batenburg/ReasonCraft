@@ -4,7 +4,7 @@
 
 use eframe::egui::{
     self, Align2, Area, EventFilter, FontId, Frame, Id, Key, Margin, Modifiers, Order, Response,
-    Role, Sense, Stroke, TextEdit, Ui, Vec2, WidgetInfo, pos2,
+    Role, Sense, Stroke, TextEdit, Ui, UiBuilder, Vec2, WidgetInfo, pos2,
 };
 
 use super::selected_fill;
@@ -125,30 +125,53 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         st.refused = true;
     }
 
+    let (mut highlighted, mut list_id) = (None, None);
     let list = Area::new(id.with("list"))
         .order(Order::Foreground)
         .fixed_pos(resp.rect.left_bottom() + Vec2::new(0.0, 4.0))
         .show(ui.ctx(), |ui| {
             Frame::popup(ui.style()).fill(tk.panel).show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
-                for (i, cmd) in results.iter().enumerate() {
-                    let row = result_row(ui, &tk, os, cmd, enabled[i], i == st.highlight);
-                    if row.hovered() && i != st.highlight {
-                        st.highlight = i;
-                        st.refused = false;
-                    }
-                    if row.clicked() {
-                        run = Some(i);
-                    }
-                    if i == st.highlight && st.refused {
-                        row.show_tooltip_text(t("command.disabled"));
-                    } else if !enabled[i] {
-                        row.on_hover_text(t("command.disabled"));
-                    }
-                }
+                let rows = UiBuilder::new()
+                    .accessibility_role(Role::List)
+                    .accessibility_label(t("command.results"));
+                list_id = Some(
+                    ui.scope_builder(rows, |ui| {
+                        for (i, cmd) in results.iter().enumerate() {
+                            let row = result_row(ui, &tk, os, cmd, enabled[i], i == st.highlight);
+                            if i == st.highlight {
+                                highlighted = Some(row.id);
+                            }
+                            if row.hovered() && i != st.highlight {
+                                st.highlight = i;
+                                st.refused = false;
+                            }
+                            if row.clicked() {
+                                run = Some(i);
+                            }
+                            if i == st.highlight && st.refused {
+                                row.show_tooltip_text(t("command.disabled"));
+                            } else if !enabled[i] {
+                                row.on_hover_text(t("command.disabled"));
+                            }
+                        }
+                    })
+                    .response
+                    .id,
+                );
             });
         });
     st.list_hovered = list.response.contains_pointer();
+    // The field keeps the focus while the arrows move the highlight: it
+    // names the highlighted row, so a screen reader reads that row.
+    ui.ctx().accesskit_node_builder(resp.id, |node| {
+        if let Some(list) = list_id {
+            node.push_controlled(list.accesskit_id());
+        }
+        if let Some(row) = highlighted {
+            node.set_active_descendant(row.accesskit_id());
+        }
+    });
 
     if let Some(i) = run {
         // Back to the map from the backstage, like its own commands.

@@ -29,8 +29,11 @@ fn field_label() -> String {
     t_args("titlebar.search", &args)
 }
 
+/// Whether the field has the keyboard focus (for a screen reader the
+/// focus is then on its highlighted row, its active descendant).
 fn field_focused(h: &Harness<'static, ReasonCraftApp>) -> bool {
-    h.get_by_label(&field_label()).is_focused()
+    let id = reasoncraft::shell::command_search::field_id();
+    h.ctx.memory(|m| m.has_focus(id))
 }
 
 /// A listed result row: whether it is highlighted and whether it is greyed out.
@@ -218,4 +221,29 @@ fn alt_q_while_editing_keeps_the_text() {
     assert_eq!(tab.editing(), None);
     assert_eq!(tab.doc.boxes[&root].text, "Robots");
     assert_eq!(tab.history.undo.len(), 1);
+}
+
+/// While arrowing, the field (which keeps the focus) names the
+/// highlighted row as its active descendant, so a screen reader reads
+/// it; the field also says it controls the list (ROB-13).
+#[test]
+fn highlighted_row_is_the_active_descendant() {
+    let mut h = harness();
+    h.run();
+    search_for(&mut h, "zoom");
+    let active = |h: &Harness<'static, ReasonCraftApp>| {
+        let label = field_label();
+        let field = h.get_by_label(&label);
+        let node = field.accesskit_node();
+        let row = node.active_descendant().expect("an active descendant");
+        assert!(
+            node.controls().next().is_some(),
+            "the field controls the list"
+        );
+        row.label().unwrap_or_default()
+    };
+    assert_eq!(active(&h), row_name("view.zoom_fit"));
+    h.key_press(Key::ArrowDown);
+    h.run();
+    assert_eq!(active(&h), row_name("view.zoom_100"));
 }

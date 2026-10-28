@@ -99,6 +99,7 @@ action-source_icons = Bronpictogrammen (debug)
 
 ## Search commands (commands that have no ribbon button of their own)
 command-disabled = Nu niet beschikbaar
+command-results = Gevonden opdrachten
 command-whole_card_reason = Reden voor het hele blok
 command-whole_card_objection = Bezwaar tegen het hele blok
 command-edit = Tekst bewerken

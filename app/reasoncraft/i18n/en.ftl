@@ -98,6 +98,7 @@ action-source_icons = Source icons (debug)
 
 ## Search commands (commands that have no ribbon button of their own)
 command-disabled = Not available right now
+command-results = Commands found
 command-whole_card_reason = Reason for the whole card
 command-whole_card_objection = Objection to the whole card
 command-edit = Edit text
