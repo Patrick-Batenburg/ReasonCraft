@@ -56,6 +56,26 @@ fn source_names_single_source() {
 }
 
 #[test]
+fn ui_spell_and_document_languages_agree() {
+    // The core language table, the dictionaries and the .ftl files must
+    // list the same languages, or a new one gets English words somewhere.
+    assert_eq!(UI_LANGUAGES, reasoncraft_core::meta::LANGUAGES);
+    assert_eq!(reasoncraft_spell::LANGUAGES, reasoncraft_core::meta::LANGUAGES);
+}
+
+#[test]
+fn parking_title_is_the_heading_exports_write() {
+    // The map's label is a translation and the Argdown heading a
+    // file-format word (see `reasoncraft_core::lang::LangPack`), but
+    // they name the same area: rewording one rewords the other, keeping
+    // the old heading listed so older files still import.
+    for lang in UI_LANGUAGES {
+        let heading = reasoncraft_core::words::not_connected_heading(lang);
+        assert_eq!(t_lang(lang, "parking.title"), heading, "{lang}");
+    }
+}
+
+#[test]
 fn region_tags_read_as_their_language() {
     assert_eq!(t_lang("nl-BE", "ribbon.tab.home"), "Start");
     assert_eq!(language_of("nl_NL"), "nl");

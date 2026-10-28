@@ -72,16 +72,11 @@ fn pack(docx: Docx, author: &str, lang: &str) -> Result<Vec<u8>, ExportError> {
     finish_package(out.into_inner(), &one_line(author), language_tag(lang))
 }
 
-/// Word's language tag for document language `lang`: Dutch for `nl`
-/// (`nl-NL`, `nl_BE`, ...), British English otherwise, matching the
-/// headings and linking words, which fall back to English. Each UI
-/// language is listed: a new one must be given its tag here.
+/// Word's language tag for document language `lang`, from the core
+/// language table: Dutch for `nl` (`nl-NL`, `nl_BE`, ...), British English
+/// otherwise, matching the headings and linking words.
 pub(super) fn language_tag(lang: &str) -> &'static str {
-    match crate::i18n::language_of(lang) {
-        "en" => "en-GB",
-        "nl" => "nl-NL",
-        other => unreachable!("no Word language tag for UI language {other}"),
-    }
+    reasoncraft_core::lang::pack(lang).docx_tag
 }
 
 /// `s` without the characters XML 1.0 cannot hold (control characters,
