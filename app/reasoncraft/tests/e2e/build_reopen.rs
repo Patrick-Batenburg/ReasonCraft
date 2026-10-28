@@ -144,7 +144,7 @@ fn e2e_build_save_reopen() {
         ],
     );
 
-    // "Connect to…" the parked reason: it goes under the claim.
+    // "Move to…" the parked reason: it goes under the claim.
     run(
         &mut app,
         [

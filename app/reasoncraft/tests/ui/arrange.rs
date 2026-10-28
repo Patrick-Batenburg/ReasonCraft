@@ -258,7 +258,7 @@ fn panel_drop_needs_primary_release() {
     assert_eq!(tab.history.undo.len(), 0);
 }
 
-/// Inline-editing a parked box, then clicking the ribbon's "Connect to…":
+/// Inline-editing a parked box, then clicking the ribbon's "Move to…":
 /// the editor losing focus must not end the mode; the edit is committed.
 #[test]
 fn connect_from_ribbon_while_editing_stays_on() {

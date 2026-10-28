@@ -37,7 +37,7 @@ Niet elke bron is even sterk. Een cijfer van het CBS zegt meer dan één blogber
 
 ## Links
 
-Geef een bron een weblink met Start > **Link**. De link wordt met de kaart bewaard en gaat alleen in je browser open als je op het linksymbool klikt.
+Geef een bron een weblink met Start > **Link**. De link wordt met de kaart bewaard en gaat alleen in je browser open als je op het linksymbool klikt of Invoegen > **Link openen** gebruikt (Ctrl+Shift+L).
 
 ## Bronnen uit fragmenten
 

@@ -37,7 +37,7 @@ Not every source is equally strong. A statistic from a national office says more
 
 ## Links
 
-Give a source a web link with Home > **Link**. The link is saved with the map and opens in your browser only when you click its link symbol.
+Give a source a web link with Home > **Link**. The link is saved with the map and opens in your browser only when you click its link symbol or use Insert > **Open link** (Ctrl+Shift+L).
 
 ## Sources from snippets
 

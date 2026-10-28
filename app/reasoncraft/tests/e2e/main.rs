@@ -1,5 +1,5 @@
 //! End to end: build and evaluate a map through actions only (ratings,
-//! sources, links, comments, an image, a reorder, a "Connect to…"), save
+//! sources, links, comments, an image, a reorder, a "Move to…"), save
 //! it, open it again and check that nothing was lost. The step-3 text
 //! panel flow is in [`text_panel`], the title/author session on the
 //! close paths in [`meta_sessions`], the step-4 essay and exports in

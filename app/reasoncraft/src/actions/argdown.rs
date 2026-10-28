@@ -1,8 +1,9 @@
 //! File → Import Argdown…: read an Argdown file into a new tab and report
 //! what the map could not keep as written.
 //!
-//! The tab is untitled and unsaved: the file it came from is never
-//! written, and only Save As gives the map a file of its own.
+//! The tab has no file (it is named by the map's title) and is unsaved:
+//! the file it came from is never written, and only Save As gives the map
+//! a file of its own.
 
 use std::path::Path;
 

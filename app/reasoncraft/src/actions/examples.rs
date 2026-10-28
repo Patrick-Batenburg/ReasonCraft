@@ -21,8 +21,9 @@ pub(super) fn open_template(app: &mut ReasonCraftApp, which: Template) {
     place(app, template(which, lang));
 }
 
-/// Open `doc` clean and untitled: closing it asks nothing, autosave leaves
-/// it alone, and Save asks where to put it.
+/// Open `doc` clean and without a file (the tab is named by its title):
+/// closing it asks nothing, autosave leaves it alone, and Save asks where
+/// to put it.
 fn place(app: &mut ReasonCraftApp, doc: Document) {
     file_ops::place_tab(app, DocTab::from_document(doc));
 }

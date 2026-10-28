@@ -1,5 +1,6 @@
-//! The Home ribbon's Box group: a card's kind, and a box's link (edit it,
-//! open it in the browser).
+//! A card's kind and a box's link: edit it (the Home ribbon's Box group)
+//! and open it in the browser (Insert > Open link, Ctrl+Shift+L, or the
+//! link glyph).
 
 use std::cell::RefCell;
 use std::rc::Rc;
