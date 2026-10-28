@@ -58,3 +58,4 @@ mod ui_navigation;
 mod ui_ribbon;
 mod ui_shell;
 mod ui_small_window;
+mod zoom_view;

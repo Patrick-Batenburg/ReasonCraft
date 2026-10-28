@@ -69,7 +69,7 @@ pub(super) fn jump_parking(tab: &mut DocTab) {
     }
 }
 
-/// Zoom in (`true`) or out one step.
+/// Zoom in (`true`) or out one step (see [`set_zoom`]).
 pub(super) fn zoom_step(tab: &mut DocTab, zoom_in: bool) {
     let zoom = tab.camera.zoom;
     set_zoom(
@@ -96,10 +96,12 @@ pub(super) fn set_layout_direction(tab: &mut DocTab, d: LayoutDirection) {
 }
 
 /// Zoom around the centre of the view (or the world origin before the
-/// canvas has been shown), clamped to the zoom range.
+/// canvas has been shown), clamped to the zoom range; a selection that
+/// leaves the view is panned back into it on the next frame.
 pub(super) fn set_zoom(tab: &mut DocTab, zoom: f32) {
     let centre = tab
         .viewport
         .map_or(eframe::egui::Pos2::ZERO, |v| v.center());
     tab.camera.zoom_to(centre, zoom);
+    tab.reveal_pending |= tab.selection.is_some();
 }

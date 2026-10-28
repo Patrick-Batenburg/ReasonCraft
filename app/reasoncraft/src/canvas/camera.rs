@@ -86,6 +86,13 @@ impl Camera {
         self.offset = viewport.center().to_vec2() - item.center().to_vec2() * self.zoom;
     }
 
+    /// Zoom to `zoom` (clamped to the zoom range) with the centre of world
+    /// rect `item` in the middle of `viewport`.
+    pub fn center_on(&mut self, item: Rect, viewport: Rect, zoom: f32) {
+        self.zoom = zoom.clamp(ZOOM_MIN, ZOOM_MAX);
+        self.offset = viewport.center().to_vec2() - item.center().to_vec2() * self.zoom;
+    }
+
     /// Pan by the smallest amount that brings world rect `item`, with
     /// `margin` screen px around it, into `viewport`. The zoom is kept. An
     /// item too big for the view is aligned to its top-left.

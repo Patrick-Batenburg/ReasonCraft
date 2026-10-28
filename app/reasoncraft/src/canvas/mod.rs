@@ -28,7 +28,7 @@ use measure::EguiMeasure;
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::i18n::t;
-use crate::scene::marks_leads;
+use crate::scene::{self, marks_leads};
 use crate::spell::SpellFields;
 
 impl From<Hit> for Item {
@@ -105,6 +105,15 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     {
         tab.camera.fit_selection(target, rect);
     }
+    // An edit starting this frame where its text would be too small to
+    // read zooms to 100 % around the box first.
+    if tab.edit_focus
+        && let Some(b) = tab.editing()
+        && let (Some(world), Some(node)) = (layout.boxes.get(&b), tab.doc.boxes.get(&b))
+        && scene::metrics::font_for(&node.kind).size * tab.camera.zoom < MIN_EDIT_PX
+    {
+        tab.camera.center_on(*world, rect, 1.0);
+    }
     let panning = navigate(ui, &response, &mut tab.camera, rect);
     drag::autoscroll(ui, &response, &mut tab.camera);
     let ppp = ctx.pixels_per_point();
@@ -170,6 +179,10 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     comments::show(ui, tab, &layout, &tokens, &mut fields, pending);
 }
+
+/// The smallest on-screen text size (points) an edit starts at: below
+/// it, starting an edit zooms in to 100 %.
+pub const MIN_EDIT_PX: f32 = 9.0;
 
 /// The world rect of `item` in `layout`: a box's own rect, or a card's
 /// frame with everything under it.
