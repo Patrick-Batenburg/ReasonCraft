@@ -16,12 +16,16 @@ The Windows installer's NSIS script is vendored from this version (see below), s
 The About page shows the full licence texts of everything ReasonCraft bundles (File > About > Licences), embedded in the binary.
 The texts of the fonts, the spell checker and the installer live in `app/reasoncraft/assets/licences/`; the dictionaries' come from `crates/reasoncraft_spell/dict/*/LICENSE`.
 The Rust crates' licences are in `app/reasoncraft/assets/licences/crates.txt`, generated with [cargo-about](https://github.com/EmbarkStudios/cargo-about) from the app's run-time dependencies on all release platforms (configuration: `xtask/about.toml`).
-Regenerate and commit it whenever `Cargo.lock` changes:
+Regenerate and commit it whenever `Cargo.lock` changes (CI regenerates it and fails if that changes the file):
 
 ```sh
 cargo install cargo-about --version 0.9.3 --locked --features cli
 cargo run -p xtask -- notices
 ```
+
+The licences accepted are MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, BSL-1.0 and Unicode-3.0; MPL-2.0 only for `spellbook` (ruling Y2), and OFL-1.1 and the Ubuntu Font Licence only for egui's bundled fonts (`epaint_default_fonts`, ruling S6-T13-4).
+`xtask/about.toml` and `deny.toml` hold the same list; change them together.
+[cargo-deny](https://github.com/EmbarkStudios/cargo-deny) checks it in CI, with the RustSec advisories and the crates' sources (`cargo deny check`; an advisory that does not apply is ignored in `deny.toml` with its reason).
 
 ## App icon
 
@@ -147,8 +151,12 @@ cargo-packager builds from the workspace, so the installers are unaffected.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs the quality gate (`cargo fmt --check`, clippy with `-D warnings`, `cargo test --workspace`) on `windows-latest`, `macos-latest` and `ubuntu-latest`, with the toolchain from `rust-toolchain.toml`.
+`.github/workflows/ci.yml` runs the quality gate (`cargo fmt --check`, clippy with `-D warnings`, `cargo test --workspace` and `cargo check --release --all-targets`) on `windows-latest`, `macos-latest` and `ubuntu-latest`, with the toolchain from `rust-toolchain.toml`.
 On Linux it first installs egui's build dependencies, the same as the Docker image.
+A Linux job runs `cargo deny check` and checks that `crates.txt` is current (see [Licence notices](#licence-notices)).
+Run by hand (workflow_dispatch), the workflow also runs the timing tests: the `#[ignore]`d tests, in a release build (`cargo test --workspace --release -j 4 -- --ignored`).
+The tests marked `#[ignore = "manual: …"]` write sample files for looking at by eye when their environment variable is set, and do nothing otherwise.
+The workflows' actions are pinned to commit SHAs, with the release tag in a comment; to upgrade one, look up the new tag's commit (`gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`).
 
 `.github/workflows/release.yml` runs on a tag `v*` (or by hand).
 It builds the NSIS installer on Windows, the app bundle and `.dmg` on macOS, and the `.deb` and AppImage on Linux, and keeps them as workflow artifacts.
@@ -157,7 +165,7 @@ It publishes nothing.
 
 ## Release checklist
 
-1. The CI workflow is green on all three platforms, `macos-latest` included, for the commit to be tagged.
+1. The CI workflow is green on all three platforms, `macos-latest` included, for the commit to be tagged; run it once by hand too, for the timing tests (or run `cargo test --workspace --release -j 4 -- --ignored` locally).
 2. `THIRD-PARTY.md`, `packaging/LICENSE.txt` (`cargo run -p xtask -- licence`) and the crates' licence texts (`cargo run -p xtask -- notices`, see [Licence notices](#licence-notices)) are current: running both leaves no change to commit.
 3. Tag the version (`v<version>`) and download the installers from the release workflow's run.
 4. Windows: check the installer in the test VM (see above), then run it once interactively there (not with `/S`) and check that its licence page shows both licences.

@@ -1,4 +1,7 @@
-# The quality gate on all three platforms: formatting, clippy and the tests.
+# The quality gate on all three platforms: formatting, clippy and the tests;
+# on Linux also the dependencies' licences, advisories and sources, and the
+# crates' licence notices. Run by hand, it also runs the timing tests.
+# Actions are pinned to commit SHAs (the tag they had is in the comment).
 name: CI
 
 on:
@@ -26,7 +29,7 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # The toolchain pinned in rust-toolchain.toml, with clippy and rustfmt.
       - name: Install the toolchain
@@ -42,7 +45,7 @@ jobs:
             libxkbcommon-dev libgtk-3-dev libxcb-render0-dev \
             libxcb-shape0-dev libxcb-xfixes0-dev libssl-dev
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Formatting
         run: cargo fmt --check
@@ -53,6 +56,57 @@ jobs:
       - name: Tests
         run: cargo test --workspace -j 4
 
-      # Debug-only code (cfg(debug_assertions)) must not leak into release builds.
+      # Debug-only code (cfg(debug_assertions)) must not leak into release
+      # builds, tests included.
       - name: Release build check
-        run: cargo check --workspace --release -j 4
+        run: cargo check --workspace --release --all-targets -j 4
+
+  supply-chain:
+    name: dependencies and licence notices
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # Licences (deny.toml, the same list as xtask/about.toml), RustSec
+      # advisories, banned crates and unknown sources.
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check
+
+      - name: Install the toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      # crates.txt must match Cargo.lock: regenerate it and expect no change.
+      - name: Licence notices are current
+        run: |
+          cargo install cargo-about --version 0.9.3 --locked --features cli
+          cargo fetch --locked
+          cargo run -p xtask -j 4 -- notices
+          git diff --exit-code app/reasoncraft/assets/licences/crates.txt
+
+  # The #[ignore]d timing tests, in a release build (by hand only: shared
+  # runners are too noisy to gate every push on timings).
+  timing:
+    name: timing tests
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install the toolchain
+        run: rustup toolchain install
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            libxkbcommon-dev libgtk-3-dev libxcb-render0-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libssl-dev
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      - name: Timing tests
+        run: cargo test --workspace --release -j 4 -- --ignored

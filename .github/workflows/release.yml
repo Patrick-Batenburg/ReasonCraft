@@ -1,5 +1,6 @@
 # Builds the installers for a version tag and keeps them as workflow
-# artifacts. Nothing is published; see docs/release.md.
+# artifacts. Nothing is published; see docs/release.md. Actions are
+# pinned to commit SHAs (the tag they had is in the comment).
 name: Release
 
 on:
@@ -33,7 +34,7 @@ jobs:
               target/release/packager/*.AppImage
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # The toolchain pinned in rust-toolchain.toml.
       - name: Install the toolchain
@@ -60,7 +61,7 @@ jobs:
 
       # Named after the tag. A run by hand on a branch uses the commit
       # instead: a branch name may hold a '/', which an artifact name may not.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: reasoncraft-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}-${{ runner.os }}
           path: ${{ matrix.files }}
