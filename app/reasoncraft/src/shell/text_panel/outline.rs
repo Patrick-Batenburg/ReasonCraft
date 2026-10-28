@@ -14,7 +14,7 @@ use reasoncraft_core::{Item, SourceType};
 use crate::actions::Action;
 use crate::canvas::scene_paint::paint_mark;
 use crate::doc_tab::DocTab;
-use crate::i18n::{t, t_lang};
+use crate::i18n::{FluentArgs, t, t_lang, t_lang_args, ui_language};
 use crate::scene::rating::{Mark, card_colour, mark_for};
 use crate::settings::{OutlineToggle, Settings};
 use crate::shell::source_icons::paint_source_icon;
@@ -49,6 +49,16 @@ const TOGGLES: [(OutlineToggle, &str); 5] = [
 /// ("" for none): the outline is document text, like its exports.
 fn label_word(lang: &str, label: LinkLabel) -> String {
     linking_words(lang).word(label).to_owned()
+}
+
+/// The tooltip of the switch named `key` in the UI language `lang`; the
+/// linking words in the Labels tip come from the core language table.
+fn toggle_tip(lang: &str, key: &str) -> String {
+    let key = format!("outline.tip.{key}");
+    let w = linking_words(lang);
+    let mut args = FluentArgs::new();
+    args.set("words", format!("{}, {}, {}", w.because, w.but, w.however));
+    t_lang_args(lang, &key, &args)
 }
 
 /// The name of a source type in the document language `lang`, as on the
@@ -110,7 +120,7 @@ fn toolbar(
             let on = settings.outline_toggle(toggle);
             let resp = ui
                 .selectable_label(on, t(&format!("outline.toggle.{key}")))
-                .on_hover_text(t(&format!("outline.tip.{key}")));
+                .on_hover_text(toggle_tip(ui_language(), key));
             if resp.clicked() {
                 out.push(Action::SetOutlineOption(toggle, !on));
             }
@@ -294,6 +304,22 @@ fn fitted(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn labels_tip_shows_the_table_linking_words() {
+        for lang in crate::i18n::UI_LANGUAGES {
+            let w = linking_words(lang);
+            let words = format!("{}, {}, {}", w.because, w.but, w.however);
+            let tip = toggle_tip(lang, "labels");
+            assert!(tip.contains(&words), "{lang}: {tip}");
+            // The words come from the placeable, not from the .ftl text.
+            let mut args = crate::i18n::FluentArgs::new();
+            args.set("words", "W1, W2, W3");
+            let tip = crate::i18n::t_lang_args(lang, "outline.tip.labels", &args);
+            assert!(tip.contains("W1, W2, W3") && !tip.contains(&words), "{tip}");
+        }
+        assert_eq!(toggle_tip("en", "notes"), "Include notes");
+    }
 
     #[test]
     fn fitted_text_never_passes_its_right_edge() {
