@@ -23,6 +23,7 @@ use reasoncraft_core::argdown::{ImportNote, ImportNoteKind};
 use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent};
 
 mod keyboard;
+mod order;
 mod settings;
 
 use crate::common::H;

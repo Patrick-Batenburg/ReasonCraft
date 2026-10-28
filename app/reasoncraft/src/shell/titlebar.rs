@@ -2,7 +2,7 @@
 
 use eframe::egui::text::{LayoutJob, TextWrapping};
 use eframe::egui::{
-    self, Align, Color32, FontId, Frame, Layout, Margin, Rangef, Rect, Sense, Vec2,
+    self, Align, Color32, FontId, Frame, Layout, Margin, Rangef, Rect, Sense, UiBuilder, Vec2,
     ViewportCommand, pos2,
 };
 
@@ -13,6 +13,10 @@ use crate::app::ReasonCraftApp;
 use crate::i18n::t;
 
 const HEIGHT: f32 = 36.0;
+/// The width of each window button.
+const BUTTON_W: f32 = 44.0;
+/// The bar's inner margin on the left and right.
+const MARGIN_X: f32 = 8.0;
 /// Room for the macOS traffic lights, which draw over our content.
 const MAC_LEFT_INSET: f32 = 72.0;
 
@@ -20,7 +24,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let frame = Frame::new()
         .fill(tk.bg)
-        .inner_margin(Margin::symmetric(8, 0));
+        .inner_margin(Margin::symmetric(MARGIN_X as i8, 0));
     egui::Panel::top("titlebar")
         .frame(frame)
         .exact_size(HEIGHT)
@@ -69,18 +73,31 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     }
                 }
                 let left = ui.min_rect().right();
+                // Built left to right, so Tab goes the way the eye reads:
+                // the quick buttons, the command search, then the window
+                // buttons, which sit flush at the right edge.
+                let buttons = if cfg!(target_os = "macos") {
+                    0.0
+                } else {
+                    3.0 * BUTTON_W + 12.0
+                };
+                let search = Rect::from_min_max(
+                    pos2(left, bar.top()),
+                    pos2(bar.right() - buttons, bar.bottom()),
+                );
                 let right = ui
-                    .with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.spacing_mut().item_spacing.x = 0.0;
-                        if !cfg!(target_os = "macos") {
-                            window_buttons(ui, app, maximized);
-                            ui.add_space(12.0);
-                        }
-                        super::command_search::show(ui, app);
-                    })
+                    .scope_builder(
+                        UiBuilder::new()
+                            .max_rect(search)
+                            .layout(Layout::right_to_left(Align::Center)),
+                        |ui| super::command_search::show(ui, app),
+                    )
                     .response
                     .rect
                     .left();
+                if !cfg!(target_os = "macos") {
+                    window_buttons(ui, app, bar, maximized);
+                }
                 free = Rangef::new(left, right);
             });
             paint_title(ui, bar, free, &title, tk.box_text);
@@ -108,12 +125,26 @@ fn paint_title(ui: &egui::Ui, bar: Rect, free: Rangef, title: &str, color: Color
     ui.painter().galley(pos, galley, color);
 }
 
-fn window_buttons(ui: &mut egui::Ui, app: &mut ReasonCraftApp, maximized: bool) {
+/// Minimize, maximize (or restore) and close, at the right end of `bar`,
+/// in that order (also the keyboard's).
+fn window_buttons(ui: &mut egui::Ui, app: &mut ReasonCraftApp, bar: Rect, maximized: bool) {
     let tk = app.tokens;
     let ctx = ui.ctx().clone();
-    let size = Vec2::new(44.0, HEIGHT);
-    let button = |ui: &mut egui::Ui, icon: Icon, label: String, danger: bool| {
-        let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
+    // The bar's right margin belongs to the close button, as in Windows.
+    let right = bar.right() + MARGIN_X;
+    let slot = |i: f32| {
+        Rect::from_min_size(
+            pos2(right - (3.0 - i) * BUTTON_W, bar.top()),
+            Vec2::new(BUTTON_W, HEIGHT),
+        )
+    };
+    let button = |ui: &mut egui::Ui, at: f32, icon: Icon, label: String, danger: bool| {
+        let rect = slot(at);
+        let resp = ui.interact(
+            rect,
+            ui.id().with(("window_button", at as u8)),
+            Sense::click(),
+        );
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
         let hovered = resp.hovered();
         let (surface, fg) = match (hovered, danger) {
@@ -128,20 +159,19 @@ fn window_buttons(ui: &mut egui::Ui, app: &mut ReasonCraftApp, maximized: bool) 
         super::icons::paint(ui.painter(), icon_rect, icon, fg, surface, &tk);
         resp.on_hover_text(label).clicked()
     };
-    // Right to left: close, maximize/restore, minimize.
-    // Closing asks about unsaved changes first.
-    if button(ui, Icon::Close, t("window.close"), true) {
-        app.push(Action::CloseWindow);
+    if button(ui, 0.0, Icon::Minimize, t("window.minimize"), false) {
+        ctx.send_viewport_cmd(ViewportCommand::Minimized(true));
     }
     let (icon, key) = if maximized {
         (Icon::Restore, "window.restore")
     } else {
         (Icon::Maximize, "window.maximize")
     };
-    if button(ui, icon, t(key), false) {
+    if button(ui, 1.0, icon, t(key), false) {
         ctx.send_viewport_cmd(ViewportCommand::Maximized(!maximized));
     }
-    if button(ui, Icon::Minimize, t("window.minimize"), false) {
-        ctx.send_viewport_cmd(ViewportCommand::Minimized(true));
+    // Closing asks about unsaved changes first.
+    if button(ui, 2.0, Icon::Close, t("window.close"), true) {
+        app.push(Action::CloseWindow);
     }
 }
