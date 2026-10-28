@@ -1,0 +1,77 @@
+# Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/linux/nfpm.yaml at
+# aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: one binary, ReasonCraft's
+# identity, no homepage, and the dependency lists below.
+#
+# .deb and .rpm packages (nfpm: https://nfpm.goreleaser.com). Run by package.sh, which stages
+# the file tree, substitutes its path for ${STAGE} (nfpm doesn't expand env vars in `src`) and
+# exports VERSION, NFPM_ARCH and REASONCRAFT_MAINTAINER.
+#
+# No `homepage`: there is no public homepage yet (owner's decision 2026-10-28), and both fields
+# are optional. The maintainer has no e-mail address for the same reason; lintian would flag
+# that, dpkg and rpm accept it. Which address to publish is an open question in docs/todo.md.
+name: reasoncraft
+arch: ${NFPM_ARCH}
+platform: linux
+version: ${VERSION}
+# semver: 0.2.0-rc.1 becomes 0.2.0~rc.1 in deb/rpm, so pre-releases sort before the release.
+version_schema: semver
+release: 1
+section: education
+priority: optional
+maintainer: ${REASONCRAFT_MAINTAINER}
+vendor: ReasonCraft contributors
+license: MIT OR Apache-2.0
+description: |-
+  Map out arguments: claims, reasons and objections.
+  ReasonCraft is a free, open-source app for argument maps and grouping maps.
+  Lay out a claim with the reasons for it and the objections against it, rate
+  them, write an essay along the map, and export it as an image or a PDF. It
+  works fully offline.
+
+# The binary links only glibc and libgcc_s. winit, wgpu and glow open the windowing (X11,
+# Wayland, xkbcommon) and graphics (EGL, GL) libraries at run time, so they are not ELF NEEDED
+# entries and the packages have to name them. No libxrandr2: the binary never opens it (ruling
+# S6-T13-3). The file dialogs go through the XDG desktop portal (rfd 0.17), hence the
+# recommendation.
+overrides:
+  deb:
+    depends:
+      - libc6
+      - libgcc-s1
+      - libxkbcommon0
+      - libxkbcommon-x11-0
+      - libx11-6
+      - libx11-xcb1
+      - libxcursor1
+      - libxi6
+      - libwayland-client0
+      - libwayland-egl1
+      - libegl1
+      - libgl1
+    recommends:
+      - xdg-desktop-portal
+  rpm:
+    depends:
+      - libxkbcommon
+      - libxkbcommon-x11
+      - (libglvnd-egl or mesa-libEGL)
+    recommends:
+      - libX11
+      - libX11-xcb
+      - libXcursor
+      - libXi
+      - libwayland-client
+      - libwayland-egl
+      - xdg-desktop-portal
+
+contents:
+  - src: ${STAGE}/usr/bin/reasoncraft
+    dst: /usr/bin/reasoncraft
+    file_info: { mode: 0755 }
+  - src: ${STAGE}/usr/share/
+    dst: /usr/share/
+    type: tree
+
+scripts:
+  postinstall: packaging/linux/postinst.sh
+  postremove: packaging/linux/postinst.sh

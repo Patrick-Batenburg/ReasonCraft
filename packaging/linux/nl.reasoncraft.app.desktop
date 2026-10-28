@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=ReasonCraft
+GenericName=Argument Maps
+GenericName[nl]=Argumentkaarten
+Comment=Map out arguments: claims, reasons and objections
+Comment[nl]=Breng argumenten in kaart: stellingen, redenen en bezwaren
+Exec=reasoncraft %F
+TryExec=reasoncraft
+Icon=nl.reasoncraft.app
+Terminal=false
+StartupNotify=true
+StartupWMClass=nl.reasoncraft.app
+Categories=Education;Office;
+Keywords=argument;map;reasoning;claim;objection;critical thinking;debate;
+Keywords[nl]=argument;kaart;redeneren;stelling;bezwaar;kritisch denken;debat;
+MimeType=application/x-reasoncraft;
