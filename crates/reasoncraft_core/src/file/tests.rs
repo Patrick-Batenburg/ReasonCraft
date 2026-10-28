@@ -155,29 +155,6 @@ fn open_rejects_oversize_document() {
     assert!(open_package_with_limits(&p, size * 4, MAX_ASSET_BYTES, MAX_TOTAL_BYTES).is_ok());
 }
 
-#[test]
-fn save_is_atomic_on_failure() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("map.rcraft");
-    let original = Document::new("original");
-    save(&original, &path).unwrap();
-    // Block the temp target with a directory of the same name.
-    std::fs::create_dir(dir.path().join("map.rcraft.tmp")).unwrap();
-    let changed = Document::new("changed");
-    assert!(save(&changed, &path).is_err());
-    assert_eq!(open(&path).unwrap(), original);
-    assert!(dir.path().join("map.rcraft.tmp").is_dir());
-}
-
-#[test]
-fn save_leaves_no_temp_file() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("map.rcraft");
-    save(&Document::new("c"), &path).unwrap();
-    save(&Document::new("d"), &path).unwrap();
-    assert!(!dir.path().join("map.rcraft.tmp").exists());
-}
-
 pub(super) fn zip_with(path: &Path, doc: &Document, extra: &[(&str, &[u8])]) {
     let mut z = zip::ZipWriter::new(std::fs::File::create(path).unwrap());
     let o = zip::write::SimpleFileOptions::default();

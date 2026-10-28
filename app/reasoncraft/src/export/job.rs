@@ -10,13 +10,12 @@
 use std::collections::VecDeque;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use reasoncraft_core::outline::{OutlineOptions, build_outline};
 use reasoncraft_core::outline_md::{outline_markdown, outline_plain_text_lang};
-use reasoncraft_core::{Assets, Document, to_argdown};
+use reasoncraft_core::{Assets, Document, file, to_argdown};
 use reasoncraft_core::{essay_markdown, essay_plain_text};
 
 use super::docx::{essay_docx, outline_docx};
@@ -180,83 +179,10 @@ fn png_options(options: &ExportOptions) -> PngOptions {
     }
 }
 
-/// How many names in a row may be refused with `PermissionDenied` before
-/// [`create_first_new`] gives up (a folder that refuses every name).
-const MAX_DENIED_NAMES: usize = 16;
-
-/// Makes a new, empty file at the first of `candidates` that does not
-/// exist yet. `create_new` means an existing file (or a link) with that
-/// name is never opened, let alone overwritten. `private`: on Unix, only
-/// the user may read the file (mode 0600).
-pub(super) fn create_first_new(
-    candidates: impl IntoIterator<Item = PathBuf>,
-    private: bool,
-) -> std::io::Result<(PathBuf, std::fs::File)> {
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    if private {
-        use std::os::unix::fs::OpenOptionsExt as _;
-        options.mode(0o600);
-    }
-    #[cfg(not(unix))]
-    let _ = private;
-    create_first_new_with(candidates, |path| options.open(path))
-}
-
-/// [`create_first_new`] making each file with `open`. A name that exists
-/// is skipped, and so is one refused with `PermissionDenied`: Windows
-/// refuses a name whose file is still being deleted. After
-/// [`MAX_DENIED_NAMES`] refusals in a row that error is returned.
-pub(super) fn create_first_new_with(
-    candidates: impl IntoIterator<Item = PathBuf>,
-    mut open: impl FnMut(&Path) -> std::io::Result<std::fs::File>,
-) -> std::io::Result<(PathBuf, std::fs::File)> {
-    use std::io::ErrorKind;
-    let mut denied = 0;
-    for path in candidates {
-        match open(&path) {
-            Ok(file) => return Ok((path, file)),
-            Err(e) if e.kind() == ErrorKind::AlreadyExists => denied = 0,
-            Err(e) if e.kind() == ErrorKind::PermissionDenied && denied + 1 < MAX_DENIED_NAMES => {
-                denied += 1;
-            }
-            Err(e) => return Err(e),
-        }
-    }
-    Err(std::io::Error::other("no free file name"))
-}
-
-/// Makes a new, empty temporary file next to `path`, named
-/// `<name>.<pid>-<counter>.tmp`; a file that already has that name (the
-/// user's, or another export's) is never touched.
-fn create_temp(path: &Path) -> std::io::Result<(PathBuf, std::fs::File)> {
-    static COUNTER: AtomicUsize = AtomicUsize::new(0);
-    let pid = std::process::id();
-    let candidates = std::iter::repeat_with(|| {
-        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let mut name = path.as_os_str().to_owned();
-        name.push(format!(".{pid}-{n}.tmp"));
-        PathBuf::from(name)
-    });
-    create_first_new(candidates, false)
-}
-
 /// Writes `bytes` to `path` through a temporary file next to it, so an
 /// existing file is replaced whole or not at all.
 pub(super) fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), ExportError> {
-    let (tmp, mut file) = create_temp(path)?;
-    let result = file
-        .write_all(bytes)
-        .and_then(|()| file.sync_all())
-        .and_then(|()| {
-            drop(file);
-            std::fs::rename(&tmp, path)
-        });
-    if result.is_err() {
-        let _ = std::fs::remove_file(&tmp);
-    }
-    Ok(result?)
+    Ok(file::atomic_write(path, false, |f| f.write_all(bytes))?)
 }
 
 /// Lets exports write their files until it is closed. Closing waits for a

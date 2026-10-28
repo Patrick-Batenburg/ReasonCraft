@@ -235,3 +235,34 @@ fn removed_copy_drops_its_kept_discard() {
     b.wait_idle();
     assert!(found[0].package.is_file());
 }
+
+#[test]
+fn copies_are_written_through_unique_temp_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    let key = Uuid::new_v4();
+    // Files with the old fixed temp names are not ours: never touched.
+    let theirs = a.session_dir().join(format!("{key}.json.tmp"));
+    std::fs::write(&theirs, b"x").unwrap();
+    a.write(key, Package::new(Document::new("R")), meta("R"));
+    a.wait_idle();
+    assert_eq!(std::fs::read(&theirs).unwrap(), b"x");
+    assert!(a.session_dir().join(format!("{key}.json")).is_file());
+    assert_eq!(entries(&a.session_dir()), 4, "lock, copy, meta and theirs");
+}
+
+#[cfg(unix)]
+#[test]
+fn recovery_folder_and_copies_are_private() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("recovery");
+    let a = RecoveryStore::open(root.clone()).unwrap();
+    let key = write(&a, "Robots");
+    assert_eq!(mode(&root), 0o700);
+    assert_eq!(mode(&a.session_dir()), 0o700);
+    for ext in ["rcraft", "json"] {
+        assert_eq!(mode(&a.session_dir().join(format!("{key}.{ext}"))), 0o600);
+    }
+}

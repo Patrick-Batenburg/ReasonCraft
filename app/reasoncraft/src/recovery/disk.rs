@@ -2,7 +2,7 @@
 //! removing copies, reading and tidying crashed sessions.
 
 use std::fs::{self, File, OpenOptions};
-use std::io;
+use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
 use reasoncraft_core::{Package, Uuid, file};
@@ -17,7 +17,8 @@ pub(super) const LOCK_FILE: &str = "session.lock";
 /// new session is never seen with its lock free.
 pub(super) fn create_locked_session(dir: &Path, session: Uuid) -> io::Result<File> {
     let folder = dir.join(session.to_string());
-    fs::create_dir_all(&folder)?;
+    create_private_dir(dir)?;
+    create_private_dir(&folder)?;
     let staging = folder.join("session.lock.tmp");
     let made = File::create(&staging).and_then(|lock| {
         lock.try_lock()?;
@@ -30,8 +31,26 @@ pub(super) fn create_locked_session(dir: &Path, session: Uuid) -> io::Result<Fil
     made
 }
 
+/// Make `dir` and any missing parents; on Unix `dir` itself is made
+/// (or set) mode 0700, so other users cannot list or read the copies.
+#[cfg(unix)]
+fn create_private_dir(dir: &Path) -> io::Result<()> {
+    use std::os::unix::fs::{DirBuilderExt as _, PermissionsExt as _};
+    fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(dir)?;
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o700))
+}
+
+#[cfg(not(unix))]
+fn create_private_dir(dir: &Path) -> io::Result<()> {
+    fs::create_dir_all(dir)
+}
+
 /// Write `tab_key`'s document and meta into `folder`, each to a temp file
 /// renamed into place, so a crash mid-write leaves the last copy intact.
+/// Only the user may read them (mode 0600 on Unix).
 /// A session folder that went missing is not made again: it would have no
 /// lock, and its copies would look crashed.
 pub(super) fn write_entry(
@@ -44,11 +63,11 @@ pub(super) fn write_entry(
         let gone = crate::i18n::t("recovery.session_gone");
         return Err(io::Error::new(io::ErrorKind::NotFound, gone));
     }
-    file::save_package(pkg, &folder.join(format!("{tab_key}.rcraft"))).map_err(io::Error::other)?;
+    let copy = folder.join(format!("{tab_key}.rcraft"));
+    file::save_package_private(pkg, &copy).map_err(io::Error::other)?;
     let json = serde_json::to_vec_pretty(meta).map_err(io::Error::other)?;
-    let tmp = folder.join(format!("{tab_key}.json.tmp"));
-    fs::write(&tmp, json)?;
-    fs::rename(&tmp, folder.join(format!("{tab_key}.json")))
+    let meta = folder.join(format!("{tab_key}.json"));
+    file::atomic_write(&meta, true, |f| f.write_all(&json))
 }
 
 /// Remove `tab_key`'s files from `folder`; `tidy`: then remove an orphan's

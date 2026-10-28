@@ -14,8 +14,8 @@ use resvg::usvg::{self, fontdb};
 use serde::{Deserialize, Serialize};
 
 use super::ExportError;
-use super::job::create_first_new;
 use crate::actions::{LinkOpener, SystemOpener};
+use reasoncraft_core::file::create_first_new;
 
 /// PDF points per millimetre.
 const PT_PER_MM: f32 = 72.0 / 25.4;

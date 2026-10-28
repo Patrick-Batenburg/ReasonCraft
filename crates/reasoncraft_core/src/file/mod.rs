@@ -1,6 +1,7 @@
 //! Reading and writing `.rcraft` files: a zip holding `document.json`,
 //! image assets under `images/` and any entries from newer builds.
 
+mod atomic;
 mod read;
 mod sanitize;
 mod write;
@@ -9,9 +10,12 @@ mod write;
 mod tests;
 #[cfg(test)]
 mod tests_hostile;
+#[cfg(test)]
+mod tests_save;
 
+pub use atomic::{atomic_write, create_first_new, create_first_new_with};
 pub use read::{open, open_package};
-pub use write::{save, save_package};
+pub use write::{save, save_package, save_package_private};
 
 use zip::result::ZipError;
 
