@@ -1,7 +1,7 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** none — steps 1–6 merged; see "Carry-over after step 6"
+**Active plan:** [docs/plans/2026-10-28-artcraft-packaging.md](plans/2026-10-28-artcraft-packaging.md): packaging the ArtCraft way (awaiting owner review); steps 1–6 merged
 **Merged:** steps 1–6 (step 6 is complete on branch `step6-release-readiness`)
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
@@ -89,6 +89,19 @@
   - [x] Task 12: Linux and macOS builds and CI
   - [x] Task 13: End-to-end check and release docs
   - [x] Task 14: Interactive UX pass (real keyboard and mouse, user-authorised) and fixes
+- [ ] Packaging the ArtCraft way ([plan](plans/2026-10-28-artcraft-packaging.md))
+  - [ ] Prerequisite: .NET SDK 8 (`winget install Microsoft.DotNet.SDK.8`), then `dotnet tool install --global wix --version 5.0.2` and its UI and Util extensions
+  - [ ] Task 1: One version source (`cargo xtask version`), `--version`, and the licence RTF in xtask
+  - [ ] Task 2: WiX source and the install-policy checks (no app build)
+  - [ ] Task 3: Windows packaging script, PE checks and signing
+  - [ ] Task 4: Check the MSI in the VM (per user, per machine, upgrade, cross-scope refusal, uninstall)
+  - [ ] Task 5: Linux: shared env, tar.gz, deb, rpm and AppImage (verified in Docker)
+  - [ ] Task 6: Flatpak bundle (built in CI only)
+  - [ ] Task 7: macOS: universal app, DMG, signing and verification (built in CI only)
+  - [ ] Task 8: Remove cargo-packager and NSIS; notices and supported targets
+  - [ ] Task 9: Workflows: release, packaging lint and CI
+  - [ ] Task 10: Docs, rulings and the release checklist
+  - [ ] Open for the owner: the deb/rpm Maintainer address; a homepage URL for the ARP, the metainfo and signing (left out until there is one); confirm the `ArtCraft` install folder name
 
 ## Review
 
