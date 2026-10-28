@@ -23,12 +23,14 @@ pub(super) fn frame_size(premises: &[Vec2], p: &LayoutParams, frame: Frame) -> V
     };
     Vec2::new(
         width + 2.0 * p.card_pad,
-        p.card_label_height + height + p.card_pad + 2.0,
+        p.card_label_height + height + p.card_pad + p.card_bottom_extra,
     )
 }
 
 /// Each premise's cross centre relative to the frame's cross centre, for
-/// premises of the given sizes.
+/// premises of the given sizes. Where the cross axis is y, the centre
+/// depends on the whole frame height (label band, `card_bottom_extra`
+/// included), so this goes through [`frame_size`] like [`place`] does.
 pub(super) fn premise_offsets(premises: &[Vec2], p: &LayoutParams, frame: Frame) -> Vec<f32> {
     let size = frame_size(premises, p, frame);
     let (mut at, centre) = if frame.cross_is_y() {
@@ -72,6 +74,60 @@ pub(super) fn place(
             at.y += size.y + p.premise_gap;
         } else {
             at.x += size.x + p.premise_gap;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::LayoutDirection;
+
+    fn params() -> LayoutParams {
+        LayoutParams {
+            card_bottom_extra: 5.0,
+            ..LayoutParams::default()
+        }
+    }
+
+    /// The frame's height is the label band, the tallest premise (or the
+    /// stack), the bottom padding and `card_bottom_extra`.
+    #[test]
+    fn frame_height_names_every_part() {
+        let p = params();
+        let premises = [Vec2::new(100.0, 40.0), Vec2::new(80.0, 60.0)];
+        let top_down = frame_size(&premises, &p, Frame::new(LayoutDirection::TopDown));
+        let want = p.card_label_height + 60.0 + p.card_pad + p.card_bottom_extra;
+        assert_eq!(top_down.y, want);
+        let ltr = frame_size(&premises, &p, Frame::new(LayoutDirection::LeftRight));
+        let stack = 40.0 + p.premise_gap + 60.0;
+        assert_eq!(ltr.y, p.card_label_height + stack + p.card_pad + p.card_bottom_extra);
+    }
+
+    /// `premise_offsets` agrees with where `place` puts the premises, in
+    /// every direction, whatever `card_bottom_extra` is.
+    #[test]
+    fn offsets_match_placed_premises() {
+        let p = params();
+        let sizes = [Vec2::new(100.0, 40.0), Vec2::new(80.0, 60.0)];
+        for dir in [
+            LayoutDirection::TopDown,
+            LayoutDirection::BottomUp,
+            LayoutDirection::LeftRight,
+        ] {
+            let frame = Frame::new(dir);
+            let rect = Rect::from_min_size(Pos2::new(10.0, 20.0), frame_size(&sizes, &p, frame));
+            let ids = [NodeId::new(), NodeId::new()];
+            let doc = crate::Document::new("");
+            let mut out = super::super::layout(&doc, &crate::fixtures::FixedMeasure, &p);
+            let premises = ids.iter().copied().zip(sizes.iter().copied());
+            place(CardId::new(), rect, premises, &p, frame, &mut out);
+            let offsets = premise_offsets(&sizes, &p, frame);
+            for (id, offset) in ids.iter().zip(offsets) {
+                let placed = frame.cross_of(out.boxes[id].center());
+                let want = frame.cross_of(rect.center()) + offset;
+                assert!((placed - want).abs() < 1e-4, "{dir:?}: {placed} vs {want}");
+            }
         }
     }
 }

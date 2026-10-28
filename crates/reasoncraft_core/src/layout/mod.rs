@@ -61,6 +61,10 @@ pub struct LayoutParams {
     pub min_box_height: f32,
     pub card_pad: f32,
     pub card_label_height: f32,
+    /// Room below the premises inside a card frame, on top of
+    /// `card_pad`, so the frame's bottom edge stays clear of the premises'
+    /// borders.
+    pub card_bottom_extra: f32,
     pub premise_gap: f32,
     pub h_gap: f32,
     pub v_gap: f32,
@@ -82,6 +86,7 @@ impl Default for LayoutParams {
             min_box_height: 40.0,
             card_pad: 8.0,
             card_label_height: 24.0,
+            card_bottom_extra: 2.0,
             premise_gap: 8.0,
             h_gap: 18.0,
             v_gap: 70.0,
