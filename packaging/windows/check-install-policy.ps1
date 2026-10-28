@@ -1,6 +1,8 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/check-install-policy.ps1
 # at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: no launcher (per-user only) branch,
-# no licence-page route of other apps, the install folder directly under Program Files / Programs.
+# no licence-page route of other apps, the install folder directly under Program Files / Programs,
+# no checks of saved options or shield buttons (ReasonCraft has neither), and the HKLM searches
+# checked in both registry views.
 
 <#
 .SYNOPSIS
@@ -158,10 +160,50 @@ try {
       throw 'Silent updates must restore the folder before directory costing.'
     }
   }
-  foreach ($resolver in @('CraftUFromLegacyExe','CraftMFromLegacyExe')) {
+  foreach ($resolver in @('CraftUFromLegacyExe','CraftMFromLegacyExe','CraftMOFromLegacyExe')) {
     if (-not ($execute['AppSearch'] -lt $execute[$resolver] -and $execute[$resolver] -lt $execute['LaunchConditions'])) {
-      throw 'Both legacy folder resolvers must run after AppSearch and before the launch checks.'
+      throw 'Every legacy folder resolver must run after AppSearch and before the launch checks.'
     }
+  }
+  # A per-machine copy registers in its own registry view (x86 in WOW6432Node on 64-bit Windows),
+  # and a search reads one view. Every HKLM search must therefore exist in both views, so a copy of
+  # another architecture is found too, and a package never installs beside it in the other scope.
+  $locators = @(Read-Rows $database 'SELECT `Signature_`, `Root`, `Key`, `Name`, `Type` FROM `RegLocator`' 5)
+  $machineLocators = @($locators | Where-Object { $_[1] -eq '2' })
+  if ($machineLocators.Count -lt 2) { throw 'Expected the HKLM searches for an existing per-machine copy.' }
+  foreach ($row in $machineLocators) {
+    $type = if ($row[4]) { [int]$row[4] } else { 0 }
+    $twins = @($machineLocators | Where-Object {
+      $other = if ($_[4]) { [int]$_[4] } else { 0 }
+      $_[2] -eq $row[2] -and $_[3] -eq $row[3] -and ($other -band 15) -eq ($type -band 15) -and ($other -band 16) -ne ($type -band 16)
+    })
+    if ($twins.Count -eq 0) { throw "HKLM search $($row[0]) ($($row[2]) / $($row[3])) must also search the other registry view." }
+  }
+  # Run the compiled resolvers with the InstallDir of a per-machine copy seen in one view only: it
+  # must become CRAFT_MACHINE_DIR, and a per-user install must then be refused.
+  $appSearch = @{}
+  foreach ($row in (Read-Rows $database 'SELECT `Property`, `Signature_` FROM `AppSearch`' 2)) { $appSearch[$row[1]] = $row[0] }
+  $setters = @(Read-Rows $database 'SELECT `Action`, `Target` FROM `CustomAction` WHERE `Source` = ''CRAFT_MACHINE_DIR''' 2 |
+    Sort-Object { $execute[$_[0]] })
+  $viewProperties = @($machineLocators | Where-Object { $_[2] -eq "Software\$($policy.name)" -and $_[3] -eq 'InstallDir' } |
+    ForEach-Object { $appSearch[$_[0]] })
+  if ($viewProperties.Count -ne 2) { throw 'Expected the InstallDir search in both registry views.' }
+  foreach ($property in $viewProperties) {
+    foreach ($setter in $setters) { Set-SessionProperty $session ($setter[1].Trim('[]')) '' }
+    Set-SessionProperty $session 'CRAFT_MACHINE_DIR' ''
+    Set-SessionProperty $session 'CRAFT_USER_DIR' ''
+    Set-SessionProperty $session 'Installed' ''
+    Set-SessionProperty $session 'ALLUSERS' ''
+    Set-SessionProperty $session $property 'E:\Machine copy in one view\'
+    foreach ($setter in $setters) {
+      $condition = @(Read-Rows $database ('SELECT `Condition` FROM `InstallExecuteSequence` WHERE `Action` = ''{0}''' -f $setter[0]) 1)[0][0]
+      if ($session.EvaluateCondition($condition) -eq 1 -and $session.DoAction($setter[0]) -ne 1) { throw "$($setter[0]) failed." }
+    }
+    if ((Get-SessionProperty $session 'CRAFT_MACHINE_DIR') -ne 'E:\Machine copy in one view\') {
+      throw "A per-machine copy found through $property is not taken as the existing machine copy."
+    }
+    $refused = @($guards | Where-Object { $session.EvaluateCondition($_[0]) -eq 0 }).Count -gt 0
+    if (-not $refused) { throw "A per-user install beside a per-machine copy found through $property is not refused." }
   }
   # Switching the first-page choice must reset BOTH properties, including a back-and-forth change.
   $events = @(Read-Rows $database 'SELECT `Event`, `Argument`, `Condition`, `Ordering` FROM `ControlEvent` WHERE `Dialog_` = ''CraftScopeDlg'' AND `Control_` = ''Next'' ORDER BY `Ordering`' 4)
@@ -192,58 +234,9 @@ try {
       throw 'Scope selector does not reset the requested installation context.'
     }
   }
-  $actions = @(Read-Rows $database 'SELECT `Action`, `Source`, `Target`, `Type` FROM `CustomAction`' 4)
-  $savedOptions = @($actions | Where-Object { $_[0] -match '^CraftLoadOption[0-9]+M$' })
-  foreach ($option in $savedOptions) {
-    if ([int]$option[3] -ne 51) { throw 'Saved-option test may run only property-setting actions.' }
-    $number = [regex]::Match($option[0], '[0-9]+').Value
-    foreach ($scope in @('2','1')) {
-      Set-SessionProperty $session 'ALLUSERS' $scope
-      Set-SessionProperty $session "CRAFT_OPTION_${number}_M" 'saved-machine-choice'
-      Set-SessionProperty $session "CRAFT_OPTION_${number}_U" 'saved-user-choice'
-      Set-SessionProperty $session $option[1] ''
-      $action = "CraftLoadOption$number" + $(if ($scope -eq '1') { 'M' } else { 'U' })
-      if ($session.DoAction($action) -ne 1) { throw 'Saved-option property action failed.' }
-      $expected = if ($scope -eq '1') { 'saved-machine-choice' } else { 'saved-user-choice' }
-      if ((Get-SessionProperty $session $option[1]) -ne $expected) { throw 'Saved installer choices leaked across contexts.' }
-    }
-  }
-  # Follow the compiled control conditions, not the source's intended appearance.
-  $controls = @(Read-Rows $database 'SELECT `Dialog_`, `Control`, `Type`, `Attributes`, `Text` FROM `Control`' 5)
-  $conditions = @()
-  if (@(Read-Rows $database 'SELECT `Name` FROM `_Tables` WHERE `Name` = ''ControlCondition''' 1).Count) {
-    $conditions = @(Read-Rows $database 'SELECT `Dialog_`, `Control_`, `Action`, `Condition` FROM `ControlCondition`' 4)
-  }
-  function Test-ControlVisible($Control) {
-    $visible = ([int]$Control[3] -band 1) -ne 0
-    foreach ($condition in $conditions) {
-      if ($condition[0] -eq $Control[0] -and $condition[1] -eq $Control[1] -and $session.EvaluateCondition($condition[3]) -eq 1) {
-        if ($condition[2] -eq 'Show') { $visible = $true }
-        if ($condition[2] -eq 'Hide') { $visible = $false }
-      }
-    }
-    return $visible
-  }
-  foreach ($button in @($controls | Where-Object { $_[0] -in 'InstallWelcome','InstallMaintenance','DesktopShortcutDlg' -and ([int]$_[3] -band 8388608) -ne 0 })) {
-    $plain = @($controls | Where-Object { $_[0] -eq $button[0] -and $_[1] -eq ($button[1] + 'User') })
-    if ($plain.Count -ne 1 -or ([int]$plain[0][3] -band 8388608)) { throw 'Scope-aware buttons need an unshielded per-user counterpart.' }
-    foreach ($scope in @('', '2', '1')) {
-      Set-SessionProperty $session 'ALLUSERS' $scope
-      if ((Test-ControlVisible $button) -ne ($scope -eq '1') -or (Test-ControlVisible $plain[0]) -ne ($scope -ne '1')) {
-        throw 'The elevation shield must follow the selected scope.'
-      }
-    }
-    $dialog = $button[0]; $shieldId = $button[1]; $plainId = $plain[0][1]
-    $shieldEvents = @(Read-Rows $database "SELECT ``Event``, ``Argument``, ``Condition``, ``Ordering`` FROM ``ControlEvent`` WHERE ``Dialog_`` = '$dialog' AND ``Control_`` = '$shieldId' ORDER BY ``Ordering``" 4 | ForEach-Object { $_ -join '|' })
-    $plainEvents = @(Read-Rows $database "SELECT ``Event``, ``Argument``, ``Condition``, ``Ordering`` FROM ``ControlEvent`` WHERE ``Dialog_`` = '$dialog' AND ``Control_`` = '$plainId' ORDER BY ``Ordering``" 4 | ForEach-Object { $_ -join '|' })
-    if (($shieldEvents -join "`n") -ne ($plainEvents -join "`n")) { throw 'Per-user and machine buttons must perform the same operation.' }
-  }
-  foreach ($scope in @('', '2', '1')) {
-    Set-SessionProperty $session 'ALLUSERS' $scope
-    foreach ($text in @($controls | Where-Object { $_[4] -like '*for all users*' })) {
-      if ((Test-ControlVisible $text) -ne ($scope -eq '1')) { throw 'The welcome-page scope text must follow the selected scope.' }
-    }
-  }
+  # WordCraft's checks of saved installer options (CraftLoadOption*), of elevation-shield buttons on
+  # its custom welcome and shortcut pages and of their "for all users" text are left out:
+  # ReasonCraft has none of them (WixUI_Minimal and the scope page), so they would check nothing.
   $registry = @(Read-Rows $database 'SELECT `Root`, `Key`, `Name`, `Value` FROM `Registry`' 4)
   if (@($registry | Where-Object { $_[0] -in '1', '2' }).Count) { throw 'Registration must follow the selected context, not force HKCU or HKLM.' }
   if (@($registry | Where-Object { $_[0] -eq '0' -and $_[1] -match '^Software\\Classes(\\|$)' }).Count) {
@@ -255,7 +248,7 @@ try {
   }
   $installDir = @($registry | Where-Object { $_[0] -eq '-1' -and $_[1] -eq "Software\$($policy.name)" -and $_[2] -eq 'InstallDir' -and $_[3] -eq '[INSTALLFOLDER]' })
   if ($installDir.Count -ne 1) { throw 'A context-sensitive installation-folder record is required.' }
-  Write-Output "PASS $($policy.name): $cases scope cases, folder preservation, action sequencing and registry contract. No installation performed."
+  Write-Output "PASS $($policy.name): $cases scope cases, folder preservation, action sequencing, both registry views and registry contract. No installation performed."
 } finally {
   foreach ($com in @($session, $database, $installer)) {
     if ($null -ne $com) { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($com) }

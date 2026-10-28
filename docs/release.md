@@ -27,6 +27,8 @@ cargo xtask version set 0.2.0-rc.1  # changes it, then updates Cargo.lock
 `version set` takes `X.Y.Z` or `X.Y.Z-pre` (no leading zeros, no `+build`), and refuses `v1.0`, `1.0` and `1.0.0+meta`.
 A script also takes `REASONCRAFT_VERSION` from the environment, to package an existing build under another version (the VM check's older MSI does that).
 Formats that only know numbers get the numeric part: the MSI's ProductVersion and macOS's `CFBundleShortVersionString` of `0.2.0-rc.1` are `0.2.0`, and the MSI allows a same-version upgrade, so one release candidate replaces the previous one.
+That works in both directions: every pre-release of `0.2.0`, and `0.2.0` itself, is MSI version `0.2.0`, so running `rc.1`'s MSI over an installed `rc.2` installs the older build (ruling PK-18); install release candidates in order.
+Windows Installer compares only major and minor (at most 255) and patch (at most 65535), so `package.ps1` refuses a version beyond those before it builds anything.
 deb and rpm write it as `0.2.0~rc.1`, which sorts before `0.2.0` (nfpm's `version_schema: semver`); `packaging/linux/check-version-order.sh` checks that on placeholder packages with dpkg's and rpm's own comparison (packaging lint, or in the Docker image).
 
 ## Prerequisites on a development machine
@@ -55,7 +57,7 @@ pwsh packaging/windows/package.ps1 -Arch x64     # also x86 and arm64
 The script builds the exe with a static C runtime (`+crt-static`), checks it, signs it (see [Signing](#signing)), builds the licence page (`cargo xtask licence-rtf`) and the MSI (`wix build`), checks the MSI's install policy, signs the MSI and writes the portable zip (`reasoncraft.exe`, `README.md`, the licences and `THIRD-PARTY.md`).
 Before packaging, `pe-checks.ps1` refuses an exe whose PE machine is not the `-Arch` asked for, whose subsystem is not GUI, or that imports the C runtime (`vcruntime*`, `msvcp*`, `api-ms-win-crt-*`), so the zip needs no Visual C++ redistributable.
 `-SkipBuild` packages the exe already built.
-`packaging/windows/test-packaging-script.ps1` checks the script itself: the policy check comes before the MSI's single signing, the PE checks pass the release exe and refuse the debug exe, `sign.ps1` without secrets warns and exits 0, and a `0.2.0-rc.1` MSI has ProductVersion `0.2.0`.
+`packaging/windows/test-packaging-script.ps1` checks the script itself: the policy check comes before the MSI's single signing, the PE checks pass the release exe and refuse the debug exe, `sign.ps1` without secrets warns and exits 0 and with partly configured secrets warns or (on `release`) fails, versions beyond the MSI limits are refused, and a `0.2.0-rc.1` MSI has ProductVersion `0.2.0`.
 It needs the x64 release exe (run `package.ps1 -Arch x64` first) and a debug build (`cargo build -p reasoncraft`).
 
 The MSI (`packaging/windows/reasoncraft.wxs`, English UI):
@@ -75,6 +77,7 @@ The rules for installing in two scopes come from WordCraft's `install-policy.wxi
 - The UpgradeCode and the component GUIDs in `install-policy.json` never change.
 
 `packaging/windows/test-install-policy.ps1 -OutputDirectory target/install-policy-tests` builds the real `reasoncraft.wxs` for x64, x86 and arm64 with text files in place of the exe (`*-NOT-INSTALLABLE.msi`, never to be installed) and checks each one; it needs WiX but no app build, and the packaging lint workflow runs it.
+It also runs Windows Installer's validation (`wix msi validate`, the ICE checks) and fails on any message except the known ones it lists, each with its reason: ICE03 on the x86 package's `[%ProgramFiles(x86)]` default folder, ICE80 on the x86 package's searches of the 64-bit registry view, and the warnings ICE57 (registry under HKMU in a dual-scope package), ICE61 (same-version upgrades) and ICE69 (the file types name the exe of the other component, in the same feature).
 
 ### Checking the MSI in the test VM
 
@@ -101,6 +104,12 @@ The script:
 6. always (also after a failure) turns the VM off, restores the checkpoint, deletes it, and leaves the VM off.
 
 Windows Installer writes the ARP entry of a per-user install under HKLM as well, so the script tells the scopes apart by the product's assignment type, not by the hive.
+
+#### x64 and x86 side by side
+
+An x86 package on 64-bit Windows writes its per-machine keys in the 32-bit registry view (WOW6432Node), and a package's registry searches read only its own view, so `install-policy.wxi` repeats every HKLM search in the other view (ruling PK-18).
+`packaging/windows/verify-cross-arch-in-vm.ps1 -X64Msi <x64.msi> -X86Msi <x86.msi> -OutDir target/vm-cross-arch` checks that in the same VM, with the same checkpoint routine: the x64 MSI for everyone and then the x86 MSI only for me is refused (and the reverse), with nothing installed per user.
+With `-BaseX86Msi` (an x86 MSI built without the fix) it also shows the old behaviour: refused only through the App Paths key, which both views share, and installed as a second copy once that key is gone.
 The transcript (`msi-vm-transcript.txt`), the msiexec logs and the screenshots land in `-OutDir`.
 The script needs no changes to the VM's settings; the checkpoint undoes everything it changes inside the guest.
 
@@ -274,6 +283,7 @@ The packaging scripts build from the workspace, so the installers are unaffected
    Once signing secrets exist, check the downloads themselves: on Windows `Get-AuthenticodeSignature reasoncraft-<v>-windows-x64.msi` (and the exe inside the zip) shows `Valid` with the expected signer and a timestamp; on a Mac `spctl --assess --type open --context context:primary-signature -vv reasoncraft-<v>-macos-universal.dmg` says `source=Notarized Developer ID`, and `xcrun stapler validate` passes on the DMG.
 4. Windows:
    - check the x64 MSI in the test VM (see above): `0 failure(s)`, the VM left off without its checkpoint;
+   - check the x64 and x86 MSIs together in the VM (`verify-cross-arch-in-vm.ps1`, see above): `0 failure(s)`, the VM left off without its checkpoint;
    - run it once interactively there: the licence page shows both licences, "Only for me" installs without asking for an administrator, and the finish page starts ReasonCraft;
    - run it once more and choose "Everyone on this computer": it asks for an administrator and installs into Program Files (after uninstalling the per-user copy);
    - start the portable zip's exe on a machine without the Visual C++ redistributable;

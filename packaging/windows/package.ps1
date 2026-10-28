@@ -56,8 +56,18 @@ if (-not $Version) {
   }
 }
 if (-not $Version) { throw 'could not read [workspace.package] version from Cargo.toml' }
-# MSI ProductVersion is numeric (major.minor.build); pre-release tags are dropped there.
+# MSI ProductVersion is numeric (major.minor.build); pre-release tags are dropped there, so all
+# pre-releases of one X.Y.Z and X.Y.Z itself share one MSI version. The MSI allows same-version
+# upgrades, so each replaces whichever is installed, in either direction: rc.1 run over rc.2
+# installs the older build (ruling PK-18). Windows Installer compares only major (<= 255), minor
+# (<= 255) and build (<= 65535); a larger number would not upgrade reliably, so it is refused here.
 $MsiVersion = ($Version -split '-')[0]
+if ($MsiVersion -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
+  throw "Version '$Version' is not X.Y.Z or X.Y.Z-pre."
+}
+if ([long]$Matches[1] -gt 255 -or [long]$Matches[2] -gt 255 -or [long]$Matches[3] -gt 65535) {
+  throw "Version '$Version' does not fit an MSI ProductVersion (major and minor at most 255, patch at most 65535)."
+}
 
 $Target = switch ($Arch) { 'x64' { 'x86_64-pc-windows-msvc' } 'x86' { 'i686-pc-windows-msvc' } 'arm64' { 'aarch64-pc-windows-msvc' } }
 $Dist = if ($env:DIST) { $env:DIST } else { Join-Path $Root 'dist\release' }

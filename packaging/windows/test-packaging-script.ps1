@@ -13,7 +13,9 @@
      release branch; a partly configured set warns, and fails with
      REASONCRAFT_REFUSE_PARTIAL_SIGNING=1; a certificate signs (with a stub signtool); each
      outcome lands in the job summary, and no secret's value is printed.
-  4. package.ps1 -SkipBuild with REASONCRAFT_VERSION=0.2.0-rc.1 writes an MSI whose ProductVersion is 0.2.0.
+  4. package.ps1 refuses versions an MSI cannot hold (major or minor above 255, patch above 65535)
+     before building anything, and -SkipBuild with REASONCRAFT_VERSION=0.2.0-rc.1 writes an MSI
+     whose ProductVersion is 0.2.0.
   Needs the x64 release exe (package.ps1 -Arch x64, or cargo build --release with +crt-static) and
   the debug exe (cargo build -p reasoncraft) in CARGO_TARGET_DIR (default: target), and WiX.
 #>
@@ -127,7 +129,17 @@ try {
   if ((Get-AuthenticodeSignature -LiteralPath $copy).Status -eq 'Valid') { throw 'The stub signed the file.' }
   foreach ($name in $signVars) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
 
-  # ---- 4. a pre-release version -------------------------------------------------------------------
+  # ---- 4. versions an MSI cannot hold, and a pre-release version ---------------------------------
+  foreach ($bad in '256.0.0', '1.256.0', '1.2.65536', '1.2') {
+    $env:REASONCRAFT_VERSION = $bad
+    $env:DIST = Join-Path $work 'dist-refused'
+    $out = & $Shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'package.ps1') -Arch x64 -SkipBuild 2>&1 | Out-String
+    if ($LASTEXITCODE -eq 0 -or ($out -replace '\s*\|\s*', ' ' -replace '\s+', ' ') -notmatch 'MSI ProductVersion|is not X\.Y\.Z') {
+      throw "package.ps1 accepted version $bad (exit $LASTEXITCODE): $out"
+    }
+    if (@(Get-ChildItem -LiteralPath $env:DIST -ErrorAction SilentlyContinue).Count) { throw "package.ps1 wrote files for version $bad." }
+  }
+  Write-Output 'PASS versions beyond the MSI limits (255.255.65535) are refused before anything is built.'
   $env:REASONCRAFT_VERSION = '0.2.0-rc.1'
   $env:DIST = Join-Path $work 'dist'
   & $Shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'package.ps1') -Arch x64 -SkipBuild | Out-Host
