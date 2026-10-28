@@ -296,3 +296,23 @@ fn a_wide_drop_down_moves_left_only_as_needed() {
     );
     assert!(comment.right() <= window.right());
 }
+
+/// Esc from an ordinary drop-down (Source ▾ on a full-width ribbon)
+/// gives the focus back to its button, not to the map.
+#[test]
+fn esc_from_a_menu_gives_the_focus_back_to_its_button() {
+    let mut app = ReasonCraftApp::new_for_test();
+    app.ribbon_tab = RibbonTab::Home;
+    let mut h = crate::common::harness(app);
+    let button = t("action.add_source");
+    h.get_by_label(&button).focus();
+    h.run();
+    h.key_press(Key::Enter);
+    h.run();
+    assert!(egui::Popup::is_any_open(&h.ctx), "the menu opened");
+    move_focus_to(&mut h, Key::ArrowDown, &a_source().1);
+    h.key_press(Key::Escape);
+    h.run();
+    assert!(!egui::Popup::is_any_open(&h.ctx), "closed");
+    assert_eq!(focused(&h), Some(button));
+}

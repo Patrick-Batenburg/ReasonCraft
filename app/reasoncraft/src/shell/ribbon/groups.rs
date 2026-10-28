@@ -118,7 +118,7 @@ fn keep_focus(ui: &Ui, button: &Response, popup_id: Id) {
 /// (egui keeps one popup open at a time, so a second popup would close
 /// the drop-down).
 ///
-/// A menu taller than the window scrolls; an item the keyboard moves to
+/// Esc gives the focus back to the button. A menu taller than the window scrolls; an item the keyboard moves to
 /// is scrolled into view.
 pub(super) fn menu_popup(ui: &Ui, resp: &Response, add: impl FnOnce(&mut Ui)) {
     let scrolled = |ui: &mut Ui| {
@@ -132,7 +132,15 @@ pub(super) fn menu_popup(ui: &Ui, resp: &Response, add: impl FnOnce(&mut Ui)) {
     if menu::is_in_menu(ui) {
         menu::SubMenu::new().show(ui, resp, scrolled);
     } else {
+        let popup_id = Popup::default_response_id(resp);
+        let was_open = Popup::is_id_open(ui.ctx(), popup_id);
         Popup::menu(resp).show(scrolled);
+        // Esc closes the menu (egui does) and gives the focus back to its
+        // button, as for a collapsed group's drop-down.
+        if was_open && ui.input(|i| i.key_pressed(Key::Escape)) {
+            Popup::close_id(ui.ctx(), popup_id);
+            resp.request_focus();
+        }
     }
 }
 
