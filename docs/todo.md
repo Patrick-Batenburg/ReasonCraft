@@ -95,8 +95,8 @@
   - [ ] Task 2: WiX source and the install-policy checks (no app build)
   - [ ] Task 3: Windows packaging script, PE checks and signing
   - [x] Task 4: Check the MSI in the VM (per user, per machine, upgrade, cross-scope refusal, uninstall)
-  - [ ] Task 5: Linux: shared env, tar.gz, deb, rpm and AppImage (verified in Docker)
-  - [ ] Task 6: Flatpak bundle (built in CI only)
+  - [x] Task 5: Linux: shared env, tar.gz, deb, rpm and AppImage (verified in Docker: Ubuntu 22.04 build, deb installed on a clean 22.04, rpm on Fedora 42)
+  - [x] Task 6: Flatpak bundle (shellcheck and `flatpak-builder --show-manifest`; also built and smoke-tested locally in a privileged Docker container on Ubuntu 24.04 with a D-Bus session. The release workflow's `flatpak` job still has to run once, on the first dispatch after a remote exists, and aarch64 is CI only)
   - [ ] Task 7: macOS: universal app, DMG, signing and verification (built in CI only)
   - [ ] Task 8: Remove cargo-packager and NSIS; notices and supported targets
   - [ ] Task 9: Workflows: release, packaging lint and CI
