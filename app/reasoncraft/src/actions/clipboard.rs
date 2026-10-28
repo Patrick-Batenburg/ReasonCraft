@@ -83,7 +83,12 @@ pub(super) fn copy(app: &mut ReasonCraftApp) {
     for key in fragment.assets() {
         assets.copy_from(&tab.assets, key);
     }
-    let text = fragment.plain_text();
+    let mut text = fragment.plain_text();
+    // egui sends no paste for an empty clipboard, so Ctrl+V would do
+    // nothing: an item without text puts a word there instead.
+    if text.trim().is_empty() {
+        text = crate::i18n::t("clipboard.empty_item");
+    }
     if let Some(ctx) = &app.egui_ctx {
         ctx.copy_text(text.clone());
     }

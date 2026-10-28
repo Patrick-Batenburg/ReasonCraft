@@ -161,3 +161,27 @@ fn foreign_text_pastes_as_a_box() {
     let t = tab(&a);
     assert!(t.doc.boxes.values().any(|b| b.text == "From elsewhere"));
 }
+
+/// An item without text still puts text on the system clipboard: egui
+/// sends no paste for an empty clipboard, so Ctrl+V would do nothing
+/// (APP-R4). Pasting that text brings the item back.
+#[test]
+fn an_empty_item_copies_marker_text_and_pastes_back() {
+    let (mut a, _, a1) = app();
+    let note = tab(&a).doc.boxes[&a1].children[0];
+    let Item::Box(note_id) = note else {
+        panic!("a note")
+    };
+    a.tabs[0].doc.boxes[&note_id].text.clear();
+    select(&mut a, note);
+    apply(&mut a, Action::Copy);
+    let text = a.clipboard.as_ref().unwrap().text.clone();
+    assert!(!text.trim().is_empty(), "{text:?}");
+    let before = tab(&a).doc.boxes.len();
+    select(&mut a, Item::Box(a1));
+    apply(&mut a, Action::Paste(Some(text)));
+    let t = tab(&a);
+    assert_eq!(t.doc.boxes.len(), before + 1);
+    let pasted = t.doc.boxes[&a1].children.last().unwrap();
+    assert!(matches!(pasted, Item::Box(b) if t.doc.boxes[b].text.is_empty()));
+}

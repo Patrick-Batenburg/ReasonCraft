@@ -672,6 +672,9 @@ export-copied = Copied to the clipboard.
 status-exporting = Exporting…
 status-preparing_image = Preparing image…
 status-saving = Saving…
+# Put on the system clipboard by Copy for an item without text (other
+# programs get it; Paste with it brings the item back).
+clipboard-empty_item = (empty)
 status-text_cut = Text was cut to 50 000 characters.
 status-open_cut = Some of this file was too large or unsafe: long texts were shortened and the rest left out.
 status-jobs-exports = { $count ->
