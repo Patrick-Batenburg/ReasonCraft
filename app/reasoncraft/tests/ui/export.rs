@@ -3,7 +3,7 @@
 //! folders; the clipboard and the PDF viewer are fakes.
 
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use eframe::egui;
 use egui_kittest::kittest::{NodeT, Queryable};
@@ -12,6 +12,7 @@ use reasoncraft::export::{
     ExportFormat, ExportOptions, ExportScope, ExportTheme, Notice, png_to_rgba,
 };
 use reasoncraft::i18n::t;
+use reasoncraft::jobs::Hold;
 use reasoncraft::theme::Tokens;
 use reasoncraft_core::Item;
 
@@ -71,25 +72,23 @@ fn export_dialog_defaults_to_light_theme() {
 fn export_runs_off_ui_thread() {
     let dir = tempfile::tempdir().unwrap();
     let (mut h, fakes, _) = harness(dir.path());
-    let delay = Duration::from_millis(600);
-    h.state_mut().export.delay = Some(delay);
+    let hold = Hold::default();
+    h.state_mut().export.hold = Some(hold.clone());
     let file = dir.path().join("slow.png");
     fakes.dialogs.set_export(file.clone());
     h.state_mut()
         .push(request(ExportFormat::Png, ExportOptions::default()));
+    // Frames keep coming while the export waits (a frame that waited for
+    // it would wait until the hold gives up).
     let start = Instant::now();
-    h.step();
-    h.step();
-    for _ in 0..5 {
+    for _ in 0..7 {
         h.step();
     }
-    assert!(
-        start.elapsed() < delay,
-        "frames keep coming while the export waits"
-    );
+    assert!(start.elapsed() < Hold::MAX_WAIT / 2, "a frame waited");
     assert!(h.state().export.busy());
     assert!(!file.exists());
     h.get_by_label(&t("status.exporting"));
+    hold.release();
     wait(&mut h);
     assert!(file.exists());
     assert!(h.query_by_label(&t("status.exporting")).is_none());

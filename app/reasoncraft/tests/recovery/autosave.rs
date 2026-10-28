@@ -1,11 +1,10 @@
 //! Autosave while the app runs: when copies are written and removed.
 
-use std::time::Duration;
-
 use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{self, Action, UnsavedChoice};
 use reasoncraft::i18n::t;
+use reasoncraft::jobs::Hold;
 use reasoncraft::recovery;
 
 use super::*;
@@ -136,17 +135,19 @@ fn autosave_interval_clamped() {
 fn autosave_never_blocks_ui() {
     let rec = tempfile::tempdir().unwrap();
     let mut app = app_with_recovery(rec.path());
+    let hold = Hold::default();
     app.recovery
         .as_mut()
         .unwrap()
-        .set_write_delay(Some(Duration::from_millis(400)));
+        .set_write_hold(Some(hold.clone()));
     set_claim(&mut app, "Robots help");
     recovery::tick(&mut app, 0.0);
     recovery::tick(&mut app, 46.0);
-    // The write runs on a worker: tick returned while it is pending.
+    // The write runs on a worker: tick returned while it is held.
     let copy = recovery_file(&app, 0);
     assert!(app.recovery.as_ref().unwrap().busy());
     assert!(!copy.exists());
+    hold.release();
     wait(&app);
     assert!(!app.recovery.as_ref().unwrap().busy());
     assert!(copy.is_file());

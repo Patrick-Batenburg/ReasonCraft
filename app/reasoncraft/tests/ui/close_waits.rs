@@ -13,6 +13,7 @@ use reasoncraft::doc_tab::DocTab;
 use reasoncraft::export::{ExportFormat, ExportOptions, ExportRequest, PageSetup};
 use reasoncraft::file_ops::{FakeDialogs, Modal};
 use reasoncraft::i18n::t;
+use reasoncraft::jobs::Hold;
 use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent, file};
 
 use crate::common::H;
@@ -36,10 +37,7 @@ fn step_until(h: &mut H, done: impl Fn(&ReasonCraftApp) -> bool) {
         assert!(start.elapsed() < Duration::from_secs(60), "never happened");
         let frame = Instant::now();
         h.step();
-        assert!(
-            frame.elapsed() < Duration::from_millis(250),
-            "a frame blocked"
-        );
+        assert!(frame.elapsed() < Duration::from_secs(10), "a frame blocked");
         std::thread::sleep(Duration::from_millis(5));
     }
 }
@@ -53,11 +51,12 @@ fn names(dir: &Path) -> Vec<String> {
     v
 }
 
-/// A harness with a PNG export to `file` running (`delay` long) and the
-/// window asked to close.
-fn close_while_exporting(fake: &FakeDialogs, file: PathBuf, delay: Duration) -> H {
+/// A harness with a PNG export to `file` running (held until the returned
+/// hold is released) and the window asked to close.
+fn close_while_exporting(fake: &FakeDialogs, file: PathBuf) -> (H, Hold) {
     let mut app = ReasonCraftApp::new_for_test_with(Box::new(fake.clone()));
-    app.export.delay = Some(delay);
+    let hold = Hold::default();
+    app.export.hold = Some(hold.clone());
     app.left_panel = false;
     let mut h = harness(app);
     fake.set_export(file);
@@ -77,7 +76,7 @@ fn close_while_exporting(fake: &FakeDialogs, file: PathBuf, delay: Duration) -> 
     h.get_by_label(&t("closing.exports.title"));
     h.get_by_label(&t("closing.exports.waiting"));
     h.get_by_label(&t("closing.exports.quit"));
-    h
+    (h, hold)
 }
 
 #[test]
@@ -85,7 +84,8 @@ fn window_close_waits_for_a_running_export() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let file = dir.path().join("map.png");
-    let mut h = close_while_exporting(&fake, file.clone(), Duration::from_millis(400));
+    let (mut h, hold) = close_while_exporting(&fake, file.clone());
+    hold.release();
     step_until(&mut h, ReasonCraftApp::close_confirmed);
     assert!(!h.state().export.busy());
     assert!(file.exists(), "the export finished before the close");
@@ -97,13 +97,14 @@ fn quit_anyway_closes_at_once_and_leaves_no_file() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let file = dir.path().join("map.png");
-    let mut h = close_while_exporting(&fake, file.clone(), Duration::from_millis(400));
+    let (mut h, hold) = close_while_exporting(&fake, file.clone());
     h.get_by_label(&t("closing.exports.quit")).click();
     h.step();
     h.step();
     assert!(h.state().close_confirmed());
     assert!(h.state().modal.is_none());
     // The worker ends without writing anything, not even a temp file.
+    hold.release();
     step_until(&mut h, |app| !app.export.busy());
     assert!(names(dir.path()).is_empty(), "{:?}", names(dir.path()));
 }
@@ -113,10 +114,12 @@ fn cancel_keeps_the_window_and_the_export() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let file = dir.path().join("map.png");
-    let mut h = close_while_exporting(&fake, file.clone(), Duration::from_millis(300));
+    let (mut h, hold) = close_while_exporting(&fake, file.clone());
     h.get_by_label(&t("unsaved.cancel")).click();
     h.step();
     assert!(h.state().modal.is_none());
+    assert!(h.state().export.busy(), "the export keeps running");
+    hold.release();
     step_until(&mut h, |app| !app.export.busy());
     h.step();
     assert!(file.exists());
@@ -128,7 +131,8 @@ fn a_failed_export_during_the_wait_shows_and_keeps_the_window() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let file = dir.path().join("missing-folder").join("map.png");
-    let mut h = close_while_exporting(&fake, file, Duration::from_millis(300));
+    let (mut h, hold) = close_while_exporting(&fake, file);
+    hold.release();
     step_until(&mut h, |app| !app.export.busy());
     h.step();
     assert!(
@@ -181,13 +185,14 @@ fn two_tabs_waiting_for_images_both_save_then_the_window_closes() {
     app.tabs.push(second);
     app.left_panel = false;
     let mut h = harness(app);
-    // Both tabs prepare an image; the second takes longer, so it is still
-    // being prepared when its own prompt comes up.
-    h.state_mut().image_jobs.delay = Some(Duration::from_millis(300));
+    // Both tabs prepare an image; the second is still being prepared
+    // when its own prompt comes up.
+    let (hold_a, hold_b) = (Hold::default(), Hold::default());
+    h.state_mut().image_jobs.hold = Some(hold_a.clone());
     fake.set_image(photo(dir.path()));
     h.state_mut().push(Action::InsertImage);
     h.step();
-    h.state_mut().image_jobs.delay = Some(Duration::from_millis(1500));
+    h.state_mut().image_jobs.hold = Some(hold_b.clone());
     h.state_mut().push(Action::ActivateTab(1));
     fake.set_image(photo(dir.path()));
     h.state_mut().push(Action::InsertImage);
@@ -208,6 +213,7 @@ fn two_tabs_waiting_for_images_both_save_then_the_window_closes() {
             ..
         })
     ));
+    hold_a.release();
     save_tab_when_asked(&mut h, &fake, 1, b.clone());
     h.step();
     assert!(
@@ -223,6 +229,7 @@ fn two_tabs_waiting_for_images_both_save_then_the_window_closes() {
         h.state().modal
     );
     assert!(!h.state().close_confirmed());
+    hold_b.release();
     step_until(&mut h, ReasonCraftApp::close_confirmed);
     assert!(saved_image(&a, premise_a));
     assert!(saved_image(&b, premise_b));
@@ -233,7 +240,8 @@ fn an_export_failing_behind_the_unsaved_prompt_still_shows() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let mut app = ReasonCraftApp::new_for_test_with(Box::new(fake.clone()));
-    app.export.delay = Some(Duration::from_millis(100));
+    let hold = Hold::default();
+    app.export.hold = Some(hold.clone());
     app.left_panel = false;
     let mut h = harness(app);
     fake.set_export(dir.path().join("missing-folder").join("map.png"));
@@ -252,6 +260,7 @@ fn an_export_failing_behind_the_unsaved_prompt_still_shows() {
         Some(Modal::Unsaved { window: true, .. })
     ));
     // The export fails while the prompt is open: its message waits.
+    hold.release();
     step_until(&mut h, |app| !app.export.busy());
     assert_eq!(h.state().export.waiting_errors.len(), 1);
     h.state_mut()

@@ -2,11 +2,11 @@
 //! Markdown and Word outlines, essays, and sample files for review by eye.
 
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use egui_kittest::kittest::Queryable;
 use reasoncraft::export::{ExportFormat, ExportOptions};
 use reasoncraft::i18n::t;
+use reasoncraft::jobs::Hold;
 
 use crate::export_fixture::{click_button, harness, open_export_tab, request, wait};
 
@@ -177,10 +177,12 @@ fn export_argdown_via_ribbon() {
         .set_image(alpha, Some(image))
         .unwrap();
     fakes.dialogs.set_export(file);
-    h.state_mut().export.delay = Some(Duration::from_millis(300));
+    let hold = Hold::default();
+    h.state_mut().export.hold = Some(hold.clone());
     click_button(&mut h, "export.argdown");
     assert!(h.state().export.busy());
     assert_eq!(h.state().status_note, None, "said only once it is written");
+    hold.release();
     wait(&mut h);
     assert_eq!(
         h.state().status_note.as_deref(),

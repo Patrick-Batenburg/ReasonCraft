@@ -4,12 +4,11 @@
 //! document through `Action::ImagePrepared`.
 
 use std::path::PathBuf;
-use std::time::Duration;
 
 use reasoncraft_core::NodeId;
 
 use super::prepare::{FailureKind, ImageFailure, PreparedImage, file_label, prepare_file};
-use crate::jobs::{Job, JobId, JobState};
+use crate::jobs::{Hold, Job, JobId, JobState};
 
 /// What preparing an image gave.
 pub type ImageResult = Result<PreparedImage, ImageFailure>;
@@ -37,8 +36,8 @@ pub struct ImageJobs {
     /// Results held back until their tab's edit session ends, so an image
     /// never lands in the middle of someone's typing.
     pub waiting: Vec<Prepared>,
-    /// Wait this long before each image is read (tests only).
-    pub delay: Option<Duration>,
+    /// Hold each image back until released before it is read (tests only).
+    pub hold: Option<Hold>,
 }
 
 impl ImageJobs {
@@ -46,7 +45,7 @@ impl ImageJobs {
     pub fn start(&mut self, node: NodeId, path: PathBuf) -> JobId {
         let id = JobId::next();
         let file = file_label(&path);
-        let job = Job::spawn(self.delay, move || prepare_file(&path));
+        let job = Job::spawn(self.hold.clone(), move || prepare_file(&path));
         self.running.push(Running {
             id,
             node,

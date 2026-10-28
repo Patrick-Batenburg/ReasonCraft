@@ -12,6 +12,7 @@ use reasoncraft::actions::Action;
 use reasoncraft::doc_tab::DocTab;
 use reasoncraft::file_ops::{FakeDialogs, Modal};
 use reasoncraft::i18n::t;
+use reasoncraft::jobs::Hold;
 use reasoncraft_core::{CardKind, Document, ImageRef, Item, NodeId, Parent};
 
 use crate::common::H;
@@ -130,19 +131,18 @@ fn image_insert_runs_off_ui_thread() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let (mut h, premise) = harness(&fake);
-    let delay = Duration::from_millis(600);
-    h.state_mut().image_jobs.delay = Some(delay);
+    let hold = Hold::default();
+    h.state_mut().image_jobs.hold = Some(hold.clone());
     let steps = h.state().active_tab().history.undo.len();
     fake.set_image(photo(dir.path(), "slow.png", 40, 20));
-    let start = Instant::now();
     h.get_by_label(&t("action.image")).click();
+    // Frames keep coming while the image is prepared (a frame that
+    // waited for it would wait until the hold gives up).
+    let start = Instant::now();
     for _ in 0..6 {
         h.step();
     }
-    assert!(
-        start.elapsed() < delay,
-        "frames keep coming while the image is prepared"
-    );
+    assert!(start.elapsed() < Hold::MAX_WAIT / 2, "a frame waited");
     assert!(h.state().image_jobs.busy());
     assert!(h.state().active_tab().pending_images.contains_key(&premise));
     assert!(h.state().active_tab().doc.boxes[&premise].image.is_none());
@@ -151,6 +151,7 @@ fn image_insert_runs_off_ui_thread() {
     assert_eq!(t("image.preparing"), t("status.preparing_image"));
     assert_eq!(h.get_all_by_label(&t("image.preparing")).count(), 2);
 
+    hold.release();
     wait(&mut h);
     let tab = h.state().active_tab();
     assert!(tab.doc.boxes[&premise].image.is_some());
@@ -164,7 +165,8 @@ fn image_prepared_for_deleted_box_is_discarded() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let (mut h, premise) = harness(&fake);
-    h.state_mut().image_jobs.delay = Some(Duration::from_millis(300));
+    let hold = Hold::default();
+    h.state_mut().image_jobs.hold = Some(hold.clone());
     fake.set_image(photo(dir.path(), "late.png", 40, 20));
     h.get_by_label(&t("action.image")).click();
     h.step();
@@ -174,6 +176,7 @@ fn image_prepared_for_deleted_box_is_discarded() {
     assert!(!h.state().active_tab().doc.boxes.contains_key(&premise));
     let steps = h.state().active_tab().history.undo.len();
 
+    hold.release();
     wait(&mut h);
     let app = h.state();
     let tab = app.active_tab();
@@ -198,17 +201,24 @@ fn second_insert_for_the_same_box_replaces_the_first() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let (mut h, premise) = harness(&fake);
-    h.state_mut().image_jobs.delay = Some(Duration::from_millis(200));
+    let hold = Hold::default();
+    h.state_mut().image_jobs.hold = Some(hold.clone());
     let steps = h.state().active_tab().history.undo.len();
     fake.set_image(photo(dir.path(), "wide.png", 40, 20));
     h.get_by_label(&t("action.image")).click();
     h.step();
     // The second job finishes first.
-    h.state_mut().image_jobs.delay = None;
+    h.state_mut().image_jobs.hold = None;
     fake.set_image(photo(dir.path(), "tall.png", 20, 40));
     h.get_by_label(&t("action.image")).click();
     h.step();
-
+    let start = Instant::now();
+    while h.state().image_jobs.running() > 1 {
+        assert!(start.elapsed() < Duration::from_secs(60), "image job hangs");
+        h.step();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    hold.release();
     wait(&mut h);
     let tab = h.state().active_tab();
     let image = tab.doc.boxes[&premise].image.clone().unwrap();
@@ -222,13 +232,15 @@ fn prepared_image_waits_for_the_running_edit() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let (mut h, premise) = harness(&fake);
-    h.state_mut().image_jobs.delay = Some(Duration::from_millis(100));
+    let hold = Hold::default();
+    h.state_mut().image_jobs.hold = Some(hold.clone());
     fake.set_image(photo(dir.path(), "photo.png", 40, 20));
     h.get_by_label(&t("action.image")).click();
     h.step();
     h.state_mut().push(Action::Edit);
     h.step();
     assert_eq!(h.state().active_tab().editing(), Some(premise));
+    hold.release();
 
     let start = Instant::now();
     while h.state().image_jobs.busy() {

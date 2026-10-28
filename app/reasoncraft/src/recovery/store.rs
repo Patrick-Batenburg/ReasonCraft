@@ -23,8 +23,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::JoinHandle;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
+use crate::jobs::Hold;
 use chrono::{DateTime, Utc};
 use reasoncraft_core::{Package, Uuid};
 use serde::{Deserialize, Serialize};
@@ -69,9 +70,9 @@ pub struct WriteFailure {
 }
 
 /// Test hooks for writes: hold them back, or make them fail.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 struct WriteHooks {
-    delay: Option<Duration>,
+    hold: Option<Hold>,
     fail: bool,
 }
 
@@ -242,7 +243,7 @@ impl RecoveryStore {
             pkg: Box::new(pkg),
             meta,
             then_discard,
-            hooks: self.hooks,
+            hooks: self.hooks.clone(),
         });
     }
 
@@ -315,10 +316,10 @@ impl RecoveryStore {
         }
     }
 
-    /// Hold each later write back by `delay` on the worker (tests use it to
-    /// see that autosave never waits for the disk).
-    pub fn set_write_delay(&mut self, delay: Option<Duration>) {
-        self.hooks.delay = delay;
+    /// Hold each later write back on the worker until `hold` is released
+    /// (tests use it to see that autosave never waits for the disk).
+    pub fn set_write_hold(&mut self, hold: Option<Hold>) {
+        self.hooks.hold = hold;
     }
 
     /// Make each later write fail (tests use it to see failures handled).
@@ -345,8 +346,8 @@ fn run(op: Op) -> io::Result<()> {
             then_discard,
             hooks,
         } => {
-            if let Some(delay) = hooks.delay {
-                std::thread::sleep(delay);
+            if let Some(hold) = hooks.hold {
+                hold.wait();
             }
             if hooks.fail {
                 return Err(io::Error::other("write failure (test)"));

@@ -1,6 +1,6 @@
 //! Tests of the spell service: loading, the cache and suggestions.
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use super::*;
 
@@ -19,10 +19,12 @@ pub(crate) fn wait(service: &mut SpellService, lang: &str) -> Arc<Speller> {
 #[test]
 fn dictionary_loads_off_ui_thread() {
     let mut s = SpellService::new(&[]);
-    s.delay = Some(Duration::from_millis(200));
+    let hold = Hold::default();
+    s.hold = Some(hold.clone());
     assert!(s.get("en").is_none(), "the first call only starts the load");
     assert!(s.is_loading("en") && s.busy());
     assert!(s.misspelled("en", "teh").is_none(), "no underlines yet");
+    hold.release();
     let speller = wait(&mut s, "en");
     assert!(!speller.check_word("recieve"));
     assert!(!s.busy());

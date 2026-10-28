@@ -14,6 +14,7 @@ use reasoncraft::doc_tab::DocTab;
 use reasoncraft::export::Notice;
 use reasoncraft::file_ops::{FakeDialogs, Modal};
 use reasoncraft::i18n::t;
+use reasoncraft::jobs::Hold;
 use reasoncraft::shell::statusbar::NOTE_SECS;
 use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent, file};
 
@@ -45,18 +46,15 @@ fn unsaved_prompt(app: &ReasonCraftApp, window: bool) -> bool {
     matches!(app.modal, Some(Modal::Unsaved { tab: 0, window: w, waiting: false }) if w == window)
 }
 
-/// Steps frames until `done` holds (at most 60 s); each frame must come
-/// back quickly, as nothing may wait on the UI thread.
+/// Steps frames until `done` holds (at most 60 s); no frame may stall, as
+/// nothing waits on the UI thread.
 fn step_until(h: &mut H, done: impl Fn(&ReasonCraftApp) -> bool) {
     let start = Instant::now();
     while !done(h.state()) {
         assert!(start.elapsed() < Duration::from_secs(60), "never happened");
         let frame = Instant::now();
         h.step();
-        assert!(
-            frame.elapsed() < Duration::from_millis(250),
-            "a frame blocked"
-        );
+        assert!(frame.elapsed() < Duration::from_secs(10), "a frame blocked");
         std::thread::sleep(Duration::from_millis(5));
     }
 }
@@ -65,16 +63,18 @@ fn waiting(app: &ReasonCraftApp) -> bool {
     matches!(app.modal, Some(Modal::Unsaved { waiting: true, .. }))
 }
 
-/// A harness whose premise is waiting for an image (`delay` long), with
-/// `close` sent and the unsaved prompt showing; then Save is chosen.
+/// A harness whose premise is waiting for an image (held until the
+/// returned hold is released), with `close` sent and the unsaved prompt
+/// showing; then Save is chosen.
 fn save_while_preparing(
     dir: &Path,
     fake: &FakeDialogs,
     close: Action,
     file: PathBuf,
-) -> (H, NodeId) {
+) -> (H, NodeId, Hold) {
     let (mut app, premise) = app(fake);
-    app.image_jobs.delay = Some(Duration::from_millis(400));
+    let hold = Hold::default();
+    app.image_jobs.hold = Some(hold.clone());
     let mut h = harness(app);
     fake.set_image(file);
     h.state_mut().push(Action::InsertImage);
@@ -91,7 +91,8 @@ fn save_while_preparing(
         .push(Action::ResolveUnsaved(UnsavedChoice::Save));
     let start = Instant::now();
     h.step();
-    assert!(start.elapsed() < Duration::from_millis(250), "Save blocked");
+    // A Save that waited for the image would wait until the hold gives up.
+    assert!(start.elapsed() < Duration::from_secs(10), "Save blocked");
     // The frame that applied Save drew the prompt before it; one more.
     h.step();
     // The prompt stays, waiting, with a spinner and no Save button.
@@ -103,7 +104,7 @@ fn save_while_preparing(
     );
     assert!(h.query_by_label(&t("unsaved.save_changes")).is_none());
     h.get_by_label(&t("unsaved.cancel"));
-    (h, premise)
+    (h, premise, hold)
 }
 
 fn saved_image(path: &Path, premise: NodeId) -> bool {
@@ -116,8 +117,9 @@ fn saved_image(path: &Path, premise: NodeId) -> bool {
 fn save_on_close_waits_for_the_image_without_blocking() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
-    let (mut h, premise) =
+    let (mut h, premise, hold) =
         save_while_preparing(dir.path(), &fake, Action::CloseTab(0), photo(dir.path()));
+    hold.release();
     step_until(&mut h, |app| app.modal.is_none());
     assert!(h.state().active_tab().path.is_none(), "the tab closed");
     assert!(saved_image(&dir.path().join("with-image.rcraft"), premise));
@@ -127,13 +129,14 @@ fn save_on_close_waits_for_the_image_without_blocking() {
 fn cancel_while_save_waits_keeps_the_tab_and_the_image() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
-    let (mut h, premise) =
+    let (mut h, premise, hold) =
         save_while_preparing(dir.path(), &fake, Action::CloseTab(0), photo(dir.path()));
     h.state_mut()
         .push(Action::ResolveUnsaved(UnsavedChoice::Cancel));
     h.step();
     assert!(h.state().modal.is_none());
     assert_eq!(h.state().active_tab().pending_images.len(), 1);
+    hold.release();
     step_until(&mut h, |app| app.active_tab().pending_images.is_empty());
     h.step();
     let tab = h.state().active_tab();
@@ -146,8 +149,9 @@ fn cancel_while_save_waits_keeps_the_tab_and_the_image() {
 fn window_close_save_waits_for_the_image() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
-    let (mut h, premise) =
+    let (mut h, premise, hold) =
         save_while_preparing(dir.path(), &fake, Action::CloseWindow, photo(dir.path()));
+    hold.release();
     step_until(&mut h, ReasonCraftApp::close_confirmed);
     assert!(saved_image(&dir.path().join("with-image.rcraft"), premise));
 }
@@ -158,7 +162,9 @@ fn a_failed_image_still_lets_the_waiting_save_go_ahead() {
     let fake = FakeDialogs::default();
     let broken = dir.path().join("broken.png");
     std::fs::write(&broken, b"\x89PNG\r\n\x1a\n not a picture").unwrap();
-    let (mut h, premise) = save_while_preparing(dir.path(), &fake, Action::CloseTab(0), broken);
+    let (mut h, premise, hold) =
+        save_while_preparing(dir.path(), &fake, Action::CloseTab(0), broken);
+    hold.release();
     step_until(&mut h, |app| !waiting(app));
     let app = h.state();
     assert!(app.active_tab().path.is_none(), "saved and closed");
@@ -176,7 +182,8 @@ fn closing_the_window_while_an_image_is_prepared_asks() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let (mut app, _) = app(&fake);
-    app.image_jobs.delay = Some(Duration::from_millis(300));
+    let hold = Hold::default();
+    app.image_jobs.hold = Some(hold.clone());
     fake.set_image(photo(dir.path()));
     apply(&mut app, Action::InsertImage);
 
@@ -185,6 +192,7 @@ fn closing_the_window_while_an_image_is_prepared_asks() {
     assert!(!app.close_confirmed());
     apply(&mut app, Action::ResolveUnsaved(UnsavedChoice::Discard));
     assert!(app.close_confirmed());
+    hold.release();
 }
 
 #[test]
@@ -192,13 +200,15 @@ fn a_held_image_lands_before_the_close_prompt() {
     let dir = tempfile::tempdir().unwrap();
     let fake = FakeDialogs::default();
     let (mut app, premise) = app(&fake);
-    app.image_jobs.delay = Some(Duration::from_millis(100));
+    let hold = Hold::default();
+    app.image_jobs.hold = Some(hold.clone());
     let mut h = harness(app);
     fake.set_image(photo(dir.path()));
     h.state_mut().push(Action::InsertImage);
     h.step();
     h.state_mut().push(Action::Edit);
     h.step();
+    hold.release();
     let start = Instant::now();
     while h.state().image_jobs.busy() {
         assert!(start.elapsed() < Duration::from_secs(60));

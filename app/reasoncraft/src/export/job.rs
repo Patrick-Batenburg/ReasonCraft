@@ -11,7 +11,6 @@ use std::collections::VecDeque;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::Duration;
 
 use reasoncraft_core::outline::{OutlineOptions, build_outline};
 use reasoncraft_core::outline_md::{outline_markdown, outline_plain_text_lang};
@@ -25,7 +24,7 @@ use super::{
     svg_to_pdf, write_print_file,
 };
 use crate::i18n::t_lang;
-use crate::jobs::{Job, JobState};
+use crate::jobs::{Hold, Job, JobState};
 use crate::scene::Scene;
 use crate::theme::Tokens;
 
@@ -222,8 +221,9 @@ pub enum Notice {
 /// the status bar says about the last one.
 pub struct ExportJobs {
     running: Vec<Job<Result<Outcome, ExportError>>>,
-    /// Wait this long before each export starts (tests only).
-    pub delay: Option<Duration>,
+    /// Hold each export back until released before it starts (tests
+    /// only).
+    pub hold: Option<Hold>,
     /// Where "Copy as image" puts the image: the system clipboard, or a
     /// fake in tests.
     pub clipboard: SharedClipboard,
@@ -240,7 +240,7 @@ impl ExportJobs {
     pub fn new(clipboard: SharedClipboard, print_dir: PathBuf) -> Self {
         Self {
             running: Vec::new(),
-            delay: None,
+            hold: None,
             clipboard,
             print_dir,
             notice: None,
@@ -264,7 +264,7 @@ impl ExportJobs {
         self.notice = None;
         let gate = self.gate.clone();
         self.running
-            .push(Job::spawn(self.delay, move || work.run_gated(&gate)));
+            .push(Job::spawn(self.hold.clone(), move || work.run_gated(&gate)));
     }
 
     /// For quitting while exports run: no export writes a file from now

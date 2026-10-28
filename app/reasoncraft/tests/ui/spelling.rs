@@ -10,6 +10,7 @@ use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, apply};
 use reasoncraft::i18n::t;
+use reasoncraft::jobs::Hold;
 use reasoncraft::settings::{Settings, TextTab};
 use reasoncraft::spell::SpellService;
 use reasoncraft_core::{CardKind, Document, EssaySlot, Item, NodeId, Parent};
@@ -156,13 +157,15 @@ fn open_pass(h: &mut H) {
 #[test]
 fn spelling_pass_change_and_undo() {
     let (d, ids) = map("Cats are fine", &["I recieve teh mail"]);
-    let mut h = harness_with(d, |app| app.spell.delay = Some(Duration::from_millis(300)));
+    let hold = Hold::default();
+    let mut h = harness_with(d, |app| app.spell.hold = Some(hold.clone()));
     // Start at the reason: select it, then F7.
     apply(h.state_mut(), Action::Select(Some(Item::Box(ids[1]))));
     h.key_press(Key::F7);
     h.run();
     assert!(h.state().right_panel);
     assert!(h.query_by_label(&t("spell.loading")).is_some());
+    hold.release();
     wait_dictionary(&mut h, "en");
     assert_eq!(current_word(&h).as_deref(), Some("recieve"));
     assert_eq!(h.state().tabs[0].selection, Some(Item::Box(ids[1])));
@@ -326,10 +329,13 @@ fn suggestions_never_block_ui() {
     let mut h = harness_with(d, |_| {});
     wait_dictionary(&mut h, "en");
     // Hold every suggestion job back: the pass shows the word at once.
-    h.state_mut().spell.delay = Some(Duration::from_millis(400));
+    let hold = Hold::default();
+    h.state_mut().spell.hold = Some(hold.clone());
+    // (Opening the pass waited for its suggestions if this took until the
+    // hold gives up.)
     let start = Instant::now();
     apply(h.state_mut(), Action::OpenSpelling);
-    assert!(start.elapsed() < Duration::from_millis(100), "no wait");
+    assert!(start.elapsed() < Hold::MAX_WAIT / 2, "no wait");
     h.run();
     assert_eq!(current_word(&h).as_deref(), Some("recieve"));
     let pass = h.state().tabs[0].spelling.clone().unwrap();
@@ -340,6 +346,7 @@ fn suggestions_never_block_ui() {
         "shows …"
     );
     assert!(h.state_mut().spell.suggest_async("en", "recieve").is_none());
+    hold.release();
     let found = wait_suggestions(&mut h);
     h.run();
     let pass = h.state().tabs[0].spelling.clone().unwrap();
@@ -359,13 +366,15 @@ fn abandoned_suggestions_leave_the_service_idle() {
     let (d, _) = map("I recieve mail", &[]);
     let mut h = harness_with(d, |_| {});
     wait_dictionary(&mut h, "en");
-    h.state_mut().spell.delay = Some(Duration::from_millis(200));
+    let hold = Hold::default();
+    h.state_mut().spell.hold = Some(hold.clone());
     apply(h.state_mut(), Action::OpenSpelling);
     assert_eq!(current_word(&h).as_deref(), Some("recieve"));
     // Ignored before its suggestions arrive: nobody asks for them again.
     apply(h.state_mut(), Action::SpellIgnore);
     assert!(h.state().tabs[0].spelling.as_ref().unwrap().done);
     assert!(h.state().spell.busy());
+    hold.release();
     let start = Instant::now();
     while h.state().spell.busy() {
         assert!(start.elapsed() < Duration::from_secs(20), "busy for ever");
