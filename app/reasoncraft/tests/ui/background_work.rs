@@ -5,7 +5,7 @@
 
 use crate::common::harness;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
@@ -86,7 +86,7 @@ fn save_while_preparing(
     let start = Instant::now();
     h.step();
     // A Save that waited for the image would wait until the hold gives up.
-    assert!(start.elapsed() < Duration::from_secs(10), "Save blocked");
+    assert!(start.elapsed() < Hold::MAX_WAIT / 2, "Save blocked");
     // The frame that applied Save drew the prompt before it; one more.
     h.step();
     // The prompt stays, waiting, with a spinner and no Save button.
