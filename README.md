@@ -223,6 +223,8 @@ Dragging also reorders: drop an item between its siblings (an insertion bar show
 
 - The window can't be made smaller than 800 × 500 interface points (so at 150 % interface size it is at least 1200 × 750 screen points), and never more than 90 % of the screen. In Dutch, in that smallest window, the Text panel's tabs wrap onto a second line.
 
+- A map nests at most 512 levels deep. A file holding deeper branches opens with them in the parking area, and adding, moving or pasting something that would nest deeper is refused; the status bar says so either way. Past 32 levels, outline numbers keep their last 32 parts after "…", and copied or exported outline text indents no further.
+
 - macOS: the app has no app menu (About, Hide, Quit), so that Cmd+Q reaches the window and asks about unsaved changes first. Quitting from the Dock, or logging out or shutting down, still quits without asking; with autosave on, the next start offers to recover the work up to the last autosave.
 
 ## Licence
