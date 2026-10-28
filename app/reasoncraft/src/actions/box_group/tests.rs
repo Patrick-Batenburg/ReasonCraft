@@ -167,3 +167,16 @@ fn set_link_refuses_invalid_links() {
     let link = a.tabs[0].doc.boxes[&root].link.clone();
     assert_eq!(link.as_deref(), Some("https://a.b/c"));
 }
+
+/// On Windows a missing file or folder is reported before the Shell is
+/// asked (whose own error message would wait for the user, on the UI
+/// thread if it ran there). Nothing is opened: the check comes first.
+#[cfg(windows)]
+#[test]
+fn system_opener_reports_a_missing_path_without_opening() {
+    use super::{LinkOpener, SystemOpener};
+    let dir = tempfile::tempdir().unwrap();
+    let missing = dir.path().join("gone").join("print.pdf");
+    let err = SystemOpener.open(&missing.to_string_lossy());
+    assert!(err.is_err(), "{err:?}");
+}

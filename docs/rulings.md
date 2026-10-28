@@ -25,7 +25,7 @@ Kept so the owner can review every choice made autonomously. Newest step last.
 - Ruling H2: fix wave also takes M2 (Stored for images), M3 (hash check on open), M6 (connect mode ends on app-level actions), placeholder flash, mailto attach hardening, Alt+Shift+0 clear-map key (M5), docs (notes-no-images decision, SCHEMA_VERSION bump rule for M4) — cheap, closes Review-Focus gaps — cost: none.
 - Ruling I2b: M7 (store empty author, translate on display) and split_dots/● parsing deferred to step 6 (i18n) — cost: existing comments keep English "Anonymous" text.
 - Ruling J2: park — mailto '#' fragment / attach%00 bypass of the attach check; carry to step 3 first task (drop # truncation, refuse control chars/% in param names) — cost: low (needs a client honouring attach plus user sending mail).
-- Ruling K2: park — Linux/macOS launcher failures after spawn are silent with that_detached — acceptable vs UI freeze.
+- Ruling K2: park — Linux/macOS launcher failures after spawn are silent with that_detached — acceptable vs UI freeze. On Windows (SEC-11) links, print files and folders open through the Shell (ShellExecuteExW) on a thread of its own: a missing file or folder is still reported by the app, any other failure by the Shell's own message.
 
 ## Step 3 — text panel: Outline, Check, Snippets
 - Ruling: branch in place, no worktree — cost: none.

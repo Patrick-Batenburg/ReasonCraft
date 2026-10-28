@@ -23,10 +23,35 @@ pub struct SystemOpener;
 
 impl LinkOpener for SystemOpener {
     fn open(&self, url: &str) -> Result<(), String> {
-        // Detached: `open::that` waits for the launcher (on Linux `xdg-open`
-        // may wait for the browser), which would freeze the UI.
-        open::that_detached(url).map_err(|e| e.to_string())
+        open_detached(url)
     }
+}
+
+/// Detached: `open::that` waits for the launcher (on Linux `xdg-open`
+/// may wait for the browser), which would freeze the UI. `that_detached`
+/// watches the launcher for up to 250 ms to report a failure.
+#[cfg(not(windows))]
+fn open_detached(target: &str) -> Result<(), String> {
+    open::that_detached(target).map_err(|e| e.to_string())
+}
+
+/// On Windows `that_detached` asks the Shell (`ShellExecuteExW`, the
+/// `shellexecute-on-windows` feature: no `powershell.exe`), which shows
+/// its own message for a target it cannot open and waits until that is
+/// closed. So it runs on a thread of its own; a missing file or folder
+/// (an export folder deleted since) is reported here first.
+#[cfg(windows)]
+fn open_detached(target: &str) -> Result<(), String> {
+    let path = std::path::Path::new(target);
+    if path.is_absolute() {
+        std::fs::metadata(path).map_err(|e| e.to_string())?;
+    }
+    let target = target.to_owned();
+    std::thread::Builder::new()
+        .name("open link".into())
+        .spawn(move || open::that_detached(target))
+        .map(drop)
+        .map_err(|e| e.to_string())
 }
 
 /// Test opener: records every link instead of opening it, and fails with
