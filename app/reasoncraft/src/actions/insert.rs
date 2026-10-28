@@ -116,10 +116,12 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
 
 /// Carry out [`Action::Insert`]. A refused insert changes nothing (not
 /// even the selection) and records no history.
-pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
-    let Action::Insert { what, to, on } = action else {
-        return;
-    };
+pub(super) fn apply(
+    app: &mut ReasonCraftApp,
+    what: Insertable,
+    to: Option<Parent>,
+    on: Option<NodeId>,
+) {
     let Some(tab) = app.tabs.get_mut(app.active) else {
         return;
     };

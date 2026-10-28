@@ -103,32 +103,55 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
     })
 }
 
-/// Carry out an evaluation action on the active tab. A rating the selection
-/// cannot take, or one it already has, changes nothing and records no history.
-pub(super) fn apply(tab: &mut DocTab, action: Action) {
-    match (action, rated(tab)) {
-        (Action::Rate(rate), _) => {
-            if let Some(explicit) = rate_action(tab, rate) {
-                apply(tab, explicit);
-            }
+// A rating the selection cannot take, or one it already has, changes
+// nothing and records no history.
+
+/// Rate the selection, whatever its kind (Alt+1/2/3/0).
+pub(super) fn rate(tab: &mut DocTab, rate: Rate) {
+    use Acceptance as A;
+    use CardStrength as C;
+    use SourceRating as S;
+    match rated(tab) {
+        Some(Rated::Acceptance(_)) => {
+            set_acceptance(tab, rate.pick([A::Accept, A::Unsure, A::Reject]))
         }
-        (Action::SetAcceptance(v), Some(Rated::Acceptance(b)))
-            if tab.doc.boxes[&b].acceptance != v =>
-        {
-            tab.edit(|d| d.set_acceptance(b, v));
-        }
-        (Action::SetStrength(v), Some(Rated::Strength(c))) if tab.doc.cards[&c].strength != v => {
-            tab.edit(|d| d.set_card_strength(c, v));
-        }
-        (Action::SetSourceRating(v), Some(Rated::Source(b)))
-            if tab.doc.boxes[&b].source_rating != v =>
-        {
-            tab.edit(|d| d.set_source_rating(b, v));
-        }
-        (Action::ClearEvaluation(scope), _) if has_rating(&tab.doc, scope) => {
-            tab.edit(|d| d.clear_evaluation(scope));
-        }
-        _ => {}
+        Some(Rated::Strength(_)) => set_strength(tab, rate.pick([C::Strong, C::Weak, C::Nil])),
+        Some(Rated::Source(_)) => set_source_rating(tab, rate.pick([S::Solid, S::Shaky, S::Nil])),
+        None => {}
+    }
+}
+
+/// Accept, doubt or reject the selected claim or premise (`None` clears).
+pub(super) fn set_acceptance(tab: &mut DocTab, v: Option<Acceptance>) {
+    if let Some(Rated::Acceptance(b)) = rated(tab)
+        && tab.doc.boxes[&b].acceptance != v
+    {
+        tab.edit(|d| d.set_acceptance(b, v));
+    }
+}
+
+/// Rate the selected card's strength (`None` clears).
+pub(super) fn set_strength(tab: &mut DocTab, v: Option<CardStrength>) {
+    if let Some(Rated::Strength(c)) = rated(tab)
+        && tab.doc.cards[&c].strength != v
+    {
+        tab.edit(|d| d.set_card_strength(c, v));
+    }
+}
+
+/// Rate the selected source (`None` clears).
+pub(super) fn set_source_rating(tab: &mut DocTab, v: Option<SourceRating>) {
+    if let Some(Rated::Source(b)) = rated(tab)
+        && tab.doc.boxes[&b].source_rating != v
+    {
+        tab.edit(|d| d.set_source_rating(b, v));
+    }
+}
+
+/// Clear one item's rating or every rating in the map.
+pub(super) fn clear(tab: &mut DocTab, scope: ClearScope) {
+    if has_rating(&tab.doc, scope) {
+        tab.edit(|d| d.clear_evaluation(scope));
     }
 }
 

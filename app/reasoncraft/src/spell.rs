@@ -4,13 +4,14 @@
 //! [`crate::shell::spelling_panel`]). Underlines are screen-only: the
 //! painted map and exports never show them.
 
+mod commands;
 mod layouter;
 mod line_cache;
 mod pass;
 mod service;
 
+pub(crate) use commands::{add_word, change, change_all, close, ignore, ignore_all, open};
 pub use layouter::{FieldStyle, SpellFields, UNDERLINE_WIDTH, spell_layouter};
-pub(crate) use pass::apply;
 pub use pass::{CONTEXT_CHARS, MAX_SUGGESTIONS, SpellPass, context};
 pub use service::{Ranges, SpellService};
 

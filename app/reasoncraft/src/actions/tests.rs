@@ -1,4 +1,7 @@
+use reasoncraft_core::{CardKind, Item, Parent};
+
 use super::*;
+use crate::doc_tab::DocTab;
 
 fn app() -> ReasonCraftApp {
     ReasonCraftApp::new_for_test()

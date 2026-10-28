@@ -1,66 +1,70 @@
 //! Snippets: adding, live text editing, source tags, removal and order.
 
-use reasoncraft_core::{Snippet, SnippetSource, SourceType};
+use reasoncraft_core::{Snippet, SnippetSource, SourceType, Uuid};
 
-use super::Action;
 use crate::doc_tab::{DocTab, EditSession, cap_snippet, tidy_source};
 use crate::shell::link_modal::normalize_link;
 
-/// Carry out a snippet action. Changes that leave the snippet list as it
-/// was (same text, source or place) record nothing.
-pub(super) fn apply(tab: &mut DocTab, action: Action) {
-    match action {
-        Action::AddSnippet(text) => add(tab, &text),
-        Action::EditSnippetText { id, text } => tab.set_snippet_text(id, &text),
-        Action::EditSnippetCitation { id, citation } => tab.edit_snippet_live(id, |s, _| {
-            if source_of(s).citation != citation {
-                let mut src = source_of(s);
-                src.citation = citation;
-                s.source = Some(src);
-            }
-        }),
-        Action::EditSnippetLink { id, link } => tab.edit_snippet_live(id, |s, before| {
-            // While the typed link is invalid, the link from before the
-            // session stays.
-            let link = normalize_link(&link).unwrap_or_else(|_| {
-                let before = before.snippets.iter().find(|b| b.id == id);
-                before.and_then(|b| b.source.as_ref()?.link.clone())
-            });
-            if source_of(s).link != link {
-                let mut src = source_of(s);
-                src.link = link;
-                s.source = Some(src);
-            }
-        }),
-        Action::SetSnippetSource { id, source } => {
-            let Some(current) = tab.doc.snippets.iter().find(|s| s.id == id) else {
-                return;
-            };
-            // An invalid link is refused, not stored.
-            let Ok(source) = normalise(source) else {
-                return;
-            };
-            if current.source != source {
-                tab.edit(|d| d.set_snippet_source(id, source));
-            }
+// Changes that leave the snippet list as it was (same text, source or
+// place) record nothing.
+
+/// Snippet `id`'s citation field changed: show it live.
+pub(super) fn edit_citation(tab: &mut DocTab, id: Uuid, citation: String) {
+    tab.edit_snippet_live(id, |s, _| {
+        if source_of(s).citation != citation {
+            let mut src = source_of(s);
+            src.citation = citation;
+            s.source = Some(src);
         }
-        Action::RemoveSnippet(id) => {
-            if tab.edit(|d| d.remove_snippet(id)).is_some() {
-                tab.fix_selection();
-            }
+    });
+}
+
+/// Snippet `id`'s link field changed: show it live. While the typed link
+/// is invalid, the link from before the session stays.
+pub(super) fn edit_link(tab: &mut DocTab, id: Uuid, link: String) {
+    tab.edit_snippet_live(id, |s, before| {
+        let link = normalize_link(&link).unwrap_or_else(|_| {
+            let before = before.snippets.iter().find(|b| b.id == id);
+            before.and_then(|b| b.source.as_ref()?.link.clone())
+        });
+        if source_of(s).link != link {
+            let mut src = source_of(s);
+            src.link = link;
+            s.source = Some(src);
         }
-        Action::MoveSnippet { id, index } => {
-            let list = &tab.doc.snippets;
-            let to = index.min(list.len().saturating_sub(1));
-            if list
-                .iter()
-                .position(|s| s.id == id)
-                .is_some_and(|i| i != to)
-            {
-                tab.edit(|d| d.move_snippet(id, to));
-            }
-        }
-        _ => {}
+    });
+}
+
+/// Tag snippet `id` with a source (`None` clears). An invalid link is
+/// refused, not stored.
+pub(super) fn set_source(tab: &mut DocTab, id: Uuid, source: Option<SnippetSource>) {
+    let Some(current) = tab.doc.snippets.iter().find(|s| s.id == id) else {
+        return;
+    };
+    let Ok(source) = normalise(source) else {
+        return;
+    };
+    if current.source != source {
+        tab.edit(|d| d.set_snippet_source(id, source));
+    }
+}
+
+pub(super) fn remove(tab: &mut DocTab, id: Uuid) {
+    if tab.edit(|d| d.remove_snippet(id)).is_some() {
+        tab.fix_selection();
+    }
+}
+
+/// Move snippet `id` to `index` in the list (with it taken out).
+pub(super) fn move_to(tab: &mut DocTab, id: Uuid, index: usize) {
+    let list = &tab.doc.snippets;
+    let to = index.min(list.len().saturating_sub(1));
+    if list
+        .iter()
+        .position(|s| s.id == id)
+        .is_some_and(|i| i != to)
+    {
+        tab.edit(|d| d.move_snippet(id, to));
     }
 }
 
@@ -68,7 +72,7 @@ pub(super) fn apply(tab: &mut DocTab, action: Action) {
 /// also scrolls it into view). An empty one opens an editing session, so
 /// it and its first text are one history step; one with text is a step of
 /// its own.
-fn add(tab: &mut DocTab, text: &str) {
+pub(super) fn add(tab: &mut DocTab, text: &str) {
     let (text, capped) = cap_snippet(text);
     let id = if text.is_empty() {
         let before = tab.doc.clone();

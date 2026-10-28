@@ -20,19 +20,14 @@ pub fn connect_item(tab: &DocTab) -> Option<Item> {
     (tab.doc.owner_of(item) == Some(Parent::Parking)).then_some(item)
 }
 
-pub(super) fn apply(tab: &mut DocTab, action: Action) {
-    match action {
-        Action::StartConnect => {
-            if let Some(item) = connect_item(tab) {
-                tab.connect_mode = Some(item);
-                // The arrow keys pick the target in the main tree.
-                tab.selection = Some(Item::Box(tab.doc.root));
-                tab.reveal_pending = true;
-            }
-        }
-        // `apply` has already ended the mode.
-        Action::CancelConnect => {}
-        _ => unreachable!("not a connect action"),
+/// Start "Connect to…" for the selected parked item: the arrow keys then
+/// pick the target in the main tree. (`apply` ends it for every action
+/// that does not keep it, Esc's [`super::Action::CancelConnect`] too.)
+pub(super) fn start(tab: &mut DocTab) {
+    if let Some(item) = connect_item(tab) {
+        tab.connect_mode = Some(item);
+        tab.selection = Some(Item::Box(tab.doc.root));
+        tab.reveal_pending = true;
     }
 }
 

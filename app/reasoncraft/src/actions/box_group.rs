@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use reasoncraft_core::{Item, NodeId};
+use reasoncraft_core::{CardKind, Item, NodeId};
 
 use super::{Action, selected_card};
 use crate::app::ReasonCraftApp;
@@ -98,65 +98,72 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
     })
 }
 
-/// Carry out a Box-group action. Setting what is already there (the same
-/// kind, the same link) changes nothing and records no history.
-pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
+/// Make the selected card (or the card of the selected premise) a
+/// reason or an objection; the same kind records nothing.
+pub(super) fn set_card_kind(tab: &mut DocTab, kind: CardKind) {
+    if let Some(c) = selected_card(tab)
+        && tab.doc.cards[&c].kind != kind
+    {
+        tab.edit(|d| d.set_card_kind(c, kind));
+    }
+}
+
+/// Open the link editor for the selected box.
+pub(super) fn edit_link(app: &mut ReasonCraftApp) {
+    let Some(tab) = app.tabs.get(app.active) else {
+        return;
+    };
+    if let Some(b) = selected_box(tab) {
+        app.link_edit = Some(LinkEdit::new(b, tab.doc.boxes[&b].link.as_deref()));
+    }
+}
+
+/// Set (`None`: remove) the link of the box the editor was opened for,
+/// else of the selected box, and close the editor. A refused link, or the
+/// link the box already has, changes nothing and records no history.
+pub(super) fn set_link(app: &mut ReasonCraftApp, link: Option<String>) {
+    // Checked here too, not only in the editor.
+    let Ok(link) = checked(link.as_deref()) else {
+        return;
+    };
+    let target = app.link_edit.take().map(|e| e.node);
     let Some(tab) = app.tabs.get_mut(app.active) else {
         return;
     };
-    match action {
-        Action::SetCardKind(kind) => {
-            if let Some(c) = selected_card(tab)
-                && tab.doc.cards[&c].kind != kind
-            {
-                tab.edit(|d| d.set_card_kind(c, kind));
-            }
-        }
-        Action::EditLink => {
-            if let Some(b) = selected_box(tab) {
-                app.link_edit = Some(LinkEdit::new(b, tab.doc.boxes[&b].link.as_deref()));
-            }
-        }
-        Action::SetLink(link) => {
-            // Checked here too, not only in the editor: a refused link
-            // changes nothing and records no history.
-            let Ok(link) = checked(link.as_deref()) else {
-                return;
-            };
-            // The box the editor was opened for, else the selected box.
-            let target = app.link_edit.take().map(|e| e.node);
-            if let Some(b) = target.or_else(|| selected_box(tab))
-                && tab.doc.boxes.get(&b).is_some_and(|n| n.link != link)
-            {
-                tab.edit(|d| d.set_link(b, link));
-            }
-        }
-        Action::OpenLink(b) => {
-            let Some(stored) = tab.doc.boxes.get(&b).and_then(|n| n.link.as_deref()) else {
-                return;
-            };
-            // Only safe http, https and mailto links reach the OS: a file
-            // may carry `file:` paths, UNC shares or script links.
-            let Some(url) = safe_link(stored) else {
-                let mut args = FluentArgs::new();
-                args.set("url", visible_link(stored));
-                app.modal = Some(Modal::Error {
-                    title: t("link.open_failed"),
-                    message: t_args("link.unsafe", &args),
-                });
-                return;
-            };
-            if let Err(detail) = app.link_opener.open(&url) {
-                let mut args = FluentArgs::new();
-                args.set("url", url);
-                args.set("detail", detail);
-                app.modal = Some(Modal::Error {
-                    title: t("link.open_failed"),
-                    message: t_args("link.open_failed_detail", &args),
-                });
-            }
-        }
-        _ => unreachable!("not a Box-group action"),
+    if let Some(b) = target.or_else(|| selected_box(tab))
+        && tab.doc.boxes.get(&b).is_some_and(|n| n.link != link)
+    {
+        tab.edit(|d| d.set_link(b, link));
+    }
+}
+
+/// Open box `b`'s link in the browser (a click on its link glyph). Only
+/// safe http, https and mailto links reach the OS: a file may carry
+/// `file:` paths, UNC shares or script links.
+pub(super) fn open_link(app: &mut ReasonCraftApp, b: NodeId) {
+    let Some(tab) = app.tabs.get(app.active) else {
+        return;
+    };
+    let Some(stored) = tab.doc.boxes.get(&b).and_then(|n| n.link.as_deref()) else {
+        return;
+    };
+    let Some(url) = safe_link(stored) else {
+        let mut args = FluentArgs::new();
+        args.set("url", visible_link(stored));
+        app.modal = Some(Modal::Error {
+            title: t("link.open_failed"),
+            message: t_args("link.unsafe", &args),
+        });
+        return;
+    };
+    if let Err(detail) = app.link_opener.open(&url) {
+        let mut args = FluentArgs::new();
+        args.set("url", url);
+        args.set("detail", detail);
+        app.modal = Some(Modal::Error {
+            title: t("link.open_failed"),
+            message: t_args("link.open_failed_detail", &args),
+        });
     }
 }
 

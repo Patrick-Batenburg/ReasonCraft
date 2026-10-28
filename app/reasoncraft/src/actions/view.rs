@@ -4,101 +4,100 @@
 //! navigation, revealing the selection; and the document's layout
 //! direction, the only one that changes the document.
 
-use reasoncraft_core::Item;
 use reasoncraft_core::meta::LANGUAGES;
+use reasoncraft_core::{Item, LayoutDirection};
 
-use super::{Action, Panel};
+use super::{Dir, Panel};
 use crate::app::ReasonCraftApp;
 use crate::canvas::input::{nav_dir, navigate, parking_jump};
 use crate::doc_tab::DocTab;
 use crate::i18n::UI_LANGUAGES;
-use crate::settings::Settings;
 
 const ZOOM_STEP: f32 = 1.25;
 
-pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
-    let s = &mut app.settings;
-    match action {
-        Action::SetTheme(choice) => s.theme = choice,
-        Action::SetUiLanguage(lang) => {
-            if lang.as_deref().is_none_or(|l| UI_LANGUAGES.contains(&l)) {
-                s.ui_language = lang;
-                app.apply_ui_language();
-            }
-        }
-        Action::SetConnectorStyle(style) => s.connector_style = style,
-        Action::ToggleMarkers => s.show_markers = !s.show_markers,
-        Action::SetMinimap(mode) => s.minimap = mode,
-        Action::ToggleNumbers => s.show_numbers = !s.show_numbers,
-        Action::ToggleShading => s.eval_shading = !s.eval_shading,
-        Action::TogglePanel(Panel::Left) => app.left_panel = !app.left_panel,
-        Action::TogglePanel(Panel::Right) => app.right_panel = !app.right_panel,
-        Action::SetTextTab(tab) => s.text_tab = tab,
-        Action::ShowPanel(Panel::Left) => app.left_panel = true,
-        Action::ShowPanel(Panel::Right) => app.right_panel = true,
-        Action::SetOutlineOption(toggle, on) => s.set_outline_toggle(toggle, on),
-        Action::SetCheckEnabled(kind, on) => s.set_check_enabled(kind, on),
-        Action::SetDefaultDocLanguage(lang) => {
-            if lang.as_deref().is_none_or(|l| LANGUAGES.contains(&l)) {
-                s.default_doc_language = lang;
-            }
-        }
-        Action::SetSpellcheck(on) => {
-            s.spellcheck = on;
-            if !on {
-                for tab in &mut app.tabs {
-                    tab.spelling = None;
-                }
-            }
-        }
-        Action::SetAutosaveSecs(secs) => s.autosave_secs = Settings::clamp_autosave(secs),
-        Action::SetUiScale(scale) => s.ui_scale = Settings::clamp_ui_scale(scale),
-        _ => unreachable!("not a view action"),
+/// Show the interface in `lang` (`None`: the OS language); a language
+/// the interface does not have is refused.
+pub(super) fn set_ui_language(app: &mut ReasonCraftApp, lang: Option<String>) {
+    if lang.as_deref().is_none_or(|l| UI_LANGUAGES.contains(&l)) {
+        app.settings.ui_language = lang;
+        app.apply_ui_language();
     }
 }
 
-/// Zoom, navigate, reveal and set the layout direction in `tab`.
-pub(super) fn apply_to_tab(tab: &mut DocTab, action: Action) {
-    match action {
-        Action::RevealSelection => tab.reveal_pending = true,
-        Action::Navigate(screen) => {
-            let dir = nav_dir(screen, tab.doc.layout_direction);
-            tab.selection = match tab.selection {
-                Some(from) => navigate(&tab.doc, from, dir).or(Some(from)),
-                None => Some(Item::Box(tab.doc.root)),
-            };
+/// Start new documents in `lang` (`None`: the interface language); a
+/// language documents cannot have is refused.
+pub(super) fn set_default_doc_language(app: &mut ReasonCraftApp, lang: Option<String>) {
+    if lang.as_deref().is_none_or(|l| LANGUAGES.contains(&l)) {
+        app.settings.default_doc_language = lang;
+    }
+}
+
+/// Turn spellcheck on or off; off ends every tab's spelling pass.
+pub(super) fn set_spellcheck(app: &mut ReasonCraftApp, on: bool) {
+    app.settings.spellcheck = on;
+    if !on {
+        for tab in &mut app.tabs {
+            tab.spelling = None;
+        }
+    }
+}
+
+/// The flag that shows `panel`.
+pub(super) fn panel(app: &mut ReasonCraftApp, panel: Panel) -> &mut bool {
+    match panel {
+        Panel::Left => &mut app.left_panel,
+        Panel::Right => &mut app.right_panel,
+    }
+}
+
+/// Move the selection with an arrow key (`screen`: its on-screen
+/// direction); with nothing selected, select the root.
+pub(super) fn navigate_tab(tab: &mut DocTab, screen: Dir) {
+    let dir = nav_dir(screen, tab.doc.layout_direction);
+    tab.selection = match tab.selection {
+        Some(from) => navigate(&tab.doc, from, dir).or(Some(from)),
+        None => Some(Item::Box(tab.doc.root)),
+    };
+    tab.reveal_pending = true;
+}
+
+/// Jump between the main tree's root and the first parked item.
+pub(super) fn jump_parking(tab: &mut DocTab) {
+    if let Some(to) = parking_jump(&tab.doc, tab.selection) {
+        tab.selection = Some(to);
+        tab.reveal_pending = true;
+    }
+}
+
+/// Zoom in (`true`) or out one step.
+pub(super) fn zoom_step(tab: &mut DocTab, zoom_in: bool) {
+    let zoom = tab.camera.zoom;
+    set_zoom(
+        tab,
+        if zoom_in {
+            zoom * ZOOM_STEP
+        } else {
+            zoom / ZOOM_STEP
+        },
+    );
+}
+
+/// Lay the document out in direction `d` (one history step; none when it
+/// already is), then show the selection, or all of the map.
+pub(super) fn set_layout_direction(tab: &mut DocTab, d: LayoutDirection) {
+    if tab.edit(|doc| doc.set_layout_direction(d)).is_some() {
+        // The map moves under the view.
+        if tab.selection.is_some() {
             tab.reveal_pending = true;
+        } else {
+            tab.fit_pending = true;
         }
-        Action::JumpParking => {
-            if let Some(to) = parking_jump(&tab.doc, tab.selection) {
-                tab.selection = Some(to);
-                tab.reveal_pending = true;
-            }
-        }
-        Action::ZoomIn => set_zoom(tab, tab.camera.zoom * ZOOM_STEP),
-        Action::ZoomOut => set_zoom(tab, tab.camera.zoom / ZOOM_STEP),
-        // The canvas fits on its next frame, with the layout of that frame.
-        Action::ZoomFit => tab.fit_pending = true,
-        Action::ZoomFitSelection => tab.fit_selection_pending = tab.selection.is_some(),
-        Action::Zoom100 => set_zoom(tab, 1.0),
-        Action::SetZoom(z) => set_zoom(tab, z),
-        Action::SetLayoutDirection(d) => {
-            if tab.edit(|doc| doc.set_layout_direction(d)).is_some() {
-                // The map moves under the view: show the selection, or all of it.
-                if tab.selection.is_some() {
-                    tab.reveal_pending = true;
-                } else {
-                    tab.fit_pending = true;
-                }
-            }
-        }
-        _ => unreachable!("not a zoom, navigation or direction action"),
     }
 }
 
 /// Zoom around the centre of the view (or the world origin before the
 /// canvas has been shown), clamped to the zoom range.
-fn set_zoom(tab: &mut DocTab, zoom: f32) {
+pub(super) fn set_zoom(tab: &mut DocTab, zoom: f32) {
     let centre = tab
         .viewport
         .map_or(eframe::egui::Pos2::ZERO, |v| v.center());

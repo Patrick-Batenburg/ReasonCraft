@@ -1,6 +1,6 @@
 //! Adding typed sources and changing a source's type.
 
-use reasoncraft_core::{BoxKind, Item, NewItem, NewLoose, NodeId, Parent, can_attach};
+use reasoncraft_core::{BoxKind, Item, NewItem, NewLoose, NodeId, Parent, SourceType, can_attach};
 
 use super::{Action, select_new};
 use crate::doc_tab::DocTab;
@@ -34,35 +34,30 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
     })
 }
 
-/// Carry out a source action. A refused add, or a type change to the type
-/// the source already has, changes nothing and records no history.
-pub(super) fn apply(tab: &mut DocTab, action: Action) {
-    match action {
-        Action::AddSource(source_type) => {
-            let item = match source_target(tab) {
-                Some(Parent::Parking) => {
-                    tab.edit(|d| Ok(d.add_loose(NewLoose::Source(source_type), "")))
-                }
-                Some(parent) => {
-                    let kind = BoxKind::Source { source_type };
-                    tab.edit(|d| d.add_box(parent, kind, "")).map(Item::Box)
-                }
-                None => None,
-            };
-            select_new(tab, item);
+/// Add a source of `source_type` under the selected claim or premise,
+/// or loose when nothing is selected; a refused add records nothing.
+pub(super) fn add(tab: &mut DocTab, source_type: SourceType) {
+    let item = match source_target(tab) {
+        Some(Parent::Parking) => tab.edit(|d| Ok(d.add_loose(NewLoose::Source(source_type), ""))),
+        Some(parent) => {
+            let kind = BoxKind::Source { source_type };
+            tab.edit(|d| d.add_box(parent, kind, "")).map(Item::Box)
         }
-        Action::SetSourceType(t) => {
-            let Some(b) = selected_source(tab) else {
-                return;
-            };
-            let current = BoxKind::Source {
-                source_type: t.clone(),
-            };
-            if tab.doc.boxes[&b].kind != current {
-                tab.edit(|d| d.set_source_type(b, t));
-            }
-        }
-        _ => {}
+        None => None,
+    };
+    select_new(tab, item);
+}
+
+/// Change the type of the selected source; its own type records nothing.
+pub(super) fn set_type(tab: &mut DocTab, t: SourceType) {
+    let Some(b) = selected_source(tab) else {
+        return;
+    };
+    let current = BoxKind::Source {
+        source_type: t.clone(),
+    };
+    if tab.doc.boxes[&b].kind != current {
+        tab.edit(|d| d.set_source_type(b, t));
     }
 }
 

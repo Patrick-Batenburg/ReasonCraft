@@ -47,30 +47,25 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
     })
 }
 
-/// Carry out an image action on the active tab's selected box.
-pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
-    let Some(tab) = app.tabs.get(app.active) else {
+/// Pick an image file for the active tab's selected box and start
+/// preparing it; a newer insert for the same box replaces the older one.
+pub(super) fn insert(app: &mut ReasonCraftApp) {
+    let Some(b) = app.tabs.get(app.active).and_then(image_box) else {
         return;
     };
-    let Some(b) = image_box(tab) else {
+    let Some(path) = app.dialogs.pick_image() else {
         return;
     };
-    match action {
-        Action::InsertImage => {
-            let Some(path) = app.dialogs.pick_image() else {
-                return;
-            };
-            let job = app.image_jobs.start(b, path);
-            // A newer insert for the same box replaces the older one.
-            app.tabs[app.active].pending_images.insert(b, job);
-        }
-        Action::RemoveImage => {
-            let tab = &mut app.tabs[app.active];
-            if has_image(tab, b) {
-                tab.edit(|d| d.set_image(b, None));
-            }
-        }
-        _ => unreachable!("not an image action"),
+    let job = app.image_jobs.start(b, path);
+    app.tabs[app.active].pending_images.insert(b, job);
+}
+
+/// Take the image out of the selected box (no step when it has none).
+pub(super) fn remove(tab: &mut DocTab) {
+    if let Some(b) = image_box(tab)
+        && has_image(tab, b)
+    {
+        tab.edit(|d| d.set_image(b, None));
     }
 }
 
