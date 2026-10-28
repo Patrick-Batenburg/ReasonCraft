@@ -31,10 +31,15 @@ impl Assets {
         self.entries.get(key).cloned()
     }
 
-    /// Drop every asset that no box in `doc` refers to.
-    pub fn retain_referenced(&mut self, doc: &Document) {
-        let used = referenced_keys(doc);
-        self.entries.retain(|k, _| used.contains(k.as_str()));
+    /// Copy asset `key` from `other`, if it has it (a pasted image).
+    ///
+    /// Assets are never dropped while a document is open: undo and redo
+    /// may bring back a box that shows one. Saving writes only the assets
+    /// the document refers to (see [`Self::referenced`]).
+    pub fn copy_from(&mut self, other: &Assets, key: &str) {
+        if let Some(bytes) = other.entries.get(key) {
+            self.entries.insert(key.to_owned(), bytes.clone());
+        }
     }
 
     pub fn len(&self) -> usize {

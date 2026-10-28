@@ -1,6 +1,7 @@
 //! Editing operations on a [`Document`].
 
 mod add;
+mod fragment;
 mod move_remove;
 #[cfg(test)]
 mod tests;
@@ -9,6 +10,8 @@ mod validate;
 mod validate_tests;
 
 use thiserror::Error;
+
+pub use fragment::Fragment;
 
 use crate::caps::capped;
 use crate::ids::{Item, NodeId, Parent};
