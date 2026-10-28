@@ -761,7 +761,7 @@ about-licences-dict_en = Engels woordenboek (SCOWL): MIT en BSD
 about-licences-dict_nl = Nederlands woordenboek (OpenTaal): BSD-3-Clause
 about-licences-spellbook = spellbook: Mozilla Public License 2.0
 about-licences-wix = Windows-installatieprogramma (WiX Toolset): Microsoft Reciprocal License
-about-licences-appimage = Linux-AppImage-runtime: MIT, met musl (MIT) en libfuse (LGPL-2.1)
+about-licences-appimage = Linux-AppImage-runtime: MIT, met musl (MIT), libfuse (LGPL-2.1), squashfuse (BSD-2-Clause), zstd (BSD-3-Clause), zlib (Zlib) en mimalloc (MIT)
 about-licences-crates = Rust-crates ({ $count } licentieteksten)
 
 ## Accessibility: names screen readers announce

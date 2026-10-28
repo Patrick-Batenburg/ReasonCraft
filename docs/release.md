@@ -238,7 +238,7 @@ The scripts keep to the interface of the Craft suite's reusable release workflow
 ## Licence notices
 
 The About page shows the full licence texts of everything ReasonCraft bundles (File > About > Licences), embedded in the binary.
-The texts of the fonts, the spell checker and the installer parts (WiX's dialogs and custom action in the MSI, and the AppImage runtime) live in `app/reasoncraft/assets/licences/`; the dictionaries' come from `crates/reasoncraft_spell/dict/*/LICENSE`.
+The texts of the fonts, the spell checker and the installer parts (WiX's dialogs and custom action in the MSI, and the AppImage runtime with the six libraries it links statically, in `appimage-runtime/`) live in `app/reasoncraft/assets/licences/`; the dictionaries' come from `crates/reasoncraft_spell/dict/*/LICENSE`.
 The installers also carry `LICENSE-MIT`, `LICENSE-APACHE` and `THIRD-PARTY.md`.
 The Rust crates' licences are in `app/reasoncraft/assets/licences/crates.txt`, generated with [cargo-about](https://github.com/EmbarkStudios/cargo-about) from the app's run-time dependencies on every release target (configuration: `xtask/about.toml`).
 Regenerate and commit it whenever `Cargo.lock` changes (CI regenerates it and fails if that changes the file):
