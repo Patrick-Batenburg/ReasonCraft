@@ -24,14 +24,15 @@ use eframe::egui;
 /// The smallest window at 100 % interface size, in screen points.
 pub const MIN_WINDOW: [f32; 2] = [800.0, 500.0];
 
-/// The smallest window at interface size `scale`: [`MIN_WINDOW`] of the
-/// interface's own points, so a larger interface keeps the room it is
-/// laid out for; but never more than 90 % of the `monitor` (when known),
-/// nor less than [`MIN_WINDOW`].
-pub fn min_window_size(scale: f32, monitor: Option<egui::Vec2>) -> egui::Vec2 {
+/// The smallest window, in the interface's own points: [`MIN_WINDOW`], so
+/// a larger interface keeps the room it is laid out for, but never more
+/// than 90 % of the `monitor` (when known). egui-winit turns these points
+/// into pixels with the interface size (egui's zoom factor times the
+/// display scale) and gives the monitor's size in the same points, so no
+/// scale is applied here.
+pub fn min_window_size(monitor: Option<egui::Vec2>) -> egui::Vec2 {
     let base = egui::Vec2::from(MIN_WINDOW);
-    let want = base * scale;
-    monitor.map_or(want, |m| want.min(m * 0.9)).max(base)
+    monitor.map_or(base, |m| base.min(m * 0.9))
 }
 
 /// Which ribbon tab is showing. `File` shows the backstage instead of the map.
@@ -362,8 +363,8 @@ impl ReasonCraftApp {
 
     /// The whole interface at the size the settings ask for (egui's zoom
     /// factor). The map's zoom works in points, so it comes on top. The
-    /// window's minimum size grows with it (see [`min_window_size`]), once
-    /// the screen's size is known.
+    /// window's minimum size, in these points, grows with it on screen
+    /// (see [`min_window_size`]), once the screen's size is known.
     fn sync_ui_scale(&self, ctx: &egui::Context) {
         let scale = self.settings.ui_scale_factor();
         if ctx.zoom_factor() != scale {
@@ -372,11 +373,14 @@ impl ReasonCraftApp {
         let Some(monitor) = ctx.input(|i| i.viewport().monitor_size) else {
             return;
         };
-        let min = min_window_size(scale, Some(monitor));
+        // Sent again once the interface size changes (egui applies a new
+        // zoom factor from the next pass on, and egui-winit turns the
+        // points into pixels with the zoom factor in force).
+        let min = (min_window_size(Some(monitor)), ctx.zoom_factor());
         let sent = egui::Id::unique("min_window_sent");
-        if ctx.data(|d| d.get_temp::<egui::Vec2>(sent)) != Some(min) {
+        if ctx.data(|d| d.get_temp::<(egui::Vec2, f32)>(sent)) != Some(min) {
             ctx.data_mut(|d| d.insert_temp(sent, min));
-            ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min));
+            ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min.0));
         }
     }
 

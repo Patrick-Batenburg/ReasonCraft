@@ -220,7 +220,7 @@ Dragging also reorders: drop an item between its siblings (an insertion bar show
 
 - In a narrow window (for example at 150 % interface size on a laptop screen) the ribbon groups shrink from the right, as in WordCraft: small buttons drop their labels, then a group folds into one drop-down ("Add ▾") that opens the whole group. Only if even that does not fit does the row scroll, with thin ‹ › arrows over its ends or the mouse wheel. The side panels then get narrower so the map keeps room.
 
-- In Dutch, at 150 % interface size in the smallest window (800 × 500), the Text panel's tabs wrap onto a second line.
+- The window can't be made smaller than 800 × 500 interface points (so at 150 % interface size it is at least 1200 × 750 screen points), and never more than 90 % of the screen. In Dutch, in that smallest window, the Text panel's tabs wrap onto a second line.
 
 - macOS: the app has no app menu (About, Hide, Quit), so that Cmd+Q reaches the window and asks about unsaved changes first. Quitting from the Dock, or logging out or shutting down, still quits without asking; with autosave on, the next start offers to recover the work up to the last autosave.
 

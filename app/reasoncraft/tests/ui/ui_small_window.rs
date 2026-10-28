@@ -354,9 +354,13 @@ fn ribbon_tabs_scroll_when_they_do_not_fit() {
     assert_eq!(h.state().ribbon_tab, RibbonTab::Help);
 }
 
-/// The window's minimum size grows with the interface size, so the
-/// smallest window still holds the 800 × 500 points the layout is made
-/// for (ROB-9).
+/// The window's minimum size is 800 × 500 interface points, so the
+/// smallest window still holds the room the layout is made for at every
+/// interface size (ROB-9). egui-winit turns points into pixels with the
+/// interface size (egui's zoom factor) and gives the screen's size in
+/// those points, so the size is sent as it is, and sent again when the
+/// interface size changes (the same points are then more pixels). It is
+/// never more than 90 % of the screen (ROB-R1).
 #[test]
 fn minimum_window_size_follows_the_interface_size() {
     let app = ReasonCraftApp::new_for_test();
@@ -369,25 +373,40 @@ fn minimum_window_size_follows_the_interface_size() {
     for v in h.input_mut().viewports.values_mut() {
         v.monitor_size = Some(screen);
     }
+    // What each of `n` frames sent, with the zoom factor in force.
+    let sent = |h: &mut Harness<'_, ReasonCraftApp>, n: usize| {
+        let mut out = Vec::new();
+        for _ in 0..n {
+            h.step();
+            let zoom = h.ctx.zoom_factor();
+            let min = (h.output().viewport_output.values())
+                .flat_map(|v| v.commands.iter())
+                .find_map(|c| match c {
+                    egui::ViewportCommand::MinInnerSize(size) => Some(*size),
+                    _ => None,
+                });
+            out.extend(min.map(|m| (m, zoom)));
+        }
+        out
+    };
+    let points = egui::vec2(800.0, 500.0);
+    assert_eq!(sent(&mut h, 3), [(points, 1.0)], "sent once");
     h.state_mut().settings.ui_scale = 2.0;
-    h.step();
-    let min = h
-        .output()
-        .viewport_output
-        .values()
-        .flat_map(|v| v.commands.iter())
-        .find_map(|c| match c {
-            egui::ViewportCommand::MinInnerSize(size) => Some(*size),
-            _ => None,
-        });
-    assert_eq!(min, Some(egui::vec2(1600.0, 1000.0)));
+    // The screen in the larger interface's points.
+    for v in h.input_mut().viewports.values_mut() {
+        v.monitor_size = Some(screen / 2.0);
+    }
+    // Sent again once the new zoom factor is in force (egui applies it
+    // from the next pass on), as egui-winit then makes it 1600 × 1000
+    // pixels at a display scale of 1.
+    assert_eq!(sent(&mut h, 3), [(points, 2.0)], "again at 200 %");
     assert_eq!(
-        reasoncraft::app::min_window_size(2.0, Some(egui::vec2(1366.0, 768.0))),
-        egui::vec2(1366.0 * 0.9, 768.0 * 0.9),
+        reasoncraft::app::min_window_size(Some(egui::vec2(683.0, 384.0))),
+        egui::vec2(683.0 * 0.9, 384.0 * 0.9),
         "never more than the screen holds"
     );
     assert_eq!(
-        reasoncraft::app::min_window_size(1.0, None),
+        reasoncraft::app::min_window_size(None),
         egui::vec2(800.0, 500.0)
     );
 }
