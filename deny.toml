@@ -1,0 +1,56 @@
+# cargo-deny configuration: `cargo deny check` (CI runs it).
+# The licences are the ones `xtask/about.toml` accepts for the notices.
+
+[graph]
+targets = [
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+]
+# Test-only crates are not shipped.
+exclude-dev = true
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "BSL-1.0",
+    "Unicode-3.0",
+]
+exceptions = [
+    # The spell checker, used unmodified (ruling Y2): MPL only here.
+    { allow = ["MPL-2.0"], crate = "spellbook" },
+    # egui's bundled fonts (ruling S6-T13-4).
+    { allow = ["OFL-1.1", "Ubuntu-font-1.0"], crate = "epaint_default_fonts" },
+]
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+
+[advisories]
+# Vulnerabilities and unsound code anywhere in the tree fail the check;
+# "unmaintained" only for our direct dependencies (a transitive one is its
+# user's to replace). An ignored advisory names its reason.
+unmaintained = "workspace"
+ignore = [
+    # zip 8 under docx-rs 0.4.22 (the latest): the three concern
+    # ZipArchive::extract, which docx-rs never calls and we only write
+    # .docx files with it. Our own zip is 9.
+    { id = "RUSTSEC-2026-0367", reason = "zip::extract is not used (docx-rs only writes)" },
+    { id = "RUSTSEC-2026-0368", reason = "zip::extract is not used (docx-rs only writes)" },
+    { id = "RUSTSEC-2026-0369", reason = "zip::extract is not used (docx-rs only writes)" },
+]
