@@ -42,6 +42,7 @@ mod layout_direction;
 mod minimap;
 mod outline;
 mod packaging;
+mod packaging_windows;
 mod panel_rows;
 mod ribbon_collapsed;
 mod ribbon_overflow;

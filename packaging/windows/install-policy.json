@@ -1,0 +1,108 @@
+{
+  "id": "reasoncraft",
+  "name": "ReasonCraft",
+  "upgradeCode": "C498BDE9-0F26-4C84-909C-602AB9B2A49A",
+  "components": {
+    "ReasonCraftApp": "EB979508-10F7-4BDF-9918-12F28A502C34",
+    "ReasonCraftFileTypes": "F0FBE489-951A-4156-8345-B998E72C9B89"
+  },
+  "sources": [
+    "reasoncraft.wxs"
+  ],
+  "icon": "app/reasoncraft/assets/icon.ico",
+  "localization": [],
+  "extensions": [
+    "UI",
+    "Util"
+  ],
+  "payloads": [
+    "reasoncraft.exe"
+  ],
+  "registry": [
+    [
+      "-1",
+      "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\reasoncraft.exe",
+      "",
+      "[#ReasonCraftExe]"
+    ],
+    [
+      "-1",
+      "Software\\ReasonCraft",
+      "InstallDir",
+      "[INSTALLFOLDER]"
+    ],
+    [
+      "-1",
+      "Software\\RegisteredApplications",
+      "ReasonCraft",
+      "Software\\ReasonCraft\\Capabilities"
+    ],
+    [
+      "-1",
+      "Software\\ReasonCraft\\Capabilities",
+      "ApplicationName",
+      "ReasonCraft"
+    ],
+    [
+      "-1",
+      "Software\\ReasonCraft\\Capabilities",
+      "ApplicationDescription",
+      "Map out arguments: claims, reasons and objections."
+    ],
+    [
+      "-1",
+      "Software\\ReasonCraft\\Capabilities",
+      "ApplicationIcon",
+      "\"[#ReasonCraftExe]\",0"
+    ],
+    [
+      "-1",
+      "Software\\ReasonCraft\\Capabilities\\FileAssociations",
+      ".rcraft",
+      "ReasonCraft.rcraft"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\reasoncraft.exe",
+      "FriendlyAppName",
+      "ReasonCraft"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\reasoncraft.exe\\shell\\open\\command",
+      "",
+      "\"[#ReasonCraftExe]\" \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\Applications\\reasoncraft.exe\\SupportedTypes",
+      ".rcraft",
+      ""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\ReasonCraft.rcraft\\shell\\open\\command",
+      "",
+      "\"[#ReasonCraftExe]\" \"%1\""
+    ],
+    [
+      "-1",
+      "Software\\Classes\\.rcraft",
+      "",
+      "ReasonCraft.rcraft"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\.rcraft",
+      "Content Type",
+      "application/x-reasoncraft"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\.rcraft\\OpenWithProgids",
+      "ReasonCraft.rcraft",
+      ""
+    ]
+  ],
+  "mode": "dualScope"
+}
