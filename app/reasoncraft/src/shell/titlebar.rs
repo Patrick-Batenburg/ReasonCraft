@@ -142,7 +142,7 @@ fn window_buttons(ui: &mut egui::Ui, app: &mut ReasonCraftApp, bar: Rect, maximi
         let rect = slot(at);
         let resp = ui.interact(
             rect,
-            ui.id().with(("window_button", at as u8)),
+            ui.scope_id().with(("window_button", at as u8)),
             Sense::click(),
         );
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, &label));
