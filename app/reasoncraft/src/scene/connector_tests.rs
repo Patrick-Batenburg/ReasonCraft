@@ -110,6 +110,49 @@ fn scene_uses_selected_style() {
     }
 }
 
+/// A tapered band carries on along its stub at its full width, into an
+/// arrowhead wider than the band, instead of narrowing to a thin line.
+#[test]
+fn tapered_stub_keeps_the_band_width() {
+    let (doc, _) = claim_with_reasons(2, LayoutDirection::TopDown);
+    let (_, scene) = scene_in(&doc, ConnectorStyle::Tapered);
+    let mut checked = 0;
+    for (i, shape) in scene.shapes.iter().enumerate() {
+        let Shape::Strip { left, right, .. } = shape else {
+            continue;
+        };
+        let wide = (left[left.len() - 1] - right[right.len() - 1]).length();
+        // The band's stub, then its arrowhead.
+        let Some(Shape::Path {
+            stroke: Some((w, _)),
+            ..
+        }) = scene.shapes.get(i + 1)
+        else {
+            panic!("no stub after band {i}");
+        };
+        assert!((w - wide).abs() < 1e-3, "stub {w} vs band end {wide}");
+        let Some(Shape::Path {
+            points,
+            fill: Some(_),
+            ..
+        }) = scene.shapes.get(i + 2)
+        else {
+            panic!("no arrowhead after band {i}");
+        };
+        let corners: Vec<Pos2> = points
+            .iter()
+            .filter_map(|p| match p {
+                PathEl::MoveTo(q) | PathEl::LineTo(q) => Some(*q),
+                _ => None,
+            })
+            .collect();
+        let head = (corners[1] - corners[2]).length();
+        assert!(head > 1.2 * wide, "arrowhead {head} vs band {wide}");
+        checked += 1;
+    }
+    assert_eq!(checked, 2);
+}
+
 #[test]
 fn screen_px_widths_follow_the_zoom_with_a_floor() {
     use reasoncraft_core::connector::{MIN_VISIBLE_PX, Strength, stroke_px};

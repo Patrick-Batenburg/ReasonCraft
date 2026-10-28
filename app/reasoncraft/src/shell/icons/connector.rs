@@ -51,8 +51,9 @@ pub fn connector_shapes(rect: Rect, style: ConnectorStyle, colour: Color32) -> V
             }
             points.push(el);
         }
+        // A tapered band carries on at its full width along the stub.
         let w = if style == ConnectorStyle::Tapered {
-            0.8 * width
+            2.5 * width
         } else {
             width
         };
