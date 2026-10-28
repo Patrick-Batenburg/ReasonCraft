@@ -156,8 +156,8 @@ pub fn sample_iot_like(n_boxes: usize) -> Document {
 ///
 /// Ignored, because Argdown does not keep them: ids, images, widths,
 /// comment dates, the links and comments of notes under a box, where notes
-/// sit among their siblings, and the spaces around a box's text (line
-/// breaks in it count as spaces).
+/// sit among their other siblings (the notes' own order counts), and the
+/// spaces around a box's text (line breaks in it count as spaces).
 pub fn structurally_equal(a: &Document, b: &Document) -> Result<(), String> {
     for (what, x, y) in [
         ("title", &a.meta.title, &b.meta.title),
@@ -258,14 +258,13 @@ impl Compare<'_> {
         let split = |d: &Document, items: &[Item]| {
             let is_note = |i: &Item| matches!(i, Item::Box(b) if d.boxes.get(b).is_some_and(|n| n.kind == BoxKind::Note));
             let (notes, rest): (Vec<Item>, Vec<Item>) = items.iter().partition(|i| is_note(i));
-            let mut texts: Vec<String> = notes
+            let texts: Vec<String> = notes
                 .iter()
                 .filter_map(|i| match i {
                     Item::Box(b) => d.boxes.get(b).map(|n| flat(&n.text)),
                     Item::Card(_) => None,
                 })
                 .collect();
-            texts.sort();
             (texts, rest)
         };
         let (notes_p, rest_p) = split(self.a, &p.children);
@@ -347,5 +346,20 @@ mod tests {
                 .keys()
                 .any(|&c| a.card_role(c) == crate::model::Role::Rebuts)
         );
+    }
+
+    #[test]
+    fn note_order_counts() {
+        let mut a = Document::new("c");
+        let root = a.root;
+        a.add_box(Parent::Box(root), BoxKind::Note, "first")
+            .unwrap();
+        a.add_box(Parent::Box(root), BoxKind::Note, "second")
+            .unwrap();
+        let mut b = a.clone();
+        b.boxes[&root].children.reverse();
+        assert!(structurally_equal(&a, &a.clone()).is_ok());
+        let err = structurally_equal(&a, &b).unwrap_err();
+        assert!(err.contains("notes"), "{err}");
     }
 }
