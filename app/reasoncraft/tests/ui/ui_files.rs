@@ -25,7 +25,7 @@ fn file_harness() -> (Harness<'static, ReasonCraftApp>, FakeDialogs) {
 /// this returns.
 fn cmd(h: &mut Harness<'static, ReasonCraftApp>, key: egui::Key) {
     h.key_press_modifiers(egui::Modifiers::COMMAND, key);
-    h.run();
+    h.run_steps(2);
     wait_saves(h);
 }
 
@@ -186,7 +186,7 @@ fn close_dirty_tab_asks_to_save() {
     let path = dir.path().join("draft.rcraft");
     fake.set_save(path.clone());
     h.get_by_label(&t("unsaved.save_changes")).click();
-    h.run();
+    h.run_steps(2);
     wait_saves(&mut h);
     assert!(h.state().modal.is_none());
     assert!(path.is_file());
@@ -290,7 +290,7 @@ fn appended_extension_asks_before_replacing() {
     fake.set_save(dir.path().join("robots"));
     cmd(&mut h, egui::Key::S);
     h.get_by_label(&t("replace.confirm")).click();
-    h.run();
+    h.run_steps(2);
     wait_saves(&mut h);
     assert!(h.state().modal.is_none());
     assert_eq!(root_text_in(&existing), "New");
@@ -334,7 +334,7 @@ fn failed_save_during_window_close_aborts_it() {
     h.run();
     fake.set_save(dir.path().join("no/such/dir/one.rcraft"));
     h.get_by_label(&t("unsaved.save_changes")).click();
-    h.run();
+    h.run_steps(2);
     wait_saves(&mut h);
     assert!(matches!(
         h.state().modal,
@@ -363,7 +363,7 @@ fn replace_prompt_during_window_close() {
     h.run();
     fake.set_save(dir.path().join("one"));
     h.get_by_label(&t("unsaved.save_changes")).click();
-    h.run();
+    h.run_steps(2);
     wait_saves(&mut h);
     h.get_by_label(&t("replace.cancel")).click();
     h.run();
@@ -377,10 +377,10 @@ fn replace_prompt_during_window_close() {
     h.run();
     fake.set_save(dir.path().join("one"));
     h.get_by_label(&t("unsaved.save_changes")).click();
-    h.run();
+    h.run_steps(2);
     wait_saves(&mut h);
     h.get_by_label(&t("replace.confirm")).click();
-    h.run();
+    h.run_steps(2);
     wait_saves(&mut h);
     assert_eq!(root_text_in(&existing), "One");
     assert_eq!(h.state().active, 1);

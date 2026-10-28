@@ -44,7 +44,7 @@ fn ctrl_s_in_snippet_field_records_the_session_and_saves() {
     let path = dir.path().join("snippets.rcraft");
     fake.set_save(path.clone());
     h.key_press_modifiers(Modifiers::COMMAND, Key::S);
-    h.run();
+    h.run_steps(2);
     crate::common::wait_saves(&mut h);
 
     let tab = &h.state().tabs[0];

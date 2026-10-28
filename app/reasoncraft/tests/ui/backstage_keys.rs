@@ -44,7 +44,7 @@ fn ctrl_s_saves() {
     fake.set_save(path.clone());
     let mut h = on_file_page(&fake);
     h.key_press_modifiers(Modifiers::COMMAND, Key::S);
-    h.run();
+    h.run_steps(2);
     wait_saves(&mut h);
     assert_eq!(h.state().tabs[0].path.as_deref(), Some(path.as_path()));
     assert!(path.is_file());
