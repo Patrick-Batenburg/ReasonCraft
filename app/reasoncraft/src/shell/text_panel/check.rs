@@ -103,7 +103,7 @@ pub fn show(
     tk: &Tokens,
     out: &mut Vec<Action>,
 ) {
-    let (_, due) = tab.settled_issues(&settings.checks, std::time::Instant::now());
+    let (_, due) = tab.settled_issues(&settings.checks, ui.input(|i| i.time));
     if let Some(due) = due {
         ui.ctx().request_repaint_after(due);
     }
@@ -142,6 +142,7 @@ pub fn show(
             keys: &keys,
             estimate: ROW_ESTIMATE,
             revision: tab_ref.revision(),
+            pinned: None,
             draw,
         };
         virtual_rows::show(ui, &mut heights, rows);

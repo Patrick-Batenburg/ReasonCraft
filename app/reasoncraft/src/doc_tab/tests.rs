@@ -118,7 +118,6 @@ fn unexpected_edit_errors_stop_debug_builds() {
 
 #[test]
 fn issues_wait_for_typing_to_pause() {
-    use std::time::{Duration, Instant};
     let mut tab = DocTab::new();
     let root = tab.doc.root;
     let all = CheckSet::default();
@@ -126,19 +125,20 @@ fn issues_wait_for_typing_to_pause() {
         let (found, due) = tab.settled_issues(&all, now);
         (found.len(), due.is_some())
     };
-    assert_eq!(count(&mut tab, Instant::now()), (0, false));
+    let pause = ISSUE_SETTLE.as_secs_f64();
+    assert_eq!(count(&mut tab, 10.0), (0, false));
     tab.begin_edit(root, false);
     tab.set_edit_text(root, "Robots?".into());
     // Typing just now: the last issues are kept, and fresh ones are due.
-    assert_eq!(count(&mut tab, Instant::now()), (0, true));
+    assert_eq!(count(&mut tab, 10.0), (0, true));
+    assert_eq!(count(&mut tab, 10.0 + pause / 2.0), (0, true));
     // After a pause the checks run again.
-    let later = Instant::now() + ISSUE_SETTLE + Duration::from_millis(1);
-    assert_eq!(count(&mut tab, later), (1, false));
+    assert_eq!(count(&mut tab, 10.0 + pause), (1, false));
     // Ending the session shows fresh issues at once.
     tab.set_edit_text(root, "Robots? Jobs and pay?".into());
-    assert_eq!(count(&mut tab, Instant::now()), (1, true));
+    assert_eq!(count(&mut tab, 11.0), (1, true));
     tab.commit_session();
-    assert_eq!(count(&mut tab, Instant::now()), (2, false));
+    assert_eq!(count(&mut tab, 11.0), (2, false));
 }
 
 #[test]

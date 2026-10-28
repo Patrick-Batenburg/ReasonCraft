@@ -70,6 +70,7 @@ pub fn show(
             keys: &keys,
             estimate: ROW_ESTIMATE,
             revision: tab_ref.revision(),
+            pinned: None,
             draw: |ui: &mut Ui, i: usize| part(ui, &cx, &parts[i], spell, out),
         };
         virtual_rows::show(ui, &mut heights, rows);

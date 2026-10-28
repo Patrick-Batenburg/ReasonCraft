@@ -27,7 +27,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
         .exact_size(26.0)
         .show(ui, |ui| {
             ui.horizontal_centered(|ui| {
-                let now = std::time::Instant::now();
+                let now = ui.input(|i| i.time);
                 let tab = &mut app.tabs[app.active];
                 let (found, due) = tab.settled_issues(&app.settings.checks, now);
                 let issues = found.len();

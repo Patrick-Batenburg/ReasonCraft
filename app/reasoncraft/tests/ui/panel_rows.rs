@@ -1,5 +1,5 @@
-//! The Essay and Check tabs of the Text panel lay out only the rows near
-//! what they show, so a large map scrolls smoothly.
+//! The Essay, Check and Snippets tabs of the Text panel lay out only the
+//! rows near what they show, so a large map scrolls smoothly.
 
 use crate::common::{app_with_doc, build};
 use eframe::egui::{self, accesskit::Role};
@@ -161,4 +161,61 @@ fn focused_check_row_survives_scrolling_away() {
     assert!(!shown.contains(&"Parked 5".to_owned()), "scrolled away");
     let row = h.get_by_role_and_label(Role::ListItem, "Parked 0");
     assert!(row.is_focused(), "keeps the focus");
+}
+
+fn many_snippets(n: usize) -> Document {
+    let mut doc = Document::new("Claim");
+    for i in 0..n {
+        doc.add_snippet(&format!(
+            "Snippet {i}
+{}",
+            "words ".repeat(40)
+        ));
+    }
+    doc
+}
+
+#[test]
+fn snippets_tab_lays_out_only_visible_cards() {
+    let mut h = harness_with(many_snippets(300), TextTab::Snippets);
+    h.run();
+    let laid_out = h.state().tabs[0].snippet_heights.laid_out();
+    assert!(laid_out > 1 && laid_out <= MAX_ROWS, "{laid_out} cards");
+    let field = t("snippet.text");
+    let at = h
+        .get_all_by_role_and_label(Role::MultilineTextInput, &field)
+        .next()
+        .unwrap()
+        .rect()
+        .center();
+    for _ in 0..10 {
+        wheel(&mut h, at, -2000.0);
+        h.step();
+        let laid_out = h.state().tabs[0].snippet_heights.laid_out();
+        assert!(laid_out <= MAX_ROWS, "{laid_out} cards while scrolling");
+    }
+}
+
+/// A new snippet at the end of a long list takes the keyboard focus and
+/// comes into view, though its card was never laid out before.
+#[test]
+fn new_snippet_at_the_end_of_a_long_list_takes_the_focus() {
+    let mut h = harness_with(many_snippets(300), TextTab::Snippets);
+    h.run();
+    h.get_by_label(&t("snippet.new")).click();
+    h.run();
+    let screen = h.ctx.content_rect();
+    let field = h
+        .query_all_by_role(Role::MultilineTextInput)
+        .find(|n| n.is_focused())
+        .expect("a snippet field has the focus");
+    assert!(
+        screen.contains_rect(field.rect()),
+        "{:?} in view",
+        field.rect()
+    );
+    h.event(egui::Event::Text("Typed".into()));
+    h.run();
+    let doc = &h.state().tabs[0].doc;
+    assert_eq!(doc.snippets[300].text, "Typed");
 }

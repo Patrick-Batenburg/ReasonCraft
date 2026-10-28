@@ -158,11 +158,9 @@ fn text_field(
             edit.show(ui)
         })
         .inner;
+    // A new snippet at the end of a long list comes into view: the list
+    // scrolls to the row that takes the focus (see `virtual_rows`).
     let resp = output.response.response;
-    if focus {
-        // A new snippet at the end of a long list comes into view.
-        resp.scroll_to_me(None);
-    }
     let label = t("snippet.text");
     resp.widget_info(|| WidgetInfo::labeled(Role::MultilineTextInput, true, &label));
     if resp.changed() {

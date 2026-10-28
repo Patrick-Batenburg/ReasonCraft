@@ -6,7 +6,6 @@ use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
 
 use eframe::egui::{Id, Rect};
 use reasoncraft_core::checks::{CheckSet, Issue};
@@ -100,8 +99,9 @@ pub struct DocTab {
     /// The issues last found, with the revision and checks they were found
     /// for (see [`Self::issues`]).
     pub issue_cache: Memo<(u64, CheckSet), Vec<Issue>>,
-    /// When [`Self::revision`] last moved on (see [`Self::settled_issues`]).
-    changed_at: Instant,
+    /// The revision [`Self::settled_issues`] last saw, and when it first
+    /// saw it (in seconds of UI time).
+    seen_revision: (u64, f64),
     /// The Essay tab's view, with the revision it was built for (see
     /// [`Self::essay`]).
     pub essay_cache: Memo<u64, EssayView>,
@@ -110,6 +110,8 @@ pub struct DocTab {
     pub essay_heights: RowHeights<EssayRow>,
     /// The same for the Check tab.
     pub check_heights: RowHeights<CheckRow>,
+    /// The same for the Snippets tab, by snippet.
+    pub snippet_heights: RowHeights<Uuid>,
     /// The boxes whose inserted image is being prepared, with the job
     /// preparing it; a newer insert for the same box replaces the entry,
     /// so the older result is dropped when it arrives.
@@ -197,10 +199,11 @@ impl DocTab {
             revision: 0,
             outline_cache: Memo::default(),
             issue_cache: Memo::default(),
-            changed_at: Instant::now(),
+            seen_revision: (0, 0.0),
             essay_cache: Memo::default(),
             essay_heights: RowHeights::default(),
             check_heights: RowHeights::default(),
+            snippet_heights: RowHeights::default(),
             pending_images: HashMap::new(),
             find: FindState::default(),
             spelling: None,
@@ -229,7 +232,6 @@ impl DocTab {
     /// a file loaded into the tab). Selection and view changes do not count.
     pub fn bump_revision(&mut self) {
         self.revision += 1;
-        self.changed_at = Instant::now();
     }
 
     /// Note that a file was loaded into this tab, in place of a tab at

@@ -1,8 +1,9 @@
-//! The heights of a virtualised list's rows (the Essay and Check tabs), so
+//! The heights of a virtualised list's rows (the Essay, Check and Snippets
+//! tabs), so
 //! a frame lays out only the rows near the view and places the others
 //! from their heights.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 use reasoncraft_core::Item;
@@ -58,6 +59,10 @@ pub struct RowHeights<K> {
     /// The scroll offset the list takes on its next frame, after rows
     /// above the view were measured at new heights.
     pub(crate) scroll_to: Option<f32>,
+    /// A row to bring into view (a new snippet): the list lays it out and
+    /// scrolls to it each frame until the rows around it are measured and
+    /// it is in view.
+    pub reveal: Option<K>,
 }
 
 impl<K> Default for RowHeights<K> {
@@ -69,17 +74,22 @@ impl<K> Default for RowHeights<K> {
             laid_out: 0,
             focus: None,
             scroll_to: None,
+            reveal: None,
         }
     }
 }
 
 impl<K: Eq + Hash> RowHeights<K> {
-    /// Starts a frame showing `revision` at `width`.
-    pub fn start_frame(&mut self, revision: u64, width: f32) {
+    /// Starts a frame showing the rows `keys` of `revision` at `width`.
+    /// When the revision or width changed, the heights become estimates,
+    /// and those of rows no longer in `keys` are forgotten.
+    pub fn start_frame(&mut self, revision: u64, width: f32, keys: &[K]) {
         self.laid_out = 0;
         if self.measured_for != (revision, width) {
             self.measured_for = (revision, width);
             self.estimates.extend(self.heights.drain());
+            let live: HashSet<&K> = keys.iter().collect();
+            self.estimates.retain(|k, _| live.contains(k));
         }
     }
 
@@ -111,18 +121,31 @@ mod tests {
     #[test]
     fn heights_outlive_a_change_as_estimates() {
         let mut h = RowHeights::default();
-        h.start_frame(1, 300.0);
+        let keys = ["a", "b"];
+        h.start_frame(1, 300.0, &keys);
         h.measured("a", 20.0);
         h.measured("b", 30.0);
         assert_eq!(h.laid_out(), 2);
-        h.start_frame(2, 300.0);
+        h.start_frame(2, 300.0, &keys);
         assert_eq!(h.laid_out(), 0);
         assert_eq!(h.get(&"a"), Some(20.0), "kept as an estimate");
         h.measured("a", 25.0);
         assert_eq!(h.get(&"a"), Some(25.0));
-        h.start_frame(2, 250.0);
+        h.start_frame(2, 250.0, &keys);
         assert_eq!(h.get(&"a"), Some(25.0));
         assert_eq!(h.get(&"b"), Some(30.0));
         assert_eq!(h.get(&"c"), None);
+    }
+
+    #[test]
+    fn heights_of_removed_rows_are_forgotten() {
+        let mut h = RowHeights::default();
+        h.start_frame(1, 300.0, &["a", "b"]);
+        h.measured("a", 20.0);
+        h.measured("b", 30.0);
+        // Row "b" was deleted: the next revision forgets its height.
+        h.start_frame(2, 300.0, &["a"]);
+        assert_eq!(h.get(&"a"), Some(20.0));
+        assert_eq!(h.get(&"b"), None);
     }
 }
