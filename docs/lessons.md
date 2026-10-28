@@ -19,3 +19,6 @@ Patterns learned from corrections during this project. Review at session start.
 - **Check a release build too, not only the debug tests.** Debug-only items (`cfg(debug_assertions)`) referenced from normal code compile in tests but break `--release`; the CI runs `cargo check --workspace --release`.
 - **Check the machine before chasing "impossible" memory corruption.** Random crashes in safe code under heavy load on this machine came from its processor (WHEA-Logger event 19, corrected machine checks; the processor on an old BIOS). Look at `Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-WHEA-Logger'}` first.
 - **Git Bash turns off Windows Error Reporting for what it starts**, so a crash there leaves no dump and no event (exit 139 is an access violation, 127 an abort). Start crash hunts from PowerShell, or catch the first fatal exception with a vectored handler that writes a minidump.
+
+## A test that starts the real exe must isolate its profile from the first run
+A `--version` test, while still RED, launched the real app window with the owner's real profile and left a recovery session folder behind. Any test (or script) that spawns `reasoncraft.exe` sets `REASONCRAFT_PROFILE_DIR` to a temp dir and kills the process on timeout — even when it only expects a quick exit, because the RED run is the one that won't exit.
