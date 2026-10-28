@@ -1,15 +1,16 @@
 //! UI tests for the per-document layout direction: the View ribbon's
 //! "Layout direction" menu, undo and arrow keys.
 
-use eframe::egui::{self, Key};
-use egui_kittest::{Harness, kittest::Queryable};
+use crate::common::harness_with_doc;
+use eframe::egui::Key;
+use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, apply};
 use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::t;
 use reasoncraft_core::{CardKind, Document, Item, LayoutDirection, NodeId, Parent};
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// "Claim" with one reason card; returns the document and its premise.
 fn doc() -> (Document, NodeId) {
@@ -18,17 +19,6 @@ fn doc() -> (Document, NodeId) {
         .add_card(Parent::Box(doc.root), CardKind::Reason, "Reason")
         .unwrap();
     (doc, premise)
-}
-
-fn harness_with(doc: Document) -> H {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
 }
 
 #[test]
@@ -59,7 +49,7 @@ fn set_direction_is_one_undo_step() {
 
 #[test]
 fn ribbon_menu_sets_direction() {
-    let mut h = harness_with(doc().0);
+    let mut h = harness_with_doc(doc().0);
     h.get_by_label(&t("ribbon.tab.view")).click();
     h.run();
     h.get_by_label(&t("action.layout_direction")).click();
@@ -80,7 +70,7 @@ fn arrow_keys_follow_direction() {
     let card = *d.cards.keys().next().unwrap();
     let root = d.root;
     d.layout_direction = LayoutDirection::LeftRight;
-    let mut h = harness_with(d);
+    let mut h = harness_with_doc(d);
     let selection = |h: &H| h.state().tabs[0].selection;
     h.state_mut().push(Action::Select(Some(Item::Box(premise))));
     h.run();

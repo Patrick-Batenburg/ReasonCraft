@@ -1,11 +1,12 @@
 //! UI tests for find and replace: the find bar, its keys, Replace and
 //! Replace all as history steps, and hit outlines staying off exports.
 
+use crate::common;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use eframe::egui::{self, Key, Modifiers};
-use egui_kittest::{Harness, kittest::Queryable};
+use eframe::egui::{Key, Modifiers};
+use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, apply};
 use reasoncraft::doc_tab::DocTab;
@@ -16,7 +17,7 @@ use reasoncraft::theme::Tokens;
 use reasoncraft_core::MAX_BOX_CHARS;
 use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent};
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// A claim with `claim` as its text, reasons "cat one" and "dog", and an
 /// objection "black cat"; returns the doc and the three premises.
@@ -32,12 +33,7 @@ fn doc(claim: &str) -> (Document, [NodeId; 3]) {
 fn harness(doc: Document, dialogs: FakeDialogs) -> H {
     let mut app = ReasonCraftApp::new_for_test_with(Box::new(dialogs));
     app.tabs[0] = DocTab::from_document(doc);
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
+    common::harness(app)
 }
 
 fn text(h: &H, node: NodeId) -> String {

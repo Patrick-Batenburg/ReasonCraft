@@ -1,12 +1,9 @@
 //! UI tests for the Home ribbon's Box group: changing a card's kind or a
 //! source's type, editing a box's link and opening it from its glyph.
 
+use crate::common::{app_with_doc, harness};
 use eframe::egui;
-use egui_kittest::{
-    Harness,
-    kittest::{NodeT, Queryable},
-};
-use reasoncraft::ReasonCraftApp;
+use egui_kittest::kittest::{NodeT, Queryable};
 use reasoncraft::actions::FakeOpener;
 use reasoncraft::canvas::links::link_label;
 use reasoncraft::i18n::t;
@@ -14,21 +11,15 @@ use reasoncraft_core::{
     BoxKind, CardId, CardKind, CardStrength, Document, Item, NodeId, Parent, SourceType,
 };
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// A harness without the building panel (its items share names with the
 /// ribbon's menus), with `opener` recording opened links.
 fn harness_with(doc: Document, opener: &FakeOpener) -> H {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = reasoncraft::doc_tab::DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     app.left_panel = false;
     app.link_opener = Box::new(opener.clone());
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
+    harness(app)
 }
 
 /// A claim with a strong reason card and a web source under the claim.

@@ -1,11 +1,11 @@
 //! The recovery prompt after a crash: restore, discard, decide later.
 
+use crate::common::harness;
 use std::fs::File;
 use std::time::{Duration, SystemTime};
 
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
-use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{self, Action};
 use reasoncraft::file_ops::Modal;
 use reasoncraft::i18n::t;
@@ -93,11 +93,7 @@ fn restored_doc_save_asks_when_original_changed() {
         &mut app,
         Action::ResolveRecovery(RecoveryChoice::RestoreAll),
     );
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
+    let mut h = harness(app);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::S);
     h.run();
     assert!(matches!(
@@ -157,7 +153,7 @@ fn recovery_prompt_lists_documents_and_restores() {
     let rec = tempfile::tempdir().unwrap();
     let docs = tempfile::tempdir().unwrap();
     crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
-    let mut h = harness(app_with_recovery(rec.path()));
+    let mut h = crate::common::build(app_with_recovery(rec.path()));
     h.run();
     h.get_by_label(&t("recovery.title"));
     // One label: the message, then a line per document.

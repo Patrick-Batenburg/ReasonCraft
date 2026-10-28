@@ -2,14 +2,11 @@
 //! buttons, their errors, preparing images off the UI thread and the
 //! missing-asset placeholder.
 
+use crate::common;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use eframe::egui;
-use egui_kittest::{
-    Harness,
-    kittest::{NodeT, Queryable},
-};
+use egui_kittest::kittest::{NodeT, Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::Action;
 use reasoncraft::doc_tab::DocTab;
@@ -17,7 +14,7 @@ use reasoncraft::file_ops::{FakeDialogs, Modal};
 use reasoncraft::i18n::t;
 use reasoncraft_core::{CardKind, Document, ImageRef, Item, NodeId, Parent};
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// A claim with one premise, which is selected; no building panel.
 fn harness(fake: &FakeDialogs) -> (H, NodeId) {
@@ -30,11 +27,7 @@ fn harness(fake: &FakeDialogs) -> (H, NodeId) {
     app.tabs[0] = DocTab::from_document(doc);
     app.tabs[0].selection = Some(Item::Box(premise));
     app.left_panel = false;
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
+    let h = common::harness(app);
     (h, premise)
 }
 

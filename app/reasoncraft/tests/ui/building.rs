@@ -1,8 +1,9 @@
 //! UI tests for the building panel (click and drag-and-drop) and for
 //! presses on comment badges and around the comment popover.
 
+use crate::common::{app_with_doc, harness_with_doc};
 use eframe::egui;
-use egui_kittest::{Harness, kittest::Queryable};
+use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::canvas::measure::{EguiMeasure, MeasureCache};
 use reasoncraft::i18n::t;
@@ -10,18 +11,7 @@ use reasoncraft::i18n::t;
 use crate::common::glide;
 use reasoncraft_core::{BoxKind, CardKind, Document, Item, Layout, LayoutParams, Parent, layout};
 
-type H = Harness<'static, ReasonCraftApp>;
-
-fn harness_with(doc: Document) -> H {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = reasoncraft::doc_tab::DocTab::from_document(doc);
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
-}
+use crate::common::H;
 
 /// The active document's layout, measured like the canvas does.
 fn layout_of(h: &H) -> Layout {
@@ -62,7 +52,7 @@ fn drag(h: &mut H, from: egui::Pos2, to: egui::Pos2) {
 
 #[test]
 fn panel_click_adds_note_to_selection() {
-    let mut h = harness_with(Document::new("Claim"));
+    let mut h = harness_with_doc(Document::new("Claim"));
     let root = h.state().tabs[0].doc.root;
     h.state_mut().tabs[0].selection = Some(Item::Box(root));
     h.run();
@@ -94,7 +84,7 @@ fn refused_panel_drop_changes_nothing() {
     let cat = doc
         .add_box(Parent::Box(doc.root), BoxKind::Category, "Category")
         .unwrap();
-    let mut h = harness_with(doc);
+    let mut h = harness_with_doc(doc);
     h.state_mut().tabs[0].selection = Some(Item::Box(cat));
     h.run();
     let before = h.state().tabs[0].doc.clone();
@@ -128,7 +118,7 @@ fn panel_drop_inserts_at_the_target() {
     let (c, p) = doc
         .add_card(Parent::Box(doc.root), CardKind::Reason, "Premise")
         .unwrap();
-    let mut h = harness_with(doc);
+    let mut h = harness_with_doc(doc);
     // A source onto the premise.
     let to = screen(&h, layout_of(&h).boxes[&p].center());
     let from = panel_item(&h, &t("source.web"));
@@ -165,7 +155,7 @@ fn dragging_a_comment_badge_moves_nothing() {
         .add_card(Parent::Box(root), CardKind::Reason, "Premise")
         .unwrap();
     doc.add_comment(p, "Ann", "Hm.", None).unwrap();
-    let mut h = harness_with(doc);
+    let mut h = harness_with_doc(doc);
     let l = layout_of(&h);
     let badge = screen(
         &h,
@@ -183,7 +173,7 @@ fn dragging_a_comment_badge_moves_nothing() {
 
 #[test]
 fn panning_keeps_comment_popover_open() {
-    let mut h = harness_with(Document::new("Claim"));
+    let mut h = harness_with_doc(Document::new("Claim"));
     let root = h.state().tabs[0].doc.root;
     h.state_mut().tabs[0].selection = Some(Item::Box(root));
     h.run();
@@ -245,7 +235,7 @@ fn panel_drop_onto_the_box_being_edited() {
     let (_, p) = doc
         .add_card(Parent::Box(doc.root), CardKind::Reason, "Premise")
         .unwrap();
-    let mut h = harness_with(doc);
+    let mut h = harness_with_doc(doc);
     h.state_mut().tabs[0].selection = Some(Item::Box(p));
     h.state_mut().tabs[0].begin_edit(p, false);
     h.run();
@@ -262,7 +252,7 @@ fn panel_drop_onto_a_comment_badge() {
         .add_card(Parent::Box(doc.root), CardKind::Reason, "Premise")
         .unwrap();
     doc.add_comment(p, "Ann", "Hm.", None).unwrap();
-    let mut h = harness_with(doc);
+    let mut h = harness_with_doc(doc);
     let l = layout_of(&h);
     // On the badge, which sits inside the box.
     let badge = badge_rect(l.boxes[&p], l.indicator_row(p), 0.0, 1);
@@ -290,13 +280,10 @@ fn drag_autoscrolls_near_edge() {
     let (_, premise) = doc
         .add_card(Parent::Box(doc.root), CardKind::Reason, "Reason")
         .unwrap();
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = reasoncraft::doc_tab::DocTab::from_document(doc);
+    let app = app_with_doc(doc);
     let dt = 1.0 / 60.0;
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
+    let mut h = crate::common::builder()
         .with_step_dt(dt)
-        .with_max_steps(32)
         .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
     h.run();
     let view = h.state().tabs[0].viewport.unwrap();

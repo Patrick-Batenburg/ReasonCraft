@@ -1,11 +1,11 @@
 //! The spelling pass (F7) walks a large map a slice a frame, so the
 //! window never waits for it.
 
+use crate::common::app_with_doc;
 use std::time::{Duration, Instant};
 
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, apply};
-use reasoncraft::doc_tab::DocTab;
 use reasoncraft::spell::poll;
 use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent};
 
@@ -25,8 +25,7 @@ fn dutch_map() -> (ReasonCraftApp, Vec<NodeId>) {
         };
         ids.push(d.add_card(root, CardKind::Reason, &text).unwrap().1);
     }
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(d);
+    let mut app = app_with_doc(d);
     let start = Instant::now();
     while app.spell.get("nl").is_none() {
         assert!(start.elapsed() < Duration::from_secs(20), "nl never loaded");

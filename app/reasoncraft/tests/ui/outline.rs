@@ -1,5 +1,6 @@
 //! UI tests for the Outline tab of the Text panel.
 
+use crate::common::app_with_doc;
 use std::time::{Duration, Instant};
 
 use eframe::egui::{self, accesskit::Role};
@@ -7,7 +8,6 @@ use egui_kittest::{
     Harness,
     kittest::{NodeT, Queryable},
 };
-use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::{t, t_lang};
 use reasoncraft::settings::{OutlineToggle, Settings};
 use reasoncraft::{ReasonCraftApp, actions::Action};
@@ -17,11 +17,8 @@ use reasoncraft_core::outline_md::outline_plain_text_lang;
 use reasoncraft_core::{CardKind, Document, Item, Parent, SourceType};
 
 fn harness_with(doc: Document) -> Harness<'static, ReasonCraftApp> {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
+    let app = app_with_doc(doc);
+    crate::common::builder()
         // Real frame times, so the 2 s "Copied" notice can be timed.
         .with_step_dt(1.0 / 60.0)
         .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)

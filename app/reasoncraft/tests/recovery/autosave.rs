@@ -167,7 +167,7 @@ fn unavailable_recovery_folder_is_noted() {
 
 #[test]
 fn settings_page_sets_the_autosave_interval() {
-    let mut h = harness(ReasonCraftApp::new_for_test());
+    let mut h = crate::common::build(ReasonCraftApp::new_for_test());
     h.state_mut().ribbon_tab = reasoncraft::app::RibbonTab::File;
     h.run();
     h.get_by_label(&t("backstage.settings")).click();

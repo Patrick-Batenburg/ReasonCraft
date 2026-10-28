@@ -1,9 +1,9 @@
 //! UI tests for the Check tab of the Text panel and the status-bar issue
 //! count.
 
+use crate::common::{app_with_doc, build};
 use eframe::egui::{self, accesskit::Role};
 use egui_kittest::{Harness, kittest::Queryable};
-use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::{FluentArgs, t, t_args};
 use reasoncraft::settings::{Settings, TextTab};
 use reasoncraft::{ReasonCraftApp, actions::Action};
@@ -11,13 +11,9 @@ use reasoncraft_core::checks::{CheckKind, CheckSet};
 use reasoncraft_core::{BoxKind, CardKind, Document, Item, Parent, SourceType};
 
 fn harness_with(doc: Document, tab: TextTab) -> Harness<'static, ReasonCraftApp> {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     app.settings.text_tab = tab;
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
+    build(app)
 }
 
 /// Claim "Robots help people" with one reason whose premise is backed by

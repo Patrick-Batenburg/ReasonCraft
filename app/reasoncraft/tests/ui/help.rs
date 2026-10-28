@@ -1,6 +1,7 @@
 //! UI tests for the offline help (the Text panel's Help tab, F1, the Help
 //! ribbon tab) and the About page.
 
+use crate::common;
 use eframe::egui::{self, Key, accesskit::Role};
 use egui_kittest::{
     Harness,
@@ -14,15 +15,10 @@ use reasoncraft::help::{self, HelpPage};
 use reasoncraft::i18n::t;
 use reasoncraft::settings::TextTab;
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 fn harness_with(app: ReasonCraftApp) -> H {
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
+    common::harness(app)
 }
 
 fn harness() -> H {

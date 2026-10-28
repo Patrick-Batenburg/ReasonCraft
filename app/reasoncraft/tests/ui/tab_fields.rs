@@ -1,8 +1,9 @@
 //! Text fields belong to their tab: a field's editing state (undo history
 //! included) never carries over to the same field in another document.
 
-use eframe::egui::{self, Key, Modifiers};
-use egui_kittest::{Harness, kittest::Queryable};
+use crate::common::build;
+use eframe::egui::{Key, Modifiers};
+use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::Action;
 use reasoncraft::app::RibbonTab;
@@ -11,7 +12,7 @@ use reasoncraft::i18n::t;
 use reasoncraft::settings::TextTab;
 use reasoncraft_core::{Document, EssaySlot};
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// Two tabs; the first is active and empty, the second has an
 /// introduction and a title of its own.
@@ -23,10 +24,7 @@ fn two_tabs() -> H {
     b.meta.title = "Own title".to_owned();
     app.tabs.push(DocTab::from_document(b));
     app.settings.text_tab = TextTab::Essay;
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
+    build(app)
 }
 
 /// Type `text` into the field labelled `label`, then leave it.

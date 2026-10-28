@@ -14,7 +14,7 @@ use reasoncraft::ReasonCraftApp;
 use reasoncraft::app::RibbonTab;
 use reasoncraft::i18n::t;
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// A window of `size` at 150 %, on `tab`.
 fn harness_on(size: egui::Vec2, tab: RibbonTab) -> H {

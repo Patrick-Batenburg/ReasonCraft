@@ -3,11 +3,11 @@
 //! field (also rows of virtual lists), the UI scale setting and Reset to
 //! defaults.
 
+use crate::common::{app_with_doc, harness};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Key, Modifiers, accesskit};
-use egui_kittest::Harness;
 use egui_kittest::kittest::{AccessKitNode, NodeT, Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, apply};
@@ -25,16 +25,7 @@ use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent};
 mod keyboard;
 mod settings;
 
-type H = Harness<'static, ReasonCraftApp>;
-
-fn harness_with(app: ReasonCraftApp) -> H {
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
-}
+use crate::common::H;
 
 /// Whether `node` is a control a screen reader announces: one that can
 /// be clicked or focused, or one greyed out for now. egui's own scroll
@@ -135,10 +126,9 @@ fn sample() -> (Document, NodeId) {
 
 fn sample_harness() -> (H, NodeId) {
     let (d, reason) = sample();
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(d);
+    let mut app = app_with_doc(d);
     app.settings.minimap = MinimapMode::On;
-    (harness_with(app), reason)
+    (harness(app), reason)
 }
 
 /// Run frames until `lang`'s dictionary is loaded (at most 20 s).
@@ -254,10 +244,9 @@ fn unplaced_note_without_label_is_named() {
     doc.essay
         .unplaced
         .push(("  ".to_owned(), "Old text".to_owned()));
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     app.settings.text_tab = TextTab::Essay;
-    let mut h = harness_with(app);
+    let mut h = harness(app);
     let mut args = FluentArgs::new();
     args.set("n", 1);
     let label = t_args("essay.unplaced_note", &args);

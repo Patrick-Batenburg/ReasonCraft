@@ -1,31 +1,23 @@
 //! The Essay and Check tabs of the Text panel lay out only the rows near
 //! what they show, so a large map scrolls smoothly.
 
+use crate::common::{app_with_doc, build};
 use eframe::egui::{self, accesskit::Role};
-use egui_kittest::{
-    Harness,
-    kittest::{NodeT, Queryable},
-};
-use reasoncraft::ReasonCraftApp;
-use reasoncraft::doc_tab::DocTab;
+use egui_kittest::kittest::{NodeT, Queryable};
 use reasoncraft::i18n::t;
 use reasoncraft::settings::TextTab;
 use reasoncraft_core::fixtures::sample_iot_like;
 use reasoncraft_core::{Document, EssaySlot, NewLoose};
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// The most rows a tab may lay out in one frame.
 const MAX_ROWS: usize = 60;
 
 fn harness_with(doc: Document, tab: TextTab) -> H {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     app.settings.text_tab = tab;
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
+    build(app)
 }
 
 /// Scroll the wheel by `dy` points over `at`.

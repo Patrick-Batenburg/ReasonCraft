@@ -13,7 +13,7 @@ use reasoncraft::i18n::{FluentArgs, t, t_args};
 use reasoncraft::settings::MinimapMode;
 use reasoncraft_core::SourceType;
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// The smallest window at 150 % on `tab`: Home collapses Add and
 /// Editing, View collapses every group.

@@ -1,5 +1,6 @@
 //! Tab titles and side panel widths.
 
+use crate::common::build;
 use std::path::PathBuf;
 
 use eframe::egui;
@@ -8,16 +9,10 @@ use reasoncraft::ReasonCraftApp;
 use reasoncraft::shell::panes::Pane;
 use reasoncraft::shell::tabs::short_title;
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 fn harness() -> H {
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(
-            |ui, app: &mut ReasonCraftApp| app.show(ui),
-            ReasonCraftApp::new_for_test(),
-        )
+    build(ReasonCraftApp::new_for_test())
 }
 
 /// The text of every text shape painted in the last frame.

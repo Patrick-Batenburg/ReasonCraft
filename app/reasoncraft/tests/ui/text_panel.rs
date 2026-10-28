@@ -1,5 +1,6 @@
 //! UI tests for the Text panel on the right.
 
+use crate::common::build;
 use eframe::egui;
 use egui_kittest::{
     Harness,
@@ -10,13 +11,7 @@ use reasoncraft::settings::{Settings, TextTab};
 use reasoncraft::{ReasonCraftApp, actions::Action};
 
 fn harness() -> Harness<'static, ReasonCraftApp> {
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(
-            |ui, app: &mut ReasonCraftApp| app.show(ui),
-            ReasonCraftApp::new_for_test(),
-        )
+    build(ReasonCraftApp::new_for_test())
 }
 
 fn tab_selected(h: &Harness<'static, ReasonCraftApp>, key: &str) -> bool {

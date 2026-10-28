@@ -1,17 +1,12 @@
 //! UI tests for keyboard navigation between boxes and cards.
 
+use crate::common::{app_with_doc, build};
 use eframe::egui;
 use egui_kittest::Harness;
 use reasoncraft::ReasonCraftApp;
 
 fn harness() -> Harness<'static, ReasonCraftApp> {
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(
-            |ui, app: &mut ReasonCraftApp| app.show(ui),
-            ReasonCraftApp::new_for_test(),
-        )
+    build(ReasonCraftApp::new_for_test())
 }
 
 fn type_text(h: &mut Harness<'static, ReasonCraftApp>, text: &str) {
@@ -20,12 +15,7 @@ fn type_text(h: &mut Harness<'static, ReasonCraftApp>, text: &str) {
 }
 
 fn harness_with(doc: reasoncraft_core::Document) -> Harness<'static, ReasonCraftApp> {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = reasoncraft::doc_tab::DocTab::from_document(doc);
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
+    build(app_with_doc(doc))
 }
 
 /// Up from a premise reaches its card; Ctrl+Shift+O and Ctrl+Shift+R add

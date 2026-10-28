@@ -1,11 +1,10 @@
 //! UI tests for dragging snippet text onto the map.
 
+use crate::common::{app_with_doc, harness};
 use crate::common::{glide, painted_texts};
 use eframe::egui::{self, Event, Key, Modifiers};
-use egui_kittest::{Harness, kittest::Queryable};
-use reasoncraft::ReasonCraftApp;
+use egui_kittest::kittest::Queryable;
 use reasoncraft::canvas::measure::{EguiMeasure, MeasureCache};
-use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::t;
 use reasoncraft::settings::TextTab;
 use reasoncraft::shell::text_panel::chip_label;
@@ -13,18 +12,12 @@ use reasoncraft_core::{
     BoxKind, Document, Item, Layout, LayoutParams, NodeId, SnippetSource, SourceType, layout,
 };
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 fn harness_with(doc: Document) -> H {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     app.settings.text_tab = TextTab::Snippets;
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
+    harness(app)
 }
 
 /// A document with one snippet, tagged with a web source.

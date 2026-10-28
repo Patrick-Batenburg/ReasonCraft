@@ -45,7 +45,7 @@ fn close(a: f32, b: f32) -> bool {
 
 #[test]
 fn ui_scale_applies_and_persists() {
-    let mut h = harness_with(ReasonCraftApp::new_for_test());
+    let mut h = harness(ReasonCraftApp::new_for_test());
     assert_eq!(h.state().settings.ui_scale, 1.0);
     assert_eq!(h.ctx.zoom_factor(), 1.0);
     // The settings page's slider, in steps of 10 %.
@@ -71,7 +71,7 @@ fn ui_scale_applies_and_persists() {
     assert!(close(saved.ui_scale, 1.5));
     let mut app = ReasonCraftApp::new_for_test();
     app.settings = saved;
-    let h = harness_with(app);
+    let h = harness(app);
     assert!(close(h.ctx.zoom_factor(), 1.5), "applied at start");
     // A scale from a hand-edited file is used within the range.
     let wild: Settings = serde_json::from_str(r#"{"ui_scale":9.0}"#).unwrap();
@@ -91,7 +91,7 @@ fn reset_to_defaults_keeps_recent_and_dictionary() {
     s.autosave_secs = 0;
     s.spell_words = vec!["Zork".into()];
     s.recent_files = vec!["maps/a.rcraft".into()];
-    let mut h = harness_with(app);
+    let mut h = harness(app);
     settings_page(&mut h);
     reset_button(&mut h);
     // Asked first: Cancel keeps everything.
@@ -140,10 +140,8 @@ fn export_does_not_depend_on_ui_scale() {
     let dialogs = FakeDialogs::default();
     let mut app = ReasonCraftApp::new_for_test_with(Box::new(dialogs.clone()));
     app.tabs[0] = DocTab::from_document(d);
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
+    let mut h = crate::common::builder()
         .with_pixels_per_point(1.5)
-        .with_max_steps(32)
         .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
     h.run();
     let export = |h: &mut H, scale: f32, name: &str| -> String {

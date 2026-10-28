@@ -1,27 +1,21 @@
 //! Esc closes the spelling box (F7) when the focus is in it, on the map or
 //! nowhere, but not when it is in another field.
 
+use crate::common::{app_with_doc, harness};
 use eframe::egui::{self, Key};
-use egui_kittest::{Harness, kittest::Queryable};
-use reasoncraft::ReasonCraftApp;
-use reasoncraft::doc_tab::DocTab;
+use egui_kittest::kittest::Queryable;
 use reasoncraft::i18n::t;
 use reasoncraft_core::Document;
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// A map whose claim is selected, with the spelling box open.
 fn with_spelling_open() -> H {
     let doc = Document::new("Teh claim");
     let root = doc.root;
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     app.tabs[0].selection = Some(reasoncraft_core::Item::Box(root));
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
+    let mut h = harness(app);
     h.key_press(Key::F7);
     h.run();
     assert!(h.state().tabs[0].spelling.is_some(), "F7 opens it");

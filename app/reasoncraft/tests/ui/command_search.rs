@@ -1,6 +1,7 @@
 //! UI tests for the command registry in the ribbon and the title bar's
 //! Search commands box (Alt+Q).
 
+use crate::common::build;
 use eframe::egui::{
     self, Key, Modifiers,
     accesskit::{Role, Toggled},
@@ -16,13 +17,7 @@ use reasoncraft::i18n::{FluentArgs, t, t_args};
 use reasoncraft::{ReasonCraftApp, commands};
 
 fn harness() -> Harness<'static, ReasonCraftApp> {
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(
-            |ui, app: &mut ReasonCraftApp| app.show(ui),
-            ReasonCraftApp::new_for_test(),
-        )
+    build(ReasonCraftApp::new_for_test())
 }
 
 /// The search field's accessible name: its hint text.

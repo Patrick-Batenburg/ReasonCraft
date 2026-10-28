@@ -1,8 +1,8 @@
 //! UI test: File → Import Argdown… opens the file in a new tab and shows
 //! what the import changed.
 
-use eframe::egui;
-use egui_kittest::{Harness, kittest::Queryable};
+use crate::common::harness;
+use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::file_ops::{FakeDialogs, Modal};
 use reasoncraft::i18n::t;
@@ -15,11 +15,7 @@ fn backstage_imports_argdown_with_report() {
     std::fs::write(&path, text).unwrap();
     let fake = FakeDialogs::default();
     let app = ReasonCraftApp::new_for_test_with(Box::new(fake.clone()));
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
+    let mut h = harness(app);
 
     fake.set_import(path);
     h.get_by_label(&t("ribbon.tab.file")).click();

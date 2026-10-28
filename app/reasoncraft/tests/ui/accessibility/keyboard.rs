@@ -2,6 +2,7 @@
 //! of the virtual lists that are not laid out yet.
 
 use super::*;
+use crate::common::app_with_doc;
 
 /// The name of the control with the keyboard focus, if any.
 fn focused_name(h: &H) -> Option<String> {
@@ -17,9 +18,8 @@ fn focused_name(h: &H) -> Option<String> {
 #[test]
 fn tab_cycles_through_find_bar() {
     let (d, _) = sample();
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(d);
-    let mut h = harness_with(app);
+    let app = app_with_doc(d);
+    let mut h = harness(app);
     h.key_press_modifiers(Modifiers::COMMAND, Key::H);
     h.run();
     h.get_by_label(&t("find.query")).type_text("They");
@@ -91,10 +91,9 @@ fn virtual_rows_reachable_by_keyboard() {
         d.add_card(root, CardKind::Reason, &format!("Reason {i}"))
             .unwrap();
     }
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(d);
+    let mut app = app_with_doc(d);
     app.settings.text_tab = TextTab::Essay;
-    let mut h = harness_with(app);
+    let mut h = harness(app);
     let (top, bottom) = panel_view(&h);
     let shown: Vec<(String, egui::Rect)> = h
         .query_all_by_role(accesskit::Role::MultilineTextInput)
@@ -136,9 +135,8 @@ fn focused_control(h: &H) -> Option<(accesskit::Role, String)> {
 fn f6_cycles_through_the_panes() {
     use accesskit::Role;
     let (d, _) = sample();
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(d);
-    let mut h = harness_with(app);
+    let app = app_with_doc(d);
+    let mut h = harness(app);
     let issues = h
         .query_all_by_role(Role::Button)
         .map(|n| name(&n.accesskit_node()))
@@ -207,7 +205,7 @@ fn f6_cycles_through_the_panes() {
 #[test]
 fn keyboard_focus_is_outlined_on_hand_drawn_controls() {
     use reasoncraft::a11y::focus_ring_rect;
-    let mut h = harness_with(ReasonCraftApp::new_for_test());
+    let mut h = harness(ReasonCraftApp::new_for_test());
     h.run();
     assert_eq!(focus_ring_rect(&h.ctx), None, "nothing focused");
     // F6 walks the panes; the ribbon comes round.

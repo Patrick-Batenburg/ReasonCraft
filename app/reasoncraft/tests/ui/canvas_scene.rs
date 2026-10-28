@@ -1,10 +1,10 @@
 //! The canvas paints the document's scene: box text, connectors, source
 //! headers and markers reach the screen.
 
+use crate::common::{app_with_doc, harness};
 use eframe::egui::{self, epaint};
 use egui_kittest::Harness;
 use reasoncraft::ReasonCraftApp;
-use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::t;
 use reasoncraft_core::{Acceptance, BoxKind, CardKind, Document, Parent, SourceType};
 
@@ -39,14 +39,9 @@ fn canvas_paints_the_scene() {
     )
     .unwrap();
     doc.boxes.get_mut(&premise).unwrap().acceptance = Some(Acceptance::Accept);
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     app.left_panel = false;
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
+    let h = harness(app);
 
     let painted = shapes(&h);
     let texts: Vec<String> = painted

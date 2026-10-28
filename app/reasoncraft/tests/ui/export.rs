@@ -2,102 +2,22 @@
 //! jobs on a worker thread, Copy as image and Print. Files go to temp
 //! folders; the clipboard and the PDF viewer are fakes.
 
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use eframe::egui;
-use eframe::egui::accesskit::Role;
-use egui_kittest::{
-    Harness,
-    kittest::{NodeT, Queryable},
-};
-use reasoncraft::ReasonCraftApp;
-use reasoncraft::actions::{Action, FakeOpener};
-use reasoncraft::doc_tab::DocTab;
+use egui_kittest::kittest::{NodeT, Queryable};
+use reasoncraft::actions::Action;
 use reasoncraft::export::{
-    ExportFormat, ExportOptions, ExportRequest, ExportScope, ExportTheme, FakeClipboard, Notice,
-    PageSetup, png_to_rgba,
+    ExportFormat, ExportOptions, ExportScope, ExportTheme, Notice, png_to_rgba,
 };
-use reasoncraft::file_ops::FakeDialogs;
 use reasoncraft::i18n::t;
 use reasoncraft::theme::Tokens;
-use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent};
+use reasoncraft_core::Item;
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
-/// What a test steers the app with.
-struct Fakes {
-    dialogs: FakeDialogs,
-    opener: FakeOpener,
-    clipboard: FakeClipboard,
-}
-
-/// "Claim" with reasons "Alpha" (with "Deep" under it) and "Beta"; returns
-/// the harness and Alpha's box.
-fn harness(dir: &Path) -> (H, Fakes, NodeId) {
-    let mut doc = Document::new("Claim");
-    let root = doc.root;
-    let (alpha_card, alpha) = doc
-        .add_card(Parent::Box(root), CardKind::Reason, "Alpha")
-        .unwrap();
-    let _ = alpha_card;
-    doc.add_card(Parent::Box(alpha), CardKind::Reason, "Deep")
-        .unwrap();
-    doc.add_card(Parent::Box(root), CardKind::Objection, "Beta")
-        .unwrap();
-    let fakes = Fakes {
-        dialogs: FakeDialogs::default(),
-        opener: FakeOpener::default(),
-        clipboard: FakeClipboard::default(),
-    };
-    let mut app = ReasonCraftApp::new_for_test_with(Box::new(fakes.dialogs.clone()));
-    app.tabs[0] = DocTab::from_document(doc);
-    app.link_opener = Box::new(fakes.opener.clone());
-    app.export.clipboard = Arc::new(Mutex::new(fakes.clipboard.clone()));
-    app.export.print_dir = dir.to_owned();
-    app.left_panel = false;
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    (h, fakes, alpha)
-}
-
-/// Steps frames until no export is running (at most 60 s).
-fn wait(h: &mut H) {
-    let start = Instant::now();
-    while h.state().export.busy() {
-        assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    h.run();
-}
-
-fn request(format: ExportFormat, options: ExportOptions) -> Action {
-    Action::RunExport(ExportRequest {
-        format,
-        options,
-        page: PageSetup::default(),
-    })
-}
-
-/// Clicks the button labelled with `key`'s text (the Text panel's tabs
-/// and the ribbon's tabs share some names) and steps a few frames (the
-/// busy spinner keeps repainting, so `run` would not settle).
-fn click_button(h: &mut H, key: &str) {
-    let label = t(key);
-    h.get_by_role_and_label(Role::Button, &label).click();
-    h.run_steps(4);
-}
-
-fn open_export_tab(h: &mut H) {
-    h.get_by_role_and_label(Role::Tab, &t("ribbon.tab.export"))
-        .click();
-    h.run();
-}
+use crate::export_fixture::{click_button, harness, open_export_tab, request, wait};
 
 #[test]
 fn export_png_writes_file() {

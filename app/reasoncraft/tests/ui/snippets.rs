@@ -1,28 +1,23 @@
 //! UI tests for the Snippets tab of the Text panel.
 
+use crate::common::{app_with_doc, build};
 use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Key};
-use egui_kittest::{Harness, kittest::Queryable};
-use reasoncraft::ReasonCraftApp;
+use egui_kittest::kittest::Queryable;
 use reasoncraft::actions::Action;
 use reasoncraft::canvas::input::{Os, paste_shortcut, shortcut_text};
-use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::{FluentArgs, t, t_args};
 use reasoncraft::settings::TextTab;
 use reasoncraft::shell::text_panel::capped_notice;
 use reasoncraft_core::{CardKind, Document, Item, MAX_SNIPPET_CHARS, Parent};
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 fn harness_with(doc: Document) -> H {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     app.settings.text_tab = TextTab::Snippets;
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
+    build(app)
 }
 
 fn doc_with(texts: &[&str]) -> Document {

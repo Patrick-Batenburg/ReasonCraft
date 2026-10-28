@@ -2,8 +2,9 @@
 //! field outside the map has focus: they end the field's editing session,
 //! then run, like they do while a box is being edited.
 
+use crate::common::build;
 use eframe::egui::{self, Key, Modifiers};
-use egui_kittest::{Harness, kittest::Queryable};
+use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::app::RibbonTab;
 use reasoncraft::doc_tab::{DocTab, EditSession};
@@ -12,16 +13,13 @@ use reasoncraft::i18n::t;
 use reasoncraft::settings::TextTab;
 use reasoncraft_core::Document;
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 fn harness(doc: Document, fake: &FakeDialogs) -> H {
     let mut app = ReasonCraftApp::new_for_test_with(Box::new(fake.clone()));
     app.tabs[0] = DocTab::from_document(doc);
     app.settings.text_tab = TextTab::Snippets;
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
+    build(app)
 }
 
 fn doc_with_snippet() -> Document {

@@ -1,10 +1,8 @@
 //! UI tests for the Essay tab of the Text panel.
 
+use crate::common::{app_with_doc, build};
 use eframe::egui::{self, Key, accesskit::Role};
-use egui_kittest::{
-    Harness,
-    kittest::{NodeT, Queryable},
-};
+use egui_kittest::kittest::{NodeT, Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, UnsavedChoice, apply};
 use reasoncraft::doc_tab::{DocTab, EditSession};
@@ -15,16 +13,12 @@ use reasoncraft_core::{
     CardId, CardKind, CardStrength, Document, EssaySlot, Item, NodeId, Parent, file,
 };
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 fn harness_with(doc: Document) -> H {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     app.settings.text_tab = TextTab::Essay;
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
+    build(app)
 }
 
 /// Claim with a weak reason, a strong objection, an unrated reason and a

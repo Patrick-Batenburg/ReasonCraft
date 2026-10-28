@@ -10,7 +10,6 @@
 use std::time::{Duration, Instant};
 
 use eframe::egui::{Key, accesskit};
-use egui_kittest::Harness;
 use egui_kittest::kittest::{AccessKitNode, NodeT, Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::Action;
@@ -21,9 +20,10 @@ use reasoncraft::i18n::{t, t_lang, ui_language};
 use reasoncraft_core::examples::{Example, Template, example, template};
 use reasoncraft_core::{BoxKind, Document, Item};
 
-use super::{harness_with, lock, painted_texts};
+use super::{lock, painted_texts};
+use crate::common::build;
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// Apply `action` through the frame loop, as a widget would.
 fn act(h: &mut H, action: Action) {
@@ -95,7 +95,7 @@ fn release_flow() {
     let mut app = ReasonCraftApp::new_for_test_with(Box::new(fake.clone()));
     // A Dutch computer: after Reset to defaults the UI follows it.
     app.os_locale = || Some("nl-NL".to_owned());
-    let mut h = harness_with(app);
+    let mut h = build(app);
     h.run();
 
     // 1. The UI in Dutch.

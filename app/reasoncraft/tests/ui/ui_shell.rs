@@ -1,18 +1,13 @@
 //! UI tests for the app shell, driven through the accessibility tree.
 
+use crate::common::{app_with_doc, build};
 use eframe::egui;
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::i18n::t;
 
 fn harness() -> Harness<'static, ReasonCraftApp> {
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(
-            |ui, app: &mut ReasonCraftApp| app.show(ui),
-            ReasonCraftApp::new_for_test(),
-        )
+    build(ReasonCraftApp::new_for_test())
 }
 
 #[test]
@@ -70,12 +65,7 @@ fn missing_i18n_key_returns_key() {
 }
 
 fn harness_with(doc: reasoncraft_core::Document) -> Harness<'static, ReasonCraftApp> {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = reasoncraft::doc_tab::DocTab::from_document(doc);
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
+    build(app_with_doc(doc))
 }
 
 #[test]

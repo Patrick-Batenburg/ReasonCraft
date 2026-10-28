@@ -1,15 +1,14 @@
 //! UI tests for the backstage Document page and the document language.
 
-use eframe::egui;
-use egui_kittest::{Harness, kittest::Queryable};
+use crate::common::{app_with_doc, build};
+use egui_kittest::kittest::Queryable;
+use reasoncraft::actions::Action;
 use reasoncraft::app::RibbonTab;
-use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::{FluentArgs, t, t_args};
 use reasoncraft::settings::TextTab;
-use reasoncraft::{ReasonCraftApp, actions::Action};
 use reasoncraft_core::{BoxKind, CardKind, Document, Parent, SourceType};
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// "Robots of mensen" as the claim, with a sourced reason, so the only
 /// possible issue is the compound statement.
@@ -26,13 +25,9 @@ fn harness() -> H {
         source_type: SourceType::Web,
     };
     d.add_box(Parent::Box(p), source, "x.example").unwrap();
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(d);
+    let mut app = app_with_doc(d);
     app.settings.text_tab = TextTab::Check;
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
+    build(app)
 }
 
 fn chip(count: usize) -> String {

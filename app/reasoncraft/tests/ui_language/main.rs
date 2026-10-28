@@ -4,6 +4,10 @@
 //! it live in this test binary, apart from every other test, and take turns
 //! through [`lock`], which puts English back afterwards.
 
+#[path = "../common/mod.rs"]
+mod common;
+
+use crate::common::{app_with_doc, build};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use eframe::egui::accesskit::{Role, Toggled};
@@ -15,7 +19,6 @@ use egui_kittest::{
 use reasoncraft::a11y::in_group;
 use reasoncraft::actions::Action;
 use reasoncraft::canvas::input::{Os, shortcut_for, shortcut_text};
-use reasoncraft::doc_tab::DocTab;
 use reasoncraft::i18n::{self, FluentArgs, t, t_args, t_lang, ui_language};
 use reasoncraft::settings::{Settings, TextTab};
 use reasoncraft::{ReasonCraftApp, commands};
@@ -47,13 +50,6 @@ fn lock() -> LanguageLock {
     LanguageLock(guard)
 }
 
-fn harness_with(app: ReasonCraftApp) -> Harness<'static, ReasonCraftApp> {
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
-}
-
 fn click(h: &mut Harness<'static, ReasonCraftApp>, label: &str) {
     h.get_by_label(label).click();
     h.run();
@@ -75,7 +71,7 @@ fn search_for(h: &mut Harness<'static, ReasonCraftApp>, query: &str) {
 #[test]
 fn switching_language_updates_ribbon_and_search() {
     let _lang = lock();
-    let mut h = harness_with(ReasonCraftApp::new_for_test());
+    let mut h = build(ReasonCraftApp::new_for_test());
     h.run();
     let home_en = t_lang("en", "ribbon.tab.home");
     let home_nl = t_lang("nl", "ribbon.tab.home");
@@ -127,7 +123,7 @@ fn system_language_follows_the_os() {
     let _lang = lock();
     let mut app = ReasonCraftApp::new_for_test();
     app.os_locale = || Some("nl-BE".to_owned());
-    let mut h = harness_with(app);
+    let mut h = build(app);
     h.state_mut()
         .push(Action::SetUiLanguage(Some("en".to_owned())));
     h.run();
@@ -147,7 +143,7 @@ fn system_language_follows_the_os() {
 #[test]
 fn settings_page_picks_the_language() {
     let _lang = lock();
-    let mut h = harness_with(ReasonCraftApp::new_for_test());
+    let mut h = build(ReasonCraftApp::new_for_test());
     h.run();
     click(&mut h, &t("ribbon.tab.file"));
     click(&mut h, &t("backstage.settings"));
@@ -215,8 +211,7 @@ fn rated_map(lang: &str) -> ReasonCraftApp {
     doc.add_box(Parent::Box(premise), law, "Clean air act")
         .unwrap();
     doc.add_loose(NewLoose::Card(CardKind::Reason), "Loose");
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     // The Text panel's Outline shows too: it is document text as well.
     app.settings.text_tab = TextTab::Outline;
     app.right_panel = true;
@@ -228,7 +223,7 @@ fn map_labels_follow_document_language_not_ui() {
     let _lang = lock();
     let words = ["rating.strong.supports", "source.law", "parking.title"];
     // UI English, document Dutch: the map speaks Dutch.
-    let mut h = harness_with(rated_map("nl-NL"));
+    let mut h = build(rated_map("nl-NL"));
     h.run();
     h.state_mut().push(Action::JumpParking);
     h.run();
@@ -252,7 +247,7 @@ fn map_labels_follow_document_language_not_ui() {
 
     // UI Dutch, document English: the map speaks English.
     i18n::set_ui_language("nl");
-    let mut h = harness_with(rated_map("en"));
+    let mut h = build(rated_map("en"));
     h.run();
     h.state_mut().push(Action::ZoomFit);
     h.run();
@@ -267,7 +262,7 @@ fn map_labels_follow_document_language_not_ui() {
 #[test]
 fn outline_copy_all_uses_document_language() {
     let _lang = lock();
-    let mut h = harness_with(rated_map("nl"));
+    let mut h = build(rated_map("nl"));
     h.run();
     h.get_by_label(&t("outline.copy_all")).click();
     h.step();
@@ -293,7 +288,7 @@ fn outline_copy_all_uses_document_language() {
 #[test]
 fn switching_language_clears_the_status_note() {
     let _lang = lock();
-    let mut h = harness_with(ReasonCraftApp::new_for_test());
+    let mut h = build(ReasonCraftApp::new_for_test());
     h.state_mut().status_note = Some("Saved".to_owned());
     h.state_mut()
         .push(Action::SetUiLanguage(Some("nl".to_owned())));
@@ -325,7 +320,7 @@ fn choosing_the_shown_language_again_changes_nothing() {
         // Dutch documents: their language pickers do not select "English".
         app.tabs[0].doc.meta.language = "nl".to_owned();
         app.settings.default_doc_language = Some("nl".to_owned());
-        let mut h = harness_with(app);
+        let mut h = build(app);
         h.run();
         h.state_mut().status_note = Some("Saved".to_owned());
         let label = t(commands::get(choice).label);
@@ -354,11 +349,10 @@ fn empty_comment_author_reads_in_the_ui_language() {
     let mut doc = Document::new("Claim");
     let root = doc.root;
     doc.add_comment(root, "", "Goed gedaan", None).unwrap();
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = DocTab::from_document(doc);
+    let mut app = app_with_doc(doc);
     app.left_panel = false;
     app.tabs[0].selection = Some(Item::Box(root));
-    let mut h = harness_with(app);
+    let mut h = build(app);
     h.state_mut()
         .push(Action::SetUiLanguage(Some("nl".to_owned())));
     h.run();

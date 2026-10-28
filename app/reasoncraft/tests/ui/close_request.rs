@@ -1,25 +1,21 @@
 //! Closing the window from outside the app (the window's close button, the
 //! OS, or Cmd+Q on macOS) asks about unsaved changes first.
 
-use eframe::egui::{self, Key, Modifiers, ViewportEvent, ViewportId};
-use egui_kittest::Harness;
+use crate::common;
+use eframe::egui::{Key, Modifiers, ViewportEvent, ViewportId};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::Action;
 use reasoncraft::canvas::input::Os;
 use reasoncraft::file_ops::Modal;
 use reasoncraft_core::Item;
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// An app on `os` whose one tab has unsaved changes (when `dirty`).
 fn harness(os: Os, dirty: bool) -> H {
     let mut app = ReasonCraftApp::new_for_test();
     app.os = os;
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
+    let mut h = common::harness(app);
     if dirty {
         let root = h.state().tabs[0].doc.root;
         h.state_mut().tabs[0].selection = Some(Item::Box(root));

@@ -1,5 +1,6 @@
 //! UI tests for file operations: save, open, close prompts.
 
+use crate::common::build;
 use eframe::egui;
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
@@ -16,10 +17,7 @@ fn type_text(h: &mut Harness<'static, ReasonCraftApp>, text: &str) {
 fn file_harness() -> (Harness<'static, ReasonCraftApp>, FakeDialogs) {
     let fake = FakeDialogs::default();
     let app = ReasonCraftApp::new_for_test_with(Box::new(fake.clone()));
-    let h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
+    let h = build(app);
     (h, fake)
 }
 

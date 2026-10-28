@@ -1,10 +1,10 @@
 //! UI tests for the connector style: the View ribbon's "Connectors" menu
 //! sets the personal setting (no history), and exports draw it.
 
+use crate::common;
 use std::time::{Duration, Instant};
 
-use eframe::egui;
-use egui_kittest::{Harness, kittest::Queryable};
+use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::Action;
 use reasoncraft::doc_tab::DocTab;
@@ -13,7 +13,7 @@ use reasoncraft::file_ops::FakeDialogs;
 use reasoncraft::i18n::t;
 use reasoncraft_core::{CardKind, ConnectorStyle, Document, Parent};
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 fn harness(dialogs: FakeDialogs) -> H {
     let mut doc = Document::new("Claim");
@@ -24,12 +24,7 @@ fn harness(dialogs: FakeDialogs) -> H {
     }
     let mut app = ReasonCraftApp::new_for_test_with(Box::new(dialogs));
     app.tabs[0] = DocTab::from_document(doc);
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
+    common::harness(app)
 }
 
 #[test]

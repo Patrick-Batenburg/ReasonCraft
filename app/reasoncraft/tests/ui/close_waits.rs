@@ -2,11 +2,11 @@
 //! keep the window open behind a waiting prompt (with Quit anyway), and
 //! several tabs whose Save waits for images close one after the other.
 
+use crate::common::harness;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use eframe::egui;
-use egui_kittest::{Harness, kittest::Queryable};
+use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, UnsavedChoice};
 use reasoncraft::doc_tab::DocTab;
@@ -15,16 +15,7 @@ use reasoncraft::file_ops::{FakeDialogs, Modal};
 use reasoncraft::i18n::t;
 use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent, file};
 
-type H = Harness<'static, ReasonCraftApp>;
-
-fn harness(app: ReasonCraftApp) -> H {
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
-}
+use crate::common::H;
 
 /// A document with a claim and one premise, which is selected.
 fn tab_with_premise() -> (DocTab, NodeId) {

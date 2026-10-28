@@ -24,6 +24,7 @@ mod document;
 mod essay;
 mod examples;
 mod export;
+mod export_fixture;
 mod export_formats;
 mod export_replace;
 mod field_shortcuts;

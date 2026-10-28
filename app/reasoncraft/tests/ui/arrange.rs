@@ -2,27 +2,16 @@
 //! keys that must not be taken as commands (AltGr, secondary-button release
 //! during a building-panel drag).
 
+use crate::common::harness_with_doc;
 use eframe::egui::{self, Key, Modifiers};
-use egui_kittest::{Harness, kittest::Queryable};
-use reasoncraft::ReasonCraftApp;
+use egui_kittest::kittest::Queryable;
 use reasoncraft::canvas::measure::{EguiMeasure, MeasureCache};
 use reasoncraft::i18n::t;
 use reasoncraft_core::{
     BoxKind, CardId, CardKind, Document, Item, Layout, LayoutParams, NewLoose, Parent, layout,
 };
 
-type H = Harness<'static, ReasonCraftApp>;
-
-fn harness_with(doc: Document) -> H {
-    let mut app = ReasonCraftApp::new_for_test();
-    app.tabs[0] = reasoncraft::doc_tab::DocTab::from_document(doc);
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
-}
+use crate::common::H;
 
 fn layout_of(h: &H) -> Layout {
     let mut cache = MeasureCache::default();
@@ -82,7 +71,7 @@ fn root_children(h: &H) -> Vec<Item> {
 #[test]
 fn drag_between_siblings_reorders() {
     let (d, [a, b, c]) = three_cards();
-    let mut h = harness_with(d);
+    let mut h = harness_with_doc(d);
     let l = layout_of(&h);
     let from = screen(&h, l.cards[&c].center());
     let (ra, rb) = (l.cards[&a], l.cards[&b]);
@@ -102,7 +91,7 @@ fn drag_between_siblings_reorders() {
 #[test]
 fn alt_right_reorders_selected_card() {
     let (d, [a, b, c]) = three_cards();
-    let mut h = harness_with(d);
+    let mut h = harness_with_doc(d);
     h.state_mut().tabs[0].selection = Some(Item::Card(a));
     h.key_press_modifiers(Modifiers::ALT, Key::ArrowRight);
     h.run();
@@ -132,7 +121,7 @@ fn connect_mode_click_connects_parking_card() {
     let (d, parked, note) = parked_card_doc();
     let root = d.root;
     let premise = d.cards[&parked].premises[0];
-    let mut h = harness_with(d);
+    let mut h = harness_with_doc(d);
     // Selecting the parked card's premise offers its card.
     h.state_mut().tabs[0].selection = Some(Item::Box(premise));
     h.run();
@@ -175,7 +164,7 @@ fn connect_mode_click_connects_parking_card() {
 #[test]
 fn connect_mode_esc_cancels() {
     let (d, parked, _) = parked_card_doc();
-    let mut h = harness_with(d);
+    let mut h = harness_with_doc(d);
     h.state_mut().left_panel = false;
     h.state_mut().tabs[0].selection = Some(Item::Card(parked));
     h.run();
@@ -194,7 +183,7 @@ fn connect_mode_esc_cancels() {
 fn connect_mode_enter_connects_to_selection() {
     let (d, parked, note) = parked_card_doc();
     let root = d.root;
-    let mut h = harness_with(d);
+    let mut h = harness_with_doc(d);
     h.state_mut().tabs[0].selection = Some(Item::Card(parked));
     h.key_press_modifiers(Modifiers::COMMAND | Modifiers::SHIFT, Key::K);
     h.run();
@@ -218,7 +207,7 @@ fn connect_mode_enter_connects_to_selection() {
 /// a rating, and on a selected box it starts editing like other typing.
 #[test]
 fn altgr_digit_types_text_instead_of_rating() {
-    let mut h = harness_with(Document::new(""));
+    let mut h = harness_with_doc(Document::new(""));
     let root = h.state().tabs[0].doc.root;
     h.state_mut().tabs[0].selection = Some(Item::Box(root));
     h.run();
@@ -248,7 +237,7 @@ fn altgr_digit_types_text_instead_of_rating() {
 fn panel_drop_needs_primary_release() {
     let d = Document::new("Claim");
     let root = d.root;
-    let mut h = harness_with(d);
+    let mut h = harness_with_doc(d);
     let to = screen(&h, layout_of(&h).boxes[&root].center());
     let from = h
         .get_all_by_label(&t("action.add_note"))
@@ -276,7 +265,7 @@ fn connect_from_ribbon_while_editing_stays_on() {
     let mut d = Document::new("Claim");
     let note = d.add_loose(NewLoose::Note, "n");
     let Item::Box(nb) = note else { unreachable!() };
-    let mut h = harness_with(d);
+    let mut h = harness_with_doc(d);
     h.state_mut().left_panel = false;
     h.state_mut().tabs[0].selection = Some(note);
     h.run();

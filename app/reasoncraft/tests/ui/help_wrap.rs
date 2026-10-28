@@ -9,7 +9,7 @@ use reasoncraft::actions::{Action, apply};
 use reasoncraft::help::{self, HelpPage};
 use reasoncraft::shell::panes::Pane;
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// One visual line of painted text: its text and where it starts.
 #[derive(Clone, Debug, PartialEq)]

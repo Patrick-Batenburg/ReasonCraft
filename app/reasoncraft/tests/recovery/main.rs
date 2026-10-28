@@ -1,10 +1,12 @@
 //! Autosave to the recovery folder, and the offer to restore after a crash.
 //! Every test uses its own temp folder: never the user's recovery folder.
 
+#[path = "../common/mod.rs"]
+mod common;
+
 use std::path::{Path, PathBuf};
 
 use eframe::egui;
-use egui_kittest::Harness;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::file_ops::Modal;
 use reasoncraft::recovery;
@@ -66,11 +68,4 @@ pub fn offered(app: &ReasonCraftApp) -> Vec<recovery::RecoveredDoc> {
         Some(Modal::Recover(docs)) => docs.clone(),
         other => panic!("expected the recovery prompt, got {other:?}"),
     }
-}
-
-pub fn harness(app: ReasonCraftApp) -> Harness<'static, ReasonCraftApp> {
-    Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app)
 }

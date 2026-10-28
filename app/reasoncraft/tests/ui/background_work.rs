@@ -3,11 +3,11 @@
 //! close prompt waits for it without blocking frames, and status notes go
 //! away on their own (or with the next edit, not with looking around).
 
+use crate::common::harness;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use eframe::egui;
-use egui_kittest::{Harness, kittest::Queryable};
+use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, UnsavedChoice, apply};
 use reasoncraft::doc_tab::DocTab;
@@ -17,7 +17,7 @@ use reasoncraft::i18n::t;
 use reasoncraft::shell::statusbar::NOTE_SECS;
 use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent, file};
 
-type H = Harness<'static, ReasonCraftApp>;
+use crate::common::H;
 
 /// An app with a claim and one selected premise.
 fn app(fake: &FakeDialogs) -> (ReasonCraftApp, NodeId) {
@@ -31,15 +31,6 @@ fn app(fake: &FakeDialogs) -> (ReasonCraftApp, NodeId) {
     app.tabs[0].selection = Some(Item::Box(premise));
     app.left_panel = false;
     (app, premise)
-}
-
-fn harness(app: ReasonCraftApp) -> H {
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
 }
 
 fn photo(dir: &Path) -> PathBuf {

@@ -1,10 +1,10 @@
 //! Example maps, templates (File → New, the building panel, Help) and the
 //! recent-files list.
 
+use crate::common::harness;
 use std::path::{Path, PathBuf};
 
-use eframe::egui;
-use egui_kittest::{Harness, kittest::Queryable};
+use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::actions::{Action, apply};
 use reasoncraft::app::RibbonTab;
@@ -16,16 +16,7 @@ use reasoncraft::settings::{MAX_RECENT, Settings};
 use reasoncraft_core::Document;
 use reasoncraft_core::examples::{Example, Template, example, template};
 
-type H = Harness<'static, ReasonCraftApp>;
-
-fn harness_with(app: ReasonCraftApp) -> H {
-    let mut h = Harness::builder()
-        .with_size(egui::vec2(1400.0, 900.0))
-        .with_max_steps(32)
-        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
-    h.run();
-    h
-}
+use crate::common::H;
 
 fn root_text(doc: &Document) -> String {
     doc.boxes[&doc.root].text.clone()
@@ -84,7 +75,7 @@ fn opening_example_creates_untitled_clean_tab() {
 fn building_panel_templates_insert_as_new_tab() {
     let mut app = ReasonCraftApp::new_for_test();
     app.tabs[0] = worked_on_tab();
-    let mut h = harness_with(app);
+    let mut h = harness(app);
     let mut args = FluentArgs::new();
     args.set("item", t("template.essay_plan"));
     let label = t_args("building.item_name", &args);
@@ -107,7 +98,7 @@ fn building_panel_templates_insert_as_new_tab() {
 fn file_new_page_offers_blank_templates_and_examples() {
     let mut app = ReasonCraftApp::new_for_test();
     app.tabs[0] = worked_on_tab();
-    let mut h = harness_with(app);
+    let mut h = harness(app);
     let open_new_page = |h: &mut H| {
         h.get_by_label(&t("ribbon.tab.file")).click();
         h.run();
@@ -139,7 +130,7 @@ fn file_new_page_offers_blank_templates_and_examples() {
 fn help_ribbon_opens_examples() {
     let mut app = ReasonCraftApp::new_for_test();
     app.ribbon_tab = RibbonTab::Help;
-    let mut h = harness_with(app);
+    let mut h = harness(app);
     h.get_by_label(&t("example.reasoning")).click();
     h.run();
     let want = example(Example::Reasoning, "en");
@@ -265,7 +256,7 @@ fn missing_recent_file_removed_with_error() {
     let missing = dir.path().join("gone.rcraft");
     let mut app = ReasonCraftApp::new_for_test();
     app.settings.recent_files = vec![missing.clone(), present.clone()];
-    let mut h = harness_with(app);
+    let mut h = harness(app);
     h.get_by_label(&t("ribbon.tab.file")).click();
     h.run();
     h.get_by_label(&t("backstage.recent")).click();
