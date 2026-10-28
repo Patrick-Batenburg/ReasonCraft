@@ -25,12 +25,6 @@ impl Document {
         self.boxes.get_mut(&id).ok_or(EditError::NotFound)
     }
 
-    fn finish_edit(&mut self) {
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
-    }
-
     /// Accept, doubt or reject a claim or premise.
     pub fn set_acceptance(&mut self, id: NodeId, v: Option<Acceptance>) -> Result<(), EditError> {
         let node = self.node_mut(id)?;

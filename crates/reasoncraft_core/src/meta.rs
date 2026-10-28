@@ -34,7 +34,7 @@ impl Document {
         }
         if self.meta.language != lang {
             lang.clone_into(&mut self.meta.language);
-            self.finish_meta();
+            self.finish_edit();
         }
         Ok(())
     }
@@ -50,15 +50,9 @@ impl Document {
         if self.meta.title != title || self.meta.author != author {
             title.clone_into(&mut self.meta.title);
             author.clone_into(&mut self.meta.author);
-            self.finish_meta();
+            self.finish_edit();
         }
         Ok(())
-    }
-
-    fn finish_meta(&mut self) {
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
     }
 }
 

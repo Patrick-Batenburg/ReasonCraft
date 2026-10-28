@@ -89,7 +89,7 @@ fn issues_refresh_after_undo() {
     assert!(has(&h, &chip(0)));
     // The cache follows the document's revision.
     let tab = &h.state().tabs[0];
-    assert_eq!(tab.issue_cache.as_ref().unwrap().0, tab.revision());
+    assert_eq!(tab.issue_cache.key().unwrap().0, tab.revision());
 }
 
 #[test]

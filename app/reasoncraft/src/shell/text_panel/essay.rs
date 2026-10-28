@@ -55,7 +55,7 @@ pub fn show(
     tab.essay();
     let mut heights = std::mem::take(&mut tab.essay_heights);
     let tab_ref = &*tab;
-    if let Some((_, view)) = &tab_ref.essay_cache {
+    if let Some(view) = tab_ref.essay_cache.last() {
         let cx = Ctx {
             tab: tab_ref,
             doc: &tab_ref.doc,

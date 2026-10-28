@@ -50,7 +50,7 @@ impl Document {
             return Err(EditError::NotAllowed);
         }
         self.layout_direction = d;
-        self.touch();
+        self.finish_edit();
         Ok(())
     }
 }

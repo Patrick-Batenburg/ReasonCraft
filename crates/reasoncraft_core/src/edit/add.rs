@@ -27,9 +27,7 @@ impl Document {
         );
         self.cards
             .insert(card_id, Card::new(card_id, kind, vec![premise]));
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
+        self.finish_edit();
         Ok((card_id, premise))
     }
 
@@ -46,9 +44,7 @@ impl Document {
         c.premises.insert(at, id);
         self.boxes
             .insert(id, BoxNode::new(id, BoxKind::Premise, text));
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
+        self.finish_edit();
         Ok(id)
     }
 
@@ -72,9 +68,7 @@ impl Document {
         let id = NodeId::new();
         self.insert_into(parent, Item::Box(id), None)?;
         self.boxes.insert(id, BoxNode::new(id, kind, text));
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
+        self.finish_edit();
         Ok(id)
     }
 
@@ -103,9 +97,7 @@ impl Document {
             }
         };
         self.parking.push(item);
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
+        self.finish_edit();
         item
     }
 }

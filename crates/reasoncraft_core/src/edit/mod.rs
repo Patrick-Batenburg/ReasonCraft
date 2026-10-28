@@ -46,8 +46,16 @@ pub enum RemoveMode {
 }
 
 impl Document {
-    pub(crate) fn touch(&mut self) {
+    fn touch(&mut self) {
         self.meta.modified = now_rfc3339();
+    }
+
+    /// The end of every successful edit: stamp the modification time and,
+    /// in debug builds, check the document's invariants.
+    pub(crate) fn finish_edit(&mut self) {
+        self.touch();
+        #[cfg(debug_assertions)]
+        self.check_invariants();
     }
 
     /// Insert `item` under `parent` at `index` (clamped); `None` appends.
@@ -95,9 +103,7 @@ impl Document {
         let node = self.boxes.get_mut(&id).ok_or(EditError::NotFound)?;
         let kept = capped(text, MAX_BOX_CHARS);
         kept.clone_into(&mut node.text);
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
+        self.finish_edit();
         Ok(kept.len() < text.len())
     }
 

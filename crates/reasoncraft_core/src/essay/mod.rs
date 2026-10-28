@@ -169,7 +169,7 @@ impl Document {
         } else {
             self.essay.paragraphs.insert(key, text.to_owned());
         }
-        self.finish_essay_edit();
+        self.finish_edit();
         Ok(())
     }
 
@@ -179,14 +179,8 @@ impl Document {
             return Err(EditError::NotFound);
         }
         self.essay.unplaced.remove(index);
-        self.finish_essay_edit();
+        self.finish_edit();
         Ok(())
-    }
-
-    fn finish_essay_edit(&mut self) {
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
     }
 
     /// Move the paragraphs of `removed` to the unplaced notes. Call before

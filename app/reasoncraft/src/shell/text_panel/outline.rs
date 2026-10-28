@@ -67,7 +67,7 @@ pub fn show(
 ) {
     tab.outline(settings.outline);
     let tab = &*tab;
-    let lines = tab.outline_cache.as_ref().map_or(&[][..], |(_, _, l)| l);
+    let lines = tab.outline_cache.last().map_or(&[][..], Vec::as_slice);
     let (doc, selection) = (&tab.doc, tab.selection);
     let lang = doc.meta.language.as_str();
     toolbar(ui, lines, lang, settings, tk, out);

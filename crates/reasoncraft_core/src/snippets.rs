@@ -63,12 +63,6 @@ impl Document {
         cut
     }
 
-    fn finish_snippet_edit(&mut self) {
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
-    }
-
     fn snippet_index(&self, id: Uuid) -> Result<usize, EditError> {
         self.snippets
             .iter()
@@ -85,7 +79,7 @@ impl Document {
             source: None,
             extra: Map::new(),
         });
-        self.finish_snippet_edit();
+        self.finish_edit();
         id
     }
 
@@ -93,7 +87,7 @@ impl Document {
     pub fn update_snippet_text(&mut self, id: Uuid, text: &str) -> Result<(), EditError> {
         let i = self.snippet_index(id)?;
         self.snippets[i].text = capped(text);
-        self.finish_snippet_edit();
+        self.finish_edit();
         Ok(())
     }
 
@@ -111,7 +105,7 @@ impl Document {
                 .filter(|l| !l.is_empty());
             s
         });
-        self.finish_snippet_edit();
+        self.finish_edit();
         Ok(())
     }
 
@@ -119,7 +113,7 @@ impl Document {
     pub fn remove_snippet(&mut self, id: Uuid) -> Result<(), EditError> {
         let i = self.snippet_index(id)?;
         self.snippets.remove(i);
-        self.finish_snippet_edit();
+        self.finish_edit();
         Ok(())
     }
 
@@ -129,7 +123,7 @@ impl Document {
         let s = self.snippets.remove(i);
         let to = index.min(self.snippets.len());
         self.snippets.insert(to, s);
-        self.finish_snippet_edit();
+        self.finish_edit();
         Ok(())
     }
 }

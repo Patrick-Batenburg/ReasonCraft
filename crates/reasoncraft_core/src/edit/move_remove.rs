@@ -75,9 +75,7 @@ impl Document {
             self.detach(owner, item);
             self.insert_into(to, item, index)?;
         }
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
+        self.finish_edit();
         Ok(())
     }
 
@@ -113,9 +111,7 @@ impl Document {
     /// Removing a card's last premise removes the card, in the same mode.
     pub fn remove_item(&mut self, item: Item, mode: RemoveMode) -> Result<(), EditError> {
         self.remove_inner(item, mode)?;
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
+        self.finish_edit();
         Ok(())
     }
 

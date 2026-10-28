@@ -125,10 +125,7 @@ fn essay_tab_lists_sections_strongest_first() {
 
     // The order is cached per revision, like the outline.
     let rev = h.state().tabs[0].revision();
-    assert_eq!(
-        h.state().tabs[0].essay_cache.as_ref().map(|c| c.0),
-        Some(rev)
-    );
+    assert_eq!(h.state().tabs[0].essay_cache.key().copied(), Some(rev));
 }
 
 #[test]

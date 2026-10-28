@@ -17,6 +17,7 @@ use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Packa
 use crate::canvas::Camera;
 use crate::i18n::t;
 use crate::jobs::JobId;
+use crate::memo::Memo;
 
 mod essay_edit;
 mod find_state;
@@ -92,13 +93,13 @@ pub struct DocTab {
     revision: u64,
     /// The outline last built, with the revision and options it was built
     /// for (see [`Self::outline`]).
-    pub outline_cache: Option<(u64, OutlineOptions, Vec<OutlineLine>)>,
+    pub outline_cache: Memo<(u64, OutlineOptions), Vec<OutlineLine>>,
     /// The issues last found, with the revision and checks they were found
     /// for (see [`Self::issues`]).
-    pub issue_cache: Option<(u64, CheckSet, Vec<Issue>)>,
+    pub issue_cache: Memo<(u64, CheckSet), Vec<Issue>>,
     /// The Essay tab's view, with the revision it was built for (see
     /// [`Self::essay`]).
-    pub essay_cache: Option<(u64, EssayView)>,
+    pub essay_cache: Memo<u64, EssayView>,
     /// The heights of the Essay tab's rows, so it lays out only those in
     /// view; [`RowHeights::laid_out`] counts the rows of the last frame.
     pub essay_heights: RowHeights<EssayRow>,
@@ -189,9 +190,9 @@ impl DocTab {
             snippet_focus: None,
             snippet_capped: None,
             revision: 0,
-            outline_cache: None,
-            issue_cache: None,
-            essay_cache: None,
+            outline_cache: Memo::default(),
+            issue_cache: Memo::default(),
+            essay_cache: Memo::default(),
             essay_heights: RowHeights::default(),
             check_heights: RowHeights::default(),
             pending_images: HashMap::new(),
@@ -227,29 +228,17 @@ impl DocTab {
     /// The document's outline for `opts`, rebuilt only when the document or
     /// the options changed since the last call.
     pub fn outline(&mut self, opts: OutlineOptions) -> &[OutlineLine] {
-        let fresh = self
-            .outline_cache
-            .as_ref()
-            .is_some_and(|(rev, o, _)| *rev == self.revision && *o == opts);
-        if !fresh {
-            let lines = build_outline(&self.doc, &opts);
-            self.outline_cache = Some((self.revision, opts, lines));
-        }
-        self.outline_cache.as_ref().map_or(&[], |(_, _, l)| l)
+        let doc = &self.doc;
+        self.outline_cache
+            .get((self.revision, opts), || build_outline(doc, &opts))
     }
 
     /// The document's issues for the checks in `set`, found again only when
     /// the document or the set changed since the last call.
     pub fn issues(&mut self, set: &CheckSet) -> &[Issue] {
-        let fresh = self
-            .issue_cache
-            .as_ref()
-            .is_some_and(|(rev, s, _)| *rev == self.revision && s == set);
-        if !fresh {
-            let issues = run_checks(&self.doc, set);
-            self.issue_cache = Some((self.revision, set.clone(), issues));
-        }
-        self.issue_cache.as_ref().map_or(&[], |(_, _, i)| i)
+        let doc = &self.doc;
+        self.issue_cache
+            .get((self.revision, set.clone()), || run_checks(doc, set))
     }
 
     /// Note that a file was loaded into this tab, in place of a tab at

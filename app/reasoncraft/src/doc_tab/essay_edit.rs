@@ -80,14 +80,8 @@ impl DocTab {
     /// The Essay tab's view of the document, rebuilt only when the
     /// document changed since the last call.
     pub fn essay(&mut self) -> &EssayView {
-        let fresh = self
-            .essay_cache
-            .as_ref()
-            .is_some_and(|(rev, _)| *rev == self.revision);
-        if !fresh {
-            self.essay_cache = Some((self.revision, build_view(&self.doc)));
-        }
-        &self.essay_cache.as_ref().expect("just built").1
+        let doc = &self.doc;
+        self.essay_cache.get(self.revision, || build_view(doc))
     }
 
     /// Show `text` live as the paragraph for `slot`, without a history

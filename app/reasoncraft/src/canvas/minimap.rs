@@ -12,6 +12,7 @@ use reasoncraft_core::{BoxKind, Document, Layout, LayoutDirection, Role as MapRo
 use super::paint::content_bounds;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
+use crate::memo::Memo;
 use crate::scene::rating::card_colour;
 use crate::settings::MinimapMode;
 use crate::theme::Tokens;
@@ -39,34 +40,28 @@ pub struct MiniRect {
 /// theme, the layout direction and the marks that size the boxes.
 type CacheKey = (u64, bool, LayoutDirection, IndicatorOptions);
 
-/// The minimap's picture, kept until its [`CacheKey`] changes.
-pub struct Cache {
-    key: Option<CacheKey>,
+/// The minimap's picture: the rects to draw and what they span.
+pub struct Picture {
     rects: Vec<MiniRect>,
     bounds: Rect,
 }
 
-impl Default for Cache {
-    fn default() -> Self {
-        Self {
-            key: None,
-            rects: Vec::new(),
-            bounds: Rect::NOTHING,
-        }
-    }
-}
+/// The minimap's picture, kept until its [`CacheKey`] changes.
+pub type Cache = Memo<CacheKey, Picture>;
 
-impl Cache {
-    /// The picture of `doc` laid out as `layout`, rebuilt when `key` differs
-    /// from the one it was made for: card frames first, then boxes.
-    fn get(&mut self, key: CacheKey, doc: &Document, layout: &Layout, tk: &Tokens) -> &Self {
-        if self.key != Some(key) {
-            self.key = Some(key);
-            self.bounds = content_bounds(layout);
-            self.rects = picture(doc, layout, tk);
-        }
-        self
-    }
+/// The picture of `doc` laid out as `layout`, made again only when `key`
+/// differs from the one it was made for: card frames first, then boxes.
+fn cached<'a>(
+    cache: &'a mut Cache,
+    key: CacheKey,
+    doc: &Document,
+    layout: &Layout,
+    tk: &Tokens,
+) -> &'a Picture {
+    cache.get(key, || Picture {
+        rects: picture(doc, layout, tk),
+        bounds: content_bounds(layout),
+    })
 }
 
 /// Card frames as outlines in their colour, then boxes filled in theirs:
@@ -185,7 +180,7 @@ pub(super) fn show(
         return;
     }
     let key = (tab.revision(), tk.dark, tab.doc.layout_direction, marks);
-    let cache = tab.minimap.get(key, &tab.doc, layout, tk);
+    let cache = cached(&mut tab.minimap, key, &tab.doc, layout, tk);
     let panel = panel_rect(viewport);
     let map = Mapping::new(cache.bounds, panel);
 

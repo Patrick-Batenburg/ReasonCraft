@@ -129,9 +129,7 @@ impl Document {
             return Err(EditError::NotFound);
         }
         b.text.replace_range(range, with);
-        self.touch();
-        #[cfg(debug_assertions)]
-        self.check_invariants();
+        self.finish_edit();
         Ok(())
     }
 
@@ -155,9 +153,7 @@ impl Document {
             count += ranges.len();
         }
         if count > 0 {
-            self.touch();
-            #[cfg(debug_assertions)]
-            self.check_invariants();
+            self.finish_edit();
         }
         count
     }

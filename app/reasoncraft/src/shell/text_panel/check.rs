@@ -106,7 +106,7 @@ pub fn show(
     tab.issues(&settings.checks);
     let mut heights = std::mem::take(&mut tab.check_heights);
     let tab_ref = &*tab;
-    let issues = tab_ref.issue_cache.as_ref().map_or(&[][..], |(_, _, i)| i);
+    let issues = tab_ref.issue_cache.last().map_or(&[][..], Vec::as_slice);
     let ignored = tab_ref.doc.ignored_hints.len();
     if issues.is_empty() {
         ui.label(RichText::new(t("check.all_clear")).color(tk.text_muted));

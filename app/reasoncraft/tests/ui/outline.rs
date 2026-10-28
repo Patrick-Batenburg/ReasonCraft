@@ -314,6 +314,6 @@ fn outline_refreshes_after_edit() {
     h.run();
     assert!(has_row(&h, "Claim"));
     let tab = &h.state().tabs[0];
-    let (rev, _, _) = tab.outline_cache.as_ref().expect("cached");
+    let (rev, _) = tab.outline_cache.key().expect("cached");
     assert_eq!(*rev, tab.revision());
 }
