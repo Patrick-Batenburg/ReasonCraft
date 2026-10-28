@@ -20,7 +20,8 @@ pub enum RecoveryChoice {
     Later,
 }
 
-/// Show the recovery prompt when crashed sessions left documents behind.
+/// Show the recovery prompt when crashed sessions left documents behind
+/// (their sessions stay locked until it is answered).
 pub(crate) fn offer(app: &mut ReasonCraftApp) {
     let Some(store) = &app.recovery else {
         return;
@@ -47,7 +48,7 @@ pub(crate) fn resume_offer(app: &mut ReasonCraftApp) {
     }
 }
 
-/// The answer to the recovery prompt.
+/// The answer to the recovery prompt; then the crashed sessions' locks go.
 pub(crate) fn resolve(app: &mut ReasonCraftApp, choice: RecoveryChoice) {
     let Some(Modal::Recover(docs)) = app.modal.take() else {
         return;
@@ -75,6 +76,10 @@ pub(crate) fn resolve(app: &mut ReasonCraftApp, choice: RecoveryChoice) {
             }
         }
         RecoveryChoice::Later => {}
+    }
+    // After the removals above: another app may offer what is left.
+    if let Some(store) = &app.recovery {
+        store.release(docs);
     }
 }
 

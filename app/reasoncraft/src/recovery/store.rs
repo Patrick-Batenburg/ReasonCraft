@@ -30,10 +30,7 @@ use chrono::{DateTime, Utc};
 use reasoncraft_core::{Package, Uuid};
 use serde::{Deserialize, Serialize};
 
-use super::disk::{
-    LOCK_FILE, create_locked_session, entries, is_lock_file, remove_entry, remove_if_empty,
-    take_lock, write_entry,
-};
+use super::disk::{LOCK_FILE, create_locked_session, is_lock_file, remove_entry, write_entry};
 
 /// A copy of a tab's document, assets and unknown entries, taken on the
 /// UI thread (assets share their bytes, so it is cheap).
@@ -71,13 +68,13 @@ pub struct WriteFailure {
 
 /// Test hooks for writes: hold them back, or make them fail.
 #[derive(Clone, Debug, Default)]
-struct WriteHooks {
+pub(super) struct WriteHooks {
     hold: Option<Hold>,
     fail: bool,
 }
 
 /// Work for the worker thread.
-enum Op {
+pub(super) enum Op {
     /// Write `tab_key`'s copy into `folder` (this session's); then, only if
     /// that succeeded, delete the orphaned copy `then_discard` (a restore).
     /// When that fails, the tab's next write deletes it.
@@ -96,14 +93,16 @@ enum Op {
         tab_key: Uuid,
         tidy: bool,
     },
+    /// Release crashed sessions' locks (see [`super::Orphans`]).
+    Release(Arc<Vec<(PathBuf, File)>>),
     /// Answer once everything sent before is done.
     Flush(Sender<()>),
 }
 
 /// This app's session in the recovery folder.
 pub struct RecoveryStore {
-    dir: PathBuf,
-    session: Uuid,
+    pub(super) dir: PathBuf,
+    pub(super) session: Uuid,
     _lock: File,
     ops: Sender<Op>,
     worker: JoinHandle<()>,
@@ -182,34 +181,6 @@ impl RecoveryStore {
     /// This session's folder.
     pub fn session_dir(&self) -> PathBuf {
         self.dir.join(self.session.to_string())
-    }
-
-    /// The autosaved documents of sessions that ended without a normal exit
-    /// (their lock is free), oldest first. Empty folders of such sessions
-    /// are removed.
-    pub fn orphaned(&self) -> Vec<RecoveredDoc> {
-        let Ok(sessions) = fs::read_dir(&self.dir) else {
-            return Vec::new();
-        };
-        let mut found = Vec::new();
-        for entry in sessions.flatten() {
-            let folder = entry.path();
-            let session = entry.file_name().to_str().and_then(|n| n.parse().ok());
-            let Some(session) = session.filter(|s| *s != self.session) else {
-                continue;
-            };
-            // Held while the folder is read, and while an empty one goes.
-            let Some(lock) = take_lock(&folder) else {
-                continue;
-            };
-            let before = found.len();
-            found.extend(entries(&folder, session));
-            if found.len() == before {
-                remove_if_empty(&folder, lock);
-            }
-        }
-        found.sort_by_key(|d: &RecoveredDoc| d.meta.saved_at);
-        found
     }
 
     /// Autosave `pkg` as tab `tab_key`'s copy, on the worker.
@@ -327,7 +298,7 @@ impl RecoveryStore {
         self.hooks.fail = fail;
     }
 
-    fn send(&self, op: Op) {
+    pub(super) fn send(&self, op: Op) {
         self.pending.fetch_add(1, Ordering::SeqCst);
         if self.ops.send(op).is_err() {
             self.pending.fetch_sub(1, Ordering::SeqCst);
@@ -363,6 +334,10 @@ fn run(op: Op) -> io::Result<()> {
             tab_key,
             tidy,
         } => remove_entry(&folder, tab_key, tidy),
+        Op::Release(locks) => {
+            super::orphans::release(locks);
+            Ok(())
+        }
         Op::Flush(_) => Ok(()),
     }
 }

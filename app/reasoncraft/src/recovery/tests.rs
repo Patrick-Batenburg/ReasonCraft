@@ -89,6 +89,7 @@ fn discarding_the_last_entry_removes_the_orphan_folder() {
     b.wait_idle();
     assert!(orphan_dir.is_dir(), "one entry left");
     b.discard(&found[1]);
+    b.release(found);
     b.wait_idle();
     assert!(!orphan_dir.exists());
 }
@@ -118,11 +119,13 @@ fn restore_write_failure_keeps_the_orphan() {
     write(&a, "Robots");
     drop(a);
     let mut b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
-    let found = b.orphaned();
+    let offered = b.orphaned();
+    let found = offered.to_vec();
     let pkg = || Package::new(Document::new("Robots"));
     b.set_fail_writes(true);
     let key = Uuid::new_v4();
     b.write_then_discard(key, pkg(), meta("Robots"), &found[0]);
+    b.release(offered);
     b.wait_idle();
     assert!(found[0].package.is_file(), "the only copy is kept");
     let failures = b.failed_writes();
@@ -264,4 +267,38 @@ fn recovery_folder_and_copies_are_private() {
     for ext in ["rcraft", "json"] {
         assert_eq!(mode(&a.session_dir().join(format!("{key}.{ext}"))), 0o600);
     }
+}
+
+#[test]
+fn offered_sessions_stay_locked_until_answered() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    write(&a, "Robots");
+    drop(a);
+    let b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    let offered = b.orphaned();
+    assert_eq!(offered.len(), 1);
+    let c = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    assert!(c.orphaned().is_empty(), "B's prompt is still open");
+    for doc in offered.iter() {
+        b.discard(doc);
+    }
+    b.release(offered);
+    b.wait_idle();
+    assert!(c.orphaned().is_empty(), "discarded");
+    assert_eq!(entries(dir.path()), 2, "A's folder went: B's and C's left");
+}
+
+#[test]
+fn later_hands_the_offer_on() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    write(&a, "Robots");
+    drop(a);
+    let b = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    let offered = b.orphaned();
+    b.release(offered);
+    b.wait_idle();
+    let c = RecoveryStore::open(dir.path().to_path_buf()).unwrap();
+    assert_eq!(c.orphaned().len(), 1, "offered again once B let go");
 }

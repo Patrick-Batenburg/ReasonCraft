@@ -65,7 +65,7 @@ pub fn crash_with_edited_file(rec: &Path, path: &Path) {
 
 pub fn offered(app: &ReasonCraftApp) -> Vec<recovery::RecoveredDoc> {
     match &app.modal {
-        Some(Modal::Recover(docs)) => docs.clone(),
+        Some(Modal::Recover(docs)) => docs.to_vec(),
         other => panic!("expected the recovery prompt, got {other:?}"),
     }
 }

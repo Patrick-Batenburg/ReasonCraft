@@ -60,7 +60,7 @@ pub enum Modal {
         request: crate::export::ExportRequest,
     },
     /// A crashed session left these documents behind: restore them?
-    Recover(Vec<crate::recovery::RecoveredDoc>),
+    Recover(crate::recovery::Orphans),
     /// An Argdown import changed or left out these constructs.
     ImportReport(Vec<reasoncraft_core::ImportNote>),
     /// Put every setting back to its default?

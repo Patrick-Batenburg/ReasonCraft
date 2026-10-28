@@ -85,7 +85,7 @@ pub struct ReasonCraftApp {
     /// tick.
     pub(crate) autosave_clock: Option<f64>,
     /// The recovery prompt, waiting for another message to be closed first.
-    pub(crate) recovery_offer: Option<Vec<crate::recovery::RecoveredDoc>>,
+    pub(crate) recovery_offer: Option<crate::recovery::Orphans>,
     /// The export or page setup dialog, when open.
     pub export_dialog: Option<ExportDialog>,
     /// The page the Text panel's Help tab shows.
