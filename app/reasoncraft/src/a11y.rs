@@ -90,15 +90,17 @@ pub fn name_dialog(ui: &egui::Ui, heading: &str) {
     }
 }
 
-/// Whether dialog `id` showing `heading` is new this frame: it was not
-/// shown last frame, or it showed another heading. Its default control
-/// then takes the keyboard focus.
-pub fn dialog_opened(ctx: &egui::Context, id: Id, heading: &str) -> bool {
+/// Whether dialog `id` showing `identity` is new this frame: it was not
+/// shown last frame, or it showed another dialog. `identity` tells two
+/// dialogs apart that may follow each other with the same heading (its
+/// heading, plus the tab a prompt is about). Its default control then
+/// takes the keyboard focus.
+pub fn dialog_opened(ctx: &egui::Context, id: Id, identity: &str) -> bool {
     let pass = ctx.cumulative_pass_nr();
     let key = id.with("dialog_opened");
     let last: Option<(u64, String)> = ctx.data(|d| d.get_temp(key));
-    ctx.data_mut(|d| d.insert_temp(key, (pass, heading.to_owned())));
-    !last.is_some_and(|(seen, shown)| seen + 1 >= pass && shown == heading)
+    ctx.data_mut(|d| d.insert_temp(key, (pass, identity.to_owned())));
+    !last.is_some_and(|(seen, shown)| seen + 1 >= pass && shown == identity)
 }
 
 /// A polite live region holding what `add` shows: a screen reader reads

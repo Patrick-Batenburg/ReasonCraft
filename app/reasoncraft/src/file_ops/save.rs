@@ -19,7 +19,7 @@ pub fn save_tab(
     dialogs: &dyn FileDialogs,
     save_as: bool,
 ) -> Result<SaveOutcome, FileError> {
-    let path = match target(tab, dialogs, save_as, false) {
+    let path = match target(tab, dialogs, save_as, None) {
         Ok(path) => path,
         Err(outcome) => return Ok(outcome),
     };
@@ -32,20 +32,21 @@ pub fn save_tab(
 /// Where a save of `tab` writes, after ending its edit session: its path,
 /// or one asked for when it has none or `save_as` is set. Otherwise how
 /// the save ends before writing (cancelled, or a replace to confirm).
-/// `saving`: a save of the tab is being written, so its file changing on
-/// disk is that save's doing.
+/// `pending`: where the last save of the tab still being written goes. A
+/// Save writes there too (after a Save As, not to the old file), and that
+/// file changing on disk is that save's doing.
 fn target(
     tab: &mut DocTab,
     dialogs: &dyn FileDialogs,
     save_as: bool,
-    saving: bool,
+    pending: Option<&Path>,
 ) -> Result<PathBuf, SaveOutcome> {
     tab.commit_session();
-    let path = match (&tab.path, save_as) {
-        (Some(path), false) if !saving && changed_on_disk(tab, path) => {
-            return Err(SaveOutcome::OriginalChanged(path.clone()));
+    let path = match (pending.or(tab.path.as_deref()), save_as) {
+        (Some(path), false) if pending.is_none() && changed_on_disk(tab, path) => {
+            return Err(SaveOutcome::OriginalChanged(path.to_path_buf()));
         }
-        (Some(path), false) => path.clone(),
+        (Some(path), false) => path.to_path_buf(),
         _ => {
             let suggested = format!("{}.{EXTENSION}", tab.file_stem());
             let Some(chosen) = dialogs.pick_save(&suggested) else {
@@ -77,8 +78,8 @@ pub(super) fn save_and_report(app: &mut ReasonCraftApp, i: usize, save_as: bool,
     let Some(tab) = app.tabs.get_mut(i) else {
         return;
     };
-    let saving = app.saves.saving(tab);
-    match target(tab, &*app.dialogs, save_as, saving) {
+    let pending = app.saves.pending_path(tab).map(Path::to_path_buf);
+    match target(tab, &*app.dialogs, save_as, pending.as_deref()) {
         Ok(path) => app.saves.start(tab, path, then),
         Err(SaveOutcome::NeedsReplaceConfirm(path)) => ask_replace(app, i, path, then, false),
         Err(SaveOutcome::OriginalChanged(path)) => ask_replace(app, i, path, then, true),
@@ -95,7 +96,7 @@ fn ask_replace(
     original_changed: bool,
 ) {
     app.modal = Some(Modal::ConfirmReplace {
-        tab,
+        tab: app.tabs[tab].recovery_key,
         path,
         then,
         original_changed,
@@ -116,7 +117,10 @@ pub fn resolve_replace(app: &mut ReasonCraftApp, replace: bool) {
     else {
         return;
     };
-    let Some(doc_tab) = app.tabs.get(tab).filter(|_| replace) else {
+    let Some(doc_tab) = (app.tabs.iter())
+        .find(|t| t.recovery_key == tab)
+        .filter(|_| replace)
+    else {
         return;
     };
     app.saves.start(doc_tab, path, then);

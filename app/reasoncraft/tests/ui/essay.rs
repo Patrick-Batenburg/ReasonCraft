@@ -233,10 +233,10 @@ fn essay_session_commits_on_save_and_close() {
     assert!(matches!(
         app.modal,
         Some(Modal::Unsaved {
-            tab: 0,
+            tab,
             window: false,
             ..
-        })
+        }) if tab == app.tabs[0].recovery_key
     ));
     run(&mut app, [Action::ResolveUnsaved(UnsavedChoice::Save)]);
     let saved = file::open_package(&path).unwrap();

@@ -1,10 +1,13 @@
 //! Work on worker threads, so the window keeps drawing while it runs:
 //! exports ([`crate::export::ExportJobs`]), inserted images
-//! ([`crate::canvas::images::ImageJobs`]) and spelling dictionaries
+//! ([`crate::canvas::images::ImageJobs`]), saves
+//! ([`crate::file_ops::SaveJobs`]) and spelling dictionaries
 //! ([`crate::spell::SpellService`]). The frame loop polls each job
 //! (it never blocks), keeps repainting while one runs, and the status bar
-//! shows one busy chip for the exports and images (a
-//! loading dictionary shows in the spelling panel instead).
+//! shows one busy chip for the exports and images and "Saving…" for saves
+//! (a loading dictionary shows in the spelling panel instead). Only a
+//! close waits for the saves on the UI thread, at most
+//! [`crate::file_ops::SAVE_CLOSE_WAIT`].
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};

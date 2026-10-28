@@ -91,7 +91,8 @@ pub(super) fn prepared(app: &mut ReasonCraftApp, job: JobId, node: NodeId, resul
         }
         Err(failure) => Some(failure),
     };
-    let save_now = matches!(app.modal, Some(Modal::Unsaved { tab, waiting: true, .. }) if tab == i)
+    let key = app.tabs[i].recovery_key;
+    let save_now = matches!(app.modal, Some(Modal::Unsaved { tab, waiting: true, .. }) if tab == key)
         && app.tabs[i].pending_images.is_empty();
     if save_now {
         file_ops::resolve_unsaved(app, UnsavedChoice::Save);
@@ -175,12 +176,11 @@ pub(super) fn wait_before_save(app: &mut ReasonCraftApp) -> bool {
     let Some(Modal::Unsaved { tab, .. }) = app.modal else {
         return false;
     };
-    flush_tab(app, tab);
-    if app
-        .tabs
-        .get(tab)
-        .is_none_or(|t| t.pending_images.is_empty())
-    {
+    let Some(i) = file_ops::tab_index(app, tab) else {
+        return false;
+    };
+    flush_tab(app, i);
+    if app.tabs[i].pending_images.is_empty() {
         return false;
     }
     if let Some(Modal::Unsaved { waiting, .. }) = &mut app.modal {

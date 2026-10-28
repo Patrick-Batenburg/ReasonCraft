@@ -3,15 +3,18 @@
 //! so two saves of one file never interleave. The frame loop picks up each
 //! result ([`poll_saves`]): the tab takes the path and counts as saved,
 //! unless it changed while the file was written, and what the save was
-//! part of (a tab or window close) carries on.
+//! part of (a tab or window close) carries on once no dialog is open.
+//! Tabs are named by their [`DocTab::recovery_key`] throughout: a close
+//! that a save carries on may remove a tab before the others.
 
-use std::path::PathBuf;
+use std::collections::VecDeque;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
 use reasoncraft_core::file::{self, FileError};
 use reasoncraft_core::{Package, Uuid};
 
-use super::{AfterSave, FileOp, ask_from, remove_tab, request_close_tab, show_error};
+use super::{AfterSave, FileOp, ask_from, ask_or_close, show_error, tab_index};
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
 use crate::jobs::{Hold, Job, JobState, Queue};
@@ -29,11 +32,25 @@ struct Running {
     job: Job<WriteResult>,
 }
 
+/// What a finished save leaves to do once no dialog is open: carry on
+/// with what it was part of, or say why it failed.
+enum Next {
+    Then(Uuid, AfterSave),
+    Failed(PathBuf, FileError),
+}
+
+/// How long a close waits on the UI thread for the saves being written
+/// (they are usually done). A save still running after that goes on in
+/// the background, and its tab is asked about as unsaved meanwhile.
+pub const SAVE_CLOSE_WAIT: Duration = Duration::from_secs(30);
+
 /// The saves being written, for all tabs.
 #[derive(Default)]
 pub struct SaveJobs {
     running: Vec<Running>,
     queue: Queue,
+    /// Finished saves whose follow-up waits for the open dialog to close.
+    next: VecDeque<Next>,
     /// Hold each save back until released, before it writes (tests only).
     pub hold: Option<Hold>,
 }
@@ -44,9 +61,12 @@ impl SaveJobs {
         !self.running.is_empty()
     }
 
-    /// Whether a save of `tab` is being written.
-    pub fn saving(&self, tab: &DocTab) -> bool {
-        self.running.iter().any(|r| r.tab == tab.recovery_key)
+    /// Where the last save of `tab` that is still being written goes: a
+    /// Save meanwhile writes there too, not to the tab's old file.
+    pub fn pending_path(&self, tab: &DocTab) -> Option<&Path> {
+        (self.running.iter().rev())
+            .find(|r| r.tab == tab.recovery_key)
+            .map(|r| r.path.as_path())
     }
 
     /// Start writing `tab` as it is now to `path`; `then` carries on once
@@ -122,44 +142,58 @@ pub(super) fn mark_written(
     tab.recovered_from = None;
 }
 
-/// Picks up the saves that ended: marks their tabs saved and carries on
+/// Picks up the saves that ended: marks their tabs saved, then carries on
 /// with what each was part of, or shows why it failed (which ends a close
-/// it was part of). Run once per frame.
+/// it was part of). While a dialog is open, that waits: the dialog's
+/// answer refers to a tab, and a new message must not replace it. Run
+/// once per frame.
 pub fn poll_saves(app: &mut ReasonCraftApp) {
     for (r, result) in app.saves.finished() {
-        let Some(i) = app.tabs.iter().position(|t| t.recovery_key == r.tab) else {
+        let Some(i) = tab_index(app, r.tab) else {
             continue;
         };
         match result {
             Ok(mtime) => {
                 mark_written(&mut app.tabs[i], r.path, r.revision, mtime);
                 super::save::note_saved(app, i);
-                after_save(app, i, r.then);
+                if r.then != AfterSave::Nothing {
+                    app.saves.next.push_back(Next::Then(r.tab, r.then));
+                }
             }
-            Err(err) => show_error(app, FileOp::Save, &r.path, &err),
+            Err(err) => app.saves.next.push_back(Next::Failed(r.path, err)),
+        }
+    }
+    while app.modal.is_none()
+        && let Some(next) = app.saves.next.pop_front()
+    {
+        match next {
+            Next::Then(tab, then) => after_save(app, tab, then),
+            Next::Failed(path, err) => show_error(app, FileOp::Save, &path, &err),
         }
     }
 }
 
-/// Carry on with what tab `i`'s save was part of. A tab changed while it
-/// was being written still has unsaved work: its close asks again.
-fn after_save(app: &mut ReasonCraftApp, i: usize, then: AfterSave) {
+/// Carry on with what tab `tab`'s save was part of. A tab changed while
+/// it was being written still has unsaved work: its close asks again.
+fn after_save(app: &mut ReasonCraftApp, tab: Uuid, then: AfterSave) {
+    let Some(i) = tab_index(app, tab) else {
+        return;
+    };
     match then {
         AfterSave::Nothing => {}
-        AfterSave::CloseTab if app.tabs[i].has_unsaved_work() => request_close_tab(app, i),
-        AfterSave::CloseTab => remove_tab(app, i),
+        AfterSave::CloseTab => ask_or_close(app, i),
         AfterSave::ContinueWindowClose => ask_from(app, i),
     }
 }
 
-/// Waits for every running save and applies the results: before a close
-/// (so a tab being saved is not asked about), and for tests and scripted
-/// runs, which have no frame loop.
+/// Waits for every running save (at most [`SAVE_CLOSE_WAIT`]) and applies
+/// the results: before a close (so a tab being saved is not asked about),
+/// and for tests and scripted runs, which have no frame loop.
 pub fn wait_for_saves(app: &mut ReasonCraftApp) {
     let start = Instant::now();
     while app.saves.busy() {
         poll_saves(app);
-        if !app.saves.busy() || start.elapsed() > Hold::MAX_WAIT {
+        if !app.saves.busy() || start.elapsed() > SAVE_CLOSE_WAIT {
             break;
         }
         std::thread::sleep(Duration::from_millis(1));

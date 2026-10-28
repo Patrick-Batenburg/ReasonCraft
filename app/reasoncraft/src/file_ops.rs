@@ -7,6 +7,7 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+use reasoncraft_core::Uuid;
 use reasoncraft_core::file::{self, FileError};
 
 use crate::actions::UnsavedChoice;
@@ -22,12 +23,14 @@ pub(crate) use errors::show_error;
 pub use errors::{error_key, error_text};
 use save::save_and_report;
 pub use save::{resolve_replace, save_active, save_tab};
-pub use save_job::{SaveJobs, poll_saves, wait_for_saves};
+pub use save_job::{SAVE_CLOSE_WAIT, SaveJobs, poll_saves, wait_for_saves};
 
 /// The file extension of ReasonCraft maps.
 pub const EXTENSION: &str = "rcraft";
 
-/// A dialog shown over the whole window.
+/// A dialog shown over the whole window. Tabs are named by their
+/// [`DocTab::recovery_key`]: a save ending behind the dialog may close a
+/// tab before them.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Modal {
     Error {
@@ -39,7 +42,7 @@ pub enum Modal {
     /// `waiting`: the user chose Save, which happens once the tab's images
     /// are prepared (Cancel still works meanwhile).
     Unsaved {
-        tab: usize,
+        tab: Uuid,
         window: bool,
         waiting: bool,
     },
@@ -48,7 +51,7 @@ pub enum Modal {
     /// or, `original_changed`, the tab's file, changed on disk since the
     /// tab opened or saved it (or, restored, since the crashed app did).
     ConfirmReplace {
-        tab: usize,
+        tab: Uuid,
         path: PathBuf,
         then: AfterSave,
         original_changed: bool,
@@ -242,26 +245,40 @@ pub(crate) fn place_tab(app: &mut ReasonCraftApp, mut tab: DocTab) -> usize {
     app.active
 }
 
+/// Where the tab `key` names is now, if it is still open.
+pub(crate) fn tab_index(app: &ReasonCraftApp, key: Uuid) -> Option<usize> {
+    app.tabs.iter().position(|t| t.recovery_key == key)
+}
+
 /// Continue what a save of tab `tab` was part of.
-fn carry_on(app: &mut ReasonCraftApp, tab: usize, then: AfterSave) {
+fn carry_on(app: &mut ReasonCraftApp, tab: Uuid, then: AfterSave) {
+    let Some(i) = tab_index(app, tab) else {
+        return;
+    };
     match then {
         AfterSave::Nothing => {}
-        AfterSave::CloseTab => remove_tab(app, tab),
-        AfterSave::ContinueWindowClose => ask_from(app, tab + 1),
+        AfterSave::CloseTab => remove_tab(app, i),
+        AfterSave::ContinueWindowClose => ask_from(app, i + 1),
     }
 }
 
-/// Close tab `i`, asking first if it has unsaved changes (or an image
-/// still being prepared). Saves being written finish first.
-pub fn request_close_tab(app: &mut ReasonCraftApp, i: usize) {
+/// Close the tab `key` names, asking first if it has unsaved changes (or
+/// an image still being prepared). Saves being written finish first; one
+/// may close another tab, so the tab is looked for after them.
+pub fn request_close_tab(app: &mut ReasonCraftApp, key: Uuid) {
     wait_for_saves(app);
-    let Some(tab) = app.tabs.get_mut(i) else {
-        return;
-    };
+    if let Some(i) = tab_index(app, key) {
+        ask_or_close(app, i);
+    }
+}
+
+/// Close tab `i`, asking first if it has unsaved changes.
+fn ask_or_close(app: &mut ReasonCraftApp, i: usize) {
+    let tab = &mut app.tabs[i];
     tab.commit_session();
     if tab.has_unsaved_work() {
         app.modal = Some(Modal::Unsaved {
-            tab: i,
+            tab: tab.recovery_key,
             window: false,
             waiting: false,
         });
@@ -306,7 +323,7 @@ fn ask_from(app: &mut ReasonCraftApp, from: usize) {
         Some(i) => {
             app.active = i;
             app.modal = Some(Modal::Unsaved {
-                tab: i,
+                tab: app.tabs[i].recovery_key,
                 window: true,
                 waiting: false,
             });
@@ -331,7 +348,11 @@ pub fn resolve_unsaved(app: &mut ReasonCraftApp, choice: UnsavedChoice) {
         // `then` runs once the file is written (after a replace prompt,
         // once it is answered); a failed or cancelled save ends the close
         // (a failure shows its error).
-        UnsavedChoice::Save => save_and_report(app, tab, false, then),
+        UnsavedChoice::Save => {
+            if let Some(i) = tab_index(app, tab) {
+                save_and_report(app, i, false, then);
+            }
+        }
     }
 }
 

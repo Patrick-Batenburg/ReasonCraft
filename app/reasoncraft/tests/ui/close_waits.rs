@@ -166,7 +166,7 @@ fn save_tab_when_asked(h: &mut H, fake: &FakeDialogs, i: usize, path: PathBuf) {
     step_until(h, |app| {
         app.modal
             == Some(Modal::Unsaved {
-                tab: i,
+                tab: app.tabs[i].recovery_key,
                 window: true,
                 waiting: false,
             })
@@ -208,13 +208,14 @@ fn two_tabs_waiting_for_images_both_save_then_the_window_closes() {
     let (a, b) = (dir.path().join("a.rcraft"), dir.path().join("b.rcraft"));
     save_tab_when_asked(&mut h, &fake, 0, a.clone());
     h.step();
+    let key = h.state().tabs[0].recovery_key;
     assert!(matches!(
         h.state().modal,
         Some(Modal::Unsaved {
-            tab: 0,
+            tab,
             waiting: true,
             ..
-        })
+        }) if tab == key
     ));
     hold_a.release();
     save_tab_when_asked(&mut h, &fake, 1, b.clone());
@@ -223,10 +224,10 @@ fn two_tabs_waiting_for_images_both_save_then_the_window_closes() {
         matches!(
             h.state().modal,
             Some(Modal::Unsaved {
-                tab: 1,
+                tab,
                 waiting: true,
                 ..
-            })
+            }) if tab == h.state().tabs[1].recovery_key
         ),
         "the second tab waits too: {:?}",
         h.state().modal

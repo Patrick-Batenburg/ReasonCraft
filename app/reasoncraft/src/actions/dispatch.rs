@@ -38,6 +38,16 @@ fn step_tab(app: &mut ReasonCraftApp, step: usize) {
     }
 }
 
+/// Close tab `i`, asking first if it has unsaved work. A finished image
+/// lands first, so the prompt counts it.
+fn close_tab(app: &mut ReasonCraftApp, i: usize) {
+    let Some(key) = app.tabs.get(i).map(|t| t.recovery_key) else {
+        return;
+    };
+    images::flush_tab(app, i);
+    file_ops::request_close_tab(app, key);
+}
+
 /// Carry out `action` (after [`super::apply`] has ended what it ends).
 pub(super) fn run(app: &mut ReasonCraftApp, action: Action) {
     match action {
@@ -51,11 +61,7 @@ pub(super) fn run(app: &mut ReasonCraftApp, action: Action) {
         Action::ImportArgdown => super::argdown::import_with_dialog(app),
         Action::Save => file_ops::save_active(app, false),
         Action::SaveAs => file_ops::save_active(app, true),
-        Action::CloseTab(i) => {
-            // A finished image lands first, so the prompt counts it.
-            images::flush_tab(app, i);
-            file_ops::request_close_tab(app, i);
-        }
+        Action::CloseTab(i) => close_tab(app, i),
         Action::CloseWindow => {
             for i in 0..app.tabs.len() {
                 images::flush_tab(app, i);
@@ -81,11 +87,7 @@ pub(super) fn run(app: &mut ReasonCraftApp, action: Action) {
         }
         Action::NextTab => step_tab(app, 1),
         Action::PrevTab => step_tab(app, app.tabs.len().saturating_sub(1)),
-        Action::CloseActiveTab => {
-            let i = app.active;
-            images::flush_tab(app, i);
-            file_ops::request_close_tab(app, i);
-        }
+        Action::CloseActiveTab => close_tab(app, app.active),
         Action::ResolveRecovery(choice) => crate::recovery::resolve(app, choice),
         Action::OpenExample(which) => examples::open_example(app, which),
         Action::OpenTemplate(which) => examples::open_template(app, which),

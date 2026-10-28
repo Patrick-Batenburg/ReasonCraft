@@ -43,10 +43,10 @@ fn window_prompt(app: &ReasonCraftApp) -> bool {
     matches!(
         app.modal,
         Some(Modal::Unsaved {
-            tab: 0,
+            tab,
             window: true,
             ..
-        })
+        }) if tab == app.tabs[0].recovery_key
     )
 }
 

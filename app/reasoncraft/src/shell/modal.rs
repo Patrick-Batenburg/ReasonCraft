@@ -24,7 +24,7 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
     let (heading, body) = texts(app, &modal);
     let (buttons, dismiss, default) = buttons(&modal);
     let id = egui::Id::unique("file_modal");
-    let opened = crate::a11y::dialog_opened(ctx, id, &heading);
+    let opened = crate::a11y::dialog_opened(ctx, id, &identity(&modal, &heading));
     // Enter with no button focused (say after a click on the text) takes
     // the default answer; with a button focused, egui presses that one.
     let enter = ctx.memory(|m| m.focused().is_none())
@@ -89,13 +89,27 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
     }
 }
 
+/// What tells `modal` apart from the dialog before it: its heading, and
+/// the tab it is about (two "Untitled" tabs ask in turn with one heading).
+fn identity(modal: &Modal, heading: &str) -> String {
+    match modal {
+        Modal::Unsaved { tab, .. } | Modal::ConfirmReplace { tab, .. } => {
+            format!("{heading}\n{tab}")
+        }
+        _ => heading.to_owned(),
+    }
+}
+
 /// The heading and body text of `modal`.
 fn texts(app: &ReasonCraftApp, modal: &Modal) -> (String, String) {
     match modal {
         Modal::Error { title, message } => (title.clone(), message.clone()),
         Modal::Unsaved { tab, .. } => {
             let mut args = FluentArgs::new();
-            let name = app.tabs.get(*tab).map(DocTab::name).unwrap_or_default();
+            let name = (app.tabs.iter())
+                .find(|t| t.recovery_key == *tab)
+                .map(DocTab::name)
+                .unwrap_or_default();
             args.set("name", name);
             (t_args("unsaved.title", &args), t("unsaved.message"))
         }

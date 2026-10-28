@@ -43,7 +43,8 @@ fn photo(dir: &Path) -> PathBuf {
 }
 
 fn unsaved_prompt(app: &ReasonCraftApp, window: bool) -> bool {
-    matches!(app.modal, Some(Modal::Unsaved { tab: 0, window: w, waiting: false }) if w == window)
+    matches!(app.modal, Some(Modal::Unsaved { tab, window: w, waiting: false })
+        if w == window && tab == app.tabs[0].recovery_key)
 }
 
 /// Steps frames until `done` holds (at most 60 s); no frame may stall, as
@@ -167,14 +168,19 @@ fn a_failed_image_still_lets_the_waiting_save_go_ahead() {
     hold.release();
     step_until(&mut h, |app| !waiting(app) && !app.saves.busy());
     let app = h.state();
-    assert!(app.active_tab().path.is_none(), "saved and closed");
-    // The failure is reported: as a message, as no other one shows.
+    // The failure is reported: as a message, as no other one shows. The
+    // tab is saved, and closes once the message is closed.
     assert!(
         matches!(app.modal, Some(Modal::Error { .. })),
         "{:?}",
         app.modal
     );
+    assert!(!app.active_tab().is_dirty(), "saved");
     assert!(!saved_image(&dir.path().join("with-image.rcraft"), premise));
+    h.state_mut().push(Action::DismissModal);
+    h.step();
+    h.step();
+    assert!(h.state().active_tab().path.is_none(), "closed");
 }
 
 #[test]
