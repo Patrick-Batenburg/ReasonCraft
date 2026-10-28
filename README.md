@@ -157,6 +157,7 @@ macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, a
 | Alt+3 | Option+Cmd+3 | Rate the selection low: reject a claim or premise, nil card or source |
 | Alt+0 | Option+Cmd+0 | Clear the selection's rating |
 | Alt+Shift+0 | Option+Shift+Cmd+0 | Clear every rating in the map |
+| Ctrl+X / Ctrl+C / Ctrl+V | Cmd+X / Cmd+C / Cmd+V | Cut / copy / paste: cut or copy the selected item with everything under it; paste puts what was copied under the selected box or card (in the parking area with nothing selected), and text copied in another program becomes a new box |
 | Ctrl+Z | Cmd+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Cmd+Y or Shift+Cmd+Z | Redo |
 | Ctrl+S | Cmd+S | Save |

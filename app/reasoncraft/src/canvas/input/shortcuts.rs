@@ -126,6 +126,11 @@ const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     (Shortcut::new(Key::Num0, ALT_SHIFT), || {
         Action::ClearEvaluation(ClearScope::Map)
     }),
+    // Display only: egui turns these keys into its Cut, Copy and Paste
+    // events (see `super::clipboard_events`), so `lookup` skips them.
+    (Shortcut::new(Key::X, CMD), || Action::Cut),
+    (Shortcut::new(Key::C, CMD), || Action::Copy),
+    (Shortcut::new(Key::V, CMD), || Action::Paste(None)),
     (Shortcut::new(Key::Z, CMD), || Action::Undo),
     (Shortcut::new(Key::Y, CMD), || Action::Redo),
     (Shortcut::new(Key::Z, CMD_SHIFT), || Action::Redo),
@@ -215,16 +220,22 @@ fn is_digit(key: Key) -> bool {
     key.name().len() == 1 && key.name().chars().all(|c| c.is_ascii_digit())
 }
 
-/// Paste (egui's own key, not in the table): Ctrl+V, or Cmd+V on macOS.
+/// Paste: Ctrl+V, or Cmd+V on macOS (a display-only entry of the table).
 pub fn paste_shortcut() -> Shortcut {
     Shortcut::new(Key::V, CMD)
+}
+
+/// Whether `action`'s entries are there to be shown only: egui delivers
+/// those keys as its own clipboard events, never as key presses.
+fn display_only(action: &Action) -> bool {
+    matches!(action, Action::Cut | Action::Copy | Action::Paste(_))
 }
 
 /// The action of the entry of `os`'s table that `key` with `mods` presses.
 pub(super) fn lookup(os: Os, key: Key, mods: Modifiers) -> Option<Action> {
     shortcuts(os)
         .iter()
-        .find(|(s, _)| s.matches(key, mods))
+        .find(|(s, ctor)| s.matches(key, mods) && !display_only(&ctor()))
         .map(|(_, ctor)| ctor())
 }
 

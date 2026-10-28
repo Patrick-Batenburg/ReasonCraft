@@ -103,6 +103,11 @@ fn shortcut_table_round_trips() {
     for os in [Os::Windows, Os::Mac, Os::Linux] {
         for (s, ctor) in shortcuts(os) {
             let action = ctor();
+            // Shown only: egui delivers these keys as clipboard events.
+            if matches!(action, Action::Cut | Action::Copy | Action::Paste(_)) {
+                assert_eq!(key_to_action(os, s.key, s.mods, false), None);
+                continue;
+            }
             assert_eq!(
                 key_to_action(os, s.key, s.mods, false),
                 Some(action.clone()),

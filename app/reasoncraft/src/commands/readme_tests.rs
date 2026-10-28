@@ -128,6 +128,7 @@ fn row_actions(head: &str) -> Option<Vec<Action>> {
         "Rate the selection low" => vec![A::Rate(Rate::Low)],
         "Clear the selection's rating" => vec![A::Rate(Rate::Clear)],
         "Clear every rating in the map" => vec![A::ClearEvaluation(ClearScope::Map)],
+        "Cut / copy / paste" => vec![A::Cut, A::Copy, A::Paste(None)],
         "Undo" => vec![A::Undo],
         "Redo" => vec![A::Redo],
         "Save" => vec![A::Save],
