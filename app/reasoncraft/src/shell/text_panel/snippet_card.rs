@@ -143,8 +143,16 @@ fn text_field(
         ui.memory_mut(|m| m.request_focus(id));
     }
     let mut text = snippet.text.clone();
+    // The wheel scrolls the list, not a long text it passes over; it
+    // scrolls the text while it is being edited (the scroll bar always).
+    let editing = focus || ui.memory(|m| m.has_focus(id));
+    let wheel = egui::scroll_area::ScrollSource {
+        mouse_wheel: editing,
+        ..Default::default()
+    };
     let output = ScrollArea::vertical()
         .id_salt(("snippet_scroll", snippet.id))
+        .scroll_source(wheel)
         .max_height(TEXT_MAX_H)
         .auto_shrink([false, true])
         .show(ui, |ui| {

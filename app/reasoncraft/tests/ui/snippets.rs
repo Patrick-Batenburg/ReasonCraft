@@ -295,3 +295,36 @@ fn paste_over_tab_adds_snippet() {
     h.run();
     assert_eq!(texts(&h).len(), 2);
 }
+
+/// The mouse wheel over a long snippet's text scrolls the list, unless
+/// the text is being edited (then it scrolls the text). Optional item of
+/// the re-check round 1.
+#[test]
+fn the_wheel_over_a_snippet_scrolls_the_list() {
+    let long = "A line of a long quote\n".repeat(40);
+    let all: Vec<&str> = vec![long.as_str(); 8];
+    let mut h = harness_with(doc_with(&all));
+    h.run();
+    // The second card moves only when the list scrolls.
+    let [first, before] = centres(&h, &t("snippet.text"))[..2] else {
+        panic!("two cards show")
+    };
+    // Near the top of the first card's text, which is taller than the
+    // card shows.
+    let top = h
+        .get_all_by_label(&t("snippet.text"))
+        .map(|n| n.rect())
+        .find(|r| (r.center().y - first.y).abs() < 0.5)
+        .expect("the first field");
+    h.event(egui::Event::PointerMoved(top.min + egui::vec2(20.0, 30.0)));
+    h.event(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Point,
+        delta: egui::vec2(0.0, -150.0),
+        phase: egui::TouchPhase::Move,
+        source: egui::MouseWheelSource::Wheel,
+        modifiers: egui::Modifiers::default(),
+    });
+    h.run();
+    let after = centres(&h, &t("snippet.text"))[1];
+    assert!(after.y < before.y - 100.0, "{before:?} -> {after:?}");
+}
