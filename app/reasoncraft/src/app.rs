@@ -348,13 +348,20 @@ impl ReasonCraftApp {
 
     /// The whole interface at the size the settings ask for (egui's zoom
     /// factor). The map's zoom works in points, so it comes on top. The
-    /// window's minimum size grows with it (see [`min_window_size`]).
+    /// window's minimum size grows with it (see [`min_window_size`]), once
+    /// the screen's size is known.
     fn sync_ui_scale(&self, ctx: &egui::Context) {
         let scale = self.settings.ui_scale_factor();
         if ctx.zoom_factor() != scale {
             ctx.set_zoom_factor(scale);
-            let monitor = ctx.input(|i| i.viewport().monitor_size);
-            let min = min_window_size(scale, monitor);
+        }
+        let Some(monitor) = ctx.input(|i| i.viewport().monitor_size) else {
+            return;
+        };
+        let min = min_window_size(scale, Some(monitor));
+        let sent = egui::Id::new("min_window_sent");
+        if ctx.data(|d| d.get_temp::<egui::Vec2>(sent)) != Some(min) {
+            ctx.data_mut(|d| d.insert_temp(sent, min));
             ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min));
         }
     }

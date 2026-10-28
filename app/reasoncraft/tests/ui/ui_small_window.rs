@@ -364,6 +364,11 @@ fn minimum_window_size_follows_the_interface_size() {
         .with_size(egui::vec2(1600.0, 1000.0))
         .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
     h.run();
+    // Once the screen's size is known.
+    let screen = egui::vec2(2560.0, 1440.0);
+    for v in h.input_mut().viewports.values_mut() {
+        v.monitor_size = Some(screen);
+    }
     h.state_mut().settings.ui_scale = 2.0;
     h.step();
     let min = h
