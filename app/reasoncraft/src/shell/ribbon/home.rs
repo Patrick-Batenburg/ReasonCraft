@@ -53,7 +53,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     });
     group(ui, &tk, Icon::Undo, &t("group.editing"), |ui| {
         small_column(ui, |ui| {
-            for id in ["home.delete", "home.delete_branch"] {
+            for id in ["home.delete", "home.delete_branch", "home.park"] {
                 small_command(ui, &tk, id, enabled(id), &mut out);
             }
         });

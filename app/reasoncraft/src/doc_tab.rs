@@ -83,7 +83,7 @@ pub struct DocTab {
     pub reveal_pending: bool,
     /// The box whose comment popover is showing.
     pub comments_open: Option<NodeId>,
-    /// The parked item waiting for a target ("Connect to…").
+    /// The item waiting for a target ("Move to…").
     pub connect_mode: Option<Item>,
     /// The snippet whose text field should take keyboard focus next frame.
     pub snippet_focus: Option<Uuid>,

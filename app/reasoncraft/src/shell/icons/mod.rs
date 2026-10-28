@@ -69,8 +69,10 @@ pub enum Icon {
     Source,
     /// A speech bubble (comments).
     Comment,
-    /// A box with a line up to another box ("Connect to…").
+    /// A box with a line up to another box ("Move to…").
     Connect,
+    /// A box going down into a tray ("Move to parking").
+    Park,
     /// A box between turning arrows (change a box's type).
     BoxType,
     /// Two chain links (a box's link).
@@ -371,7 +373,8 @@ pub fn paint(painter: &Painter, rect: Rect, icon: Icon, fg: Color32, bg: Color32
         | Icon::Source
         | Icon::Shading
         | Icon::Comment
-        | Icon::Connect => evaluate::paint(&pen, icon, fg, t),
+        | Icon::Connect
+        | Icon::Park => evaluate::paint(&pen, icon, fg, t),
         Icon::BoxType | Icon::Link | Icon::Image | Icon::RemoveImage => {
             box_group::paint(&pen, icon, fg, t)
         }

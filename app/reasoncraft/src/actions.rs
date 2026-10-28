@@ -48,7 +48,7 @@ pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 ///
 /// Every action first ends the running edit session, so it lands in
 /// history before anything else happens, except live text for that same
-/// kind of session; then it clears the status note and ends "Connect to…"
+/// kind of session; then it clears the status note and ends "Move to…"
 /// in the active tab unless it keeps them (see `Action::traits`). A
 /// finished image job is not the user's doing: it leaves all of that alone.
 pub fn apply(app: &mut ReasonCraftApp, action: Action) {

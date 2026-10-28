@@ -156,8 +156,11 @@ pub enum Action {
     /// like [`Action::Navigate`]: Left/Right top-down and bottom-up, Up/Down
     /// left-to-right, where siblings stack vertically.
     Reorder(Dir),
-    /// Pick a target for the selected parking item ("Connect to…").
+    /// Pick where the selected item goes ("Move to…"; a premise moves
+    /// its card).
     StartConnect,
+    /// Move the selected item (a premise: its card) to the parking area.
+    MoveToParking,
     CancelConnect,
     Select(Option<Item>),
     /// Pan the selection into view on the next canvas frame (after a

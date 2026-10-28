@@ -1,4 +1,4 @@
-//! UI tests for reordering (drag and Alt+arrows), "Connect to…", and the
+//! UI tests for reordering (drag and Alt+arrows), "Move to…", and the
 //! keys that must not be taken as commands (AltGr, secondary-button release
 //! during a building-panel drag).
 
@@ -283,4 +283,27 @@ fn connect_from_ribbon_while_editing_stays_on() {
     assert_eq!(tab.doc.boxes[&nb].text, "nx");
     assert_eq!(tab.history.undo.len(), 1);
     h.get_by_label(&t("connect.hint"));
+}
+
+/// A connected card moves by keyboard: Ctrl+Shift+K on its premise, pick
+/// another premise, Enter (ROB-5).
+#[test]
+fn move_to_moves_a_connected_card_by_keyboard() {
+    let (d, [ca, _, cc]) = three_cards();
+    let pa = d.cards[&ca].premises[0];
+    let pc = d.cards[&cc].premises[0];
+    let mut h = harness_with_doc(d);
+    h.state_mut().tabs[0].selection = Some(Item::Box(pc));
+    h.key_press_modifiers(Modifiers::COMMAND | Modifiers::SHIFT, Key::K);
+    h.run();
+    assert_eq!(h.state().tabs[0].connect_mode, Some(Item::Card(cc)));
+    h.state_mut()
+        .push(reasoncraft::actions::Action::Select(Some(Item::Box(pa))));
+    h.run();
+    h.key_press(Key::Enter);
+    h.run();
+    let tab = &h.state().tabs[0];
+    assert_eq!(tab.connect_mode, None);
+    assert_eq!(tab.doc.boxes[&pa].children, vec![Item::Card(cc)]);
+    assert!(!root_children(&h).contains(&Item::Card(cc)));
 }

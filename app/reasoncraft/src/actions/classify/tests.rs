@@ -7,7 +7,7 @@ use crate::doc_tab::DocTab;
 use crate::export::Notice;
 use crate::settings::OutlineToggle;
 
-/// An app whose only tab has a parked note in "Connect to…", with a status
+/// An app whose only tab has a parked note in "Move to…", with a status
 /// note and an export notice showing.
 fn connecting_app() -> ReasonCraftApp {
     let mut d = Document::new("Claim");
@@ -23,7 +23,7 @@ fn connecting_app() -> ReasonCraftApp {
 }
 
 /// Personal settings change no document: like the view preferences, they
-/// leave the notes and "Connect to…" alone (they used to drift apart).
+/// leave the notes and "Move to…" alone (they used to drift apart).
 #[test]
 fn settings_keep_notes_and_connect() {
     for action in [

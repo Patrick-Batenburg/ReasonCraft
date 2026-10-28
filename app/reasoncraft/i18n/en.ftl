@@ -68,7 +68,8 @@ action-add_category = Category
 action-add_note = Note
 action-add_source = Source
 action-comment = Comment
-action-connect = Connect to…
+action-connect = Move to…
+action-park = Move to parking
 action-box_type = Type
 action-link = Link
 action-open_link = Open link
@@ -521,7 +522,7 @@ status-tip-issues = Show the issues in the Check tab
 status-toggle_theme = Toggle theme
 status-zoom = Zoom
 status-zoom_value = { $percent }%
-connect-hint = Click a box or card to connect the parked item to it, or select one and press Enter — Esc to cancel
+connect-hint = Click a box or card to move the item there, or select one and press Enter — Esc to cancel
 
 ## Comments
 comment-anonymous = Anonymous
@@ -678,7 +679,7 @@ help-key-delete_branch = Delete with everything under it
 help-key-jump_parking = Jump between the map and Not connected
 help-key-comments = Open the comments of the selected box
 help-key-open_link = Open the link of the selected box
-help-key-connect = Connect to…: connect the selected parked item
+help-key-connect = Move to…: move the selected item (a premise moves its card)
 help-key-move_left = Move the selection one place to the left
 help-key-move_right = Move the selection one place to the right
 help-key-move_up = Move the selection one place up

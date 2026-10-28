@@ -118,7 +118,7 @@ fn row_actions(head: &str) -> Option<Vec<Action>> {
         "Delete with everything under it" => vec![A::DeleteBranch],
         "Jump between the main map and the parking area" => vec![A::JumpParking],
         "Open the comments of the selected box" => vec![A::CommentSelected],
-        "Connect to…" => vec![A::StartConnect],
+        "Move to…" => vec![A::StartConnect],
         "Open the link of the selected box in the browser" => vec![A::OpenSelectedLink],
         "Move the selection one place among its siblings" => reorder().to_vec(),
         "Rate the selection high" => vec![A::Rate(Rate::High)],

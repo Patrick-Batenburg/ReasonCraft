@@ -28,7 +28,7 @@ You can also select a box and use the small **+** button next to it, or the Home
 
 ## Items that are not connected yet
 
-Anything you drop on empty canvas, or that is left over when you delete the box above it, goes to the area marked **Not connected**. It is saved with the map, but it is not part of the argument yet. Drag it onto a box to connect it, or select it and use Home > **Connect to…** (Ctrl+Shift+K), then click where it belongs. Ctrl+Shift+P jumps between the map and this area.
+Anything you drop on empty canvas, or that is left over when you delete the box above it, goes to the area marked **Not connected**. It is saved with the map, but it is not part of the argument yet. Drag it onto a box to connect it, or select it and use Home > **Move to…** (Ctrl+Shift+K), then click where it belongs (or pick the place with the arrow keys and press Enter). Move to… moves connected items too, and Home > **Move to parking** takes one out of the map. Ctrl+Shift+P jumps between the map and this area.
 
 ## Undo, find and more
 

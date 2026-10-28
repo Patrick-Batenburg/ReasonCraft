@@ -7,7 +7,7 @@ New here? The [user guide](docs/user-guide.md) is a short tour, and the full hel
 ## What you can do
 
 - **Start from an example or a template.** File → New offers a blank map, four templates (Blank reasoning map, Blank grouping map, Essay plan and Peer review) and two finished example maps, a reasoning map and a grouping map. The Building panel also lists the templates, and the Help ribbon tab the examples. They open as new, untitled maps, so closing one you have not changed asks nothing: a template in the language of new documents (File → Settings), an example in the interface language. File → Recent lists the last ten maps you opened or saved.
-- **Build the argument.** Add reasons, objections, rebuttals and co-premises by keyboard or from the ribbon, attack a whole card, and group items under categories and notes. Items you have not connected yet wait in the parking area until you drag them into the map or use **Connect to…**.
+- **Build the argument.** Add reasons, objections, rebuttals and co-premises by keyboard or from the ribbon, attack a whole card, and group items under categories and notes. Items you have not connected yet wait in the parking area until you drag them into the map or use **Move to…**, which also moves connected items by keyboard (**Move to parking** takes one out of the map).
 - **Reorder.** Drag an item between its siblings, or press Alt+Left / Alt+Right (Alt+Up / Alt+Down in a left-to-right map).
 - **Cut, copy and paste.** Ctrl+X / Ctrl+C (or Cut and Copy in the Home ribbon) take the selected box or card with everything under it; Ctrl+V (Paste) puts a copy under the selected box or card, or in the parking area when nothing is selected, in the same map or another tab, images included. A copied premise comes back as the premise of a new card of the same kind. Other programs get the text, one box per line; text copied in another program pastes as a new box, like text dropped on the map.
 - **Back claims with sources.** Seventeen source types (expert opinion, statistic, publication, web, quote, personal experience and more), each with its own icon. Add a source from the Home ribbon, the "+" menu, Ctrl+Shift+E or the building panel, and change its type later.
@@ -147,7 +147,7 @@ macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, a
 | Ctrl+Shift+P | Shift+Cmd+P | Jump between the main map and the parking area |
 | Ctrl+Shift+M | Shift+Cmd+M | Open the comments of the selected box (Esc closes them) |
 | Ctrl+Shift+L | Shift+Cmd+L | Open the link of the selected box in the browser |
-| Ctrl+Shift+K | Shift+Cmd+K | Connect to…: pick where the selected parked item goes (see below) |
+| Ctrl+Shift+K | Shift+Cmd+K | Move to…: pick where the selected item goes (see below) |
 | Alt+Left / Alt+Right / Alt+Up / Alt+Down | Option+Left / Option+Right / Option+Up / Option+Down | Move the selection one place among its siblings (a premise within its card): Left / Right in top-down and bottom-up maps, Up / Down in left-to-right maps, where siblings stack vertically |
 | Alt+1 | Option+Cmd+1 | Rate the selection high: accept a claim or premise, strong card, solid source |
 | Alt+2 | Option+Cmd+2 | Rate the selection mid: unsure, weak card, shaky source |
@@ -195,19 +195,19 @@ All other keys are typed into the box.
 
 All other keys stay with the field.
 
-### While connecting a parked item (Connect to…)
+### While moving an item (Move to…)
 
-Connect to… works on an item at the top of the parking area (or a premise of a parked card, which connects its card).
+Move to… works on any item but the root claim, in the map or in the parking area; a selected premise moves its card. Targets follow the same rules as dragging: an item cannot go into its own branch. Home > Move to parking (also in Search commands) takes the selected item out of the map.
 
 | Windows / Linux | macOS | Action |
 | --- | --- | --- |
-| Click a box or card | Click a box or card | Connect the parked item there (targets that refuse it show red and do nothing) (context) |
+| Click a box or card | Click a box or card | Move the item there (targets that refuse it show red and do nothing) (context) |
 | Arrow keys | Arrow keys | Move the selection in the map (context) |
-| Enter or F2 | Enter or F2 | Connect the parked item to the selected box or card (context) |
+| Enter or F2 | Enter or F2 | Move the item to the selected box or card (context) |
 | Ctrl+Shift+P, zoom keys | Shift+Cmd+P, zoom keys | Work as usual (context) |
 | Esc | Esc | Cancel (context) |
 
-Other keys do nothing until you connect or cancel.
+Other keys do nothing until you move the item or cancel.
 
 Dragging also reorders: drop an item between its siblings (an insertion bar shows where), or a premise between the premises of its card.
 

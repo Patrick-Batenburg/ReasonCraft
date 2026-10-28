@@ -94,6 +94,11 @@ pub(super) fn run(app: &mut ReasonCraftApp, action: Action) {
         }
         Action::Reorder(screen) => on_tab(app, |t| structure::reorder(t, screen)),
         Action::StartConnect => on_tab(app, connect::start),
+        Action::MoveToParking => on_tab(app, |t| {
+            if let Some(Action::Move { item, to, index }) = connect::park_move(t) {
+                structure::move_item(t, item, to, index);
+            }
+        }),
         // `apply` has already ended the mode.
         Action::CancelConnect => {}
         Action::Insert { what, to, on } => insert::apply(app, what, to, on),

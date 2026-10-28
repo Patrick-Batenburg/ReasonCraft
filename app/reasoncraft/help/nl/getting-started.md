@@ -28,7 +28,7 @@ Je kunt ook een vak kiezen en het kleine **+**-knopje ernaast gebruiken, of het 
 
 ## Onderdelen die nog niet verbonden zijn
 
-Wat je op een lege plek laat vallen, of wat overblijft als je het vak erboven verwijdert, komt bij **Niet verbonden** te staan. Het wordt met de kaart bewaard, maar hoort nog niet bij het argument. Sleep het naar een vak om het te verbinden, of kies het en gebruik Start > **Verbinden…** (Ctrl+Shift+K) en klik waar het hoort. Met Ctrl+Shift+P spring je heen en weer tussen de kaart en Niet verbonden.
+Wat je op een lege plek laat vallen, of wat overblijft als je het vak erboven verwijdert, komt bij **Niet verbonden** te staan. Het wordt met de kaart bewaard, maar hoort nog niet bij het argument. Sleep het naar een vak om het te verbinden, of kies het en gebruik Start > **Verplaatsen…** (Ctrl+Shift+K) en klik waar het hoort (of kies de plek met de pijltjestoetsen en druk op Enter). Verplaatsen… werkt ook voor onderdelen die al verbonden zijn, en Start > **Naar Niet verbonden** haalt er een uit de kaart. Met Ctrl+Shift+P spring je heen en weer tussen de kaart en Niet verbonden.
 
 ## Ongedaan maken, zoeken en meer
 

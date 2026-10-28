@@ -1,4 +1,4 @@
-//! Status bar: box count, issue count (or the "Connect to…" hint), the
+//! Status bar: box count, issue count (or the "Move to…" hint), the
 //! busy chip of background jobs (saves, exports, images) or the last
 //! export's notice, a status note, theme toggle and zoom slider.
 

@@ -1,5 +1,5 @@
 //! Adding cards, premises, categories and notes, deleting items, and
-//! moving them (drag and drop, "Connect to…", Alt+arrow reordering).
+//! moving them (drag and drop, "Move to…", Alt+arrow reordering).
 
 use reasoncraft_core::{
     BoxKind, CardId, CardKind, Document, Item, NewLoose, Parent, RemoveMode, same_display_group,

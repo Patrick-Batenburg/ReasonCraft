@@ -83,6 +83,7 @@ pub(super) fn commands() -> Vec<Command> {
         )
         .with_icon(Icon::DeleteBranch),
         cmd("home.connect", "action.connect", editing, A::StartConnect).with_icon(Icon::Connect),
+        cmd("home.park", "action.park", editing, A::MoveToParking).with_icon(Icon::Park),
         cmd(
             "home.jump_parking",
             "command.jump_parking",

@@ -1,4 +1,4 @@
-//! What each action leaves alone: the status note, "Connect to…", a
+//! What each action leaves alone: the status note, "Move to…", a
 //! running edit session and an inline edit. One exhaustive match, so a new
 //! action cannot be added without deciding.
 
@@ -35,7 +35,7 @@ pub(crate) struct Traits {
     /// switching the UI language (a note is in the language it was
     /// written in).
     pub keeps_notes: bool,
-    /// Leaves "Connect to…" running: picking a target (selecting,
+    /// Leaves "Move to…" running: picking a target (selecting,
     /// navigating, revealing, zooming), starting it again, view
     /// preferences and personal settings. The inline editor's own "stop
     /// editing" (sent when it loses focus, e.g. to the ribbon's "Connect
@@ -51,7 +51,7 @@ pub(crate) struct Traits {
     pub live_for: Option<SessionKind>,
 }
 
-/// Changes something: clears the notes and ends "Connect to…".
+/// Changes something: clears the notes and ends "Move to…".
 const CHANGES: Traits = Traits {
     keeps_notes: false,
     keeps_connect: false,
@@ -64,12 +64,12 @@ const LOOKS: Traits = Traits {
     keeps_connect: true,
     ..CHANGES
 };
-/// Keeps the notes but ends "Connect to…".
+/// Keeps the notes but ends "Move to…".
 const KEEPS_NOTES: Traits = Traits {
     keeps_notes: true,
     ..CHANGES
 };
-/// Keeps "Connect to…" but clears the notes.
+/// Keeps "Move to…" but clears the notes.
 const KEEPS_CONNECT: Traits = Traits {
     keeps_connect: true,
     ..CHANGES
@@ -90,7 +90,7 @@ const fn live(kind: SessionKind) -> Traits {
 }
 
 impl Action {
-    /// How this action treats the notes, "Connect to…" and edit sessions.
+    /// How this action treats the notes, "Move to…" and edit sessions.
     pub(crate) fn traits(&self) -> Traits {
         use SessionKind as S;
         match self {
@@ -189,6 +189,7 @@ impl Action {
             | Action::RemoveUnplaced(_)
             | Action::MoveSnippet { .. }
             | Action::Move { .. }
+            | Action::MoveToParking
             | Action::Reorder(_)
             | Action::CancelConnect
             | Action::SetLayoutDirection(_)

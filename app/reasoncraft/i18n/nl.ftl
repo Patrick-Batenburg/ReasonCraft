@@ -69,7 +69,8 @@ action-add_category = Categorie
 action-add_note = Notitie
 action-add_source = Bron
 action-comment = Opmerking
-action-connect = Verbinden…
+action-connect = Verplaatsen…
+action-park = Naar Niet verbonden
 action-box_type = Soort
 action-link = Link
 action-open_link = Link openen
@@ -522,7 +523,7 @@ status-tip-issues = Toon de tips in het tabblad Controle
 status-toggle_theme = Thema wisselen
 status-zoom = Zoom
 status-zoom_value = { $percent }%
-connect-hint = Klik op een vak of blok om het niet-verbonden onderdeel ermee te verbinden, of kies er een en druk op Enter — Esc om te annuleren
+connect-hint = Klik op een vak of blok om het onderdeel daarheen te verplaatsen, of kies er een en druk op Enter — Esc om te annuleren
 
 ## Comments
 comment-anonymous = Anoniem
@@ -679,7 +680,7 @@ help-key-delete_branch = Verwijderen met alles eronder
 help-key-jump_parking = Heen en weer tussen de kaart en Niet verbonden
 help-key-comments = De opmerkingen bij het gekozen vak openen
 help-key-open_link = De link van het gekozen vak openen
-help-key-connect = Verbinden…: het gekozen losse onderdeel verbinden
+help-key-connect = Verplaatsen…: het gekozen onderdeel verplaatsen (een premisse neemt haar blok mee)
 help-key-move_left = De selectie één plek naar links schuiven
 help-key-move_right = De selectie één plek naar rechts schuiven
 help-key-move_up = De selectie één plek omhoog schuiven
