@@ -1,0 +1,131 @@
+# Quick static checks of the release pipeline (no Rust build): the
+# workflows, the packaging shell and PowerShell scripts, the XML sources,
+# the Linux desktop entry and AppStream metadata, the WiX GUIDs, and the
+# Windows install policy of MSI fixtures that are never installed.
+#
+# The windows-install-policy job is adapted from WordCraft
+# (https://github.com/storytold/wordcraft, .github/workflows/packaging-lint.yml
+# at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: the
+# folder names, comments and the checkout pin. The lint job is
+# ReasonCraft's own.
+# Actions are pinned to commit SHAs (the tag they had is in the comment).
+name: Packaging lint
+
+on:
+  push:
+    branches: [main, release]
+    paths: [".github/workflows/**", "packaging/**", "app/reasoncraft/assets/icon*"]
+  pull_request:
+    paths: [".github/workflows/**", "packaging/**", "app/reasoncraft/assets/icon*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packaging-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Install the linters
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            shellcheck libxml2-utils desktop-file-utils appstream
+
+      # actionlint 1.7.12, checked against the SHA-256 from its release's
+      # checksums.txt. It runs shellcheck on the workflows' scripts too.
+      - name: Workflows (actionlint)
+        run: |
+          file=actionlint_1.7.12_linux_amd64.tar.gz
+          curl --proto '=https' -fsSL -o "$RUNNER_TEMP/$file" \
+            "https://github.com/rhysd/actionlint/releases/download/v1.7.12/$file"
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/$file" \
+            | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$file" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+
+      - name: Shell scripts (shellcheck)
+        run: |
+          shopt -s globstar
+          shellcheck packaging/**/*.sh
+
+      - name: XML sources (xmllint)
+        run: |
+          xmllint --noout \
+            packaging/windows/*.wxs packaging/windows/*.wxi \
+            packaging/macos/*.plist packaging/macos/Info.plist.in \
+            packaging/linux/*.xml packaging/linux/*.xml.in
+
+      # ReasonCraft has no homepage yet (owner's decision 2026-10-28), so
+      # the metainfo has no <url type="homepage">; AppStream 1.0 warns about
+      # that, and the override lowers it to a note.
+      - name: Desktop entry and AppStream metadata
+        run: |
+          desktop-file-validate packaging/linux/nl.reasoncraft.app.desktop
+          metainfo="$RUNNER_TEMP/nl.reasoncraft.app.metainfo.xml"
+          sed -e 's/@VERSION@/0.0.0/g' -e "s/@DATE@/$(date -u +%Y-%m-%d)/g" \
+            packaging/linux/nl.reasoncraft.app.metainfo.xml.in > "$metainfo"
+          appstreamcli validate --no-net --explain --override=url-homepage-missing=info "$metainfo"
+
+      - name: PowerShell scripts parse
+        shell: pwsh
+        run: |
+          $failed = $false
+          foreach ($file in Get-ChildItem packaging/windows/*.ps1) {
+            $tokens = $null; $errors = $null
+            [void][Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors)
+            foreach ($e in $errors) {
+              Write-Output "::error file=$($file.Name),line=$($e.Extent.StartLineNumber)::$($e.Message)"
+              $failed = $true
+            }
+          }
+          if ($failed) { exit 1 }
+
+      # Each GUID in the WiX sources (UpgradeCode, components) is used once.
+      - name: WiX GUIDs are unique
+        run: |
+          dupes="$(grep -ohiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' \
+            packaging/windows/*.wxs packaging/windows/*.wxi | tr '[:lower:]' '[:upper:]' | sort | uniq -d)"
+          if [ -n "$dupes" ]; then
+            echo "::error::GUIDs used more than once in the WiX sources: $dupes"
+            exit 1
+          fi
+
+  windows-install-policy:
+    name: Windows install policy (no app build)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # WiX 5.0.2 exactly (MS-RL), with the extensions install-policy.json names.
+      - name: Install WiX
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'reasoncraft-install-policy-wix'
+          dotnet tool install --tool-path $tools wix --version 5.0.2
+          if ($LASTEXITCODE -ne 0) { throw 'WiX installation failed.' }
+          $tools >> $env:GITHUB_PATH
+          $policy = Get-Content -Raw -LiteralPath packaging/windows/install-policy.json | ConvertFrom-Json
+          foreach ($extension in @($policy.extensions)) {
+            & (Join-Path $tools 'wix.exe') extension add -g "WixToolset.$extension.wixext/5.0.2"
+            if ($LASTEXITCODE -ne 0) { throw "WiX extension $extension installation failed." }
+          }
+
+      # Builds MSI fixtures with text files in place of the exe and checks
+      # their scope cases and registry contract; nothing is installed.
+      - name: Build and check the install-policy fixtures
+        shell: pwsh
+        run: ./packaging/windows/test-install-policy.ps1 -OutputDirectory (Join-Path $env:RUNNER_TEMP 'reasoncraft-install-policy-tests')

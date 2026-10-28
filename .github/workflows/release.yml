@@ -1,68 +1,380 @@
-# Builds the installers for a version tag and keeps them as workflow
-# artifacts. Nothing is published; see docs/release.md. Actions are
-# pinned to commit SHAs (the tag they had is in the comment).
+# Builds every release artifact with the scripts in packaging/ and, on the
+# `release` branch, drafts a GitHub Release `v<version>` with them and
+# SHA256SUMS.txt. A run by hand (workflow_dispatch) on another branch is a
+# dry run: the artifacts and checksums stay workflow artifacts. Nothing is
+# ever published; a maintainer reviews the draft and publishes it (see
+# docs/release.md).
+#
+# Signing runs when the secrets exist (the `release` environment on the
+# `release` branch); without them each script warns and ships unsigned
+# (ruling L3). Self-contained: no reusable workflow. The script paths,
+# arguments and artifact names keep to the interface of the Craft suite's
+# reusable release workflow, so a later switch only changes this file
+# (docs/release.md, "Compatibility").
+# Actions are pinned to commit SHAs (the tag they had is in the comment).
 name: Release
 
 on:
   push:
-    tags: ['v*']
+    branches: [release]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version override for a test run, e.g. 0.2.0-rc.1 (empty: Cargo.toml)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   CARGO_TERM_COLOR: always
+  CARGO_BUILD_JOBS: 4
 
 jobs:
-  package:
-    name: package (${{ matrix.os }})
+  # The version every job builds: the input (a leading "v" dropped), or
+  # [workspace.package] version from Cargo.toml.
+  version:
+    name: version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Read and check the version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          . packaging/env.sh
+          input="${INPUT_VERSION#v}"
+          case "$input" in
+            *$'\r'* | *$'\n'*) echo "::error::the version input holds a line break"; exit 1 ;;
+          esac
+          version="${input:-$VERSION}"
+          semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          if [[ ! "$version" =~ $semver ]]; then
+            echo "::error::'$version' is not X.Y.Z or X.Y.Z-pre"
+            exit 1
+          fi
+          prerelease=false
+          if [[ "$version" == *-* ]]; then prerelease=true; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "ReasonCraft $version (pre-release: $prerelease)"
+
+  windows:
+    name: windows (${{ matrix.arch }})
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, x86, arm64]
+    runs-on: windows-latest
+    environment: ${{ github.ref == 'refs/heads/release' && 'release' || '' }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # The toolchain pinned in rust-toolchain.toml; package.ps1 adds the target.
+      - name: Install the toolchain
+        run: rustup toolchain install
+
+      - name: Set the version
+        if: inputs.version != ''
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: cargo xtask version set $env:VERSION
+
+      # WiX 5.0.2 exactly (MS-RL; later versions come with another licence).
+      - name: Install WiX
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          if ($LASTEXITCODE -ne 0) { throw 'WiX installation failed.' }
+          $tools = Join-Path $env:USERPROFILE '.dotnet\tools'
+          $tools >> $env:GITHUB_PATH
+          & (Join-Path $tools 'wix.exe') extension add -g WixToolset.UI.wixext/5.0.2 WixToolset.Util.wixext/5.0.2
+          if ($LASTEXITCODE -ne 0) { throw 'WiX extension installation failed.' }
+
+      - name: Build the MSI and the portable zip
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }}
+
+      # The packaging script's own checks: the policy check before signing,
+      # the PE checks on the release exe (passes) and the debug exe (fails
+      # the C runtime check), signing without secrets, and a pre-release's
+      # MSI version. They need the x64 release exe from the step above and a
+      # debug build.
+      - name: Check the packaging script
+        if: matrix.arch == 'x64'
+        run: |
+          cargo build -p reasoncraft
+          if ($LASTEXITCODE -ne 0) { throw 'The debug build failed.' }
+          ./packaging/windows/test-packaging-script.ps1
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-windows-${{ matrix.arch }}
+          path: dist/release/*
+          if-no-files-found: error
+
+  macos:
+    name: macos (universal)
+    needs: version
+    runs-on: macos-latest
+    environment: ${{ github.ref == 'refs/heads/release' && 'release' || '' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # The toolchain pinned in rust-toolchain.toml; package.sh adds both targets.
+      - name: Install the toolchain
+        run: rustup toolchain install
+
+      - name: Set the version
+        if: inputs.version != ''
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: cargo xtask version set "$VERSION"
+
+      # Without APPLE_CERTIFICATE: a warning, and package.sh signs ad hoc.
+      - name: Import the signing certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: packaging/macos/import-cert.sh
+
+      # Notarized only with a real identity and all three Apple credentials.
+      - name: Build the DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: packaging/macos/package.sh --arch universal
+
+      # Strict only when signing and notarization credentials are all set.
+      - name: Verify the DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: packaging/macos/verify.sh --arch universal
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-macos
+          path: dist/release/*
+          if-no-files-found: error
+
+      - name: Remove the signing keychain
+        if: always()
+        run: |
+          if [ -n "${MACOS_KEYCHAIN:-}" ]; then
+            security delete-keychain "$MACOS_KEYCHAIN" || true
+          fi
+
+  linux:
+    name: linux (${{ matrix.arch }})
+    needs: version
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
-            formats: nsis
-            files: target/release/packager/*-setup.exe
-          - os: macos-latest
-            formats: app,dmg
-            files: target/release/packager/*.dmg
-          - os: ubuntu-latest
-            formats: deb,appimage
-            files: |
-              target/release/packager/*.deb
-              target/release/packager/*.AppImage
-    runs-on: ${{ matrix.os }}
+          # Ubuntu 22.04 (glibc 2.35), as packaging/linux/Dockerfile: the
+          # binary runs on that and every newer distro.
+          - arch: x86_64
+            runner: ubuntu-22.04
+            nfpm-arch: x86_64
+            nfpm-sha256: 0660ca602b2d2d2ae4781a06c692b3eeb9d437ffea05b831d76e41f4a3188783
+          - arch: aarch64
+            runner: ubuntu-22.04-arm
+            nfpm-arch: arm64
+            nfpm-sha256: 1c0f5f2999b9a974bfb04fdb0cc3306096de530ac5dbb25d739cc5f5219c919c
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      # The toolchain pinned in rust-toolchain.toml.
-      - name: Install the toolchain
-        run: rustup toolchain install
-
-      # egui's system libraries (the same as packaging/linux/Dockerfile).
+      # The same packages as packaging/linux/Dockerfile: egui's system
+      # libraries, the validators package.sh runs, and zsyncmake for the
+      # AppImage's .zsync.
       - name: Install Linux dependencies
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            pkg-config \
-            libxkbcommon-dev libgtk-3-dev libxcb-render0-dev \
-            libxcb-shape0-dev libxcb-xfixes0-dev libssl-dev
+            build-essential ca-certificates curl file git \
+            pkg-config libxkbcommon-dev libgtk-3-dev \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libssl-dev \
+            desktop-file-utils appstream zsync rpm
 
-      - name: Install cargo-packager
-        run: cargo install cargo-packager --version 0.11.8 --locked
-
-      # The AppImage tools run without FUSE when they unpack themselves.
-      - name: Build the installers
-        run: cargo packager --release -p reasoncraft --formats ${{ matrix.formats }}
+      # nfpm 2.47.0, checked against the SHA-256 from its release's checksums.txt.
+      - name: Install nfpm
         env:
-          APPIMAGE_EXTRACT_AND_RUN: 1
+          NFPM_ARCH: ${{ matrix.nfpm-arch }}
+          NFPM_SHA256: ${{ matrix.nfpm-sha256 }}
+        run: |
+          file="nfpm_2.47.0_Linux_${NFPM_ARCH}.tar.gz"
+          curl --proto '=https' -fsSL -o "$RUNNER_TEMP/$file" \
+            "https://github.com/goreleaser/nfpm/releases/download/v2.47.0/$file"
+          echo "$NFPM_SHA256  $RUNNER_TEMP/$file" | sha256sum -c -
+          sudo tar -xzf "$RUNNER_TEMP/$file" -C /usr/local/bin nfpm
+          nfpm --version
 
-      # Named after the tag. A run by hand on a branch uses the commit
-      # instead: a branch name may hold a '/', which an artifact name may not.
+      # rustup, if the image lacks it, then the toolchain pinned in rust-toolchain.toml.
+      - name: Install the toolchain
+        run: |
+          if ! command -v rustup >/dev/null; then
+            curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \
+              | sh -s -- -y --no-modify-path --profile minimal --default-toolchain none
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
+          fi
+          rustup toolchain install
+
+      - name: Set the version
+        if: inputs.version != ''
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: cargo xtask version set "$VERSION"
+
+      # tar.gz, deb, rpm, and the AppImage with its .zsync (GITHUB_REPOSITORY
+      # gives the update information).
+      - name: Build the Linux packages
+        run: packaging/linux/package.sh
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: reasoncraft-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}-${{ runner.os }}
-          path: ${{ matrix.files }}
+          name: release-linux-${{ matrix.arch }}
+          path: dist/release/*
           if-no-files-found: error
+
+  # The Flatpak bundle, repackaged from the linux job's tarball.
+  flatpak:
+    name: flatpak (${{ matrix.arch }})
+    needs: [version, linux]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    env:
+      REASONCRAFT_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-linux-${{ matrix.arch }}
+          path: ${{ runner.temp }}/linux
+
+      # flatpak-builder needs unprivileged user namespaces, which Ubuntu
+      # 24.04's AppArmor restricts by default; dbus-run-session gives
+      # `flatpak run` (the smoke test) a session bus.
+      - name: Install Flatpak
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            flatpak flatpak-builder librsvg2-common dbus
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Build the Flatpak bundle
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          dbus-run-session -- packaging/linux/flatpak-bundle.sh \
+            "$RUNNER_TEMP/linux/reasoncraft-$REASONCRAFT_VERSION-linux-$ARCH.tar.gz"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-flatpak-${{ matrix.arch }}
+          path: dist/release/*.flatpak
+          if-no-files-found: error
+
+  # SHA256SUMS.txt over every artifact, and on the release branch a draft
+  # release with them. A failed job stops it; a cancelled run too.
+  draft:
+    name: checksums and draft release
+    needs: [version, windows, macos, linux, flatpak]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+
+      - name: Write SHA256SUMS.txt
+        working-directory: dist
+        run: |
+          shopt -s nullglob
+          files=(*)
+          if [ "${#files[@]}" -eq 0 ]; then echo "::error::no release artifacts"; exit 1; fi
+          sha256sum -- "${files[@]}" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-checksums
+          path: dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+      # Creates the draft, or refreshes its files and target commit. A
+      # release already published under that tag is never touched.
+      - name: Create or update the draft release
+        if: github.ref == 'refs/heads/release'
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.version.outputs.version }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+        run: |
+          tag="v$VERSION"
+          title="ReasonCraft v$VERSION"
+          if draft="$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)"; then
+            if [ "$draft" != "true" ]; then
+              echo "::error::$tag is already published; bump the version on main first"
+              exit 1
+            fi
+            gh release edit "$tag" --draft --title "$title" --target "$GITHUB_SHA" \
+              --prerelease="$PRERELEASE"
+            gh release upload "$tag" --clobber -- *
+          else
+            gh release create "$tag" --draft --title "$title" --target "$GITHUB_SHA" \
+              --prerelease="$PRERELEASE" \
+              --notes "See CHANGELOG.md for what changed. Check a download against SHA256SUMS.txt." \
+              -- *
+          fi

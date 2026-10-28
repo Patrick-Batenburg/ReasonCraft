@@ -99,7 +99,7 @@
   - [x] Task 6: Flatpak bundle (shellcheck and `flatpak-builder --show-manifest`; also built and smoke-tested locally in a privileged Docker container on Ubuntu 24.04 with a D-Bus session. The release workflow's `flatpak` job still has to run once, on the first dispatch after a remote exists, and aarch64 is CI only)
   - [x] Task 7: macOS: universal app, DMG, signing and verification (no Mac here: the plist test, shellcheck, xmllint and plistlib, and a run of the three scripts against logging stubs of the macOS tools in Docker; the real build, signing and notarization are for the release workflow's `macos` job and a real Mac)
   - [x] Task 8: Remove cargo-packager and NSIS; notices and supported targets (About › Licences lists WiX and the AppImage runtime; deny/about cover x86, arm64 Windows and aarch64 Linux)
-  - [ ] Task 9: Workflows: release, packaging lint and CI
+  - [x] Task 9: Workflows: release, packaging lint and CI (actionlint 1.7.12 clean; the lint job rehearsed in ubuntu:24.04 and the install-policy job on this machine; the release workflow runs for the first time once a remote exists)
   - [ ] Task 10: Docs, rulings and the release checklist
   - [ ] Open for the owner: the deb/rpm Maintainer address; a homepage URL for the ARP, the metainfo and signing (left out until there is one); confirm the `ArtCraft` install folder name
 
