@@ -184,8 +184,9 @@ pub(super) fn show(
     let panel = panel_rect(viewport);
     let map = Mapping::new(cache.bounds, panel);
 
-    // A picture for the mouse; the keyboard pans with Ctrl+Alt+arrows
-    // and fits with "Fit map", so Tab skips it.
+    // A picture for the mouse, so Tab skips it: the keyboard moves the
+    // view with the selection (the arrow keys bring it into view), the
+    // zoom keys and Fit (Ctrl+1) / Fit selection (Ctrl+Shift+1).
     let response = ui.interact(
         panel,
         ui.scope_id().with("minimap"),
