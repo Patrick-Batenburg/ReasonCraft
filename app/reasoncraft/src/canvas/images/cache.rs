@@ -166,10 +166,13 @@ impl ImageCache {
     /// texture side) not cached at that side yet, and drop textures not
     /// wanted now while the cache is over its budget. A missing asset is
     /// not asked for, so it loads once its bytes arrive (from another tab,
-    /// say). Returns true while decodes are under way.
+    /// say). Returns true when this frame uploaded as many images as it
+    /// may and more are outstanding: the next frame should come at once.
+    /// Otherwise decodes still running are looked for by the frame loop's
+    /// polling (see [`Self::busy`]).
     pub fn load(&mut self, ctx: &egui::Context, wanted: &[(String, u32)], assets: &Assets) -> bool {
         self.frame += 1;
-        self.upload(ctx);
+        let more = self.upload(ctx);
         for (key, side) in wanted {
             let side = (*side).min(MAX_TEXTURE_SIDE);
             if let Some(e) = self.textures.get_mut(key) {
@@ -190,15 +193,23 @@ impl ImageCache {
             self.decoding.push(Decoding { key, side, job });
         }
         self.trim();
-        !self.asked.is_empty()
+        more
+    }
+
+    /// Whether images are being decoded, or decoded and not uploaded yet.
+    pub fn busy(&self) -> bool {
+        !self.decoding.is_empty()
     }
 
     /// Upload the decoded images that are back, in the order asked.
-    fn upload(&mut self, ctx: &egui::Context) {
+    /// Returns true when it uploaded its share and more are outstanding.
+    fn upload(&mut self, ctx: &egui::Context) -> bool {
         let mut uploaded = 0;
+        let mut more = false;
         let mut still = Vec::new();
         for d in std::mem::take(&mut self.decoding) {
             if uploaded == UPLOADS_PER_FRAME {
+                more = true;
                 still.push(d);
                 continue;
             }
@@ -219,6 +230,7 @@ impl ImageCache {
             self.store(ctx, d.key, d.side, image);
         }
         self.decoding = still;
+        more
     }
 
     /// Keep `image`, decoded for `side`, unless a texture at least as

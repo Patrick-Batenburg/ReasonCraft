@@ -5,7 +5,6 @@
 
 use std::io::{Cursor, Read};
 use std::path::Path;
-use std::time::{Duration, Instant};
 
 use reasoncraft::actions::{Action, Rate, poll_exports};
 use reasoncraft::app::ReasonCraftApp;
@@ -18,13 +17,10 @@ use super::{card_of, editing, run, typed};
 /// Waits (at most 60 s) until no export runs, picking up the results as
 /// the frame loop would.
 fn wait_for_exports(app: &mut ReasonCraftApp) {
-    let start = Instant::now();
-    while app.export.busy() {
-        assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
-        std::thread::sleep(Duration::from_millis(5));
+    crate::common::poll_until("the exports", || {
         poll_exports(app);
-    }
-    poll_exports(app);
+        !app.export.busy()
+    });
 }
 
 fn essay(slot: EssaySlot, text: &str) -> Action {

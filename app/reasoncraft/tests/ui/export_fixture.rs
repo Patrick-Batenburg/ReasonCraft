@@ -2,7 +2,6 @@
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
@@ -51,15 +50,9 @@ pub fn harness(dir: &Path) -> (H, Fakes, NodeId) {
     (h, fakes, alpha)
 }
 
-/// Steps frames until no export is running (at most 60 s).
+/// Steps frames until no export (or other background work) is running.
 pub fn wait(h: &mut H) {
-    let start = Instant::now();
-    while h.state().export.busy() {
-        assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    h.run();
+    common::settle(h);
 }
 
 pub fn request(format: ExportFormat, options: ExportOptions) -> Action {

@@ -4,7 +4,7 @@
 
 use crate::common;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use egui_kittest::kittest::{NodeT, Queryable};
 use reasoncraft::ReasonCraftApp;
@@ -15,7 +15,7 @@ use reasoncraft::i18n::t;
 use reasoncraft::jobs::Hold;
 use reasoncraft_core::{CardKind, Document, ImageRef, Item, NodeId, Parent};
 
-use crate::common::H;
+use crate::common::{H, settle, step_until};
 
 /// A claim with one premise, which is selected; no building panel.
 fn harness(fake: &FakeDialogs) -> (H, NodeId) {
@@ -30,19 +30,6 @@ fn harness(fake: &FakeDialogs) -> (H, NodeId) {
     app.left_panel = false;
     let h = common::harness(app);
     (h, premise)
-}
-
-/// Steps frames until no image is being prepared, then lets the frame
-/// loop settle (the spinner keeps repainting meanwhile, so `run` alone
-/// would not).
-fn wait(h: &mut H) {
-    let start = Instant::now();
-    while h.state().image_jobs.busy() {
-        assert!(start.elapsed() < Duration::from_secs(60), "image job hangs");
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    h.run();
 }
 
 /// A `w`×`h` PNG file in `dir`.
@@ -65,8 +52,7 @@ fn corrupt_image_shows_error() {
 
     fake.set_image(file);
     h.get_by_label(&t("action.image")).click();
-    h.run();
-    wait(&mut h);
+    settle(&mut h);
 
     match &h.state().modal {
         Some(Modal::Error { title, message }) => {
@@ -97,8 +83,7 @@ fn image_button_inserts_and_remove_button_removes() {
 
     fake.set_image(file);
     h.get_by_label(&t("action.image")).click();
-    h.run();
-    wait(&mut h);
+    settle(&mut h);
     assert!(h.state().modal.is_none());
     let image = h.state().active_tab().doc.boxes[&premise].image.clone();
     assert!(image.is_some_and(|i| (i.aspect - 0.5).abs() < 1e-6));
@@ -152,7 +137,7 @@ fn image_insert_runs_off_ui_thread() {
     assert_eq!(h.get_all_by_label(&t("image.preparing")).count(), 2);
 
     hold.release();
-    wait(&mut h);
+    settle(&mut h);
     let tab = h.state().active_tab();
     assert!(tab.doc.boxes[&premise].image.is_some());
     assert_eq!(tab.history.undo.len(), steps + 1, "one history step");
@@ -177,7 +162,7 @@ fn image_prepared_for_deleted_box_is_discarded() {
     let steps = h.state().active_tab().history.undo.len();
 
     hold.release();
-    wait(&mut h);
+    settle(&mut h);
     let app = h.state();
     let tab = app.active_tab();
     assert!(tab.doc.boxes.values().all(|b| b.image.is_none()));
@@ -214,7 +199,7 @@ fn second_insert_for_the_same_box_replaces_the_first() {
     h.step();
     assert_eq!(h.state().image_jobs.running(), 2);
     hold.release();
-    wait(&mut h);
+    settle(&mut h);
     let tab = h.state().active_tab();
     let image = tab.doc.boxes[&premise].image.clone().unwrap();
     assert!((image.aspect - 2.0).abs() < 1e-6, "the newer image wins");
@@ -237,12 +222,7 @@ fn prepared_image_waits_for_the_running_edit() {
     assert_eq!(h.state().active_tab().editing(), Some(premise));
     hold.release();
 
-    let start = Instant::now();
-    while h.state().image_jobs.busy() {
-        assert!(start.elapsed() < Duration::from_secs(60));
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    step_until(&mut h, |app| !app.image_jobs.busy(), "the image");
     h.step();
     let tab = h.state().active_tab();
     assert_eq!(tab.editing(), Some(premise), "the edit keeps running");
@@ -256,7 +236,7 @@ fn prepared_image_waits_for_the_running_edit() {
     );
 
     h.state_mut().push(Action::StopEditing);
-    h.run();
+    settle(&mut h);
     let tab = h.state().active_tab();
     assert!(tab.doc.boxes[&premise].image.is_some());
     assert!(tab.pending_images.is_empty());

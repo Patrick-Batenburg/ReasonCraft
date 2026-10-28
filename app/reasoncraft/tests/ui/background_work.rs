@@ -47,17 +47,10 @@ fn unsaved_prompt(app: &ReasonCraftApp, window: bool) -> bool {
         if w == window && tab == app.tabs[0].recovery_key)
 }
 
-/// Steps frames until `done` holds (at most 60 s); no frame may stall, as
-/// nothing waits on the UI thread.
+/// Steps frames until `done` holds; no frame may stall, as nothing waits
+/// on the UI thread.
 fn step_until(h: &mut H, done: impl Fn(&ReasonCraftApp) -> bool) {
-    let start = Instant::now();
-    while !done(h.state()) {
-        assert!(start.elapsed() < Duration::from_secs(60), "never happened");
-        let frame = Instant::now();
-        h.step();
-        assert!(frame.elapsed() < Duration::from_secs(10), "a frame blocked");
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    crate::common::step_until(h, done, "the background work");
 }
 
 fn waiting(app: &ReasonCraftApp) -> bool {
@@ -215,12 +208,7 @@ fn a_held_image_lands_before_the_close_prompt() {
     h.state_mut().push(Action::Edit);
     h.step();
     hold.release();
-    let start = Instant::now();
-    while h.state().image_jobs.busy() {
-        assert!(start.elapsed() < Duration::from_secs(60));
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    step_until(&mut h, |app| !app.image_jobs.busy());
     h.step();
     assert_eq!(h.state().image_jobs.waiting.len(), 1, "held for the edit");
     // The busy chip stays while the image is held, next to the box's

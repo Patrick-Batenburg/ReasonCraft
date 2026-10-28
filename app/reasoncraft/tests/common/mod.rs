@@ -1,6 +1,8 @@
 //! Helpers shared by the app's test binaries (each uses some of them).
 #![allow(dead_code)]
 
+use std::time::{Duration, Instant};
+
 use eframe::egui::{self, epaint::Shape};
 use egui_kittest::{Harness, HarnessBuilder};
 use reasoncraft::ReasonCraftApp;
@@ -69,14 +71,49 @@ pub fn glide(h: &Harness<'_, ReasonCraftApp>, from: egui::Pos2, to: egui::Pos2) 
         .collect()
 }
 
-/// Step `h` until the saves it is writing are done (at most a minute),
-/// then let it settle.
-pub fn wait_saves(h: &mut H) {
-    let start = std::time::Instant::now();
-    while h.state().saves.busy() {
-        assert!(start.elapsed().as_secs() < 60, "a save hangs");
-        h.step();
-        std::thread::sleep(std::time::Duration::from_millis(1));
+/// The longest a test waits for background work: generous, as several
+/// test binaries may run side by side on a loaded machine.
+pub const WAIT: Duration = Duration::from_secs(120);
+
+/// The longest one frame may take while a test steps through background
+/// work: nothing may wait on the UI thread (a held job waits two minutes).
+pub const FRAME_LIMIT: Duration = Duration::from_secs(20);
+
+/// Calls `done` until it returns true (at most [`WAIT`]); `what` says what
+/// a test that gives up was waiting for.
+pub fn poll_until(what: &str, mut done: impl FnMut() -> bool) {
+    let start = Instant::now();
+    while !done() {
+        assert!(start.elapsed() < WAIT, "still waiting for {what}");
+        std::thread::sleep(Duration::from_millis(2));
     }
-    h.run();
+}
+
+/// Steps `h` until `done` holds (at most [`WAIT`]), checking that no
+/// frame blocks.
+pub fn step_until(h: &mut H, done: impl Fn(&ReasonCraftApp) -> bool, what: &str) {
+    poll_until(what, || {
+        if done(h.state()) {
+            return true;
+        }
+        let frame = Instant::now();
+        h.step();
+        assert!(frame.elapsed() < FRAME_LIMIT, "a frame blocked ({what})");
+        false
+    });
+}
+
+/// Steps `h` until no background work runs (see
+/// `ReasonCraftApp::background_busy`), then runs it until the frames
+/// settle, and again while settling starts new work (an image that comes
+/// into view is decoded). Use it instead of `run` after anything that
+/// starts background work: how long the work takes never matters.
+pub fn settle(h: &mut H) {
+    poll_until("the background work to end", || {
+        if h.state().background_busy() {
+            h.step();
+            return false;
+        }
+        h.run_ok().is_some() && !h.state().background_busy()
+    });
 }

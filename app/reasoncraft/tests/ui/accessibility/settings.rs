@@ -126,7 +126,6 @@ fn export_does_not_depend_on_ui_scale() {
     use reasoncraft::file_ops::FakeDialogs;
     use reasoncraft::scene::{SceneOptions, build_scene};
     use reasoncraft::theme::Tokens;
-    use std::time::{Duration, Instant};
 
     let dir = tempfile::tempdir().unwrap();
     let (mut d, _) = sample();
@@ -158,12 +157,7 @@ fn export_does_not_depend_on_ui_scale() {
             page: PageSetup::default(),
         }));
         h.run_steps(2);
-        let start = Instant::now();
-        while h.state().export.busy() {
-            assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
-            h.step();
-            std::thread::sleep(Duration::from_millis(5));
-        }
+        crate::common::step_until(h, |app| !app.export.busy(), "the export");
         std::fs::read_to_string(&file).unwrap()
     };
     let at_100 = export(&mut h, 1.0, "100.svg");

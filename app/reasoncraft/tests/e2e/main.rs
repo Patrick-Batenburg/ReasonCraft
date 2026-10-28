@@ -6,6 +6,9 @@
 //! [`output`], the step-5 interchange (find, spelling, Argdown, SVG,
 //! recovery) in [`interchange`].
 
+#[path = "../common/mod.rs"]
+mod common;
+
 mod build_reopen;
 mod interchange;
 mod meta_sessions;

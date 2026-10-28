@@ -246,6 +246,20 @@ impl ReasonCraftApp {
         &self.tabs[self.active]
     }
 
+    /// Whether work runs in the background whose result a later frame
+    /// picks up: exports, images being prepared or decoded, saves,
+    /// spelling dictionaries and suggestions, and autosave writes. The
+    /// frame loop keeps looking (see [`Self::show`]); tests step frames
+    /// until it is done.
+    pub fn background_busy(&self) -> bool {
+        self.export.busy()
+            || self.image_jobs.busy()
+            || self.images.busy()
+            || self.saves.busy()
+            || self.spell.busy()
+            || self.recovery.as_ref().is_some_and(|r| r.busy())
+    }
+
     pub fn push(&mut self, action: Action) {
         self.pending.push(action);
     }
@@ -316,7 +330,7 @@ impl ReasonCraftApp {
         if let Some(secs) = crate::recovery::due_in(self, now) {
             ctx.request_repaint_after(Duration::from_secs_f64(secs));
         }
-        if self.export.busy() || self.image_jobs.busy() || self.saves.busy() || self.spell.busy() {
+        if self.background_busy() {
             // Look for the result again soon, without spinning.
             ctx.request_repaint_after(Duration::from_millis(30));
         }

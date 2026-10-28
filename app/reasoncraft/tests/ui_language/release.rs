@@ -137,7 +137,7 @@ fn release_flow() {
     let saved = dir.path().join("sjabloon.rcraft");
     fake.set_save(saved.clone());
     act(&mut h, Action::Save);
-    crate::common::wait_saves(&mut h);
+    crate::common::settle(&mut h);
     assert!(h.state().modal.is_none(), "{:?}", h.state().modal);
     assert!(saved.is_file());
     assert!(!h.state().active_tab().is_dirty());

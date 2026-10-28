@@ -30,13 +30,17 @@ fn all_at(doc: &reasoncraft_core::Document, side: u32) -> Vec<(String, u32)> {
     images.map(|i| (i.asset.clone(), side)).collect()
 }
 
-/// Load `wanted` frame after frame until the worker is done (at most ten
-/// seconds).
+/// Load `wanted` frame after frame until the worker is done and all is
+/// uploaded (at most two minutes: test binaries may share a busy machine).
 fn settle(cache: &mut ImageCache, ctx: &egui::Context, wanted: &[(String, u32)], assets: &Assets) {
     let start = std::time::Instant::now();
-    while cache.load(ctx, wanted, assets) {
+    loop {
+        cache.load(ctx, wanted, assets);
+        if !cache.busy() {
+            break;
+        }
         assert!(
-            start.elapsed() < std::time::Duration::from_secs(10),
+            start.elapsed() < std::time::Duration::from_secs(120),
             "decode hangs"
         );
         std::thread::sleep(std::time::Duration::from_millis(1));
@@ -319,7 +323,8 @@ fn image_state_is_pending_only_while_a_present_asset_waits() {
     // Held, the worker decodes nothing: frames go on, and all present
     // assets wait.
     for _ in 0..3 {
-        assert!(cache.load(&ctx, &wanted, &tab.assets), "decoding");
+        cache.load(&ctx, &wanted, &tab.assets);
+        assert!(cache.busy(), "decoding");
     }
     for k in keys.iter().chain([&bad]) {
         assert_eq!(state(&cache, k), "pending");

@@ -5,7 +5,6 @@
 
 use crate::common::{app_with_doc, harness};
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Key, Modifiers, accesskit};
 use egui_kittest::kittest::{AccessKitNode, NodeT, Queryable};
@@ -135,15 +134,13 @@ fn sample_harness() -> (H, NodeId) {
     (harness(app), reason)
 }
 
-/// Run frames until `lang`'s dictionary is loaded (at most 20 s).
+/// Run frames until `lang`'s dictionary is loaded, then settle.
 fn wait_dictionary(h: &mut H, lang: &str) {
-    let start = Instant::now();
-    while h.state_mut().spell.get(lang).is_none() {
-        assert!(start.elapsed() < Duration::from_secs(20), "no dictionary");
+    crate::common::poll_until("the dictionary", || {
         h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    h.run();
+        h.state_mut().spell.get(lang).is_some()
+    });
+    crate::common::settle(h);
 }
 
 fn act(h: &mut H, action: Action) {

@@ -1,6 +1,6 @@
 //! UI tests for file operations: save, open, close prompts.
 
-use crate::common::{build, wait_saves};
+use crate::common::{build, settle};
 use eframe::egui;
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
@@ -26,7 +26,7 @@ fn file_harness() -> (Harness<'static, ReasonCraftApp>, FakeDialogs) {
 fn cmd(h: &mut Harness<'static, ReasonCraftApp>, key: egui::Key) {
     h.key_press_modifiers(egui::Modifiers::COMMAND, key);
     h.run_steps(2);
-    wait_saves(h);
+    settle(h);
 }
 
 /// Type `text` on the selected root claim and finish the edit.
@@ -187,7 +187,7 @@ fn close_dirty_tab_asks_to_save() {
     fake.set_save(path.clone());
     h.get_by_label(&t("unsaved.save_changes")).click();
     h.run_steps(2);
-    wait_saves(&mut h);
+    settle(&mut h);
     assert!(h.state().modal.is_none());
     assert!(path.is_file());
     assert_eq!(h.state().tabs.len(), 1);
@@ -291,7 +291,7 @@ fn appended_extension_asks_before_replacing() {
     cmd(&mut h, egui::Key::S);
     h.get_by_label(&t("replace.confirm")).click();
     h.run_steps(2);
-    wait_saves(&mut h);
+    settle(&mut h);
     assert!(h.state().modal.is_none());
     assert_eq!(root_text_in(&existing), "New");
     let tab = h.state().active_tab();
@@ -335,7 +335,7 @@ fn failed_save_during_window_close_aborts_it() {
     fake.set_save(dir.path().join("no/such/dir/one.rcraft"));
     h.get_by_label(&t("unsaved.save_changes")).click();
     h.run_steps(2);
-    wait_saves(&mut h);
+    settle(&mut h);
     assert!(matches!(
         h.state().modal,
         Some(reasoncraft::file_ops::Modal::Error { .. })
@@ -364,7 +364,7 @@ fn replace_prompt_during_window_close() {
     fake.set_save(dir.path().join("one"));
     h.get_by_label(&t("unsaved.save_changes")).click();
     h.run_steps(2);
-    wait_saves(&mut h);
+    settle(&mut h);
     h.get_by_label(&t("replace.cancel")).click();
     h.run();
     assert!(h.state().modal.is_none());
@@ -378,10 +378,10 @@ fn replace_prompt_during_window_close() {
     fake.set_save(dir.path().join("one"));
     h.get_by_label(&t("unsaved.save_changes")).click();
     h.run_steps(2);
-    wait_saves(&mut h);
+    settle(&mut h);
     h.get_by_label(&t("replace.confirm")).click();
     h.run_steps(2);
-    wait_saves(&mut h);
+    settle(&mut h);
     assert_eq!(root_text_in(&existing), "One");
     assert_eq!(h.state().active, 1);
     h.get_by_label(&t("unsaved.discard")).click();

@@ -3,8 +3,6 @@
 //! pass, an Argdown round trip into a new tab, the same SVG from both
 //! tabs, and autosave restored after a crash.
 
-use std::time::{Duration, Instant};
-
 use reasoncraft::actions::{Action, apply};
 use reasoncraft::app::ReasonCraftApp;
 use reasoncraft::export::ExportFormat;
@@ -21,16 +19,11 @@ use super::{card_of, editing, run, typed};
 /// Runs spelling frames (dictionary loads included) until the pass shows
 /// a misspelling with its suggestions, or is done (at most 20 s).
 fn wait_for_spelling(app: &mut ReasonCraftApp) {
-    let start = Instant::now();
-    loop {
+    crate::common::poll_until("the spelling pass", || {
         reasoncraft::spell::poll(app);
         let pass = app.active_tab().spelling.as_ref().expect("a pass runs");
-        if pass.suggestions.is_some() || pass.done {
-            return;
-        }
-        assert!(start.elapsed() < Duration::from_secs(20), "no dictionary");
-        std::thread::sleep(Duration::from_millis(5));
-    }
+        pass.suggestions.is_some() || pass.done
+    });
 }
 
 /// Every box's text in `app`'s active tab, sorted.

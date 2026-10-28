@@ -4,7 +4,6 @@
 
 use crate::common;
 use std::path::Path;
-use std::time::{Duration, Instant};
 
 use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
@@ -29,13 +28,7 @@ fn harness(fake: &FakeDialogs, dir: &Path) -> H {
 }
 
 fn wait(h: &mut H) {
-    let start = Instant::now();
-    while h.state().export.busy() {
-        assert!(start.elapsed() < Duration::from_secs(60), "export hangs");
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    h.run();
+    common::settle(h);
 }
 
 fn svg_request() -> Action {
@@ -114,13 +107,14 @@ fn export_error_waits_for_the_open_message() {
     let fake = FakeDialogs::default();
     let mut h = harness(&fake, dir.path());
     fake.set_export(dir.path().join("missing").join("map.svg"));
-    h.state_mut().push(svg_request());
-    h.run_steps(2);
+    // The message shows before the export starts, however fast it fails.
     let first = Modal::Error {
         title: "First".into(),
         message: "Already showing".into(),
     };
     h.state_mut().modal = Some(first.clone());
+    h.state_mut().push(svg_request());
+    h.run_steps(2);
     wait(&mut h);
     assert_eq!(h.state().modal, Some(first), "not overwritten");
     h.get_by_label(&t("modal.ok")).click();

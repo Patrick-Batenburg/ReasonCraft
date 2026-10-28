@@ -1,6 +1,6 @@
 //! The recovery prompt after a crash: restore, discard, decide later.
 
-use crate::common::{harness, wait_saves};
+use crate::common::{harness, settle};
 use std::fs::File;
 use std::time::{Duration, SystemTime};
 
@@ -108,7 +108,7 @@ fn restored_doc_save_asks_when_original_changed() {
     assert_eq!(root_text(&path), "Saved", "nothing written yet");
     h.get_by_label(&t("replace.confirm")).click();
     h.run_steps(2);
-    wait_saves(&mut h);
+    settle(&mut h);
     assert!(h.state().modal.is_none());
     assert_eq!(root_text(&path), "Edited");
     assert!(!h.state().active_tab().is_dirty());
