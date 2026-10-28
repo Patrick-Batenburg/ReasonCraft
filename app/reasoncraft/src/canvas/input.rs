@@ -189,7 +189,7 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
 /// no menu or dialog is open. Called after the side panels, so a paste
 /// over the Snippets tab becomes a snippet first.
 pub fn clipboard_events(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
-    let busy = app.modal.is_some() || app.link_edit.is_some() || app.export_dialog.is_some();
+    let busy = app.dialog_open();
     let Some(tab) = app.tabs.get(app.active) else {
         return Vec::new();
     };

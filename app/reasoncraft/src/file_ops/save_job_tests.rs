@@ -217,3 +217,93 @@ fn a_replace_prompt_answers_for_its_own_tab_after_an_earlier_tab_closed() {
     assert_eq!(app.tabs[0].path.as_deref(), Some(x.as_path()));
     assert_eq!(app.tabs[1].path, None);
 }
+
+/// The root texts of the tabs still open.
+fn tab_texts(app: &ReasonCraftApp) -> Vec<String> {
+    app.tabs
+        .iter()
+        .map(|t| t.doc.boxes[&t.doc.root].text.clone())
+        .collect()
+}
+
+#[test]
+fn a_close_asked_while_a_save_fails_waits_behind_its_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let (mut app, hold) = three_dirty_tabs(&fake);
+    fake.set_save(dir.path().join("missing").join("a.rcraft"));
+    apply(&mut app, Action::CloseTab(0));
+    apply(&mut app, Action::ResolveUnsaved(UnsavedChoice::Save));
+    hold.release();
+    // A's save fails while B's close waits for it: its error shows, and
+    // B is asked about once that is closed.
+    apply(&mut app, Action::CloseTab(1));
+    assert!(
+        matches!(app.modal, Some(Modal::Error { .. })),
+        "{:?}",
+        app.modal
+    );
+    apply(&mut app, Action::DismissModal);
+    poll_saves(&mut app);
+    let b = app.tabs[1].recovery_key;
+    assert!(
+        matches!(app.modal, Some(Modal::Unsaved { tab, .. }) if tab == b),
+        "{:?}",
+        app.modal
+    );
+    assert_eq!(tab_texts(&app), ["A", "B", "C"]);
+}
+
+#[test]
+fn a_window_close_asked_while_a_save_fails_waits_behind_its_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let (mut app, hold) = three_dirty_tabs(&fake);
+    fake.set_save(dir.path().join("missing").join("a.rcraft"));
+    apply(&mut app, Action::CloseTab(0));
+    apply(&mut app, Action::ResolveUnsaved(UnsavedChoice::Save));
+    hold.release();
+    apply(&mut app, Action::CloseWindow);
+    assert!(
+        matches!(app.modal, Some(Modal::Error { .. })),
+        "{:?}",
+        app.modal
+    );
+    apply(&mut app, Action::DismissModal);
+    poll_saves(&mut app);
+    let a = app.tabs[0].recovery_key;
+    assert!(
+        matches!(app.modal, Some(Modal::Unsaved { tab, window: true, .. }) if tab == a),
+        "{:?}",
+        app.modal
+    );
+}
+
+/// What a finished save was part of waits while the export dialog or the
+/// link editor is open too, not only a message (ruling R1-2).
+#[test]
+fn a_close_after_save_waits_while_the_export_dialog_is_open() {
+    let dir = tempfile::tempdir().unwrap();
+    let fake = FakeDialogs::default();
+    let (mut app, hold) = three_dirty_tabs(&fake);
+    fake.set_save(dir.path().join("a.rcraft"));
+    apply(&mut app, Action::CloseTab(0));
+    apply(&mut app, Action::ResolveUnsaved(UnsavedChoice::Save));
+    apply(
+        &mut app,
+        Action::OpenExport(crate::export::ExportFormat::Png),
+    );
+    assert!(app.export_dialog.is_some());
+    hold.release();
+    wait_for_saves(&mut app);
+    poll_saves(&mut app);
+    assert_eq!(
+        tab_texts(&app),
+        ["A", "B", "C"],
+        "A stays while Export is open"
+    );
+    assert!(app.export_dialog.is_some());
+    app.export_dialog = None;
+    poll_saves(&mut app);
+    assert_eq!(tab_texts(&app), ["B", "C"]);
+}

@@ -145,9 +145,9 @@ pub(super) fn mark_written(
 
 /// Picks up the saves that ended: marks their tabs saved, then carries on
 /// with what each was part of, or shows why it failed (which ends a close
-/// it was part of). While a dialog is open, that waits: the dialog's
-/// answer refers to a tab, and a new message must not replace it. Run
-/// once per frame.
+/// it was part of). While a dialog is open (a message, the export dialog
+/// or the link editor), that waits: the dialog acts on a tab, and a new
+/// message must not replace it. Run once per frame.
 pub fn poll_saves(app: &mut ReasonCraftApp) {
     for (r, result) in app.saves.finished() {
         let Some(i) = tab_index(app, r.tab) else {
@@ -164,7 +164,7 @@ pub fn poll_saves(app: &mut ReasonCraftApp) {
             Err(err) => app.saves.next.push_back(Next::Failed(r.path, err)),
         }
     }
-    while app.modal.is_none()
+    while !app.dialog_open()
         && let Some(next) = app.saves.next.pop_front()
     {
         match next {
@@ -172,6 +172,14 @@ pub fn poll_saves(app: &mut ReasonCraftApp) {
             Next::Failed(path, err) => show_error(app, FileOp::Save, &path, &err),
         }
     }
+}
+
+/// Carry on with `then` for tab `tab` once no dialog is open, after what
+/// the saves that ended left to do: a close asked for while a save's
+/// error shows waits behind it.
+pub(super) fn after_dialogs(app: &mut ReasonCraftApp, tab: Uuid, then: AfterSave) {
+    app.saves.next.push_back(Next::Then(tab, then));
+    poll_saves(app);
 }
 
 /// Carry on with what tab `tab`'s save was part of. A tab changed while

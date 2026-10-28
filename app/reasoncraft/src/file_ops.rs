@@ -273,12 +273,11 @@ fn carry_on(app: &mut ReasonCraftApp, tab: Uuid, then: AfterSave) {
 
 /// Close the tab `key` names, asking first if it has unsaved changes (or
 /// an image still being prepared). Saves being written finish first; one
-/// may close another tab, so the tab is looked for after them.
+/// may close another tab, so the tab is looked for after them, and one
+/// that failed shows its error, which the close then waits behind.
 pub fn request_close_tab(app: &mut ReasonCraftApp, key: Uuid) {
     wait_for_saves(app);
-    if let Some(i) = tab_index(app, key) {
-        ask_or_close(app, i);
-    }
+    save_job::after_dialogs(app, key, AfterSave::CloseTab);
 }
 
 /// Close tab `i`, asking first if it has unsaved changes.
@@ -322,7 +321,10 @@ pub fn request_close_window(app: &mut ReasonCraftApp) {
     for tab in &mut app.tabs {
         tab.commit_session();
     }
-    ask_from(app, 0);
+    // The window keeps one tab; asking starts from it (behind a save's
+    // error, if one shows).
+    let first = app.tabs[0].recovery_key;
+    save_job::after_dialogs(app, first, AfterSave::ContinueWindowClose);
 }
 
 /// Ask about the first dirty tab at or after `from`; with none left, close

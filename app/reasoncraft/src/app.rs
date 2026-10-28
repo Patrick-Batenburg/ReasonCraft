@@ -224,6 +224,13 @@ impl ReasonCraftApp {
         }
     }
 
+    /// Whether a dialog is open: a message or prompt, the export dialog
+    /// or the link editor. Keys go to it, and what a finished save was
+    /// part of waits until it is closed.
+    pub fn dialog_open(&self) -> bool {
+        self.modal.is_some() || self.link_edit.is_some() || self.export_dialog.is_some()
+    }
+
     /// True once the user has answered every unsaved-changes question of a
     /// window close; the window then closes.
     pub fn close_confirmed(&self) -> bool {
@@ -291,9 +298,7 @@ impl ReasonCraftApp {
         // A modal takes all keys (Esc closes it). In the backstage only the
         // file keys work, and Esc goes back to the map (see
         // `backstage::keys`).
-        let modal =
-            self.modal.is_some() || self.link_edit.is_some() || self.export_dialog.is_some();
-        let keys = if modal {
+        let keys = if self.dialog_open() {
             Vec::new()
         } else if self.ribbon_tab == RibbonTab::File {
             shell::backstage::keys(&ctx, self)
