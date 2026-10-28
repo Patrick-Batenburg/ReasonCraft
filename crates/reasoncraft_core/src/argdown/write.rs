@@ -2,6 +2,7 @@
 
 use super::titles::Names;
 use crate::ids::{CardId, Item, NodeId, Parent};
+use crate::meta::language_code;
 use crate::model::{
     Acceptance, BoxKind, BoxNode, CardKind, CardStrength, Comment, Document, SourceRating, Verdict,
 };
@@ -47,7 +48,7 @@ impl Writer<'_> {
             "===\ntitle: {}\nauthor: {}\nlanguage: {}\ngenerator: {}\n===",
             front(&meta.title),
             front(&meta.author),
-            front(&meta.language),
+            front(language_code(&meta.language)),
             front("ReasonCraft"),
         )
     }

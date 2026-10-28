@@ -8,13 +8,15 @@ use super::data::{self, Data, Value};
 use super::graph::{Arg, Stmt};
 use super::lex::Op;
 use crate::link::safe_link;
+use crate::meta::language_code;
 use crate::model::{
     Acceptance, BoxKind, BoxNode, CardKind, CardStrength, Comment, SourceRating, SourceType,
     Verdict, now_rfc3339,
 };
 
 /// Title, author and language from the frontmatter's `key: value` lines.
-/// A language other than `en` or `nl` reads as `en`.
+/// A Dutch language tag (`nl`, `nl-NL`, …) reads as `nl`, anything else
+/// as `en`.
 pub(super) fn frontmatter(lines: &[String]) -> (String, String, String) {
     let (mut title, mut author, mut language) = (String::new(), String::new(), String::new());
     for line in lines {
@@ -25,14 +27,11 @@ pub(super) fn frontmatter(lines: &[String]) -> (String, String, String) {
         match key.trim() {
             "title" => title = value,
             "author" => author = value,
-            "language" => language = value.trim().to_ascii_lowercase(),
+            "language" => language = value,
             _ => {}
         }
     }
-    if language != "nl" {
-        language = "en".to_owned();
-    }
-    (title, author, language)
+    (title, author, language_code(language.trim()).to_owned())
 }
 
 /// A source, category or note box kind, from `source`, `category: true`

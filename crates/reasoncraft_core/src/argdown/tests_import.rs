@@ -107,6 +107,44 @@ fn round_trip_preserves_structure() {
     round_trip(&Document::new(""));
 }
 
+/// Titles drop `[]<>{}:#@` and the backslash; what is left must not form a comment
+/// (`//`, `/*`), or the rest of the line (or file) would be lost.
+#[test]
+fn titles_never_start_a_comment() {
+    let texts = [
+        "See https://app.example.com/#/report for details",
+        "Files matching src/{*}.rs are generated",
+        "x/#/y",
+        "a/@/b",
+        "a/[*]b and /</c",
+    ];
+    let mut d = Document::new(texts[0]);
+    let (card, _) = d
+        .add_card(Parent::Box(d.root), CardKind::Reason, texts[1])
+        .unwrap();
+    for text in &texts[2..] {
+        d.add_premise(card, None, text).unwrap();
+    }
+    for text in texts {
+        d.add_loose(NewLoose::Card(CardKind::Objection), text);
+    }
+    round_trip(&d);
+}
+
+/// A language tag such as `nl-NL` is Dutch: written as `nl`, read as `nl`.
+#[test]
+fn language_tags_round_trip_by_primary_language() {
+    let mut d = Document::new("Stelling");
+    d.meta.language = "nl-NL".to_owned();
+    let text = to_argdown(&d);
+    assert!(text.contains("language: \"nl\""), "{text}");
+    assert!(text.contains("# Niet verbonden") || d.parking.is_empty());
+    let (back, _) = import(&text);
+    assert_eq!(back.meta.language, "nl");
+    let (back, _) = import(&text.replace("\"nl\"", "\"NL_be\""));
+    assert_eq!(back.meta.language, "nl");
+}
+
 /// A long chain of objections, in non-Latin script: nothing recurses.
 #[test]
 fn deep_chain_round_trips() {

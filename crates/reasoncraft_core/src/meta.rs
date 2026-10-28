@@ -13,6 +13,16 @@ pub fn primary_language(tag: &str) -> &str {
     tag.split(['-', '_', '.', '@']).next().unwrap_or_default()
 }
 
+/// The language of [`LANGUAGES`] that `tag` names: `"nl"` for Dutch in any
+/// case or region (`nl-NL`, `NL_be`), `"en"` for anything else.
+pub fn language_code(tag: &str) -> &'static str {
+    if primary_language(tag).eq_ignore_ascii_case("nl") {
+        "nl"
+    } else {
+        "en"
+    }
+}
+
 impl Document {
     /// Set the document language: `"en"` or `"nl"`, else
     /// [`EditError::NotAllowed`]. Setting the current language changes

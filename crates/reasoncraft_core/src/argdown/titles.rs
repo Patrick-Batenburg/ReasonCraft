@@ -131,14 +131,20 @@ struct Counts {
 /// Argdown titles (`[]<>{}:#@`, the backslash, and a slash that would
 /// start a comment) are left out, and so are leading hyphens; whitespace
 /// is collapsed and the result is cut at [`MAX_TITLE_CHARS`].
+///
+/// The slash is judged on what is kept, not on the original text: in
+/// `x/#/y` the `#` goes, and the two slashes it leaves would start a
+/// comment that hides the rest of the line (`/*`: the rest of the file).
 pub(super) fn base_title(text: &str) -> String {
     let mut kept = String::with_capacity(text.len());
-    let mut chars = text.chars().peekable();
-    while let Some(c) = chars.next() {
-        let comment_start = c == '/' && matches!(chars.peek(), Some('/' | '*'));
-        if !comment_start && !"[]<>{}:#@\\".contains(c) {
-            kept.push(c);
+    for c in text.chars() {
+        if "[]<>{}:#@\\".contains(c) {
+            continue;
         }
+        if matches!(c, '/' | '*') && kept.ends_with('/') {
+            kept.pop();
+        }
+        kept.push(c);
     }
     // A title starting with `-` is not a statement reference in Argdown.
     let kept = kept.trim_start_matches(|c: char| c == '-' || c.is_whitespace());
