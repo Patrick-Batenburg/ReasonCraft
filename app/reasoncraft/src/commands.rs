@@ -14,6 +14,8 @@ mod search;
 pub use search::search;
 
 #[cfg(test)]
+mod readme_tests;
+#[cfg(test)]
 mod tests;
 
 /// One command.

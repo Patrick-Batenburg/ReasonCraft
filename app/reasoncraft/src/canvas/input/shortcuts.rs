@@ -1,6 +1,7 @@
 //! The keyboard shortcut tables, one per platform, and how they are shown.
 //!
-//! README's keyboard tables are checked against [`shortcuts`] by a test.
+//! README's keyboard tables are checked against [`shortcuts`] by a test:
+//! the same keys, each on the row of the action it runs.
 
 use std::sync::LazyLock;
 
