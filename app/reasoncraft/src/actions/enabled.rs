@@ -14,7 +14,9 @@ use crate::doc_tab::DocTab;
 /// tab, and the spelling pass (F7) only with spellcheck on. The ribbon,
 /// Search commands and the keyboard all ask this, so they agree.
 pub fn can_run(app: &ReasonCraftApp, action: &Action) -> bool {
-    app.tabs.get(app.active).is_some_and(|tab| is_enabled(tab, action))
+    app.tabs
+        .get(app.active)
+        .is_some_and(|tab| is_enabled(tab, action))
         && (*action != Action::OpenSpelling || app.settings.spellcheck)
 }
 

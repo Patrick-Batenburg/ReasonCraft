@@ -4,10 +4,10 @@
 use crate::common::{H, build};
 use eframe::egui::{Key, Modifiers};
 use egui_kittest::kittest::Queryable;
-use reasoncraft::i18n::t;
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::app::RibbonTab;
 use reasoncraft::file_ops::FakeDialogs;
+use reasoncraft::i18n::t;
 use reasoncraft::settings::TextTab;
 
 fn on_file_page(fake: &FakeDialogs) -> H {

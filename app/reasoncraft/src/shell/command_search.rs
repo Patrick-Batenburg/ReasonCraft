@@ -119,10 +119,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         st.refused = false;
     }
     let mut run = enter.then_some(st.highlight);
-    let enabled: Vec<bool> = results
-        .iter()
-        .map(|c| can_run(app, &c.action))
-        .collect();
+    let enabled: Vec<bool> = results.iter().map(|c| can_run(app, &c.action)).collect();
     if run.is_some_and(|i| !enabled[i]) {
         run = None;
         st.refused = true;

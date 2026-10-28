@@ -54,5 +54,8 @@ fn imported_tab_is_named_by_its_title() {
     assert_eq!(app.active_tab().title(), "tea •");
     apply(&mut app, Action::OpenExport(ExportFormat::OutlineMarkdown));
     let (_, suggested) = fake.last_export.borrow().clone().expect("asked");
-    assert_eq!(suggested, format!("tea.{}", ExportFormat::OutlineMarkdown.extension()));
+    assert_eq!(
+        suggested,
+        format!("tea.{}", ExportFormat::OutlineMarkdown.extension())
+    );
 }

@@ -114,5 +114,8 @@ fn close_request_closes_the_link_editor_and_export_dialog() {
     request_close(&mut h);
     h.run();
     assert_eq!(h.state().active, 0);
-    assert!(h.state().export_dialog.is_none(), "the export dialog closed");
+    assert!(
+        h.state().export_dialog.is_none(),
+        "the export dialog closed"
+    );
 }
