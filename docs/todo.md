@@ -418,3 +418,11 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 - [ ] Owner review of the Dutch glossary (docs/glossary-nl.md)
 - [ ] Split files at ~400 lines before the next feature (canvas/input.rs, app.rs, icons/mod.rs)
 - [ ] Smaller: Recent shows \?\UNC paths for network shares; profile warning invisible in GUI builds; per-frame Fluent lookups in the scene; thousands separators
+
+## Full code review (2026-10-28) — merged
+Six independent reviewers (core bugs, app bugs, security, maintainability, readability, robustness/UX/accessibility) reviewed main at 002efab; ~75 findings were fixed in 8 batches and 4 re-check rounds on branch `review-fixes`, merged as 31002c8 after all six granted approval. Ledger, findings and round files: `.superpowers/sdd/full-review/`. Rulings B1-…, B4–B8, R1-n, R2-n in docs/rulings.md.
+- [ ] Open still runs on the UI thread (ruling B6-5); save is a background job
+- [ ] Screen-reader tree only covers items on screen (B7-8)
+- [ ] Deleting a very large branch is quadratic (edit/move_remove.rs shift_remove) — one-off cost, not per frame
+- [ ] Layout reruns every frame (linear in map size); caching per revision would cut idle-redraw cost on huge maps
+- [ ] Owner's PC: the processor logs WHEA parity errors under load (ruling R2-6); update BIOS (microcode ≥ 0x12F). If an abort ever appears on CI hardware, R2-6 no longer holds — reopen MAINT-R3
