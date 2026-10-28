@@ -41,7 +41,7 @@ fn paste_gives_fresh_ids_and_keeps_the_original() {
     assert_eq!(d.cards.len(), cards + 4);
     assert_eq!(d.boxes[&d.root].children.last(), Some(&again));
     assert_eq!(d.copy_fragment(new).unwrap().plain_text(), f.plain_text());
-    d.check_invariants();
+    assert_eq!(d.validate(), Ok(()));
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn a_premise_pastes_as_the_premise_of_a_new_card_of_its_kind() {
     assert_eq!(card.kind, CardKind::Reason);
     assert_eq!(d.boxes[&card.premises[0]].text, "a1");
     assert_eq!(d.boxes[&card.premises[0]].children.len(), 2);
-    d.check_invariants();
+    assert_eq!(d.validate(), Ok(()));
 }
 
 #[test]
