@@ -67,10 +67,10 @@ The essay is saved inside the `.rcraft` file. Earlier versions of ReasonCraft op
 Everything is on the **Export** tab of the ribbon. Exports run in the background: the status bar shows "Exporting…", then "Export done." with an **Open folder** link. Status messages go away after a few seconds, or when you next change the map or give a file or export command.
 
 - **PNG, SVG, PDF.** A dialog first asks what to export (the whole map or the selection and what is under it) and in which colours (the light theme, the default, or the theme you are using).
-  - *PNG:* scale 1× to 4×, and an optional transparent background. Images are limited to 16,384 px on a side and 256 megapixels; for larger maps, use SVG or PDF.
+  - *PNG:* scale 1× to 4×, and an optional transparent background. Images are limited to 16,384 px on a side and about 134 megapixels (512 MiB of pixels); for larger maps, use SVG or PDF.
   - *SVG:* text is turned into outlines by default, so the drawing looks the same on a computer without the font. Emoji are left out of outlined text. Untick the option to keep live, selectable text.
   - *PDF:* text stays selectable, and the font is embedded. **Page setup…** sets the paper (A4 or Letter), orientation, margin and fit: the whole map on one page (small maps are not enlarged beyond normal size), or across pages at a chosen scale, with each page labelled "row/column".
-- **Copy as image** puts a 2× PNG of the map, in the colours you see, on the clipboard (up to 64 megapixels).
+- **Copy as image** puts a 2× PNG on the clipboard (up to 64 megapixels), with the scope and colours last chosen in the export dialog: at first the whole map in the light theme.
 - **Print** makes a PDF with the page setup and opens it in your PDF viewer, where you print it.
 - **Outline** (menu): the outline as Markdown, plain text or a Word document, with the numbering and switches of the Outline tab.
 - **Essay** (menu): the essay as Markdown, plain text or a Word document, with the document's title and author and a heading for each part.
@@ -120,8 +120,8 @@ macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, a
 | --- | --- | --- |
 | Alt+Q | Shift+Cmd+A | Search commands, also while typing in a box or field: type part of a command's name, pick it with the arrow keys and press Enter (Esc closes the list) |
 | Ctrl+F | Cmd+F | Find in box text, sources and notes, also while typing in a box or field: the find bar opens above the map (in its field Enter / Shift+Enter go to the next / previous hit, Esc closes it) |
-| Ctrl+H | Option+Cmd+F | Find and replace |
-| F3 / Shift+F3 | F3 / Shift+F3 | Go to the next / previous hit |
+| Ctrl+H | Option+Cmd+F | Find and replace, also while typing in a box or field |
+| F3 / Shift+F3 | F3 / Shift+F3 | Go to the next / previous hit, also while typing in a box or field |
 | F7 | F7 | Spelling, also while typing in a box or field: check the spelling of box text, sources and notes from the selection, one misspelling at a time |
 | F6 / Shift+F6 | F6 / Shift+F6 | Move the keyboard focus to the next / previous pane, from any control: ribbon, Building panel, map, Text panel, status bar (hidden panels are skipped) |
 | Ctrl+Tab or Ctrl+PageDown / Ctrl+Shift+Tab or Ctrl+PageUp | Control+Tab or Control+PageDown / Control+Shift+Tab or Control+PageUp | Switch to the next / previous open map, also while typing in a box or field (round from the last to the first) |

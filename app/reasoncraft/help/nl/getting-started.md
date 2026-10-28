@@ -22,7 +22,7 @@ Met Beeld > Bouwstenen en Beeld > Tekstpaneel toon of verberg je de zijpanelen.
 - Zet een bron onder een premisse met Ctrl+Shift+E, of kies een soort bij Start > Bron.
 - Sla op met Ctrl+S. Kaarten worden bewaard als `.rcraft`-bestand.
 
-Op een Mac gebruik je Cmd waar deze help Ctrl zegt, en Option waar Alt staat. Op de pagina [Sneltoetsen](keyboard) staan de toetsen van jouw computer.
+Op een Mac gebruik je Cmd waar deze help Ctrl zegt, en Option waar Alt staat. Een paar toetsen zijn anders: Vervangen (Ctrl+H) is Option+Cmd+F en Opdrachten zoeken (Alt+Q) is Shift+Cmd+A. Op de pagina [Sneltoetsen](keyboard) staan de toetsen van jouw computer.
 
 Je kunt ook een vak kiezen en het kleine **+**-knopje ernaast gebruiken, of het tabblad Start: Reden, Bezwaar, Medepremisse, Bron, Categorie en Notitie staan er allemaal.
 

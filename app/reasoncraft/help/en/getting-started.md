@@ -22,7 +22,7 @@ View > Building panel and View > Text panel show or hide the side panels.
 - Add a source under a premise with Ctrl+Shift+E, or pick a type from Home > Source.
 - Save with Ctrl+S. Maps are saved as `.rcraft` files.
 
-On a Mac, use Cmd where this help says Ctrl, and Option where it says Alt. The page [Keyboard shortcuts](keyboard) lists the keys of your computer.
+On a Mac, use Cmd where this help says Ctrl, and Option where it says Alt. A few keys differ: Replace (Ctrl+H) is Option+Cmd+F and Search commands (Alt+Q) is Shift+Cmd+A. The page [Keyboard shortcuts](keyboard) lists the keys of your computer.
 
 You can also select a box and use the small **+** button next to it, or the Home tab: Reason, Objection, Co-premise, Source, Category and Note are all there.
 

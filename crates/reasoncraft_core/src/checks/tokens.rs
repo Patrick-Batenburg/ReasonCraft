@@ -283,4 +283,18 @@ mod tests {
         // A short shared start is not enough for longer words.
         assert!(!same_term("democratie", "demografie"));
     }
+
+    /// The examples of the Checks help topic (help/*/checks.md) and of
+    /// `check-help-key_term`: a three-letter singular is no term, so its
+    /// plural is not covered by it; forms that differ early are two words.
+    #[test]
+    fn help_examples_hold() {
+        assert!(tokenise("les", "nl").is_empty());
+        assert_eq!(tokenise("lessen", "nl"), ["lessen"]);
+        assert!(tokenise("job", "en").is_empty());
+        assert_eq!(tokenise("jobs", "en"), ["jobs"]);
+        assert!(!same_term("baan", "banen"));
+        assert!(!same_term("mouse", "mice"));
+        assert!(same_term("robot", "robots"));
+    }
 }

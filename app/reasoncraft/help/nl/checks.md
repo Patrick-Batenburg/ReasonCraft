@@ -13,7 +13,7 @@ Een voorbeeld. Bewering: "Scholen moeten telefoons in de klas verbieden." Reden:
 Zo worden de woorden vergeleken:
 
 - Korte woorden (minder dan vier letters) en veelvoorkomende woorden zoals "de", "moeten" of "met" tellen niet mee.
-- Woorden die erg op elkaar lijken, tellen als hetzelfde woord, zoals "robot" en "robots". Woorden van minder dan vier letters worden overgeslagen, zo kan "banen" gemeld worden terwijl een premisse "baan" zegt.
+- Woorden die erg op elkaar lijken, tellen als hetzelfde woord, zoals "robot" en "robots". Woorden van minder dan vier letters worden overgeslagen, zo kan "lessen" gemeld worden terwijl een premisse "les" zegt. Vormen die al vroeg in het woord verschillen, zoals "baan" en "banen", tellen als twee woorden.
 - De controle kijkt naar redenen en bezwaren die op een bewering of premisse gericht zijn, niet naar blokken die op een heel blok gericht zijn.
 - Ze gebruikt de taal van het document (Engels of Nederlands). Zie [Talen en spelling](languages).
 
