@@ -154,3 +154,6 @@ Made while implementing:
 - Ruling R-1: the ribbon follows WordCraft (owner's reference screenshots and its Apache-2.0 source): groups shrink from the right (full → icon-only small buttons → one drop-down per group), give back from the left, and only then scroll with 18 pt ‹ › strips overlaid on the row ends (no reserved gutter). WordCraft's give-back order is kept, so a middle group may fold while a group to its right stays full — cost: that order can look odd; adapted code credited in file headers and THIRD-PARTY.md.
 - Ruling R-2: rating buttons and Connect keep a folded drop-down open (repeated or mode-starting actions); other commands close it — cost: none.
 
+## Full review fixes
+- Ruling B4-1 (APP-8): templates start in the language of new documents (File > Settings, "Same as interface" by default), like a blank map, because the user writes them; example maps stay in the interface language, because they are read alongside the interface and the help. Changes the earlier behaviour where templates always followed the interface — cost: with a different language for new documents, a template and an example opened together can differ in language.
+
