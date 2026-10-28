@@ -10,11 +10,16 @@
 # $GITHUB_ENV when running in Actions, otherwise printed.
 #
 # Missing certificate: prints a warning and exits 0, so package.sh falls back to ad-hoc signing.
+# The certificate, its password and the three notarization credentials (APPLE_ID, APPLE_PASSWORD,
+# APPLE_TEAM_ID) go together: when only some are set it warns, or with
+# REASONCRAFT_REFUSE_PARTIAL_SIGNING=1 (the release branch) fails (ruling PK-16).
 set -euo pipefail
 umask 077
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 
+signing_set_complete "macOS signing" APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID \
+  APPLE_PASSWORD APPLE_TEAM_ID || exit 1
 if [[ -z "${APPLE_CERTIFICATE:-}" ]]; then
   warn "APPLE_CERTIFICATE is not set: macOS builds will be ad-hoc signed and not notarized"
   exit 0

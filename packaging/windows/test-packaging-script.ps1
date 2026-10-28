@@ -1,6 +1,6 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/test-packaging-script.ps1
-# at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: the PE checks, sign.ps1 without
-# secrets and the MSI version of a pre-release are checked too.
+# at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: the PE checks, sign.ps1's handling
+# of missing and partly configured secrets, and the MSI version of a pre-release are checked too.
 
 <#
 .SYNOPSIS
@@ -9,7 +9,10 @@
   1. package.ps1 runs one policy check on the MSI, before it signs that MSI once (read from its syntax tree).
   2. Assert-ReleaseExe accepts the x64 release exe, refuses it labelled arm64 ("machine") and refuses
      the debug exe, which imports the C runtime.
-  3. sign.ps1 without (or with partial) signing secrets warns, leaves the file unsigned and exits 0.
+  3. sign.ps1 without signing secrets warns, leaves the file unsigned and exits 0, also on the
+     release branch; a partly configured set warns, and fails with
+     REASONCRAFT_REFUSE_PARTIAL_SIGNING=1; a certificate signs (with a stub signtool); each
+     outcome lands in the job summary, and no secret's value is printed.
   4. package.ps1 -SkipBuild with REASONCRAFT_VERSION=0.2.0-rc.1 writes an MSI whose ProductVersion is 0.2.0.
   Needs the x64 release exe (package.ps1 -Arch x64, or cargo build --release with +crt-static) and
   the debug exe (cargo build -p reasoncraft) in CARGO_TARGET_DIR (default: target), and WiX.
@@ -77,20 +80,52 @@ Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $work | Out-Null
 $copy = Join-Path $work 'reasoncraft.exe'
 Copy-Item -LiteralPath $release $copy
-$signVars = 'WINDOWS_CERTIFICATE', 'WINDOWS_CERTIFICATE_PASSWORD', 'AZURE_TENANT_ID', 'AZURE_CLIENT_ID',
-  'AZURE_CLIENT_SECRET', 'AZURE_SIGNING_ENDPOINT', 'AZURE_SIGNING_ACCOUNT', 'AZURE_CERT_PROFILE'
+$azureVars = 'AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'AZURE_SIGNING_ENDPOINT',
+  'AZURE_SIGNING_ACCOUNT', 'AZURE_CERT_PROFILE'
+$signVars = @('WINDOWS_CERTIFICATE', 'WINDOWS_CERTIFICATE_PASSWORD') + $azureVars +
+  'REASONCRAFT_REFUSE_PARTIAL_SIGNING', 'SIGNTOOL', 'GITHUB_STEP_SUMMARY', 'GITHUB_ACTIONS'
 $saved = @{}
 foreach ($name in $signVars + 'REASONCRAFT_VERSION', 'DIST') { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
-try {
+# Runs sign.ps1 on the copy with only the given settings; returns its exit code, output and the
+# job summary it wrote. SIGNTOOL is a stub that logs its arguments, so no real signing happens.
+$summaryFile = Join-Path $work 'summary.md'
+$stub = Join-Path $work 'signtool-stub.cmd'
+Set-Content -LiteralPath $stub -Encoding Ascii -Value "@echo signtool-stub %* >> `"$(Join-Path $work 'signtool.log')`""
+function Invoke-Sign([hashtable] $Settings) {
   foreach ($name in $signVars) { [Environment]::SetEnvironmentVariable($name, $null) }
-  # Partial Azure settings count as none.
-  $env:AZURE_TENANT_ID = '00000000-0000-0000-0000-000000000000'
+  Remove-Item -LiteralPath $summaryFile -ErrorAction SilentlyContinue
+  $env:GITHUB_STEP_SUMMARY = $summaryFile
+  $env:SIGNTOOL = $stub
+  foreach ($key in $Settings.Keys) { [Environment]::SetEnvironmentVariable($key, $Settings[$key]) }
   $out = & $Shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'sign.ps1') $copy 2>&1 | Out-String
-  if ($LASTEXITCODE -ne 0) { throw "sign.ps1 without secrets exited $LASTEXITCODE`: $out" }
-  if ($out -notmatch 'leaving unsigned') { throw "sign.ps1 without secrets did not warn: $out" }
-  if ((Get-AuthenticodeSignature -LiteralPath $copy).Status -eq 'Valid') { throw 'sign.ps1 signed without secrets.' }
-  Write-Output 'PASS sign.ps1 with partial secrets warns and leaves the file unsigned.'
-  $env:AZURE_TENANT_ID = $null
+  $summary = if (Test-Path -LiteralPath $summaryFile) { Get-Content -Raw -LiteralPath $summaryFile } else { '' }
+  [pscustomobject]@{ Exit = $LASTEXITCODE; Out = $out; Summary = $summary }
+}
+function Assert-Sign([string] $What, [hashtable] $Settings, [int] $Exit, [string] $Output, [string] $Summary) {
+  $r = Invoke-Sign $Settings
+  # PowerShell wraps an error message over lines, each continued after a '|'.
+  $flat = $r.Out -replace '\s*\|\s*', ' ' -replace '\s+', ' '
+  if ($r.Exit -ne $Exit) { throw "$What`: exit $($r.Exit), expected $Exit. $($r.Out)" }
+  if ($flat -notmatch $Output) { throw "$What`: output lacks '$Output'. $($r.Out)" }
+  if ($r.Summary -notmatch $Summary) { throw "$What`: summary '$($r.Summary)' lacks '$Summary'." }
+  if ($r.Out -match 'secret-value') { throw "$What`: a secret's value was printed." }
+  Write-Output "PASS $What"
+}
+$oneAzure = @{ AZURE_TENANT_ID = 'secret-value' }
+$fiveAzure = @{}; foreach ($name in $azureVars[0..4]) { $fiveAzure[$name] = 'secret-value' }
+$fakePfx = [Convert]::ToBase64String([byte[]](1..16))
+try {
+  Assert-Sign 'sign.ps1 without secrets warns, leaves the file unsigned and exits 0' @{} 0 'leaving unsigned' 'unsigned\*\* \(no signing secrets\)'
+  Assert-Sign 'on the release branch too, no secrets at all is allowed (ruling PK-7)' @{ REASONCRAFT_REFUSE_PARTIAL_SIGNING = '1' } 0 'leaving unsigned' 'no signing secrets'
+  Assert-Sign 'one Azure setting of six warns and leaves the file unsigned' $oneAzure 0 'partly configured.*lacks AZURE_CLIENT_ID' 'signing partly configured'
+  Assert-Sign 'five Azure settings of six fail on the release branch' ($fiveAzure + @{ REASONCRAFT_REFUSE_PARTIAL_SIGNING = '1' }) 1 'partly configured.*lacks AZURE_CERT_PROFILE' 'the build failed'
+  Assert-Sign 'a certificate password without the certificate fails on the release branch' @{ WINDOWS_CERTIFICATE_PASSWORD = 'secret-value'; REASONCRAFT_REFUSE_PARTIAL_SIGNING = '1' } 1 'WINDOWS_CERTIFICATE_PASSWORD is set but WINDOWS_CERTIFICATE is not' 'the build failed'
+  Assert-Sign 'a certificate with leftover Azure settings fails on the release branch' ($oneAzure + @{ WINDOWS_CERTIFICATE = $fakePfx; WINDOWS_CERTIFICATE_PASSWORD = 'secret-value'; REASONCRAFT_REFUSE_PARTIAL_SIGNING = '1' }) 1 'partly configured' 'the build failed'
+  Assert-Sign 'a certificate signs (stub signtool) and the summary says so' @{ WINDOWS_CERTIFICATE = $fakePfx; WINDOWS_CERTIFICATE_PASSWORD = 'secret-value'; REASONCRAFT_REFUSE_PARTIAL_SIGNING = '1' } 0 'Signing with WINDOWS_CERTIFICATE' 'signed with a certificate file'
+  $log = Get-Content -Raw -LiteralPath (Join-Path $work 'signtool.log')
+  if ($log -notmatch '(?m)^signtool-stub sign .*/f .*reasoncraft\.exe' -or $log -notmatch '(?m)^signtool-stub verify /pa') { throw "Unexpected signtool calls: $log" }
+  if ((Get-AuthenticodeSignature -LiteralPath $copy).Status -eq 'Valid') { throw 'The stub signed the file.' }
+  foreach ($name in $signVars) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
 
   # ---- 4. a pre-release version -------------------------------------------------------------------
   $env:REASONCRAFT_VERSION = '0.2.0-rc.1'

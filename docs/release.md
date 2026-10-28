@@ -173,6 +173,9 @@ A local Flatpak check needs a privileged `ubuntu:24.04` container with flatpak, 
 ## Signing
 
 Signing is optional (ruling L3): without secrets every script warns and ships unsigned, also on the `release` branch, and SmartScreen and Gatekeeper then warn users.
+A set of secrets is used whole or not at all: on the `release` branch the workflow sets `REASONCRAFT_REFUSE_PARTIAL_SIGNING=1`, and a set that is only partly there (five of the six `AZURE_*`, a certificate password without its certificate, or the Apple certificate without all three notarization credentials, or the reverse) fails the job instead of shipping unsigned or signed but not notarized (ruling PK-16).
+Elsewhere such a set gives a warning naming the missing secrets (never a value).
+Every job's summary says how its files came out: signed and with what, notarized or not, or unsigned and why.
 The release workflow takes the secrets from the GitHub environment `release`, which only the `release` branch uses; create it with the secrets below and, if wanted, required reviewers.
 
 | Secret | Used by |
@@ -267,6 +270,8 @@ The packaging scripts build from the workspace, so the installers are unaffected
 1. The CI and packaging lint workflows are green on all platforms, `macos-latest` included, for the commit to be released; run CI once by hand too, for the timing tests (or run `cargo test --workspace --release -j 4 -- --ignored` locally).
 2. `THIRD-PARTY.md` and the crates' licence texts (`cargo xtask notices`, see [Licence notices](#licence-notices)) are current: running it leaves no change to commit.
 3. Merge into `release` and wait for the draft release; every job is green and the draft holds the files of the table at the top (three MSIs and zips, the DMG, two each of tar.gz, deb, rpm, AppImage, `.zsync` and Flatpak) and `SHA256SUMS.txt`, and `sha256sum -c SHA256SUMS.txt` passes on the downloads.
+   The run's summary says, per job, how the files were signed; it is what was intended (signed and notarized once the secrets exist, otherwise unsigned).
+   Once signing secrets exist, check the downloads themselves: on Windows `Get-AuthenticodeSignature reasoncraft-<v>-windows-x64.msi` (and the exe inside the zip) shows `Valid` with the expected signer and a timestamp; on a Mac `spctl --assess --type open --context context:primary-signature -vv reasoncraft-<v>-macos-universal.dmg` says `source=Notarized Developer ID`, and `xcrun stapler validate` passes on the DMG.
 4. Windows:
    - check the x64 MSI in the test VM (see above): `0 failure(s)`, the VM left off without its checkpoint;
    - run it once interactively there: the licence page shows both licences, "Only for me" installs without asking for an administrator, and the finish page starts ReasonCraft;

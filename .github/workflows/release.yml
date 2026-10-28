@@ -7,10 +7,11 @@
 #
 # Signing runs when the secrets exist (the `release` environment on the
 # `release` branch); without them each script warns and ships unsigned
-# (ruling L3). Self-contained: no reusable workflow. The script paths,
-# arguments and artifact names keep to the interface of the Craft suite's
-# reusable release workflow, so a later switch only changes this file
-# (docs/release.md, "Compatibility").
+# (ruling L3), and a partly configured set fails on `release` (PK-16). Each
+# job's summary says how its files were signed. Self-contained: no reusable
+# workflow. The script paths, arguments and artifact names keep to the
+# interface of the Craft suite's reusable release workflow, so a later
+# switch only changes this file (docs/release.md, "Compatibility").
 # Actions are pinned to commit SHAs (the tag they had is in the comment).
 name: Release
 
@@ -34,6 +35,10 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_BUILD_JOBS: 4
+  # On the release branch, signing secrets are all there or none (none:
+  # unsigned with a warning, ruling PK-7); a partly configured set fails
+  # the job instead of shipping unsigned or un-notarized (ruling PK-16).
+  REASONCRAFT_REFUSE_PARTIAL_SIGNING: ${{ github.ref == 'refs/heads/release' && '1' || '' }}
 
 jobs:
   # The version every job builds: the input (a leading "v" dropped), or
@@ -170,11 +175,16 @@ jobs:
         run: cargo xtask version set "$VERSION"
 
       # Without APPLE_CERTIFICATE: a warning, and package.sh signs ad hoc.
+      # The notarization credentials are passed only to check that the
+      # certificate and they are all set or none.
       - name: Import the signing certificate
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: packaging/macos/import-cert.sh
 
       # Notarized only with a real identity and all three Apple credentials.

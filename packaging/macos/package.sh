@@ -16,6 +16,8 @@
 #   MACOS_KEYCHAIN        keychain holding the identity (optional)
 # Notarization (env; all three needed, and a real identity):
 #   APPLE_ID, APPLE_PASSWORD (app-specific password), APPLE_TEAM_ID
+# An identity without all three, or credentials without an identity, warns; with
+# REASONCRAFT_REFUSE_PARTIAL_SIGNING=1 (the release branch) it fails (ruling PK-16).
 set -euo pipefail
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
@@ -40,6 +42,9 @@ esac
 
 # Keep in sync with LSMinimumSystemVersion in Info.plist.in (a test checks it).
 export MACOSX_DEPLOYMENT_TARGET=11.0
+# "-" (ad hoc) counts as no identity.
+if [[ "${MACOS_SIGN_IDENTITY:-}" == "-" ]]; then unset MACOS_SIGN_IDENTITY; fi
+signing_set_complete "macOS signing" MACOS_SIGN_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID || exit 1
 IDENTITY="${MACOS_SIGN_IDENTITY:--}"
 SHORT_VERSION="${VERSION%%-*}"
 WORK="$CARGO_TARGET_DIR/macos-package"
@@ -49,10 +54,13 @@ DMG="$DIST/reasoncraft-$VERSION-macos-$ARCH.dmg"
 NOTARIZE=0
 if [[ "$IDENTITY" = "-" ]]; then
   warn "macOS: ad hoc signing (no MACOS_SIGN_IDENTITY); the DMG is not notarized"
+  OUTCOME="**ad hoc signed, not notarized** (no signing secrets; Gatekeeper blocks it on other Macs)"
 elif [[ -n "${APPLE_ID:-}" ]] && [[ -n "${APPLE_PASSWORD:-}" ]] && [[ -n "${APPLE_TEAM_ID:-}" ]]; then
   NOTARIZE=1
+  OUTCOME="Developer ID signed (hardened runtime), notarized, ticket stapled to the app and the DMG"
 else
   warn "macOS: APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID incomplete; signed but not notarized"
+  OUTCOME="Developer ID signed, **not notarized** (notarization credentials incomplete)"
 fi
 
 echo "==> ReasonCraft $VERSION for macOS ($ARCH), identity: $IDENTITY, notarize: $NOTARIZE"
@@ -231,5 +239,6 @@ if kill -0 "$pid" 2>/dev/null; then
 fi
 wait "$pid"
 rm -rf "$PROFILE"
+summary "- macOS \`$(basename "$DMG")\`: $OUTCOME"
 echo "==> done"
 ls -lh "$DMG"

@@ -15,10 +15,16 @@
   With neither, it prints a warning and leaves the files unsigned (exit code 0), so test builds
   still produce installers.
 
-  Partial Azure settings count as none. This is the one place to adapt when the signing setup
-  changes (an HSM/cloud key, a different timestamp server, ...). Optional overrides:
-  WINDOWS_TIMESTAMP_URL, SIGNTOOL (path to signtool.exe), REASONCRAFT_SIGN_URL (the signature's
-  "more information" link, signtool /du; none by default).
+  A set that is only partly configured (some AZURE_* but not all six, or the certificate password
+  without the certificate) is named in a warning and does not count; with
+  REASONCRAFT_REFUSE_PARTIAL_SIGNING=1 (the release workflow sets it on the release branch) it is
+  an error instead, so a forgotten secret cannot ship an unsigned release quietly (ruling PK-16).
+  In GitHub Actions the outcome is also written to the job summary. No secret's value is printed.
+
+  This is the one place to adapt when the signing setup changes (an HSM/cloud key, a different
+  timestamp server, ...). Optional overrides: WINDOWS_TIMESTAMP_URL, SIGNTOOL (path to
+  signtool.exe), REASONCRAFT_SIGN_URL (the signature's "more information" link, signtool /du;
+  none by default).
 
 .EXAMPLE
   pwsh packaging/windows/sign.ps1 target/windows-package/x64/reasoncraft.exe dist/release/reasoncraft-0.1.0-windows-x64.msi
@@ -50,13 +56,45 @@ function Invoke-SignTool([string[]] $Arguments) {
   if ($LASTEXITCODE -ne 0) { throw "signtool $($Arguments[0]) failed with exit code $LASTEXITCODE" }
 }
 
+function Write-Summary([string] $Line) {
+  if ($env:GITHUB_STEP_SUMMARY) { Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $Line -Encoding utf8 }
+}
+
+# The names in $Names that are set and those that are not (never their values).
+function Get-SettingState([string[]] $Names) {
+  $set = @($Names | Where-Object { [Environment]::GetEnvironmentVariable($_) })
+  $missing = @($Names | Where-Object { -not [Environment]::GetEnvironmentVariable($_) })
+  [pscustomobject]@{ Set = $set; Missing = $missing }
+}
+
 $Files = $Files | ForEach-Object { (Resolve-Path $_).Path }
+$names = ($Files | ForEach-Object { '`' + (Split-Path -Leaf $_) + '`' }) -join ', '
 $haveCert = [bool]$env:WINDOWS_CERTIFICATE
 $azureVars = 'AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'AZURE_SIGNING_ENDPOINT', 'AZURE_SIGNING_ACCOUNT', 'AZURE_CERT_PROFILE'
-$haveAzure = -not ($azureVars | Where-Object { -not [Environment]::GetEnvironmentVariable($_) })
+$azure = Get-SettingState $azureVars
+$haveAzure = $azure.Missing.Count -eq 0
+
+# Partly configured sets: some Azure settings, or a certificate password without its certificate.
+$partial = @()
+if ($azure.Set.Count -and $azure.Missing.Count) {
+  $partial += "Azure Trusted Signing has $($azure.Set -join ', ') but lacks $($azure.Missing -join ', ')"
+}
+if ($env:WINDOWS_CERTIFICATE_PASSWORD -and -not $haveCert) {
+  $partial += 'WINDOWS_CERTIFICATE_PASSWORD is set but WINDOWS_CERTIFICATE is not'
+}
+if ($partial.Count) {
+  $message = "Windows signing is partly configured: $($partial -join '; ')."
+  if ($env:REASONCRAFT_REFUSE_PARTIAL_SIGNING -eq '1') {
+    Write-Summary "- Windows ${names}: not signed, signing is partly configured (the build failed)"
+    throw "$message Set all of a set's secrets, or none of them, before releasing."
+  }
+  Write-Warn $message
+}
 
 if (-not $haveCert -and -not $haveAzure) {
+  $why = if ($partial.Count) { 'signing partly configured' } else { 'no signing secrets' }
   Write-Warn "Windows signing secrets not set (WINDOWS_CERTIFICATE or AZURE_*): leaving unsigned: $($Files -join ', ')"
+  Write-Summary "- Windows ${names}: **unsigned** ($why)"
   exit 0
 }
 
@@ -103,6 +141,8 @@ try {
     Invoke-SignTool ($common + @('/tr', $ts, '/dlib', $dlib.FullName, '/dmdf', $metadata) + $Files)
   }
   Invoke-SignTool (@('verify', '/pa', '/v') + $Files)
+  $how = if ($haveCert) { 'a certificate file (WINDOWS_CERTIFICATE)' } else { 'Azure Trusted Signing' }
+  Write-Summary "- Windows ${names}: signed with $how and verified (signtool verify /pa)"
 }
 finally {
   Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

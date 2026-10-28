@@ -48,6 +48,36 @@ warn() {
   return 0
 }
 
+# Signing settings are all there or not at all (ruling PK-16). Usage: signing_set_complete <what>
+# <VAR>...; returns 0 when every VAR is set or none is. When only some are, it names the missing
+# ones (never a value) in a warning, or, with REASONCRAFT_REFUSE_PARTIAL_SIGNING=1 (the release
+# workflow on the release branch), in an error and returns 1.
+signing_set_complete() {
+  local what="$1" name
+  shift
+  local set=() missing=()
+  for name in "$@"; do
+    if [[ -n "${!name:-}" ]]; then set+=("$name"); else missing+=("$name"); fi
+  done
+  if [[ ${#set[@]} -eq 0 || ${#missing[@]} -eq 0 ]]; then
+    return 0
+  fi
+  local message="$what is partly configured: ${set[*]} set, ${missing[*]} missing"
+  if [[ "${REASONCRAFT_REFUSE_PARTIAL_SIGNING:-}" == 1 ]]; then
+    echo "error: $message; set all of them or none before releasing" >&2
+    summary "- $what: partly configured (${missing[*]} missing), the build failed"
+    return 1
+  fi
+  warn "$message"
+  return 0
+}
+
+# Append a line to the GitHub Actions job summary (nothing outside Actions).
+summary() {
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then echo "$*" >>"$GITHUB_STEP_SUMMARY"; fi
+  return 0
+}
+
 # Copy the readme, the licences and the third-party notices into a package directory.
 copy_docs() {
   local dest="$1" f

@@ -39,6 +39,10 @@ case "$ARCH" in
 esac
 
 DMG="$DIST/$PKG-$VERSION-macos-$ARCH.dmg"
+# As in package.sh: on the release branch an identity without all notarization credentials (or the
+# reverse) fails instead of checking leniently (ruling PK-16).
+if [[ "${MACOS_SIGN_IDENTITY:-}" == "-" ]]; then unset MACOS_SIGN_IDENTITY; fi
+signing_set_complete "macOS signing" MACOS_SIGN_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID || exit 1
 IDENTITY="${MACOS_SIGN_IDENTITY:--}"
 STRICT=0
 if [[ "$IDENTITY" != "-" ]] && [[ -n "${APPLE_ID:-}" ]] && [[ -n "${APPLE_PASSWORD:-}" ]] && [[ -n "${APPLE_TEAM_ID:-}" ]]; then
@@ -151,7 +155,7 @@ fi
 if [[ "$STRICT" = 1 ]]; then
   result="signed (Developer ID, hardened runtime), notarized; DMG and app stapled"
 else
-  result="signature intact; Developer ID and notarization not required (no signing secrets)"
+  result="signature intact; Developer ID and notarization not checked (signing secrets not all set)"
 fi
 echo "==> verified: $result"
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
