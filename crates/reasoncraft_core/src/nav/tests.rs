@@ -114,3 +114,34 @@ fn navigate_reaches_whole_card_attackers_and_parking() {
         Some(Item::Box(root))
     );
 }
+
+/// The arrows follow the order the map shows a box's children in (notes
+/// and sources first), not the stored order (CORE-R1).
+#[test]
+fn arrows_follow_the_shown_order() {
+    let mut d = Document::new("Claim");
+    let root = Parent::Box(d.root);
+    let (card, premise) = d.add_card(root, CardKind::Reason, "reason").unwrap();
+    let note = d.add_box(root, crate::BoxKind::Note, "note").unwrap();
+    let shown = crate::layout::display_children(&d, d.root);
+    assert_eq!(
+        shown,
+        [Item::Box(note), Item::Card(card)],
+        "the note shows first"
+    );
+    let from_root = navigate(&d, Item::Box(d.root), Dir::Down);
+    assert_eq!(from_root, Some(Item::Box(note)), "Down: the leftmost child");
+    assert_eq!(
+        navigate(&d, Item::Card(card), Dir::Left),
+        Some(Item::Box(note))
+    );
+    assert_eq!(
+        navigate(&d, Item::Box(premise), Dir::Left),
+        Some(Item::Box(note))
+    );
+    assert_eq!(
+        navigate(&d, Item::Box(note), Dir::Right),
+        Some(Item::Box(premise))
+    );
+    assert_eq!(navigate(&d, Item::Card(card), Dir::Right), None);
+}

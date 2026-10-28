@@ -1,6 +1,7 @@
 //! Moving the selection with the arrow keys, and jumping between the main
 //! tree and the parking area.
 
+use crate::layout::display_children;
 use crate::{Document, Item, LayoutDirection, Parent};
 
 /// An arrow key's direction: on screen, or (after [`nav_dir`]) in
@@ -37,9 +38,10 @@ pub fn nav_dir(screen: Dir, layout: LayoutDirection) -> Dir {
 /// - Up: the owner (a premise's card; a card's box, or the card it targets
 ///   as a whole; nothing for a parked item).
 /// - Down: a card's first premise; a box's first child (a card, not its
-///   premise).
+///   premise) as the map shows them (notes and sources first, see
+///   [`display_children`]).
 /// - Left/Right: the previous/next co-premise, then the previous/next
-///   sibling in the owner's ordered list.
+///   sibling in the order the map shows its owner's children.
 pub fn navigate(doc: &Document, from: Item, dir: Dir) -> Option<Item> {
     match dir {
         Dir::Up => match doc.owner_of(from)? {
@@ -49,7 +51,7 @@ pub fn navigate(doc: &Document, from: Item, dir: Dir) -> Option<Item> {
         },
         Dir::Down => match from {
             Item::Card(c) => enter(doc, Item::Card(c), true),
-            Item::Box(b) => doc.boxes.get(&b)?.children.first().copied(),
+            Item::Box(b) => display_children(doc, b).first().copied(),
         },
         Dir::Left => sideways(doc, from, -1),
         Dir::Right => sideways(doc, from, 1),
@@ -116,7 +118,7 @@ fn sideways(doc: &Document, from: Item, step: isize) -> Option<Item> {
 /// The item `step` places away from `item` in its owner's ordered list.
 fn sibling(doc: &Document, item: Item, step: isize) -> Option<Item> {
     let list: Vec<Item> = match doc.owner_of(item)? {
-        Parent::Box(b) => doc.boxes.get(&b)?.children.clone(),
+        Parent::Box(b) => display_children(doc, b),
         Parent::Card(c) => {
             let card = doc.cards.get(&c)?;
             card.children.iter().map(|&k| Item::Card(k)).collect()
