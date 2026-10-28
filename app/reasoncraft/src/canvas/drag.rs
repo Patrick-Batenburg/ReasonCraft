@@ -5,10 +5,12 @@
 use eframe::egui::{
     self, Color32, Painter, PointerButton, Pos2, Rect, Response, Stroke, StrokeKind,
 };
-use reasoncraft_core::{BoxKind, Document, Item, Layout, LayoutDirection, LayoutParams, Parent};
+use reasoncraft_core::{
+    BoxKind, Document, Item, Layout, LayoutDirection, LayoutParams, Parent, same_display_group,
+};
 
 use super::hit::{Hit, far_edge_band, hit_test};
-use crate::actions::{Action, is_attachment, is_enabled, moves_nowhere, sibling_list};
+use crate::actions::{Action, is_enabled, moves_nowhere, sibling_list};
 use crate::doc_tab::DocTab;
 use crate::scene::metrics::{FRAME_RADIUS, parking_frame};
 use crate::theme::Tokens;
@@ -233,9 +235,7 @@ fn insertion(
         .into_iter()
         .filter(|&i| i != item)
         .collect();
-    let group = |i: Item| {
-        !matches!(to, Parent::Box(_)) || is_attachment(doc, i) == is_attachment(doc, item)
-    };
+    let group = |i: Item| same_display_group(doc, to, i, item);
     let shown: Vec<(usize, Rect)> = list
         .iter()
         .enumerate()

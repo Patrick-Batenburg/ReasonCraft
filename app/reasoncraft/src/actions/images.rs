@@ -8,7 +8,7 @@
 
 use std::time::{Duration, Instant};
 
-use reasoncraft_core::{BoxKind, ImageRef, Item, NodeId};
+use reasoncraft_core::{ImageRef, Item, NodeId};
 
 use super::{Action, UnsavedChoice};
 use crate::app::ReasonCraftApp;
@@ -28,10 +28,7 @@ fn image_box(tab: &DocTab) -> Option<NodeId> {
 
 /// Whether box `b` exists and is a kind that can hold an image.
 fn holds_images(tab: &DocTab, b: NodeId) -> bool {
-    tab.doc
-        .boxes
-        .get(&b)
-        .is_some_and(|n| n.kind != BoxKind::Note)
+    tab.doc.boxes.get(&b).is_some_and(|n| n.kind.takes_image())
 }
 
 fn has_image(tab: &DocTab, b: NodeId) -> bool {

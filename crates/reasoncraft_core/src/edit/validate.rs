@@ -2,7 +2,7 @@
 
 use crate::ids::Item;
 use crate::model::{BoxKind, BoxNode, Document};
-use crate::rules::{NewItem, allowed_child};
+use crate::rules::{BoxRating, NewItem, kind_accepts};
 
 impl Document {
     /// Check that the document is structurally sound:
@@ -35,18 +35,17 @@ impl Document {
             if id != *key {
                 return Err(format!("box {id:?} is stored under the key {key:?}"));
             }
-            if node.acceptance.is_some() && !matches!(node.kind, BoxKind::Claim | BoxKind::Premise)
-            {
+            if node.acceptance.is_some() && node.kind.rating() != Some(BoxRating::Acceptance) {
                 return Err(format!(
                     "box {id:?} has an acceptance but is not a claim or premise"
                 ));
             }
-            if node.source_rating.is_some() && !matches!(node.kind, BoxKind::Source { .. }) {
+            if node.source_rating.is_some() && node.kind.rating() != Some(BoxRating::Source) {
                 return Err(format!(
                     "box {id:?} has a source rating but is not a source"
                 ));
             }
-            if node.image.is_some() && node.kind == BoxKind::Note {
+            if node.image.is_some() && !node.kind.takes_image() {
                 return Err(format!("note {id:?} has an image"));
             }
             let mut ids = HashSet::new();
@@ -155,7 +154,7 @@ impl Document {
                 }
             },
         };
-        if !allowed_child(&owner.kind, &child) {
+        if !kind_accepts(&owner.kind, &child) {
             return Err(format!("{item:?} cannot be under box {:?}", owner.id));
         }
         Ok(())

@@ -1,7 +1,9 @@
 //! Adding cards, premises, categories and notes, deleting items, and
 //! moving them (drag and drop, "Connect to…", Alt+arrow reordering).
 
-use reasoncraft_core::{BoxKind, CardId, CardKind, Document, Item, NewLoose, Parent, RemoveMode};
+use reasoncraft_core::{
+    BoxKind, CardId, CardKind, Document, Item, NewLoose, Parent, RemoveMode, same_display_group,
+};
 
 use super::{Action, Dir};
 use crate::doc_tab::DocTab;
@@ -77,12 +79,6 @@ pub fn sibling_list(doc: &Document, to: Parent, premise: bool) -> Vec<Item> {
     }
 }
 
-/// Sources and notes: the layout shows them before a box's other children.
-pub fn is_attachment(doc: &Document, item: Item) -> bool {
-    matches!(item, Item::Box(b) if doc.boxes.get(&b)
-        .is_some_and(|n| matches!(n.kind, BoxKind::Source { .. } | BoxKind::Note)))
-}
-
 fn is_premise(doc: &Document, item: Item) -> bool {
     matches!(item, Item::Box(b) if doc.boxes.get(&b).is_some_and(|n| n.kind == BoxKind::Premise))
 }
@@ -105,9 +101,7 @@ pub fn moves_nowhere(doc: &Document, item: Item, to: Parent, index: Option<usize
     after.insert(index, item);
     let shown = |list: Vec<Item>| -> Vec<Item> {
         list.into_iter()
-            .filter(|&x| {
-                !matches!(to, Parent::Box(_)) || is_attachment(doc, x) == is_attachment(doc, item)
-            })
+            .filter(|&x| same_display_group(doc, to, x, item))
             .collect()
     };
     shown(before) == shown(after)
@@ -134,9 +128,7 @@ fn reorder_target(doc: &Document, selected: Item, dir: Dir) -> Option<(Item, Par
     let to = doc.owner_of(item)?;
     let list = sibling_list(doc, to, is_premise(doc, item));
     let at = list.iter().position(|&x| x == item)?;
-    let group = |x: Item| {
-        !matches!(to, Parent::Box(_)) || is_attachment(doc, x) == is_attachment(doc, item)
-    };
+    let group = |x: Item| same_display_group(doc, to, x, item);
     let mut j = at;
     loop {
         j = j.checked_add_signed(step)?;

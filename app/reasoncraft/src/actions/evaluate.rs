@@ -2,7 +2,7 @@
 //! cards, reliability of sources.
 
 use reasoncraft_core::{
-    Acceptance, BoxKind, CardId, CardStrength, ClearScope, Document, Item, NodeId, SourceRating,
+    Acceptance, BoxRating, CardId, CardStrength, ClearScope, Document, Item, NodeId, SourceRating,
 };
 
 use super::Action;
@@ -33,10 +33,9 @@ pub enum Rated {
 pub fn rated(tab: &DocTab) -> Option<Rated> {
     match tab.selection? {
         Item::Card(c) => tab.doc.cards.contains_key(&c).then_some(Rated::Strength(c)),
-        Item::Box(b) => match tab.doc.boxes.get(&b)?.kind {
-            BoxKind::Claim | BoxKind::Premise => Some(Rated::Acceptance(b)),
-            BoxKind::Source { .. } => Some(Rated::Source(b)),
-            BoxKind::Category | BoxKind::Note => None,
+        Item::Box(b) => match tab.doc.boxes.get(&b)?.kind.rating()? {
+            BoxRating::Acceptance => Some(Rated::Acceptance(b)),
+            BoxRating::Source => Some(Rated::Source(b)),
         },
     }
 }

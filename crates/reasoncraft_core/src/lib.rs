@@ -45,7 +45,7 @@ pub use model::{
 };
 pub use package::{Assets, Package};
 pub use roles::{card_roles, owner_index, role_of};
-pub use rules::{NewItem, can_attach};
+pub use rules::{BoxRating, NewItem, can_attach, is_attachment, kind_accepts, same_display_group};
 pub use snippets::{MAX_SNIPPET_CHARS, Snippet, SnippetSource};
 /// Comment ids.
 pub use uuid::Uuid;

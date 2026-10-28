@@ -94,3 +94,24 @@ fn undo_dropping_inline_edit_clears_edit_focus() {
     assert_eq!(tab.editing(), None);
     assert!(!tab.edit_focus);
 }
+
+/// A refused edit (a rule, nothing to change, a target that is gone)
+/// changes nothing and records no step.
+#[test]
+fn refused_edits_record_nothing() {
+    let mut tab = DocTab::from_document(Document::new("C"));
+    for e in [EditError::NotAllowed, EditError::NotFound] {
+        assert_eq!(tab.edit(|_| Err::<(), _>(e)), None);
+    }
+    assert!(tab.history.undo.is_empty());
+}
+
+/// An error no command should cause stops a debug build, so the missing
+/// check is found instead of the command silently doing nothing.
+#[cfg(debug_assertions)]
+#[test]
+#[should_panic(expected = "unexpected edit error")]
+fn unexpected_edit_errors_stop_debug_builds() {
+    let mut tab = DocTab::from_document(Document::new("C"));
+    tab.edit(|_| Err::<(), _>(EditError::Cycle));
+}

@@ -9,6 +9,7 @@ use crate::model::{
     Acceptance, BoxKind, BoxNode, CardKind, CardStrength, Comment, Document, ImageRef,
     SourceRating, SourceType, Verdict, now_rfc3339,
 };
+use crate::rules::BoxRating;
 
 /// What [`Document::clear_evaluation`] resets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,7 +34,7 @@ impl Document {
     /// Accept, doubt or reject a claim or premise.
     pub fn set_acceptance(&mut self, id: NodeId, v: Option<Acceptance>) -> Result<(), EditError> {
         let node = self.node_mut(id)?;
-        if !matches!(node.kind, BoxKind::Claim | BoxKind::Premise) {
+        if node.kind.rating() != Some(BoxRating::Acceptance) {
             return Err(EditError::NotAllowed);
         }
         node.acceptance = v;
@@ -48,7 +49,7 @@ impl Document {
         v: Option<SourceRating>,
     ) -> Result<(), EditError> {
         let node = self.node_mut(id)?;
-        if !matches!(node.kind, BoxKind::Source { .. }) {
+        if node.kind.rating() != Some(BoxRating::Source) {
             return Err(EditError::NotAllowed);
         }
         node.source_rating = v;
@@ -137,7 +138,7 @@ impl Document {
     /// Set or clear a box's image. Notes cannot hold one.
     pub fn set_image(&mut self, id: NodeId, image: Option<ImageRef>) -> Result<(), EditError> {
         let node = self.node_mut(id)?;
-        if node.kind == BoxKind::Note {
+        if !node.kind.takes_image() {
             return Err(EditError::NotAllowed);
         }
         node.image = image;

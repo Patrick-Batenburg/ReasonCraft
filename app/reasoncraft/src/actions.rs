@@ -37,7 +37,7 @@ mod sources;
 mod structure;
 mod view;
 use structure::select_new;
-pub use structure::{is_attachment, moves_nowhere, selected_card, sibling_list};
+pub use structure::{moves_nowhere, selected_card, sibling_list};
 
 pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 

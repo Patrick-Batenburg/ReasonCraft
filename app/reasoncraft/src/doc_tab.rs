@@ -320,13 +320,27 @@ impl DocTab {
     }
 
     /// Run `edit` as one undoable step. A refused edit changes nothing and
-    /// leaves no history entry.
+    /// leaves no history entry; in debug builds an error no command should
+    /// cause stops the app.
     pub fn edit<T>(
         &mut self,
         edit: impl FnOnce(&mut Document) -> Result<T, EditError>,
     ) -> Option<T> {
         let mut draft = self.doc.clone();
-        let out = edit(&mut draft).ok()?;
+        let out = match edit(&mut draft) {
+            Ok(out) => out,
+            // A rule refusing (or nothing to change) and a target that is
+            // gone (an id from an earlier frame) are expected. A cycle, or
+            // a claim losing its last premise, means a command skipped the
+            // check that should have greyed it out.
+            Err(e) => {
+                debug_assert!(
+                    matches!(e, EditError::NotAllowed | EditError::NotFound),
+                    "unexpected edit error: {e:?}"
+                );
+                return None;
+            }
+        };
         self.history.record(&self.doc);
         self.doc = draft;
         self.bump_revision();

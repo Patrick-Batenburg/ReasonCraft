@@ -17,7 +17,7 @@ mod size;
 mod tree;
 
 pub use indicators::{IndicatorOptions, needs_indicator_row};
-pub(crate) use tree::display_children;
+pub use tree::display_children;
 
 use emath::{Pos2, Rect, Vec2};
 use indexmap::IndexMap;
