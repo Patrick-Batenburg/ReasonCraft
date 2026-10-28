@@ -120,7 +120,7 @@ fn save_on_close_waits_for_the_image_without_blocking() {
     let (mut h, premise, hold) =
         save_while_preparing(dir.path(), &fake, Action::CloseTab(0), photo(dir.path()));
     hold.release();
-    step_until(&mut h, |app| app.modal.is_none());
+    step_until(&mut h, |app| app.modal.is_none() && !app.saves.busy());
     assert!(h.state().active_tab().path.is_none(), "the tab closed");
     assert!(saved_image(&dir.path().join("with-image.rcraft"), premise));
 }
@@ -165,7 +165,7 @@ fn a_failed_image_still_lets_the_waiting_save_go_ahead() {
     let (mut h, premise, hold) =
         save_while_preparing(dir.path(), &fake, Action::CloseTab(0), broken);
     hold.release();
-    step_until(&mut h, |app| !waiting(app));
+    step_until(&mut h, |app| !waiting(app) && !app.saves.busy());
     let app = h.state();
     assert!(app.active_tab().path.is_none(), "saved and closed");
     // The failure is reported: as a message, as no other one shows.

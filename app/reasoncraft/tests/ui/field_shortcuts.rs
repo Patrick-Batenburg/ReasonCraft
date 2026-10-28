@@ -45,6 +45,7 @@ fn ctrl_s_in_snippet_field_records_the_session_and_saves() {
     fake.set_save(path.clone());
     h.key_press_modifiers(Modifiers::COMMAND, Key::S);
     h.run();
+    crate::common::wait_saves(&mut h);
 
     let tab = &h.state().tabs[0];
     assert_eq!(tab.path.as_deref(), Some(path.as_path()), "saved");

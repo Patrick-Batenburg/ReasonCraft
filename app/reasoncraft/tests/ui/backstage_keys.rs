@@ -1,7 +1,7 @@
 //! The keyboard on the File page with no field focused: the file keys,
 //! Search commands, F1, and Esc back to the map.
 
-use crate::common::{H, build};
+use crate::common::{H, build, wait_saves};
 use eframe::egui::{Key, Modifiers};
 use egui_kittest::kittest::Queryable;
 use reasoncraft::ReasonCraftApp;
@@ -45,6 +45,7 @@ fn ctrl_s_saves() {
     let mut h = on_file_page(&fake);
     h.key_press_modifiers(Modifiers::COMMAND, Key::S);
     h.run();
+    wait_saves(&mut h);
     assert_eq!(h.state().tabs[0].path.as_deref(), Some(path.as_path()));
     assert!(path.is_file());
 }

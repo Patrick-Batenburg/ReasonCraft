@@ -84,6 +84,7 @@ fn save_removes_recovery() {
     let copy = recovery_file(&app, 0);
     assert!(copy.is_file());
     actions::apply(&mut app, Action::Save);
+    reasoncraft::file_ops::wait_for_saves(&mut app);
     assert!(!app.tabs[0].is_dirty());
     recovery::tick(&mut app, 50.0);
     wait(&app);

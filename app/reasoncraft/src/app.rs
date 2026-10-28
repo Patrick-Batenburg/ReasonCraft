@@ -12,7 +12,7 @@ use crate::canvas::input::Os;
 use crate::canvas::measure::MeasureCache;
 use crate::doc_tab::DocTab;
 use crate::export::{ExportJobs, SharedClipboard, SystemClipboard};
-use crate::file_ops::{FileDialogs, Modal, RfdDialogs};
+use crate::file_ops::{FileDialogs, Modal, RfdDialogs, SaveJobs};
 pub use crate::settings::{SETTINGS_KEY, Settings};
 use crate::shell;
 use crate::shell::export_dialog::ExportDialog;
@@ -70,6 +70,8 @@ pub struct ReasonCraftApp {
     pub export: ExportJobs,
     /// Inserted images being prepared in the background.
     pub image_jobs: ImageJobs,
+    /// Saves being written (Save, Save As, a save before a close).
+    pub saves: SaveJobs,
     /// Spelling dictionaries (loaded in the background) and the
     /// misspellings found, shared by all tabs.
     pub spell: SpellService,
@@ -140,6 +142,7 @@ impl ReasonCraftApp {
             link_opener,
             export: ExportJobs::new(clipboard, std::env::temp_dir()),
             image_jobs: ImageJobs::default(),
+            saves: SaveJobs::default(),
             status_note: None,
             notes_shown: None,
             recovery: None,
@@ -240,6 +243,7 @@ impl ReasonCraftApp {
         self.egui_ctx = Some(ctx.clone());
         actions::poll_exports(self);
         actions::poll_images(self);
+        crate::file_ops::poll_saves(self);
         crate::spell::poll(self);
         shell::statusbar::expire_notes(&ctx, self);
         self.sync_theme(&ctx);
@@ -299,7 +303,7 @@ impl ReasonCraftApp {
         if let Some(secs) = crate::recovery::due_in(self, now) {
             ctx.request_repaint_after(Duration::from_secs_f64(secs));
         }
-        if self.export.busy() || self.image_jobs.busy() || self.spell.busy() {
+        if self.export.busy() || self.image_jobs.busy() || self.saves.busy() || self.spell.busy() {
             // Look for the result again soon, without spinning.
             ctx.request_repaint_after(Duration::from_millis(30));
         }

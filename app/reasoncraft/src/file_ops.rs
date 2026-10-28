@@ -16,11 +16,13 @@ use crate::doc_tab::DocTab;
 mod dialogs;
 mod errors;
 mod save;
+mod save_job;
 pub use dialogs::{FakeDialogs, FileDialogs, RfdDialogs};
 pub(crate) use errors::show_error;
 pub use errors::{error_key, error_text};
 use save::save_and_report;
 pub use save::{resolve_replace, save_active, save_tab};
+pub use save_job::{SaveJobs, poll_saves, wait_for_saves};
 
 /// The file extension of ReasonCraft maps.
 pub const EXTENSION: &str = "rcraft";
@@ -250,8 +252,9 @@ fn carry_on(app: &mut ReasonCraftApp, tab: usize, then: AfterSave) {
 }
 
 /// Close tab `i`, asking first if it has unsaved changes (or an image
-/// still being prepared).
+/// still being prepared). Saves being written finish first.
 pub fn request_close_tab(app: &mut ReasonCraftApp, i: usize) {
+    wait_for_saves(app);
     let Some(tab) = app.tabs.get_mut(i) else {
         return;
     };
@@ -282,10 +285,12 @@ pub fn remove_tab(app: &mut ReasonCraftApp, i: usize) {
     }
 }
 
-/// Close the window, asking about each dirty tab in order first. The link
-/// editor and the export dialog close first: they act on the active tab,
-/// and asking may turn to another one.
+/// Close the window, asking about each dirty tab in order first (saves
+/// being written finish first). The link editor and the export dialog
+/// close first: they act on the active tab, and asking may turn to
+/// another one.
 pub fn request_close_window(app: &mut ReasonCraftApp) {
+    wait_for_saves(app);
     app.link_edit = None;
     app.export_dialog = None;
     for tab in &mut app.tabs {
@@ -320,19 +325,19 @@ pub fn resolve_unsaved(app: &mut ReasonCraftApp, choice: UnsavedChoice) {
     } else {
         AfterSave::CloseTab
     };
-    let proceed = match choice {
-        UnsavedChoice::Cancel => false,
-        UnsavedChoice::Discard => true,
-        // A failed or cancelled save ends the close (a failure shows its
-        // error); after a replace prompt, `then` runs once it is answered.
+    match choice {
+        UnsavedChoice::Cancel => {}
+        UnsavedChoice::Discard => carry_on(app, tab, then),
+        // `then` runs once the file is written (after a replace prompt,
+        // once it is answered); a failed or cancelled save ends the close
+        // (a failure shows its error).
         UnsavedChoice::Save => save_and_report(app, tab, false, then),
-    };
-    if proceed {
-        carry_on(app, tab, then);
     }
 }
 
 #[cfg(test)]
 mod open_tests;
+#[cfg(test)]
+mod save_job_tests;
 #[cfg(test)]
 mod tests;

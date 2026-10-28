@@ -68,3 +68,15 @@ pub fn glide(h: &Harness<'_, ReasonCraftApp>, from: egui::Pos2, to: egui::Pos2) 
         .filter(|p| !view.contains(*p) || inner.contains(*p))
         .collect()
 }
+
+/// Step `h` until the saves it is writing are done (at most a minute),
+/// then let it settle.
+pub fn wait_saves(h: &mut H) {
+    let start = std::time::Instant::now();
+    while h.state().saves.busy() {
+        assert!(start.elapsed().as_secs() < 60, "a save hangs");
+        h.step();
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    h.run();
+}

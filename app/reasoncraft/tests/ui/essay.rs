@@ -194,6 +194,8 @@ fn essay_session_is_narrowed_to_its_slot() {
 fn run(app: &mut ReasonCraftApp, actions: impl IntoIterator<Item = Action>) {
     for a in actions {
         apply(app, a);
+        // Saves are written on a worker: the next step sees them done.
+        reasoncraft::file_ops::wait_for_saves(app);
     }
 }
 

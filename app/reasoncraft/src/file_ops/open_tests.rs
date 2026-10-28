@@ -47,6 +47,7 @@ fn save_asks_when_the_file_changed_on_disk() {
     // Another app saves the file meanwhile.
     touch_later(&path);
     apply(&mut app, Action::Save);
+    crate::file_ops::wait_for_saves(&mut app);
     assert!(matches!(
         app.modal,
         Some(Modal::ConfirmReplace {
@@ -56,12 +57,14 @@ fn save_asks_when_the_file_changed_on_disk() {
     ));
     assert_eq!(root_text(&path), "Theirs", "nothing written yet");
     apply(&mut app, Action::ResolveReplace(true));
+    crate::file_ops::wait_for_saves(&mut app);
     assert_eq!(root_text(&path), "Mine");
     assert!(!app.tabs[0].is_dirty());
     // Saved: the next save no longer asks.
     let tab = &mut app.tabs[0];
     tab.edit(|d| d.set_text(d.root, "Mine again")).unwrap();
     apply(&mut app, Action::Save);
+    crate::file_ops::wait_for_saves(&mut app);
     assert!(app.modal.is_none());
     assert_eq!(root_text(&path), "Mine again");
 }

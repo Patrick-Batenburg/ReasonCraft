@@ -200,6 +200,7 @@ fn image_roundtrip_through_save() {
     let path = dir.path().join("pic.rcraft");
     fake.set_save(path.clone());
     apply(&mut app, Action::Save);
+    crate::file_ops::wait_for_saves(&mut app);
     assert!(app.modal.is_none(), "{:?}", app.modal);
     apply(&mut app, Action::CloseTab(0));
     fake.set_open(path);
@@ -244,6 +245,7 @@ fn undo_image_insert_keeps_assets_out_of_history() {
     let path = dir.path().join("undone.rcraft");
     fake.set_save(path.clone());
     apply(&mut app, Action::Save);
+    crate::file_ops::wait_for_saves(&mut app);
     assert!(app.modal.is_none(), "{:?}", app.modal);
     let pkg = file::open_package(&path).unwrap();
     assert!(
@@ -275,6 +277,7 @@ fn unknown_zip_entries_survive_open_and_save_in_the_app() {
     open_into_app(&mut app, &path);
     apply(&mut app, Action::AddReason);
     apply(&mut app, Action::Save);
+    crate::file_ops::wait_for_saves(&mut app);
     assert!(app.modal.is_none(), "{:?}", app.modal);
     let saved = file::open_package(&path).unwrap();
     assert_eq!(saved.doc.boxes.len(), 2, "the edit was saved");

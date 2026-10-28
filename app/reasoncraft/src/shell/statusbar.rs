@@ -1,6 +1,6 @@
 //! Status bar: box count, issue count (or the "Connect to…" hint), the
-//! busy chip of background jobs or the last export's notice, a status
-//! note, theme toggle and zoom slider.
+//! busy chip of background jobs (saves, exports, images) or the last
+//! export's notice, a status note, theme toggle and zoom slider.
 
 use eframe::egui::{
     self, Align, FontId, Frame, Layout, Margin, Response, RichText, Role, Sense, Slider,
@@ -138,10 +138,13 @@ fn job_status(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
     // for an edit session: the same ones that show "Preparing image…".
     let images: usize = app.tabs.iter().map(|t| t.pending_images.len()).sum();
     let exports = app.export.running();
-    if exports + images > 0 {
+    let saving = app.saves.busy();
+    if exports + images > 0 || saving {
         ui.add_space(16.0);
         ui.add(egui::Spinner::new().size(12.0).color(tk.accent));
-        let key = if exports > 0 {
+        let key = if saving {
+            "status.saving"
+        } else if exports > 0 {
             "status.exporting"
         } else {
             "status.preparing_image"

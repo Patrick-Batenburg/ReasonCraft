@@ -1,6 +1,6 @@
 //! The recovery prompt after a crash: restore, discard, decide later.
 
-use crate::common::harness;
+use crate::common::{harness, wait_saves};
 use std::fs::File;
 use std::time::{Duration, SystemTime};
 
@@ -66,6 +66,7 @@ fn restored_doc_saves_without_asking_when_original_unchanged() {
         Action::ResolveRecovery(RecoveryChoice::RestoreAll),
     );
     actions::apply(&mut app, Action::Save);
+    reasoncraft::file_ops::wait_for_saves(&mut app);
     assert!(app.modal.is_none());
     assert_eq!(root_text(&path), "Edited");
     let tab = app.active_tab();
@@ -107,6 +108,7 @@ fn restored_doc_save_asks_when_original_changed() {
     assert_eq!(root_text(&path), "Saved", "nothing written yet");
     h.get_by_label(&t("replace.confirm")).click();
     h.run();
+    wait_saves(&mut h);
     assert!(h.state().modal.is_none());
     assert_eq!(root_text(&path), "Edited");
     assert!(!h.state().active_tab().is_dirty());
@@ -221,6 +223,7 @@ fn file_changed_before_first_autosave_still_asks() {
         Action::ResolveRecovery(RecoveryChoice::RestoreAll),
     );
     actions::apply(&mut app, Action::Save);
+    reasoncraft::file_ops::wait_for_saves(&mut app);
     assert!(matches!(
         app.modal,
         Some(Modal::ConfirmReplace {

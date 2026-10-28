@@ -202,6 +202,7 @@ fn recent_files_capped_and_deduplicated() {
     let saved = dir.path().join("a.rcraft");
     fake.set_save(saved.clone());
     apply(&mut app, Action::Save);
+    reasoncraft::file_ops::wait_for_saves(&mut app);
     assert_eq!(app.settings.recent_files, vec![saved.clone()]);
     let other = dir.path().join("b.rcraft");
     reasoncraft_core::file::save(&Document::new("B"), &other).unwrap();

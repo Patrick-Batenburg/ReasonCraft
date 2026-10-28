@@ -24,10 +24,12 @@ use reasoncraft_core::{
     Parent, Role, SourceRating, SourceType, Verdict, file, layout,
 };
 
-/// Apply each action in turn.
+/// Apply each action in turn, each save written before the next.
 fn run(app: &mut ReasonCraftApp, actions: impl IntoIterator<Item = Action>) {
     for a in actions {
         apply(app, a);
+        // Saves are written on a worker: the next step sees them done.
+        reasoncraft::file_ops::wait_for_saves(app);
     }
 }
 
