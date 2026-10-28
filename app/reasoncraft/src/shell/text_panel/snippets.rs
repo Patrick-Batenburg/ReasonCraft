@@ -59,7 +59,7 @@ pub fn show(
                 cards.push((snippet.id, card));
                 ui.add_space(6.0);
             }
-            reorder(ui, &tab.doc.snippets, &cards, tk, out);
+            reorder(ui, area, &tab.doc.snippets, &cards, tk, out);
         });
 }
 
@@ -119,11 +119,12 @@ fn paste_as_snippet(ui: &mut Ui, area: Rect, out: &mut Vec<Action>) {
     }
 }
 
-/// While a card's handle is dragged, show a ghost of it at the pointer and
-/// mark where it would land; on release, move it there. The place counts
-/// the other cards above the pointer.
+/// While a card's handle is dragged, show a ghost of it at the pointer and,
+/// over the Snippets tab (`area`), mark where it would land; on release
+/// there, move it there. The place counts the other cards above the pointer.
 fn reorder(
     ui: &Ui,
+    area: Rect,
     snippets: &[Snippet],
     cards: &[(Uuid, Card)],
     tk: &Tokens,
@@ -144,16 +145,23 @@ fn reorder(
         .map(|(_, c)| c.rect)
         .collect();
     let index = others.iter().filter(|r| r.center().y < pointer.y).count();
+    // Released outside the Snippets tab (over the map, say): nothing moves.
+    let inside = area.contains(pointer);
     if card.handle.drag_stopped() {
-        out.push(Action::MoveSnippet {
-            id: *dragged,
-            index,
-        });
+        if inside {
+            out.push(Action::MoveSnippet {
+                id: *dragged,
+                index,
+            });
+        }
         return;
     }
     if let Some(snippet) = snippets.iter().find(|s| s.id == *dragged) {
         let width = card.rect.width().min(GHOST_MAX_W);
         paint_ghost(ui.ctx(), &snippet.text, pointer, width, tk);
+    }
+    if !inside {
+        return;
     }
     let y = match (index.checked_sub(1).map(|i| others[i]), others.get(index)) {
         (Some(above), Some(below)) => (above.bottom() + below.top()) / 2.0,

@@ -205,6 +205,26 @@ fn snippet_reorder() {
 }
 
 #[test]
+fn snippet_dropped_outside_the_list_stays() {
+    let mut h = harness_with(doc_with(&["a", "b", "c"]));
+    h.run();
+    let handles = centres(&h, &t("snippet.drag"));
+    // Over the map, left of the Text panel.
+    let (from, to) = (handles[2], egui::pos2(200.0, 450.0));
+    h.event(egui::Event::PointerMoved(from));
+    h.drag_at(from);
+    h.run();
+    for i in 1..=8 {
+        h.event(egui::Event::PointerMoved(from.lerp(to, i as f32 / 8.0)));
+        h.run();
+    }
+    h.drop_at(to);
+    h.run();
+    assert_eq!(texts(&h), ["a", "b", "c"]);
+    assert_eq!(undo_len(&h), 0, "nothing moved");
+}
+
+#[test]
 fn delete_key_in_snippet_keeps_selected_box() {
     let mut d = doc_with(&["Some text"]);
     let (_, premise) = d
