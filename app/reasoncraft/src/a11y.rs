@@ -100,3 +100,22 @@ pub fn dialog_opened(ctx: &egui::Context, id: Id, heading: &str) -> bool {
     ctx.data_mut(|d| d.insert_temp(key, (pass, heading.to_owned())));
     !last.is_some_and(|(seen, shown)| seen + 1 >= pass && shown == heading)
 }
+
+/// A polite live region holding what `add` shows: a screen reader reads
+/// it out when it changes, without moving the focus (find counts, status
+/// notes, the Move to… hint). The region is there every frame, empty or
+/// not, so a note that appears is read too.
+pub fn live_region<R>(
+    ui: &mut egui::Ui,
+    id_salt: &'static str,
+    add: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    let builder = egui::UiBuilder::new()
+        .id_salt(id_salt)
+        .accessibility_role(Role::Status);
+    let shown = ui.scope_builder(builder, add);
+    ui.ctx().accesskit_node_builder(shown.response.id, |node| {
+        node.set_live(accesskit::Live::Polite);
+    });
+    shown.inner
+}

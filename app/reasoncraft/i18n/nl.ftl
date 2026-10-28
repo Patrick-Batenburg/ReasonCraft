@@ -144,6 +144,7 @@ spell-checking = Controleren…
 spell-suggesting = …
 spell-done = Spellingcontrole klaar
 spell-no_suggestions = Geen suggesties
+spell-not_in_dictionary = Niet in het woordenboek: { $word }.
 spell-change_to = Wijzigen in
 spell-change = Wijzigen
 spell-change_all = Alles wijzigen

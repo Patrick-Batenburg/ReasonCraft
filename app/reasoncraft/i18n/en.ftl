@@ -143,6 +143,7 @@ spell-checking = Checking…
 spell-suggesting = …
 spell-done = Spelling check complete
 spell-no_suggestions = No suggestions
+spell-not_in_dictionary = Not in dictionary: { $word }.
 spell-change_to = Change to
 spell-change = Change
 spell-change_all = Change all

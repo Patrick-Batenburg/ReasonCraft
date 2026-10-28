@@ -14,7 +14,7 @@ use reasoncraft_core::FindHit;
 use crate::a11y::labelled;
 use crate::actions::Action;
 use crate::doc_tab::DocTab;
-use crate::i18n::t;
+use crate::i18n::{FluentArgs, t, t_args};
 use crate::spell::{SpellPass, SpellService, UNDERLINE_WIDTH, context};
 use crate::theme::Tokens;
 
@@ -170,7 +170,19 @@ fn details(
     job.append(word, 0.0, marked);
     job.append(tail, 0.0, plain);
     job.wrap.max_width = ui.available_width();
-    ui.label(job);
+    // The word is marked by colour and underline only: say it in words,
+    // and read it out as the pass moves on.
+    crate::a11y::live_region(ui, "spell_word", |ui| {
+        let shown = ui.label(job);
+        let mut args = FluentArgs::new();
+        args.set("word", word.as_str());
+        let said = format!(
+            "{} {head}{word}{tail}",
+            t_args("spell.not_in_dictionary", &args)
+        );
+        ui.ctx()
+            .accesskit_node_builder(shown.id, |node| node.set_value(said));
+    });
 
     match &pass.suggestions {
         None => {

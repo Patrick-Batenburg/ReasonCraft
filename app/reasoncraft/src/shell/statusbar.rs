@@ -47,18 +47,20 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
                     app.pending.push(Action::SetTextTab(TextTab::Check));
                     app.pending.push(Action::ShowPanel(Panel::Right));
                 }
-                let tab = app.active_tab();
-                if tab.connect_mode.is_some() {
-                    ui.add_space(16.0);
-                    ui.label(
-                        RichText::new(t("connect.hint"))
-                            .size(12.0)
-                            .strong()
-                            .color(tk.accent),
-                    );
-                }
-
-                job_status(ui, app, &tk);
+                // Read out as it changes: the Move to… hint, "Saving…",
+                // "Copied", an export done, an autosave that failed.
+                crate::a11y::live_region(ui, "status_live", |ui| {
+                    if app.active_tab().connect_mode.is_some() {
+                        ui.add_space(16.0);
+                        ui.label(
+                            RichText::new(t("connect.hint"))
+                                .size(12.0)
+                                .strong()
+                                .color(tk.accent),
+                        );
+                    }
+                    job_status(ui, app, &tk);
+                });
 
                 let zoom = app.active_tab().camera.zoom;
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
