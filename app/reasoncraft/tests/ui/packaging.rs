@@ -237,3 +237,46 @@ fn cli_path_opens_file() {
         "Robots will take our jobs"
     );
 }
+
+#[test]
+fn version_flag_prints_version() {
+    use std::io::Read as _;
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+
+    // Should `--version` ever open the window, it does so on a throw-away
+    // profile and is stopped, never touching the real settings.
+    let profile = tempfile::tempdir().unwrap();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_reasoncraft"))
+        .arg("--version")
+        .env(reasoncraft::profile::PROFILE_DIR_VAR, profile.path())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("the app starts");
+    let started = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if started.elapsed() > Duration::from_secs(60) {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("`reasoncraft --version` did not exit (it opened the window?)");
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    };
+    let mut stdout = String::new();
+    child
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_string(&mut stdout)
+        .unwrap();
+    assert!(status.success(), "{status:?}");
+    assert_eq!(
+        stdout,
+        format!("ReasonCraft {}\n", env!("CARGO_PKG_VERSION"))
+    );
+}

@@ -7,9 +7,15 @@
 //! `cargo run -p xtask -- sample-map <path>` saves the bundled reasoning
 //! example as a `.rcraft` file, for installer smoke tests.
 //!
-//! `cargo run -p xtask -- licence` writes the installer's licence page,
+//! `cargo run -p xtask -- licence` writes cargo-packager's licence page,
 //! `app/reasoncraft/packaging/LICENSE.txt`: both licence texts, as
 //! ReasonCraft is under either at the user's option.
+//!
+//! `cargo xtask licence-rtf <out.rtf>` writes the Windows installer's
+//! licence page (see [`licence`]).
+//!
+//! `cargo xtask version [set <X.Y.Z[-pre]>]` prints or changes the
+//! workspace version, the single source of truth (see [`version`]).
 //!
 //! `cargo run -p xtask -- notices` writes the Rust crates' licence texts for
 //! the About page (see [`notices`]).
@@ -22,7 +28,9 @@ use std::{env, fs};
 use icns::{IconFamily, IconType};
 use resvg::{tiny_skia, usvg};
 
+mod licence;
 mod notices;
+mod version;
 
 /// The PNG sizes written to `assets/icons/icon-<size>.png`.
 const PNG_SIZES: [u32; 9] = [16, 24, 32, 48, 64, 128, 256, 512, 1024];
@@ -49,10 +57,17 @@ fn main() -> ExitCode {
     let outcome = match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {
         ["icons"] => icons(),
         ["sample-map", path] => sample_map(Path::new(path)),
-        ["licence"] => licence(),
+        ["licence"] => licence::write_txt(workspace_dir()),
+        ["licence-rtf", out] => {
+            licence::write_rtf(workspace_dir(), Path::new(out)).map_err(Into::into)
+        }
+        ["version", ref rest @ ..] => version::run(workspace_dir(), rest).map_err(Into::into),
         ["notices"] => notices::notices(),
         _ => {
-            eprintln!("usage: cargo run -p xtask -- icons | sample-map <path> | licence | notices");
+            eprintln!(
+                "usage: cargo xtask icons | sample-map <path> | licence | licence-rtf <out.rtf> \
+                 | version [set <X.Y.Z[-pre]>] | notices"
+            );
             return ExitCode::FAILURE;
         }
     };
@@ -72,27 +87,6 @@ fn workspace_dir() -> &'static Path {
 
 fn assets_dir() -> PathBuf {
     workspace_dir().join("app/reasoncraft/assets")
-}
-
-fn licence() -> Result<()> {
-    let root = workspace_dir();
-    let mit = fs::read_to_string(root.join("LICENSE-MIT"))?;
-    let apache = fs::read_to_string(root.join("LICENSE-APACHE"))?;
-    let text = [
-        "ReasonCraft
-Copyright (c) 2026 Patrick van Batenburg and ReasonCraft contributors",
-        "ReasonCraft is licensed under either of the following licences, at your option.",
-        "==================== MIT License ====================",
-        mit.trim_end(),
-        "==================== Apache License, Version 2.0 ====================",
-        apache.trim_end(),
-    ]
-    .join("\n\n")
-        + "\n";
-    write(
-        &root.join("app/reasoncraft/packaging/LICENSE.txt"),
-        text.as_bytes(),
-    )
 }
 
 fn icons() -> Result<()> {

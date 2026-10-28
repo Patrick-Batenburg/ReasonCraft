@@ -11,6 +11,12 @@ use reasoncraft::{ReasonCraftApp, startup};
 const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
 fn main() -> ExitCode {
+    // Before any window or profile: packaging smoke tests run this.
+    let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
+    if reasoncraft::cli::wants_version(&args) {
+        println!("ReasonCraft {}", env!("CARGO_PKG_VERSION"));
+        return ExitCode::SUCCESS;
+    }
     let profile = reasoncraft::profile::Profile::from_env();
     let outcome = startup::first_that_starts(&startup::RENDERERS, |renderer, started| {
         eframe::run_native(
@@ -22,7 +28,7 @@ fn main() -> ExitCode {
                 let mut app = ReasonCraftApp::new(cc, recovery_dir, sys_locale::get_locale);
                 // Files given on the command line (this is also how a
                 // double-clicked `.rcraft` file arrives on Windows and Linux).
-                reasoncraft::file_ops::open_paths(&mut app, std::env::args_os().skip(1));
+                reasoncraft::file_ops::open_paths(&mut app, args.iter().cloned());
                 Ok(Box::new(app))
             }),
         )

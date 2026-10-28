@@ -8,6 +8,7 @@ pub mod a11y;
 pub mod actions;
 pub mod app;
 pub mod canvas;
+pub mod cli;
 pub mod commands;
 pub mod doc_tab;
 pub mod export;
