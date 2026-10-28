@@ -69,8 +69,12 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
             });
             answer
         });
-    // Esc or a click outside the modal dismisses / cancels it.
-    let close = response.should_close();
+    // Esc or a click outside the modal dismisses / cancels it. The
+    // recovery prompt goes only by Esc or its buttons: a click that just
+    // focuses the window must not put the offer off until the next start.
+    let beside = response.backdrop_response.clicked();
+    let keep = beside && matches!(modal, Modal::Recover(_));
+    let close = response.should_close() && !keep;
     let answer = response.inner.or_else(|| close.then_some(dismiss));
     if let Some(action) = answer {
         app.push(action);

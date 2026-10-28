@@ -167,6 +167,32 @@ fn recovery_prompt_lists_documents_and_restores() {
     assert_eq!(h.state().active_tab().title(), "robots (recovered) •");
 }
 
+#[test]
+fn recovery_prompt_ignores_a_click_beside_it() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let mut h = harness(app_with_recovery(rec.path()));
+    let pos = egui::pos2(10.0, 450.0);
+    h.event(egui::Event::PointerMoved(pos));
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+    h.run();
+    assert!(
+        matches!(h.state().modal, Some(Modal::Recover(_))),
+        "a stray click (to focus the window) keeps the offer"
+    );
+    h.key_press(egui::Key::Escape);
+    h.run();
+    assert!(h.state().modal.is_none(), "Esc puts it off");
+}
+
 /// Moves `path`'s modification time a minute ahead, as an edit by someone
 /// else would.
 fn touch_later(path: &Path) {
