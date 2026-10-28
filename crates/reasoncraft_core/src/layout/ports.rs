@@ -104,8 +104,11 @@ pub(super) fn assign(
             PortKey::Box(_) => None,
         })
         .collect();
+    // Each group spreads on its own, so their order does not matter:
+    // `swap_remove` keeps this linear (`shift_remove` moved every later
+    // group, quadratic in a map of many whole-card attacks).
     for (whole, premise) in merges {
-        if let Some(moved) = groups.shift_remove(&whole) {
+        if let Some(moved) = groups.swap_remove(&whole) {
             groups.entry(premise).or_default().extend(moved);
         }
     }

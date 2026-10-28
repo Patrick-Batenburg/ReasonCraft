@@ -82,6 +82,36 @@ pub fn deep_chain(levels: usize) -> (Document, Vec<NodeId>) {
     (d, premises)
 }
 
+/// A map whose claim has a reason under which a chain of `levels`
+/// whole-card objections hangs, each against the card before it, built
+/// directly (past any edit check, so it may nest deeper than
+/// [`crate::MAX_DEPTH`]).
+pub fn deep_objection_chain(levels: usize) -> Document {
+    let mut d = Document::new("C");
+    let mut owner: Option<CardId> = None;
+    for i in 0..=levels {
+        let (card, premise) = (CardId::new(), NodeId::new());
+        d.boxes.insert(
+            premise,
+            BoxNode::new(premise, BoxKind::Premise, &format!("level {i}")),
+        );
+        let kind = match owner {
+            Some(_) => CardKind::Objection,
+            None => CardKind::Reason,
+        };
+        d.cards.insert(card, Card::new(card, kind, vec![premise]));
+        match owner {
+            Some(o) => d.cards[&o].children.push(card),
+            None => {
+                let root = d.root;
+                d.boxes[&root].children.push(Item::Card(card));
+            }
+        }
+        owner = Some(card);
+    }
+    d
+}
+
 /// A deterministic map of about `n_boxes` boxes (root, premises and sources
 /// in the tree and the parking area). It has reasons and objections at
 /// several depths, rebuttals, 2- and 3-premise cards, whole-card attacks,
