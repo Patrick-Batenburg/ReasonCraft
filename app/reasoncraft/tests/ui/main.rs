@@ -43,6 +43,7 @@ mod minimap;
 mod outline;
 mod packaging;
 mod packaging_linux;
+mod packaging_macos;
 mod packaging_windows;
 mod panel_rows;
 mod ribbon_collapsed;

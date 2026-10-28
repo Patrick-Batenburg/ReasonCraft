@@ -7,10 +7,19 @@ Source: https://github.com/helix-editor/spellbook. Licence: Mozilla Public Licen
 
 ## WordCraft (MIT OR Apache-2.0; used under Apache-2.0)
 
-The ribbon's group fitting (groups shrink to compact, then collapse into a drop-down, from the right; `app/reasoncraft/src/shell/ribbon/fit.rs`) and its scroll edge cues (`app/reasoncraft/src/shell/ribbon/overflow.rs`) are adapted from WordCraft, and changed. So are, from WordCraft's commit `aadb077`, the workspace version command (`xtask/src/version.rs`), the Windows installer's licence page (`xtask/src/licence.rs`, ported from its `packaging/windows/package.ps1`), and the Windows installer source, its install-policy checks and its build scripts (`packaging/windows/reasoncraft.wxs`, `install-policy.wxi`, `install-policy.json`, `check-install-policy.ps1`, `test-install-policy.ps1`, `package.ps1`, `sign.ps1` and `test-packaging-script.ps1`), the shared packaging setup (`.shellcheckrc` and `packaging/env.sh`) and the Linux packaging (`packaging/linux/package.sh`, `nfpm.yaml`, `postinst.sh`, `nl.reasoncraft.app.metainfo.xml.in`, `flatpak-bundle.sh` and `flatpak/nl.reasoncraft.app.bundle.yml`); each file's header says what changed. Source: https://github.com/storytold/wordcraft. Its NOTICE reads:
+The ribbon's group fitting (groups shrink to compact, then collapse into a drop-down, from the right; `app/reasoncraft/src/shell/ribbon/fit.rs`) and its scroll edge cues (`app/reasoncraft/src/shell/ribbon/overflow.rs`) are adapted from WordCraft, and changed. So are, from WordCraft's commit `aadb077`, the workspace version command (`xtask/src/version.rs`), the Windows installer's licence page (`xtask/src/licence.rs`, ported from its `packaging/windows/package.ps1`), and the Windows installer source, its install-policy checks and its build scripts (`packaging/windows/reasoncraft.wxs`, `install-policy.wxi`, `install-policy.json`, `check-install-policy.ps1`, `test-install-policy.ps1`, `package.ps1`, `sign.ps1` and `test-packaging-script.ps1`), the shared packaging setup (`.shellcheckrc` and `packaging/env.sh`), the Linux packaging (`packaging/linux/package.sh`, `nfpm.yaml`, `postinst.sh`, `nl.reasoncraft.app.metainfo.xml.in`, `flatpak-bundle.sh` and `flatpak/nl.reasoncraft.app.bundle.yml`) and the macOS packaging (`packaging/macos/Info.plist.in`, `entitlements.plist`, `import-cert.sh` and `package.sh`); each file's header says what changed. Source: https://github.com/storytold/wordcraft. Its NOTICE reads:
 
 > WordCraft
 > Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.
+> Licensed under the MIT License or the Apache License, Version 2.0, at your option
+> (LICENSE-MIT, LICENSE-APACHE).
+
+## craft-launcher (MIT OR Apache-2.0; used under Apache-2.0)
+
+The macOS release check (`packaging/macos/verify.sh`) is adapted from craft-launcher's `packaging/macos/verify.sh` at commit `deccd0a`, and changed; its header says how. Source: https://github.com/storytold/craft-launcher. Its NOTICE reads:
+
+> ArtCraft Launcher
+> Copyright (c) 2026 ArtCraft Team and the ArtCraft Launcher contributors.
 > Licensed under the MIT License or the Apache License, Version 2.0, at your option
 > (LICENSE-MIT, LICENSE-APACHE).
 
