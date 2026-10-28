@@ -110,6 +110,7 @@ pub(super) fn run(app: &mut ReasonCraftApp, action: Action) {
         Action::EditLink => box_group::edit_link(app),
         Action::SetLink(link) => box_group::set_link(app, link),
         Action::OpenLink(b) => box_group::open_link(app, b),
+        Action::OpenSelectedLink => box_group::open_selected_link(app),
         Action::InsertImage => images::insert(app),
         Action::RemoveImage => on_tab(app, images::remove),
         Action::ImagePrepared { job, node, result } => images::prepared(app, job, node, result),

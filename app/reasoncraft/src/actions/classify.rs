@@ -132,6 +132,7 @@ impl Action {
             | Action::OpenComments(_)
             | Action::CloseComments
             | Action::OpenLink(_)
+            | Action::OpenSelectedLink
             | Action::OpenExportFolder
             | Action::DismissModal
             | Action::CloseFind

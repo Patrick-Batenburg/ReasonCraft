@@ -94,6 +94,10 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
         Action::EditLink => selected_box(tab).is_some(),
         Action::SetLink(link) => selected_box(tab).is_some() && checked(link.as_deref()).is_ok(),
         Action::OpenLink(b) => stored_safe_link(tab, *b).is_some(),
+        // A refused link says why when opened, as from its glyph.
+        Action::OpenSelectedLink => {
+            selected_box(tab).is_some_and(|b| tab.doc.boxes[&b].link.is_some())
+        }
         _ => return None,
     })
 }
@@ -105,6 +109,13 @@ pub(super) fn set_card_kind(tab: &mut DocTab, kind: CardKind) {
         && tab.doc.cards[&c].kind != kind
     {
         tab.edit(|d| d.set_card_kind(c, kind));
+    }
+}
+
+/// Open the selected box's link, like a click on its glyph.
+pub(super) fn open_selected_link(app: &mut ReasonCraftApp) {
+    if let Some(b) = app.tabs.get(app.active).and_then(selected_box) {
+        open_link(app, b);
     }
 }
 

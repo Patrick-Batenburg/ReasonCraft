@@ -42,6 +42,7 @@ fn description(action: &Action) -> Option<&'static str> {
         A::JumpParking => "help.key.jump_parking",
         A::CommentSelected => "help.key.comments",
         A::StartConnect => "help.key.connect",
+        A::OpenSelectedLink => "help.key.open_link",
         A::Reorder(Dir::Left) => "help.key.move_left",
         A::Reorder(Dir::Right) => "help.key.move_right",
         A::Reorder(Dir::Up) => "help.key.move_up",

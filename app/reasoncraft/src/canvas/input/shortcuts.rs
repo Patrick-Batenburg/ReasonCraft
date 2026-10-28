@@ -104,6 +104,9 @@ const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
     (Shortcut::new(Key::P, CMD_SHIFT), || Action::JumpParking),
     (Shortcut::new(Key::M, CMD_SHIFT), || Action::CommentSelected),
     (Shortcut::new(Key::K, CMD_SHIFT), || Action::StartConnect),
+    (Shortcut::new(Key::L, CMD_SHIFT), || {
+        Action::OpenSelectedLink
+    }),
     (Shortcut::new(Key::ArrowLeft, ALT), || {
         Action::Reorder(Dir::Left)
     }),

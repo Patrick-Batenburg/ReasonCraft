@@ -76,6 +76,8 @@ pub enum Action {
     SetLink(Option<String>),
     /// Open box `node`'s link in the browser (a click on its link glyph).
     OpenLink(NodeId),
+    /// Open the selected box's link (Open link, Ctrl+Shift+L).
+    OpenSelectedLink,
     /// Pick an image file and put it in the selected box (replacing its image).
     InsertImage,
     /// The image prepared by `job` for box `node` (pushed by the frame

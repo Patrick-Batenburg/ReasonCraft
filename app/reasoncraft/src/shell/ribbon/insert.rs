@@ -47,6 +47,15 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
                 small_command(ui, &tk, id, enabled(id), &mut out);
             }
         });
+        small_column(ui, |ui| {
+            small_command(
+                ui,
+                &tk,
+                "home.open_link",
+                enabled("home.open_link"),
+                &mut out,
+            );
+        });
     });
     app.pending.extend(out);
 }

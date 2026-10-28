@@ -125,6 +125,13 @@ pub(super) fn commands() -> Vec<Command> {
     let bx = "group.box";
     out.extend([
         cmd("home.link", "action.link", bx, A::EditLink).with_icon(Icon::Link),
+        cmd(
+            "home.open_link",
+            "action.open_link",
+            bx,
+            A::OpenSelectedLink,
+        )
+        .with_icon(Icon::Link),
         cmd("home.image", "action.image", bx, A::InsertImage).with_icon(Icon::Image),
         cmd(
             "home.remove_image",

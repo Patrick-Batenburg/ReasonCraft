@@ -208,3 +208,39 @@ fn glyph_click_never_opens_unsafe_stored_links() {
         }
     }
 }
+
+/// The keyboard opens the selected box's link: Ctrl+Shift+L on the map,
+/// "Open link" in Search commands and on the Insert tab, through the
+/// same opener as the glyph (here a fake that only records) (ROB-15).
+#[test]
+fn open_link_by_keyboard_search_and_ribbon() {
+    use egui::{Key, Modifiers};
+    let (mut d, _, src) = doc();
+    let url = "https://example.org/page";
+    d.set_link(src, Some(url.to_owned())).unwrap();
+    let opener = FakeOpener::default();
+    let mut h = harness_with(d, &opener);
+    let open = reasoncraft::commands::get("home.open_link");
+    // Nothing selected: greyed out.
+    assert!(!reasoncraft::actions::can_run(h.state(), &open.action));
+    h.state_mut().tabs[0].selection = Some(Item::Box(src));
+    h.run();
+    h.key_press_modifiers(Modifiers::COMMAND | Modifiers::SHIFT, Key::L);
+    h.run();
+    assert_eq!(*opener.opened.borrow(), vec![url.to_owned()]);
+
+    h.key_press_modifiers(Modifiers::ALT, Key::Q);
+    h.run();
+    h.event(egui::Event::Text(t("action.open_link")));
+    h.run();
+    h.key_press(Key::Enter);
+    h.run();
+    assert_eq!(opener.opened.borrow().len(), 2, "from Search commands");
+
+    h.state_mut().ribbon_tab = reasoncraft::app::RibbonTab::Insert;
+    h.run();
+    h.get_by_label(&t("action.open_link")).click();
+    h.run();
+    assert_eq!(opener.opened.borrow().len(), 3, "from the ribbon");
+    assert_eq!(h.state().modal, None);
+}

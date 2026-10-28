@@ -146,6 +146,7 @@ macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, a
 | Arrow keys | Arrow keys | Move the selection (Up from a premise selects its card; Down from a card selects its first premise). The arrows follow the layout direction: bottom-up, Down goes to the parent; left-to-right, Left goes to the parent and Up/Down move between siblings (context) |
 | Ctrl+Shift+P | Shift+Cmd+P | Jump between the main map and the parking area |
 | Ctrl+Shift+M | Shift+Cmd+M | Open the comments of the selected box (Esc closes them) |
+| Ctrl+Shift+L | Shift+Cmd+L | Open the link of the selected box in the browser |
 | Ctrl+Shift+K | Shift+Cmd+K | Connect to…: pick where the selected parked item goes (see below) |
 | Alt+Left / Alt+Right / Alt+Up / Alt+Down | Option+Left / Option+Right / Option+Up / Option+Down | Move the selection one place among its siblings (a premise within its card): Left / Right in top-down and bottom-up maps, Up / Down in left-to-right maps, where siblings stack vertically |
 | Alt+1 | Option+Cmd+1 | Rate the selection high: accept a claim or premise, strong card, solid source |
