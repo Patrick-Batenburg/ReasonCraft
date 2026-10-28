@@ -761,7 +761,8 @@ about-licences-emoji = egui-icons font (from emoji-icon-font): MIT
 about-licences-dict_en = English dictionary (SCOWL): MIT and BSD
 about-licences-dict_nl = Dutch dictionary (OpenTaal): BSD-3-Clause
 about-licences-spellbook = spellbook: Mozilla Public License 2.0
-about-licences-nsis = Windows installer (NSIS): zlib/libpng licence
+about-licences-wix = Windows installer (WiX Toolset): Microsoft Reciprocal License
+about-licences-appimage = Linux AppImage runtime: MIT, with musl (MIT) and libfuse (LGPL-2.1)
 about-licences-crates = Rust crates ({ $count } licence texts)
 
 ## Accessibility: names screen readers announce

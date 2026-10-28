@@ -41,7 +41,11 @@ at commit `8cfea406b505e4d7df52d5a19bce525df98c54ab`. Each directory carries its
 
 ## Windows installer
 
-The Windows installer is built with NSIS 3.09 (https://nsis.sourceforge.io), whose installer code and zlib decompressor are under the zlib/libpng licence, through cargo-packager (https://github.com/crabnebula-dev/cargo-packager, MIT OR Apache-2.0). It uses cargo-packager's installer template, changed where marked, and the nsis_tauri_utils plugin (https://github.com/tauri-apps/nsis-tauri-utils, MIT OR Apache-2.0).
+The MSI is built with the WiX Toolset 5.0.2 (https://github.com/wixtoolset/wix), under the Microsoft Reciprocal License (MS-RL). The MSI carries WiX's code and data: the WixUI dialogs and bitmaps (`WixToolset.UI.wixext`) and the WixUtilCA custom action that starts ReasonCraft from the finish page (`WixToolset.Util.wixext`). Neither is changed; their source is at WiX's `v5.0.2` tag. The licence text is in `app/reasoncraft/assets/licences/wix.txt`.
+
+## Linux AppImage
+
+The AppImage starts through the AppImage type2-runtime, release `20251108` (https://github.com/AppImage/type2-runtime), under the MIT licence. The runtime links musl libc (MIT), libfuse (LGPL-2.1), squashfuse (BSD-2-Clause), libzstd (BSD-3-Clause) and zlib (zlib licence) statically; their source, the LGPL-2.1 libfuse included, is reachable from the runtime's release tag. The licence text is in `app/reasoncraft/assets/licences/appimage-runtime.txt`.
 
 ## Licence texts
 

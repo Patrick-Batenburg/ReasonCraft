@@ -9,9 +9,10 @@ use eframe::egui::{self, CollapsingHeader, Label, RichText, ScrollArea};
 use crate::i18n::{FluentArgs, t, t_args};
 use crate::theme::Tokens;
 
-/// The licences of the bundled fonts, dictionaries, spell checker and
-/// installer: the i18n key of each header, and the text.
-pub const BUNDLED: [(&str, &str); 7] = [
+/// The licences of the bundled fonts, dictionaries, spell checker and the
+/// installer parts (the WiX UI and custom action in the MSI, the AppImage
+/// runtime): the i18n key of each header, and the text.
+pub const BUNDLED: [(&str, &str); 8] = [
     (
         "about.licences.ubuntu",
         include_str!("../../../assets/licences/ubuntu-font-licence.txt"),
@@ -37,8 +38,12 @@ pub const BUNDLED: [(&str, &str); 7] = [
         include_str!("../../../assets/licences/spellbook.txt"),
     ),
     (
-        "about.licences.nsis",
-        include_str!("../../../assets/licences/nsis.txt"),
+        "about.licences.wix",
+        include_str!("../../../assets/licences/wix.txt"),
+    ),
+    (
+        "about.licences.appimage",
+        include_str!("../../../assets/licences/appimage-runtime.txt"),
     ),
 ];
 
@@ -214,6 +219,7 @@ mod tests {
         assert!(text("about.licences.dict_nl").contains("OpenTaal"));
         let spellbook = text("about.licences.spellbook");
         assert!(spellbook.contains("https://github.com/helix-editor/spellbook"));
-        assert!(text("about.licences.nsis").contains("zlib/libpng"));
+        assert!(text("about.licences.wix").contains("Microsoft Reciprocal License"));
+        assert!(text("about.licences.appimage").contains("libfuse"));
     }
 }

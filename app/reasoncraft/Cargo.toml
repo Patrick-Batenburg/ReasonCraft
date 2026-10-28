@@ -50,8 +50,6 @@ miniz_oxide = "0.8"
 # Parses the .ftl files in the translation parity tests.
 fluent-syntax = "0.12"
 roxmltree = "0.20"
-# Reads the packager configuration in the packaging tests.
-toml = "1"
 
 # The exe's icon and version information (Windows only).
 [target.'cfg(windows)'.build-dependencies]
@@ -59,56 +57,3 @@ winresource = "0.1"
 
 [lints]
 workspace = true
-
-# Installers, built with `cargo packager --release -p reasoncraft` (see
-# docs/release.md). Paths are relative to this folder.
-[package.metadata.packager]
-product-name = "ReasonCraft"
-identifier = "nl.reasoncraft.app"
-publisher = "ReasonCraft contributors"
-copyright = "Copyright (c) ReasonCraft contributors"
-# The .deb's Maintainer field.
-authors = ["ReasonCraft contributors"]
-long-description = """
-ReasonCraft is an argument-mapping tool. Build a map of a claim with the
-reasons for it and the objections against it, rate how strong each part
-is, and export the map as an image, a PDF or an essay outline."""
-category = "Education"
-# Both licence texts (see `cargo run -p xtask -- licence`).
-license-file = "packaging/LICENSE.txt"
-icons = ["assets/icons/icon-*.png", "assets/icon.ico", "assets/icon.icns"]
-formats = ["nsis", "app", "dmg", "deb", "appimage"]
-out-dir = "../../target/release/packager"
-before-packaging-command = "cargo build --release -p reasoncraft -j 4"
-
-[[package.metadata.packager.file-associations]]
-extensions = ["rcraft"]
-name = "ReasonCraft map"
-description = "ReasonCraft map"
-mime-type = "application/x-reasoncraft"
-role = "editor"
-
-[package.metadata.packager.nsis]
-installer-mode = "currentUser"
-# zlib: its decompressor in the installer is under the zlib licence.
-compression = "zlib"
-# The packager's own template, with the uninstaller removing the file
-# association again (see the header of that file).
-template = "packaging/windows/installer.nsi"
-
-[package.metadata.packager.deb]
-package-name = "reasoncraft"
-# The binary links only libc; winit, wgpu and glow open these at run time.
-depends = [
-    "libc6", "libgcc-s1",
-    "libxkbcommon0", "libxkbcommon-x11-0",
-    "libx11-6", "libx11-xcb1", "libxcursor1", "libxi6",
-    "libwayland-client0", "libwayland-egl1",
-    "libegl1", "libgl1",
-]
-desktop-template = "packaging/linux/reasoncraft.desktop"
-section = "editors"
-files = { "packaging/linux/reasoncraft-mime.xml" = "usr/share/mime/packages/reasoncraft.xml" }
-
-[package.metadata.packager.appimage]
-files = { "packaging/linux/reasoncraft-mime.xml" = "usr/share/mime/packages/reasoncraft.xml" }

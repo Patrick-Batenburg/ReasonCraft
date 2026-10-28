@@ -61,28 +61,6 @@ pub fn rtf(mit: &str, apache: &str) -> String {
     format!("{HEADER}{}\\par\r\n}}\r\n", paragraphs.join("\\par\r\n"))
 }
 
-/// `cargo xtask licence`: cargo-packager's licence page,
-/// `app/reasoncraft/packaging/LICENSE.txt`, with both licence texts.
-pub fn write_txt(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let mit = std::fs::read_to_string(root.join("LICENSE-MIT"))?;
-    let apache = std::fs::read_to_string(root.join("LICENSE-APACHE"))?;
-    let text = [
-        "ReasonCraft
-Copyright (c) 2026 Patrick van Batenburg and ReasonCraft contributors",
-        "ReasonCraft is licensed under either of the following licences, at your option.",
-        "==================== MIT License ====================",
-        mit.trim_end(),
-        "==================== Apache License, Version 2.0 ====================",
-        apache.trim_end(),
-    ]
-    .join("\n\n")
-        + "\n";
-    crate::write(
-        &root.join("app/reasoncraft/packaging/LICENSE.txt"),
-        text.as_bytes(),
-    )
-}
-
 /// Writes the licence page built from the workspace's `LICENSE-MIT` and `LICENSE-APACHE`.
 pub fn write_rtf(root: &Path, out: &Path) -> Result<(), String> {
     let read = |name: &str| {

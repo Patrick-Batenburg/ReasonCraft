@@ -1,5 +1,5 @@
 # cargo-about configuration for `cargo run -p xtask -- notices`.
-# Only what ships: the app's run-time dependencies on the three platforms.
+# Only what ships: the app's run-time dependencies on every release target.
 # Keep in step with `deny.toml`, which checks the same list in CI.
 accepted = [
     "MIT",
@@ -13,7 +13,10 @@ accepted = [
 ]
 targets = [
     "x86_64-pc-windows-msvc",
+    "i686-pc-windows-msvc",
+    "aarch64-pc-windows-msvc",
     "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
     "aarch64-apple-darwin",
 ]

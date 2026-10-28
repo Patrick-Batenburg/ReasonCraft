@@ -7,12 +7,9 @@
 //! `cargo run -p xtask -- sample-map <path>` saves the bundled reasoning
 //! example as a `.rcraft` file, for installer smoke tests.
 //!
-//! `cargo run -p xtask -- licence` writes cargo-packager's licence page,
-//! `app/reasoncraft/packaging/LICENSE.txt`: both licence texts, as
-//! ReasonCraft is under either at the user's option.
-//!
 //! `cargo xtask licence-rtf <out.rtf>` writes the Windows installer's
-//! licence page (see [`licence`]).
+//! licence page: both licence texts, as ReasonCraft is under either at the
+//! user's option (see [`licence`]).
 //!
 //! `cargo xtask version [set <X.Y.Z[-pre]>]` prints or changes the
 //! workspace version, the single source of truth (see [`version`]).
@@ -57,7 +54,6 @@ fn main() -> ExitCode {
     let outcome = match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {
         ["icons"] => icons(),
         ["sample-map", path] => sample_map(Path::new(path)),
-        ["licence"] => licence::write_txt(workspace_dir()),
         ["licence-rtf", out] => {
             licence::write_rtf(workspace_dir(), Path::new(out)).map_err(Into::into)
         }
@@ -65,7 +61,7 @@ fn main() -> ExitCode {
         ["notices"] => notices::notices(),
         _ => {
             eprintln!(
-                "usage: cargo xtask icons | sample-map <path> | licence | licence-rtf <out.rtf> \
+                "usage: cargo xtask icons | sample-map <path> | licence-rtf <out.rtf> \
                  | version [set <X.Y.Z[-pre]>] | notices"
             );
             return ExitCode::FAILURE;
