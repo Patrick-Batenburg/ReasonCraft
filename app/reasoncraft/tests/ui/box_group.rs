@@ -183,6 +183,7 @@ fn glyph_click_never_opens_unsafe_stored_links() {
         "file:///C:/Windows/System32/calc.exe",
         "javascript:alert(1)",
         r"\server\share\x",
+        r"\\server\share\x",
         "JAVASCRIPT:x",
         "https://ok.example",
     ];

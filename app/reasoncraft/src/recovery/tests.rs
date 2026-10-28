@@ -106,10 +106,9 @@ fn empty_orphan_folders_are_tidied() {
 
 #[test]
 fn default_dir_is_a_recovery_folder() {
-    // Only computed, never created.
-    if let Some(dir) = RecoveryStore::default_dir() {
-        assert!(dir.ends_with("recovery"));
-    }
+    // Only computed, never created. Every test machine has one.
+    let dir = RecoveryStore::default_dir().expect("a recovery folder");
+    assert!(dir.ends_with("recovery"), "{dir:?}");
 }
 
 #[test]

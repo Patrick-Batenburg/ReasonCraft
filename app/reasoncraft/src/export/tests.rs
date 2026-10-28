@@ -246,7 +246,7 @@ fn svg_outlines_have_no_text_elements() {
         },
         "A source",
     )
-    .ok();
+    .unwrap();
     let opts = SvgOptions::new(&Tokens::light());
     assert!(opts.text_as_paths, "outlines by default");
     let svg = svg_of(&doc, &Assets::default(), &opts);

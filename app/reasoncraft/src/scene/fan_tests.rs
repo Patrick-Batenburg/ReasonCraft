@@ -202,6 +202,11 @@ fn assert_markers_clear(doc: &Document, what: &str) {
         let (lay, scene) = laid_out(doc, style);
         let heads = triangles(&scene, tk.reason);
         let found = bars(&scene, tk.objection, thick);
+        // Each reason ends in an arrowhead, each objection in a bar: the
+        // checks below see every marker.
+        let cards = |kind: CardKind| doc.cards.values().filter(|c| c.kind == kind).count();
+        assert_eq!(heads.len(), cards(CardKind::Reason), "{what} {style:?}");
+        assert_eq!(found.len(), cards(CardKind::Objection), "{what} {style:?}");
         for (i, t) in heads.iter().enumerate() {
             for u in &heads[i + 1..] {
                 assert!(!triangles_intersect(t, u), "{what} {style:?}: {t:?} {u:?}");

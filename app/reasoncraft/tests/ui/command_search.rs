@@ -67,19 +67,37 @@ fn search_for(h: &mut Harness<'static, ReasonCraftApp>, query: &str) {
 #[test]
 fn ribbon_renders_all_tabs_with_registry() {
     let mut h = harness();
-    for tab in [
-        "ribbon.tab.home",
-        "ribbon.tab.evaluate",
-        "ribbon.tab.view",
-        "ribbon.tab.export",
-        "ribbon.tab.file",
+    // Each tab, and a command of its own that it shows under the
+    // registry's label (the backstage's file commands too).
+    for (key, tab, id) in [
+        ("ribbon.tab.home", RibbonTab::Home, "home.delete"),
+        (
+            "ribbon.tab.insert",
+            RibbonTab::Insert,
+            "home.whole_card_reason",
+        ),
+        (
+            "ribbon.tab.evaluate",
+            RibbonTab::Evaluate,
+            "evaluate.accept",
+        ),
+        ("ribbon.tab.view", RibbonTab::View, "view.zoom_fit"),
+        ("ribbon.tab.export", RibbonTab::Export, "export.png"),
+        ("ribbon.tab.help", RibbonTab::Help, "help.about"),
+        ("ribbon.tab.file", RibbonTab::File, "file.save_as"),
     ] {
-        h.get_by_label(&t(tab)).click();
+        h.get_by_label(&t(key)).click();
         h.run();
+        assert_eq!(h.state().ribbon_tab, tab);
+        // A ribbon button's name may put its group first ("Claim: Accept").
+        let label = t(commands::get(id).label);
+        let shown = h.root().children_recursive().any(|n| {
+            n.accesskit_node()
+                .label()
+                .is_some_and(|name| name.ends_with(&label))
+        });
+        assert!(shown, "{key}: {label:?} is not shown");
     }
-    assert_eq!(h.state().ribbon_tab, RibbonTab::File);
-    // The backstage's file commands come from the registry too.
-    h.get_by_label(&t(commands::get("file.save_as").label));
 }
 
 #[test]

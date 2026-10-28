@@ -194,6 +194,7 @@ fn export_argdown_via_ribbon() {
 /// `task-10-essay.docx` (a Dutch sample with written paragraphs), for
 /// looking at by eye.
 #[test]
+#[ignore = "manual: set RC_EXPORT_OUT=<folder>"]
 fn export_sample_docx() {
     use reasoncraft_core::{EssaySlot, essay_order, fixtures::sample_iot_like};
 
@@ -238,6 +239,7 @@ Dat licht ik hieronder toe.",
 /// `task-7-outline.md` through the app, for looking at by eye; the SVG is
 /// also rendered to `task-7-svg-render.png`.
 #[test]
+#[ignore = "manual: set RC_EXPORT_SAMPLE=<file.rcraft> and RC_EXPORT_OUT=<folder>"]
 fn export_sample_files() {
     let (Some(sample), Some(out)) = (
         std::env::var_os("RC_EXPORT_SAMPLE"),

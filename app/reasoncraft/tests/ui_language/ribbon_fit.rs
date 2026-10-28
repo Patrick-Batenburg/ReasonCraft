@@ -80,7 +80,7 @@ fn ribbon_fits_in_dutch_at_1280() {
             .map(|n| (n.accesskit_node().label().unwrap_or_default(), n.rect()))
             .filter(|(name, r)| shown(name, *r))
             .collect();
-        assert!(!buttons.is_empty() || key.ends_with("insert") || key.ends_with("help"));
+        assert!(!buttons.is_empty(), "{label} has buttons");
         let texts: Vec<_> = painted_texts(&h)
             .into_iter()
             .filter(|(name, r)| shown(name, *r))
