@@ -77,14 +77,24 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     app.panes.shown(pane, shown.response.rect);
 }
 
+/// The ribbon's tabs; in a window too narrow for all of them the row
+/// scrolls sideways like the groups (chevrons, wheel, keyboard focus).
 fn tab_strip(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
-    ui.horizontal(|ui| {
+    let shown_id = egui::Id::new("ribbon_tab_shown");
+    let shown: Option<RibbonTab> = ui.data(|d| d.get_temp(shown_id));
+    ui.data_mut(|d| d.insert_temp(shown_id, app.ribbon_tab));
+    overflow::tab_row(ui, &tk, STRIP_H, |ui| {
         ui.set_height(STRIP_H);
         ui.spacing_mut().item_spacing.x = 4.0;
         for (tab, key) in TABS {
             let active = app.ribbon_tab == tab;
             let resp = tab_button(ui, &tk, &t(key), active, tk.ribbon, 20.0, STRIP_H);
+            overflow::follow_focus(ui, &resp);
+            if active && shown != Some(tab) {
+                // A tab chosen another way (a command) comes into view.
+                resp.scroll_to_me(None);
+            }
             if resp.clicked() {
                 // Clicking File again closes the backstage.
                 app.ribbon_tab = if active && tab == RibbonTab::File {

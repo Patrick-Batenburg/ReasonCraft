@@ -328,3 +328,61 @@ fn compact_backstage_entry_shows_its_label_on_focus() {
         "the entry and its tooltip"
     );
 }
+
+/// At 200 % the ribbon's tabs do not fit 800 px: the tab row scrolls,
+/// so the last tab (Help) is reached with the keyboard and the right
+/// chevron, and comes into view when chosen (ROB-9).
+#[test]
+fn ribbon_tabs_scroll_when_they_do_not_fit() {
+    let mut h = harness(2.0);
+    let help = t("ribbon.tab.help");
+    let right = right_edge(&h);
+    let tab = |h: &Harness<'static, ReasonCraftApp>| {
+        h.get_by_role_and_label(egui::accesskit::Role::Tab, &help)
+            .rect()
+    };
+    assert!(tab(&h).right() > right, "Help starts out of view");
+    // The tab row has a chevron of its own.
+    h.get_by_label(&t("ribbon.tabs_right"));
+    h.get_by_role_and_label(egui::accesskit::Role::Tab, &help)
+        .focus();
+    h.run();
+    assert!(tab(&h).right() <= right + 0.5, "{:?}", tab(&h));
+    h.get_by_role_and_label(egui::accesskit::Role::Tab, &help)
+        .click();
+    h.run();
+    assert_eq!(h.state().ribbon_tab, RibbonTab::Help);
+}
+
+/// The window's minimum size grows with the interface size, so the
+/// smallest window still holds the 800 × 500 points the layout is made
+/// for (ROB-9).
+#[test]
+fn minimum_window_size_follows_the_interface_size() {
+    let app = ReasonCraftApp::new_for_test();
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1600.0, 1000.0))
+        .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
+    h.run();
+    h.state_mut().settings.ui_scale = 2.0;
+    h.step();
+    let min = h
+        .output()
+        .viewport_output
+        .values()
+        .flat_map(|v| v.commands.iter())
+        .find_map(|c| match c {
+            egui::ViewportCommand::MinInnerSize(size) => Some(*size),
+            _ => None,
+        });
+    assert_eq!(min, Some(egui::vec2(1600.0, 1000.0)));
+    assert_eq!(
+        reasoncraft::app::min_window_size(2.0, Some(egui::vec2(1366.0, 768.0))),
+        egui::vec2(1366.0 * 0.9, 768.0 * 0.9),
+        "never more than the screen holds"
+    );
+    assert_eq!(
+        reasoncraft::app::min_window_size(1.0, None),
+        egui::vec2(800.0, 500.0)
+    );
+}

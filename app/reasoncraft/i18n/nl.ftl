@@ -28,6 +28,8 @@ ribbon-tab-export = Exporteren
 ribbon-tab-help = Help
 ribbon-scroll_left = Lint naar links schuiven
 ribbon-scroll_right = Lint naar rechts schuiven
+ribbon-tabs_left = Linttabbladen naar links schuiven
+ribbon-tabs_right = Linttabbladen naar rechts schuiven
 ribbon-group_more = { $group } (meer)
 
 ## Ribbon groups

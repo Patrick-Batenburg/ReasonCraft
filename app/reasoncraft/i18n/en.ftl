@@ -27,6 +27,8 @@ ribbon-tab-export = Export
 ribbon-tab-help = Help
 ribbon-scroll_left = Scroll the ribbon left
 ribbon-scroll_right = Scroll the ribbon right
+ribbon-tabs_left = Scroll the ribbon tabs left
+ribbon-tabs_right = Scroll the ribbon tabs right
 ribbon-group_more = { $group } (more)
 
 ## Ribbon groups

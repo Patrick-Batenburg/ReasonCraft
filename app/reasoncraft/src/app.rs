@@ -21,6 +21,19 @@ use crate::spell::SpellService;
 use crate::theme::{self, Tokens};
 use eframe::egui;
 
+/// The smallest window at 100 % interface size, in screen points.
+pub const MIN_WINDOW: [f32; 2] = [800.0, 500.0];
+
+/// The smallest window at interface size `scale`: [`MIN_WINDOW`] of the
+/// interface's own points, so a larger interface keeps the room it is
+/// laid out for; but never more than 90 % of the `monitor` (when known),
+/// nor less than [`MIN_WINDOW`].
+pub fn min_window_size(scale: f32, monitor: Option<egui::Vec2>) -> egui::Vec2 {
+    let base = egui::Vec2::from(MIN_WINDOW);
+    let want = base * scale;
+    monitor.map_or(want, |m| want.min(m * 0.9)).max(base)
+}
+
 /// Which ribbon tab is showing. `File` shows the backstage instead of the map.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum RibbonTab {
@@ -334,11 +347,15 @@ impl ReasonCraftApp {
     }
 
     /// The whole interface at the size the settings ask for (egui's zoom
-    /// factor). The map's zoom works in points, so it comes on top.
+    /// factor). The map's zoom works in points, so it comes on top. The
+    /// window's minimum size grows with it (see [`min_window_size`]).
     fn sync_ui_scale(&self, ctx: &egui::Context) {
         let scale = self.settings.ui_scale_factor();
         if ctx.zoom_factor() != scale {
             ctx.set_zoom_factor(scale);
+            let monitor = ctx.input(|i| i.viewport().monitor_size);
+            let min = min_window_size(scale, monitor);
+            ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min));
         }
     }
 
