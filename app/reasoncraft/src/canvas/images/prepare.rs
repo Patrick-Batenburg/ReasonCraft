@@ -165,7 +165,7 @@ pub struct ImageFailure {
 }
 
 impl ImageFailure {
-    /// "Could not use <file>".
+    /// "Could not use `<file>`".
     pub fn title(&self) -> String {
         let mut args = FluentArgs::new();
         args.set("file", self.file.clone());

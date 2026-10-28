@@ -1,6 +1,7 @@
-# The quality gate on all three platforms: formatting, clippy and the tests;
-# on Linux also the dependencies' licences, advisories and sources, and the
-# crates' licence notices. Run by hand, it also runs the timing tests.
+# The quality gate on all three platforms: formatting, clippy, the code
+# docs and the tests; on Linux also the dependencies' licences, advisories
+# and sources, and the crates' licence notices. Run by hand, it also runs
+# the timing tests.
 # Actions are pinned to commit SHAs (the tag they had is in the comment).
 name: CI
 
@@ -52,6 +53,14 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --workspace --all-targets -j 4 -- -D warnings
+
+      # The code docs, private items included: no broken or ambiguous
+      # links, no stray HTML. Each platform's cfg-gated code is checked on
+      # its own runner.
+      - name: Docs
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --no-deps --document-private-items -j 4
 
       - name: Tests
         run: cargo test --workspace -j 4

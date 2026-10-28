@@ -1,5 +1,9 @@
 //! ReasonCraft core: document model, editing, layout and file format.
 
+// The docs are built with `--document-private-items` (see CI), where
+// links from public items to private ones resolve.
+#![allow(rustdoc::private_intra_doc_links)]
+
 pub mod argdown;
 pub mod caps;
 pub mod checks;

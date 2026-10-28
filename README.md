@@ -104,6 +104,7 @@ Run the checks with:
 ```sh
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items
 ```
 
 ### Separate profile (portable use and testing)

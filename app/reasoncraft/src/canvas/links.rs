@@ -39,7 +39,7 @@ pub(super) fn lead_of(leads: &HashMap<NodeId, f32>, id: NodeId) -> f32 {
 }
 
 /// The glyph's accessible name for stored link `url`, e.g. "Open link:
-/// https://example.org", or one saying it cannot be opened (not a safe
+/// <https://example.org>", or one saying it cannot be opened (not a safe
 /// link: see [`safe_link`]).
 pub fn link_label(url: &str) -> String {
     let mut args = FluentArgs::new();

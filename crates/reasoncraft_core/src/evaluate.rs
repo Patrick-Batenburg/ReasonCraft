@@ -81,7 +81,7 @@ impl Document {
     }
 
     /// Set or clear a box's link. The value is trimmed; empty means none.
-    /// A link longer than [`MAX_LINK_CHARS`] is refused
+    /// A link longer than [`crate::caps::MAX_LINK_CHARS`] is refused
     /// ([`EditError::NotAllowed`]).
     pub fn set_link(&mut self, id: NodeId, link: Option<String>) -> Result<(), EditError> {
         if link.as_deref().is_some_and(|l| !link_fits(l.trim())) {

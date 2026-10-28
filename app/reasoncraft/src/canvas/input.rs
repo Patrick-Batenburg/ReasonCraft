@@ -18,7 +18,7 @@ pub(crate) use shortcuts::{
 };
 
 /// The command bound to `key` with `mods` on `os`, if any: an entry of
-/// [`shortcuts`]`(os)`, or one of the context keys below.
+/// [`shortcuts`](fn@shortcuts)`(os)`, or one of the context keys below.
 /// `Modifiers::command` is Ctrl, or Cmd on macOS.
 ///
 /// - Tab / Shift+Tab add a reason / objection, Enter or F2 edits the
@@ -27,8 +27,12 @@ pub(crate) use shortcuts::{
 ///   On macOS none of these work with Control held: Control+key is only
 ///   ever a table entry.
 /// - While a box is being edited only Esc (finish), Tab / Shift+Tab (finish
-///   and add a reason / objection) and the table's whole-card, source,
-///   co-premise, file and find keys (finish, then the command) are commands;
+///   and add a reason / objection), Ctrl+Enter (co-premise) and the table
+///   entries whose action `works_while_editing` (see
+///   `crate::actions::classify`) are commands: whole-card reason and
+///   objection, source, New, Open, Save, Save as, find and replace, F3 /
+///   Shift+F3, spelling (F7), Search commands, F6 / Shift+F6, F1, and the
+///   next / previous / close tab keys. They finish the edit, then run;
 ///   every other key is text.
 /// - Ctrl+Enter adds a co-premise with or without Shift, and Ctrl+Shift+=
 ///   zooms in like Ctrl+=.

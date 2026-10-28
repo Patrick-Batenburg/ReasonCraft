@@ -1,5 +1,9 @@
 //! ReasonCraft desktop app: window chrome, document tabs and commands.
 
+// The docs are built with `--document-private-items` (see CI), where
+// links from public items to private ones resolve.
+#![allow(rustdoc::private_intra_doc_links)]
+
 pub mod a11y;
 pub mod actions;
 pub mod app;

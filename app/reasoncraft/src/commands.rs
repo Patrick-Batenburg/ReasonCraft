@@ -3,7 +3,9 @@
 //! action it runs.
 //!
 //! The ribbon and backstage take their labels, icons and actions from
-//! here; the title bar's Search commands box (Alt+Q) searches it. Shortcuts live in one table, [`crate::canvas::input::SHORTCUTS`].
+//! here; the title bar's Search commands box (Alt+Q) searches it. The
+//! keyboard shortcuts live in one table per platform, see
+//! [`crate::canvas::input::shortcuts`](fn@crate::canvas::input::shortcuts).
 
 use std::sync::OnceLock;
 

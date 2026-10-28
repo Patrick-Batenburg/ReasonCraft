@@ -151,7 +151,7 @@ cargo-packager builds from the workspace, so the installers are unaffected.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs the quality gate (`cargo fmt --check`, clippy with `-D warnings`, `cargo test --workspace` and `cargo check --release --all-targets`) on `windows-latest`, `macos-latest` and `ubuntu-latest`, with the toolchain from `rust-toolchain.toml`.
+`.github/workflows/ci.yml` runs the quality gate (`cargo fmt --check`, clippy with `-D warnings`, `cargo doc --workspace --no-deps --document-private-items` with `RUSTDOCFLAGS=-D warnings`, `cargo test --workspace` and `cargo check --release --all-targets`) on `windows-latest`, `macos-latest` and `ubuntu-latest`, with the toolchain from `rust-toolchain.toml`.
 On Linux it first installs egui's build dependencies, the same as the Docker image.
 A Linux job runs `cargo deny check` and checks that `crates.txt` is current (see [Licence notices](#licence-notices)).
 Run by hand (workflow_dispatch), the workflow also runs the timing tests: the `#[ignore]`d tests, in a release build (`cargo test --workspace --release -j 4 -- --ignored`).
