@@ -124,3 +124,17 @@ fn search_commands_finds_the_tab_commands() {
         assert!(found.iter().any(|c| c.id == id), "{id}");
     }
 }
+
+/// A chip too narrow for its title shows it whole in a tooltip (ROB-R2).
+#[test]
+fn a_narrowed_chip_shows_its_title_on_hover() {
+    let mut h = tabs(7, 800.0);
+    let title = "Wide map title";
+    h.state_mut().tabs[0].doc.meta.title = title.to_owned();
+    h.run();
+    let chip = h.get_by_role_and_label(Role::Tab, title);
+    chip.hover();
+    h.run_steps(30);
+    let shown = h.query_all_by_label(title).count();
+    assert!(shown >= 2, "the chip and its tooltip: {shown}");
+}

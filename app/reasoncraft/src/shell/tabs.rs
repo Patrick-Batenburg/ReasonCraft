@@ -174,7 +174,7 @@ fn tab_chip(ui: &mut egui::Ui, app: &mut ReasonCraftApp, i: usize, width: f32) {
     let galley = ui.painter().layout_job(job);
     let (rect, mut resp) = ui.allocate_exact_size(Vec2::new(width, HEIGHT - 4.0), Sense::click());
     resp.widget_info(|| WidgetInfo::selected(Role::Tab, true, active, &title));
-    if galley.text() != title {
+    if galley.elided || galley.text() != title {
         resp = resp.on_hover_text(&title);
     }
 
