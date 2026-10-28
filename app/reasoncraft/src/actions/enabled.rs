@@ -44,7 +44,40 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
         Action::JumpParking => parking_jump(&tab.doc, sel).is_some(),
         Action::ZoomFitSelection => sel.is_some(),
         Action::Undo => !tab.history.undo.is_empty() || tab.has_pending_session(),
-        Action::Redo => !tab.history.redo.is_empty(),
+        // Redo first ends the edit session, and one with text to record
+        // clears the redo steps.
+        Action::Redo => !tab.history.redo.is_empty() && !tab.has_pending_session(),
         _ => true,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::actions::apply;
+    use crate::app::ReasonCraftApp;
+
+    /// Redo first ends the running edit session, and a session with text
+    /// to record clears the redo steps: Redo would do nothing, so it is
+    /// greyed out.
+    #[test]
+    fn redo_off_while_an_edit_would_clear_it() {
+        let mut a = ReasonCraftApp::new_for_test();
+        apply(&mut a, Action::AddReason);
+        apply(&mut a, Action::Undo);
+        let root = a.tabs[0].doc.root;
+        assert!(is_enabled(&a.tabs[0], &Action::Redo));
+        apply(&mut a, Action::Edit);
+        apply(
+            &mut a,
+            Action::EditText {
+                node: root,
+                text: "Changed".into(),
+            },
+        );
+        assert!(a.tabs[0].has_pending_session());
+        assert!(!is_enabled(&a.tabs[0], &Action::Redo));
+        apply(&mut a, Action::Redo);
+        assert!(a.tabs[0].history.redo.is_empty(), "the edit cleared redo");
     }
 }
