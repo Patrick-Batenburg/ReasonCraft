@@ -8,7 +8,7 @@ use eframe::egui::{
 };
 
 use super::selected_fill;
-use crate::actions::{Action, is_enabled};
+use crate::actions::{Action, can_run};
 use crate::app::{ReasonCraftApp, RibbonTab};
 use crate::canvas::input::{Os, shortcut_for, shortcut_text};
 use crate::commands::{Command, search};
@@ -121,7 +121,7 @@ pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let mut run = enter.then_some(st.highlight);
     let enabled: Vec<bool> = results
         .iter()
-        .map(|c| is_enabled(app.active_tab(), &c.action))
+        .map(|c| can_run(app, &c.action))
         .collect();
     if run.is_some_and(|i| !enabled[i]) {
         run = None;

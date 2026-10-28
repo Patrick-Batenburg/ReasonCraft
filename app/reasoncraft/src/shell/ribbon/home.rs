@@ -7,7 +7,7 @@ use reasoncraft_core::{BoxKind, CardKind, Item, SourceType};
 use super::{
     command, group, large, large_menu, menu_item, menu_popup, small, small_column, small_command,
 };
-use crate::actions::{Action, is_enabled, selected_card};
+use crate::actions::{Action, can_run, is_enabled, selected_card};
 use crate::app::ReasonCraftApp;
 use crate::canvas::plus_menu::source_button;
 use crate::commands;
@@ -89,7 +89,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
             for (icon, id) in [(Icon::Find, "home.find"), (Icon::Replace, "home.replace")] {
                 small_command(ui, &tk, icon, id, true, &mut out);
             }
-            let spelling = app.settings.spellcheck;
+            let spelling = can_run(app, &commands::get("home.spelling").action);
             small_command(ui, &tk, Icon::Spelling, "home.spelling", spelling, &mut out);
         });
     });

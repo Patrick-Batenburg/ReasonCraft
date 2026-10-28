@@ -5,7 +5,7 @@ use eframe::egui::{self, Event, FocusDirection, Key, Modifiers, Popup};
 use reasoncraft_core::{Document, Item, LayoutDirection, Parent};
 
 use super::editor::editor_id;
-use crate::actions::{Action, Dir, is_enabled};
+use crate::actions::{Action, Dir, can_run};
 use crate::app::ReasonCraftApp;
 use shortcuts::works_while_editing;
 
@@ -175,14 +175,8 @@ pub fn handle_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
     // Tab and the arrows are ours: keep egui from moving widget focus too.
     ctx.memory_mut(|m| m.move_focus(FocusDirection::None));
     ctx.request_repaint();
-    out.retain(|a| allowed(app, tab, a));
+    out.retain(|a| can_run(app, a));
     out
-}
-
-/// Whether a key's command may run: enabled for `tab`, and F7 only with
-/// spellcheck on.
-fn allowed(app: &ReasonCraftApp, tab: &crate::doc_tab::DocTab, action: &Action) -> bool {
-    is_enabled(tab, action) && (*action != Action::OpenSpelling || app.settings.spellcheck)
 }
 
 /// The file keys while a text field other than the box editor has focus
@@ -195,9 +189,9 @@ fn allowed(app: &ReasonCraftApp, tab: &crate::doc_tab::DocTab, action: &Action) 
 /// Applying the action first ends the field's editing session, so its
 /// typing becomes a history step before the save.
 pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
-    let Some(tab) = app.tabs.get(app.active) else {
+    if app.tabs.get(app.active).is_none() {
         return Vec::new();
-    };
+    }
     let mut out = Vec::new();
     // The text an Alt shortcut also types stays out of the field.
     let mut alt_text = false;
@@ -239,7 +233,7 @@ pub fn file_keys(ctx: &egui::Context, app: &ReasonCraftApp) -> Vec<Action> {
             }
         });
     });
-    out.retain(|a| allowed(app, tab, a));
+    out.retain(|a| can_run(app, a));
     out
 }
 

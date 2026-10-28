@@ -158,6 +158,19 @@ fn disabled_command_not_run() {
 }
 
 #[test]
+fn spelling_greyed_out_with_spellcheck_off() {
+    let mut h = harness();
+    h.state_mut().settings.spellcheck = false;
+    h.run();
+    search_for(&mut h, "spelling");
+    let spelling = row(&h, "home.spelling").expect("listed");
+    assert!(spelling.disabled, "greyed out, like the ribbon button");
+    h.key_press(Key::Enter);
+    h.run();
+    assert!(h.query_by_label(&t("command.disabled")).is_some());
+}
+
+#[test]
 fn search_esc_restores_focus() {
     let mut h = harness();
     h.run();

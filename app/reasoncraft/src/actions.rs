@@ -14,7 +14,7 @@ mod box_group;
 pub use action::{Action, Dir, Panel, UnsavedChoice};
 mod enabled;
 pub use box_group::{FakeOpener, LinkOpener, SystemOpener};
-pub use enabled::is_enabled;
+pub use enabled::{can_run, is_enabled};
 mod argdown;
 pub use argdown::report_text as import_report_text;
 mod comments;

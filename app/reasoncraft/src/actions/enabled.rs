@@ -6,8 +6,17 @@ use super::{
     Action, box_group, comments, connect, evaluate, find, images, insert, selected_card, sources,
     structure,
 };
+use crate::app::ReasonCraftApp;
 use crate::canvas::input::parking_jump;
 use crate::doc_tab::DocTab;
+
+/// Whether `action` may run in `app` right now: enabled for the active
+/// tab, and the spelling pass (F7) only with spellcheck on. The ribbon,
+/// Search commands and the keyboard all ask this, so they agree.
+pub fn can_run(app: &ReasonCraftApp, action: &Action) -> bool {
+    app.tabs.get(app.active).is_some_and(|tab| is_enabled(tab, action))
+        && (*action != Action::OpenSpelling || app.settings.spellcheck)
+}
 
 /// Whether `action` would do something for `tab` right now. Ribbon, "+"
 /// menu and keyboard all ask this, so refused commands are greyed out
@@ -55,7 +64,6 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
 mod tests {
     use super::*;
     use crate::actions::apply;
-    use crate::app::ReasonCraftApp;
 
     /// Redo first ends the running edit session, and a session with text
     /// to record clears the redo steps: Redo would do nothing, so it is
