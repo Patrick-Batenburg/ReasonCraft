@@ -15,6 +15,21 @@ fn title_marks_dirty_and_uses_file_stem() {
 }
 
 #[test]
+fn untitled_tab_is_named_by_its_document_title() {
+    let mut tab = DocTab::new();
+    tab.doc.meta.title = "  Robots at school ".to_owned();
+    assert_eq!(tab.name(), "Robots at school");
+    // A file suggestion leaves out what file names cannot hold.
+    tab.doc.meta.title = "Why? A/B: \"tests\"".to_owned();
+    assert_eq!(tab.file_stem(), "Why A B tests");
+    tab.doc.meta.title = "???".to_owned();
+    assert_eq!(tab.file_stem(), "Untitled");
+    // A file's name wins.
+    tab.path = Some(PathBuf::from("maps/robots.rcraft"));
+    assert_eq!(tab.name(), "robots");
+}
+
+#[test]
 fn outline_is_rebuilt_only_for_new_revision_or_options() {
     let mut tab = DocTab::new();
     let opts = OutlineOptions::default();

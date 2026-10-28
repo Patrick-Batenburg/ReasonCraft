@@ -113,7 +113,7 @@ pub(super) fn apply(app: &mut ReasonCraftApp, action: Action) {
 /// replacing it: the dialog only checked the name without it.
 fn run(app: &mut ReasonCraftApp, request: ExportRequest) {
     let format = request.format;
-    let suggested = format!("{}.{}", app.active_tab().name(), format.extension());
+    let suggested = format!("{}.{}", app.active_tab().file_stem(), format.extension());
     let Some(chosen) = app.dialogs.pick_export(format, &suggested) else {
         return;
     };

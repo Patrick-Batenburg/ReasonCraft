@@ -33,6 +33,10 @@ pub use snippet_edit::{cap_snippet, tidy_source};
 /// The next [`DocTab::ui_key`].
 static NEXT_UI_KEY: AtomicU64 = AtomicU64::new(0);
 
+/// The longest file name (in characters, without extension) a Save or
+/// Export suggests from a document title.
+pub const FILE_STEM_CHARS: usize = 100;
+
 /// How many undo steps a tab keeps.
 pub const HISTORY_LIMIT: usize = 500;
 
@@ -266,12 +270,37 @@ impl DocTab {
         self.is_dirty() || !self.pending_images.is_empty()
     }
 
-    /// The file stem, or "Untitled".
+    /// The file stem; without a file, the document's title (an imported
+    /// map, an example), else "Untitled".
     pub fn name(&self) -> String {
-        self.path
-            .as_deref()
-            .and_then(|p| p.file_stem())
-            .map_or_else(|| t("untitled"), |s| s.to_string_lossy().into_owned())
+        if let Some(stem) = self.path.as_deref().and_then(|p| p.file_stem()) {
+            return stem.to_string_lossy().into_owned();
+        }
+        match self.doc.meta.title.trim() {
+            "" => t("untitled"),
+            title => title.to_owned(),
+        }
+    }
+
+    /// [`Self::name`] as the file name a Save or Export suggests: without
+    /// the characters file names cannot hold, at most [`FILE_STEM_CHARS`]
+    /// long ("Untitled" when nothing is left).
+    pub fn file_stem(&self) -> String {
+        let name = self.name();
+        let kept = name
+            .chars()
+            .map(|c| match c {
+                '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => ' ',
+                c if c.is_control() => ' ',
+                c => c,
+            })
+            .collect::<String>();
+        let words: Vec<&str> = kept.split_whitespace().collect();
+        let stem: String = words.join(" ").chars().take(FILE_STEM_CHARS).collect();
+        match stem.trim_end_matches(['.', ' ']) {
+            "" => t("untitled"),
+            stem => stem.to_owned(),
+        }
     }
 
     /// [`Self::name`], marked when restored after a crash (until saved),

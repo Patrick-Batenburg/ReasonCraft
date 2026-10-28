@@ -156,4 +156,4 @@ Made while implementing:
 
 ## Full review fixes
 - Ruling B4-1 (APP-8): templates start in the language of new documents (File > Settings, "Same as interface" by default), like a blank map, because the user writes them; example maps stay in the interface language, because they are read alongside the interface and the help. Changes the earlier behaviour where templates always followed the interface — cost: with a different language for new documents, a template and an example opened together can differ in language.
-
+- Ruling B4-2 (APP-15): a tab without a file is named by its document's title (an imported map, an example), else "Untitled"; Save and Export suggest that name as the file name, without the characters file names cannot hold and at most 100 characters. Examples still open as clean tabs without a file (ruling O3), now named by their title — cost: typing a title on File > Document renames an unsaved tab as you type.

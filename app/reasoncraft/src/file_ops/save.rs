@@ -36,7 +36,7 @@ pub(super) fn save_tab_at(
         }
         (Some(path), false) => path.clone(),
         _ => {
-            let suggested = format!("{}.{EXTENSION}", tab.name());
+            let suggested = format!("{}.{EXTENSION}", tab.file_stem());
             let Some(chosen) = dialogs.pick_save(&suggested) else {
                 return Ok(SaveOutcome::Cancelled);
             };

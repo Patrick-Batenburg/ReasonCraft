@@ -27,10 +27,15 @@ fn worked_on_tab() -> DocTab {
     DocTab::from_document(Document::new("My own claim"))
 }
 
-/// The tab is new, untitled, unsaved and has nothing to lose.
+/// The tab is new, without a file, unsaved and has nothing to lose; it is
+/// named by the map's title (an example), else "Untitled" (a template).
 fn assert_clean_untitled(tab: &DocTab) {
     assert_eq!(tab.path, None);
-    assert_eq!(tab.title(), t("untitled"));
+    let name = match tab.doc.meta.title.trim() {
+        "" => t("untitled"),
+        title => title.to_owned(),
+    };
+    assert_eq!(tab.title(), name);
     assert!(!tab.is_dirty());
     assert!(!tab.has_unsaved_work());
     assert!(tab.history.undo.is_empty());
