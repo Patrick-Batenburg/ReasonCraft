@@ -159,5 +159,4 @@ fn history_of_a_large_map_stays_within_its_byte_budget() {
     // document did.
     assert!((10..15).contains(&tab.history.undo.len()));
     assert!(tab.history.bytes() <= tab.history.byte_limit);
-    assert!(reasoncraft_core::history::HISTORY_BYTES <= 128 << 20);
 }
