@@ -134,3 +134,40 @@ fn svg_export_draws_the_connector_style() {
         .count();
     assert_eq!(bands, 2, "one band per connector: {paths:?}");
 }
+
+/// Every item of the Connectors menu stays on one line at every display
+/// and interface size: the menu is as wide as its longest label.
+#[test]
+fn connector_menu_items_do_not_wrap() {
+    let mut checked = 0;
+    for ppp in [1.0, 1.25, 1.5, 1.75, 2.0] {
+        for scale in [0.8, 0.9, 1.0, 1.1, 1.25, 1.5] {
+            let mut app = ReasonCraftApp::new_for_test_with(Box::new(FakeDialogs::default()));
+            app.settings.ui_scale = scale;
+            let mut h = common::builder()
+                .with_pixels_per_point(ppp)
+                .build_ui_state(|ui, app: &mut ReasonCraftApp| app.show(ui), app);
+            h.run();
+            h.get_by_label(&t("ribbon.tab.view")).click();
+            h.run();
+            // At the largest sizes the group is collapsed into a drop-down.
+            let menu = t("action.connector_style");
+            let Some(button) = h.query_by_label(&menu) else {
+                continue;
+            };
+            button.click();
+            h.run();
+            checked += 1;
+            let curved = h.get_by_label(&t("connector_style.curved")).rect().height();
+            for s in ConnectorStyle::ALL {
+                let label = t(&format!("connector_style.{}", s.key()));
+                let height = h.get_by_label(&label).rect().height();
+                assert!(
+                    (height - curved).abs() < 0.5,
+                    "{ppp} {scale}: '{label}' is {height} tall, Curved {curved}"
+                );
+            }
+        }
+    }
+    assert!(checked >= 20, "only {checked} sizes showed the menu");
+}

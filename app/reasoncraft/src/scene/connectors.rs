@@ -17,6 +17,9 @@ use crate::theme::Tokens;
 /// Opposes/rebuts end bar: length and thickness in screen px.
 const BAR_PX: f32 = 11.0;
 pub(super) const BAR_THICKNESS: f32 = 2.4;
+/// A tapered connector's arrowhead or bar is at least this many times as
+/// wide as the band's wide end, so it still reads as a head.
+const TAPERED_HEAD: f32 = 1.6;
 
 fn connector_colour(t: &Tokens, kind: ConnectorKind) -> Color32 {
     match kind {
@@ -64,8 +67,8 @@ impl Builder<'_> {
         let marker = end_marker(c.kind);
         let style = self.opts.connector_style;
         if style == ConnectorStyle::Tapered {
-            // The band ends at the stub, which is a line as wide as the
-            // band's narrow end.
+            // The band carries on at its full width along the stub, and
+            // its arrowhead or bar is sized to it.
             let (w_child, w_parent) = tapered_widths(c.kind, strength, zoom);
             let (left, right) = tapered_band(c.from, start, 0.0, w_child, w_parent, c.dir);
             self.shapes.push(Shape::Strip {
@@ -73,7 +76,8 @@ impl Builder<'_> {
                 right,
                 fill: colour,
             });
-            self.stub(start, c.to, toward, (w_child, colour), marker);
+            let head = (TAPERED_HEAD * w_parent / (ARROW_PX * self.px)).max(1.0);
+            self.stub(start, c.to, toward, (w_parent, colour), marker, head);
             return;
         }
         let stroke = (line_width(c.kind, strength, zoom), colour);
@@ -101,7 +105,7 @@ impl Builder<'_> {
                 dashed: false,
             });
         }
-        self.stub(start, c.to, toward, stroke, marker);
+        self.stub(start, c.to, toward, stroke, marker, 1.0);
     }
 
     /// Where `c`'s stub starts: [`Self::stub_len`] back from the port along
@@ -126,8 +130,17 @@ impl Builder<'_> {
     /// The straight end of a connector from `a` to the port `b`, with its
     /// marker oriented along it (along `toward`, toward the parent, when the
     /// stub has no length).
-    fn stub(&mut self, a: Pos2, b: Pos2, toward: Vec2, stroke: StrokeSpec, marker: EndMarker) {
+    fn stub(
+        &mut self,
+        a: Pos2,
+        b: Pos2,
+        toward: Vec2,
+        stroke: StrokeSpec,
+        marker: EndMarker,
+        head: f32,
+    ) {
         let px = self.px;
+        let head_px = head * px;
         let d = b - a;
         let dir = if d.length() > 1e-3 * px {
             d.normalized()
@@ -138,12 +151,12 @@ impl Builder<'_> {
         match marker {
             EndMarker::Arrow => {
                 // Stop the line just inside the arrowhead so it cannot poke out of the tip.
-                let len = d.length() - (ARROW_PX - 1.0) * px;
+                let len = d.length() - (ARROW_PX - 1.0) * head_px;
                 if len > 0.0 {
                     self.line(&[a, a + dir * len], stroke);
                 }
-                let base = b - dir * ARROW_PX * px;
-                let half = ARROW_PX * 0.5 * px;
+                let base = b - dir * ARROW_PX * head_px;
+                let half = ARROW_PX * 0.5 * head_px;
                 let mut points = polyline(&[b, base + side * half, base - side * half]);
                 points.push(PathEl::Close);
                 self.shapes.push(Shape::Path {
@@ -157,7 +170,7 @@ impl Builder<'_> {
                 // The bar's far edge touches the port.
                 let centre = b - dir * (BAR_THICKNESS * px / 2.0);
                 self.line(&[a, centre], stroke);
-                let half = side * (BAR_PX * px / 2.0);
+                let half = side * (BAR_PX * head_px / 2.0);
                 self.line(
                     &[centre - half, centre + half],
                     (BAR_THICKNESS * px, stroke.1),

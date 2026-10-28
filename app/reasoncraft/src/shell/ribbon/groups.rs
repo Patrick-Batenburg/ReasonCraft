@@ -4,7 +4,7 @@
 
 use eframe::egui::{
     Align, Align2, FontId, Frame, Id, Key, Layout, Order, Popup, PopupCloseBehavior, RectAlign,
-    Response, ScrollArea, Stroke, Ui, Widget, containers::menu, pos2,
+    Response, ScrollArea, Stroke, TextWrapMode, Ui, Widget, containers::menu, pos2,
 };
 
 use super::{BUTTON_H, LABEL_H, fit, large_button};
@@ -122,6 +122,10 @@ fn keep_focus(ui: &Ui, button: &Response, popup_id: Id) {
 /// is scrolled into view.
 pub(super) fn menu_popup(ui: &Ui, resp: &Response, add: impl FnOnce(&mut Ui)) {
     let scrolled = |ui: &mut Ui| {
+        // Items keep to one line: the menu takes its width from them, and
+        // a width rounded down a fraction of a pixel would wrap the last
+        // letter of the longest one.
+        ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
         // The window's height less the menu frame's margins.
         let margins = Frame::menu(ui.style()).total_margin().sum().y;
         let max = ui.ctx().content_rect().height() - 2.0 * margins;
