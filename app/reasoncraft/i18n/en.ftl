@@ -652,7 +652,6 @@ status-jobs-images = { $count ->
    *[other] { $count } images being prepared
 }
 export-error-stopped = The export stopped unexpectedly. Please try again.
-export-error-unsupported = This kind of export is not available yet ({ $detail }).
 
 ## Help (Text panel tab, Help ribbon tab, F1) and About
 text-tab-help = Help

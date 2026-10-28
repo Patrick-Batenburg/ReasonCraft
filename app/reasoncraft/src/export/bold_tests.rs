@@ -35,15 +35,17 @@ fn pdf_bold_text_extracted_once() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("map.pdf");
     let work = ExportWork {
-        format: ExportFormat::Pdf,
         options: ExportOptions::default(),
         page: PageSetup::default(),
-        snapshot: Snapshot::Scene {
-            scene: two_statistics(),
-            assets: Assets::default(),
-            tokens: Tokens::light(),
+        make: Make::Image {
+            format: ImageFormat::Pdf,
+            picture: Picture {
+                scene: two_statistics(),
+                assets: Assets::default(),
+                tokens: Tokens::light(),
+            },
+            path: path.clone(),
         },
-        target: Target::File(path.clone()),
     };
     work.run().unwrap();
     let pdf = std::fs::read(&path).unwrap();

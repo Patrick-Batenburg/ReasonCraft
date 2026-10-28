@@ -37,7 +37,24 @@ impl ExportFormat {
 
     /// Whether this is a picture of the map (with scope and theme).
     pub fn is_image(self) -> bool {
-        matches!(self, Self::Png | Self::Svg | Self::Pdf)
+        matches!(self.kind(), FormatKind::Image(_))
+    }
+
+    /// What this format is made from: the map's picture, or the document.
+    pub fn kind(self) -> FormatKind {
+        use FormatKind::{Image, Text};
+        match self {
+            Self::Png => Image(ImageFormat::Png),
+            Self::Svg => Image(ImageFormat::Svg),
+            Self::Pdf => Image(ImageFormat::Pdf),
+            Self::OutlineMarkdown => Text(TextFormat::OutlineMarkdown),
+            Self::OutlineText => Text(TextFormat::OutlineText),
+            Self::OutlineDocx => Text(TextFormat::OutlineDocx),
+            Self::EssayMarkdown => Text(TextFormat::EssayMarkdown),
+            Self::EssayText => Text(TextFormat::EssayText),
+            Self::EssayDocx => Text(TextFormat::EssayDocx),
+            Self::Argdown => Text(TextFormat::Argdown),
+        }
     }
 
     /// The i18n key of the format's name (also the file dialog's filter).
@@ -55,6 +72,33 @@ impl ExportFormat {
             Self::Argdown => "export.format.argdown",
         }
     }
+}
+
+/// An [`ExportFormat`] by what it is made from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FormatKind {
+    Image(ImageFormat),
+    Text(TextFormat),
+}
+
+/// The formats made from a picture of the map.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ImageFormat {
+    Png,
+    Svg,
+    Pdf,
+}
+
+/// The formats made from the document's text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TextFormat {
+    OutlineMarkdown,
+    OutlineText,
+    OutlineDocx,
+    EssayMarkdown,
+    EssayText,
+    EssayDocx,
+    Argdown,
 }
 
 /// How much of the map an image export shows.

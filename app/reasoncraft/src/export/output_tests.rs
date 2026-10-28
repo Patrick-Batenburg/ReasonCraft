@@ -193,15 +193,16 @@ fn copy_survives_a_poisoned_clipboard_lock() {
     .join();
     assert!(shared.is_poisoned());
     let work = ExportWork {
-        format: ExportFormat::Png,
         options: ExportOptions::default(),
         page: PageSetup::default(),
-        snapshot: Snapshot::Scene {
-            scene: rect_scene(10.0, 10.0),
-            assets: Assets::default(),
-            tokens: Tokens::light(),
+        make: Make::Copy {
+            picture: Picture {
+                scene: rect_scene(10.0, 10.0),
+                assets: Assets::default(),
+                tokens: Tokens::light(),
+            },
+            sink: shared,
         },
-        target: Target::Clipboard(shared),
     };
     assert_eq!(work.run().unwrap(), Outcome::Copied);
     assert_eq!(fake.images.lock().unwrap().len(), 1);
@@ -222,10 +223,6 @@ fn a_job_that_dies_is_reported_as_stopped() {
         }
     }
     assert_eq!(ExportError::Stopped.key(), "export-error-stopped");
-    assert_eq!(
-        ExportError::Unsupported(ExportFormat::EssayDocx).key(),
-        "export-error-unsupported"
-    );
 }
 
 /// A chain of four cards exports wider than tall left-to-right, and

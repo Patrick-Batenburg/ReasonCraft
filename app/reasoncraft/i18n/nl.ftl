@@ -653,7 +653,6 @@ status-jobs-images = { $count ->
    *[other] { $count } afbeeldingen in voorbereiding
 }
 export-error-stopped = Het exporteren is onverwacht gestopt. Probeer het opnieuw.
-export-error-unsupported = Dit soort export is nog niet beschikbaar ({ $detail }).
 
 ## Help (Text panel tab, Help ribbon tab, F1) and About
 text-tab-help = Help

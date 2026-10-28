@@ -14,7 +14,7 @@ use crate::app::ReasonCraftApp;
 use crate::canvas::measure::{EguiMeasure, MeasureCache};
 use crate::export::{
     ExportError, ExportFormat, ExportOptions, ExportRequest, ExportScope, ExportTheme, ExportWork,
-    Notice, Outcome, PageSetup, Snapshot, Target,
+    FormatKind, Make, Notice, Outcome, PageSetup, Picture,
 };
 use crate::file_ops::{Modal, with_extension};
 use crate::i18n::{FluentArgs, language_of, t, t_args};
@@ -66,23 +66,23 @@ pub(super) fn set_page_setup(app: &mut ReasonCraftApp, page: PageSetup) {
 pub(super) fn copy_as_image(app: &mut ReasonCraftApp) {
     let tokens = tokens_for(app, app.settings.export.theme);
     let only = scope_item(app, app.settings.export.scope);
-    let snapshot = scene_snapshot(app, only, tokens);
-    let target = Target::Clipboard(app.export.clipboard.clone());
+    let picture = picture(app, only, tokens);
+    let sink = app.export.clipboard.clone();
     let options = ExportOptions {
         png_scale: 2,
         transparent: false,
         ..ExportOptions::default()
     };
-    start(app, ExportFormat::Png, options, snapshot, target);
+    start(app, options, Make::Copy { picture, sink });
 }
 
 /// Make a PDF with the saved page setup and open it to print.
 pub(super) fn print(app: &mut ReasonCraftApp) {
     let options = app.settings.export;
     let tokens = tokens_for(app, options.theme);
-    let snapshot = scene_snapshot(app, None, tokens);
-    let target = Target::Print(app.export.print_dir.clone());
-    start(app, ExportFormat::Pdf, options, snapshot, target);
+    let picture = picture(app, None, tokens);
+    let dir = app.export.print_dir.clone();
+    start(app, options, Make::Print { picture, dir });
 }
 
 /// The answer to "replace the existing file?" for an export.
@@ -143,38 +143,37 @@ fn export_to(app: &mut ReasonCraftApp, request: ExportRequest, path: PathBuf) {
         options,
         page,
     } = request;
-    let snapshot = if format.is_image() {
-        let only = scope_item(app, options.scope);
-        scene_snapshot(app, only, tokens_for(app, options.theme))
-    } else {
-        Snapshot::Doc {
+    let make = match format.kind() {
+        FormatKind::Image(format) => {
+            let only = scope_item(app, options.scope);
+            let picture = picture(app, only, tokens_for(app, options.theme));
+            Make::Image {
+                format,
+                picture,
+                path,
+            }
+        }
+        FormatKind::Text(format) => Make::Text {
+            format,
             doc: Box::new(app.active_tab().doc.clone()),
             outline: app.settings.outline,
-        }
+            path,
+        },
     };
     app.export.start(ExportWork {
-        format,
         options,
         page,
-        snapshot,
-        target: Target::File(path),
+        make,
     });
 }
 
-fn start(
-    app: &mut ReasonCraftApp,
-    format: ExportFormat,
-    options: ExportOptions,
-    snapshot: Snapshot,
-    target: Target,
-) {
+/// Start `make` with the saved page setup.
+fn start(app: &mut ReasonCraftApp, options: ExportOptions, make: Make) {
     let page = app.settings.page_setup;
     app.export.start(ExportWork {
-        format,
         options,
         page,
-        snapshot,
-        target,
+        make,
     });
 }
 
@@ -197,7 +196,7 @@ fn tokens_for(app: &ReasonCraftApp, theme: ExportTheme) -> Tokens {
 
 /// The active map (or `only` and what is under it) as the canvas shows
 /// it, at zoom 1 in the colours of `tokens`, with a copy of its images.
-fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) -> Snapshot {
+fn picture(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) -> Picture {
     let ReasonCraftApp {
         tabs,
         active,
@@ -245,7 +244,7 @@ fn scene_snapshot(app: &mut ReasonCraftApp, only: Option<Item>, tokens: Tokens) 
         shapes: Vec::new(),
         bounds: egui::Rect::ZERO,
     });
-    Snapshot::Scene {
+    Picture {
         scene,
         assets: tab.assets.clone(),
         tokens,
