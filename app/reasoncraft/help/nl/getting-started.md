@@ -32,7 +32,7 @@ Wat je op een lege plek laat vallen, of wat overblijft als je het vak erboven ve
 
 ## Ongedaan maken, zoeken en meer
 
-- Elke wijziging maak je ongedaan met Ctrl+Z en doe je opnieuw met Ctrl+Y.
+- Wijzigingen maak je ongedaan met Ctrl+Z en doe je opnieuw met Ctrl+Y: de laatste 500, of minder in een heel grote kaart (ongeveer 150 in een kaart van 2000 vakken), omdat de geschiedenis niet meer dan een vaste hoeveelheid geheugen gebruikt.
 - Ctrl+F zoekt tekst in vakken, bronnen en notities; Ctrl+H vervangt hem ook.
 - Het vak **Opdrachten zoeken** in de titelbalk (Alt+Q) vindt elke opdracht op naam.
 - F6 brengt de toetsenbordfocus van het lint naar de panelen, de kaart en de statusbalk.

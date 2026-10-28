@@ -32,7 +32,7 @@ Anything you drop on empty canvas, or that is left over when you delete the box 
 
 ## Undo, find and more
 
-- Every change can be undone with Ctrl+Z and redone with Ctrl+Y.
+- Changes can be undone with Ctrl+Z and redone with Ctrl+Y: the last 500 of them, or fewer in a very large map (about 150 in a map of 2,000 boxes), as the undo history keeps at most a set amount of memory.
 - Ctrl+F finds text in boxes, sources and notes; Ctrl+H also replaces it.
 - The **Search commands** box in the title bar (Alt+Q) finds any command by name.
 - F6 moves the keyboard focus between the ribbon, the panels, the map and the status bar.

@@ -26,7 +26,7 @@ Het tabblad Betoog is een schrijfplan dat je kaart volgt. Het geeft je een tekst
 
 Klik op een uitspraak op het tabblad Betoog om haar op de kaart te vinden. Typen in een veld is één stap voor ongedaan maken, van de eerste toets tot je het veld verlaat.
 
-Het betoog wordt in het bestand van de kaart bewaard. Het is er voor argumentkaarten; een groeperingskaart heeft geen betoog, dus daar zegt het tabblad Betoog alleen dat en is Exporteren > Betoog grijs.
+Het betoog wordt in het bestand van de kaart bewaard. Het is er voor argumentkaarten; een groeperingskaart heeft geen betoog, dus daar zegt het tabblad Betoog dat en is Exporteren > Betoog grijs. Alinea's die je schreef toen de kaart redenen had, blijven onder die melding staan en keren terug in het betoog zodra de kaart weer redenen heeft.
 
 ## Tekst die nu geen plek heeft
 
