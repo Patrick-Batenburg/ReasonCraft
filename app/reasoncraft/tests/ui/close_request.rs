@@ -85,3 +85,34 @@ fn cmd_q_prompts_when_unsaved_on_mac() {
     assert!(h.state().modal.is_none());
     assert!(!h.state().close_confirmed());
 }
+
+/// The link editor and the export dialog belong to the active tab: a
+/// window close that turns to another tab (to ask about it) closes them,
+/// so a later Save or Export cannot act on the wrong map.
+#[test]
+fn close_request_closes_the_link_editor_and_export_dialog() {
+    let mut h = harness(Os::Windows, true);
+    h.state_mut().push(Action::New);
+    h.run();
+    assert_eq!(h.state().active, 1, "the clean new tab is active");
+    let root = h.state().tabs[1].doc.root;
+    h.state_mut().tabs[1].selection = Some(Item::Box(root));
+    h.state_mut().push(Action::EditLink);
+    h.run();
+    assert!(h.state().link_edit.is_some());
+    request_close(&mut h);
+    h.run();
+    assert_eq!(h.state().active, 0, "turned to the tab with changes");
+    assert!(h.state().link_edit.is_none(), "the link editor closed");
+
+    h.state_mut().modal = None;
+    h.state_mut().active = 1;
+    h.state_mut()
+        .push(Action::OpenExport(reasoncraft::export::ExportFormat::Png));
+    h.run();
+    assert!(h.state().export_dialog.is_some());
+    request_close(&mut h);
+    h.run();
+    assert_eq!(h.state().active, 0);
+    assert!(h.state().export_dialog.is_none(), "the export dialog closed");
+}

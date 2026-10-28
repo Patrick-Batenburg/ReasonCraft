@@ -282,8 +282,12 @@ pub fn remove_tab(app: &mut ReasonCraftApp, i: usize) {
     }
 }
 
-/// Close the window, asking about each dirty tab in order first.
+/// Close the window, asking about each dirty tab in order first. The link
+/// editor and the export dialog close first: they act on the active tab,
+/// and asking may turn to another one.
 pub fn request_close_window(app: &mut ReasonCraftApp) {
+    app.link_edit = None;
+    app.export_dialog = None;
     for tab in &mut app.tabs {
         tab.commit_session();
     }
