@@ -6,7 +6,7 @@ use crate::a11y::{in_group, labelled};
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::commands;
-use crate::i18n::{UI_LANGUAGES, t};
+use crate::i18n::t;
 use crate::settings::{AUTOSAVE_DEFAULT, AUTOSAVE_MAX, AUTOSAVE_MIN, UI_SCALE_MAX, UI_SCALE_MIN};
 use crate::shell::text_panel::{check_help, check_key};
 use crate::theme::{ThemeChoice, Tokens};
@@ -243,9 +243,7 @@ fn ui_language(ui: &mut egui::Ui, app: &mut ReasonCraftApp, tk: &Tokens) {
     ui.label(RichText::new(&group).color(tk.box_text));
     let current = app.settings.ui_language_choice();
     ui.horizontal(|ui| {
-        let langs = UI_LANGUAGES.map(|l| (l, Some(l)));
-        for (key, lang) in std::iter::once(("system", None)).chain(langs) {
-            let cmd = commands::get(&format!("view.language.{key}"));
+        for &(lang, cmd) in commands::ui_language_choices() {
             let on = current == lang;
             let resp = ui.selectable_label(on, t(cmd.label));
             if labelled(resp, in_group(&group, &t(cmd.label))).clicked() && !on {

@@ -11,7 +11,7 @@ use super::{
 use crate::actions::Action;
 use crate::app::ReasonCraftApp;
 use crate::commands;
-use crate::i18n::{UI_LANGUAGES, t};
+use crate::i18n::t;
 use crate::settings::MinimapMode;
 use crate::shell::icons::{Icon, connector_atom, direction_atom};
 use crate::theme::ThemeChoice;
@@ -79,9 +79,7 @@ fn language_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
         let label = t("action.ui_language");
         let resp = large_menu(ui, &tk, Icon::Language, &label, true);
         menu_popup(ui, &resp, |ui| {
-            let langs = UI_LANGUAGES.map(|l| (l, Some(l)));
-            for (key, lang) in std::iter::once(("system", None)).chain(langs) {
-                let cmd = commands::get(&format!("view.language.{key}"));
+            for &(lang, cmd) in commands::ui_language_choices() {
                 let on = lang == current;
                 if menu_item(ui, true, Button::new(t(cmd.label)).selected(on)) && !on {
                     out.push(cmd.action.clone());

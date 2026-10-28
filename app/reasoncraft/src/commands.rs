@@ -8,6 +8,7 @@
 use std::sync::OnceLock;
 
 use crate::actions::Action;
+use crate::i18n::UI_LANGUAGES;
 use crate::shell::icons::Icon;
 
 mod registry;
@@ -73,6 +74,22 @@ impl Command {
 /// (`home.add_source.<key>`).
 pub fn add_source_id(st: &reasoncraft_core::SourceType) -> String {
     format!("home.add_source.{}", st.key())
+}
+
+/// The interface-language choices, in menu order, with the command that
+/// picks each: following the OS (`None`), then every UI language. View →
+/// Language and the File page's settings both list these.
+pub fn ui_language_choices() -> &'static [(Option<&'static str>, &'static Command)] {
+    static CHOICES: OnceLock<Vec<(Option<&'static str>, &'static Command)>> = OnceLock::new();
+    CHOICES.get_or_init(|| {
+        std::iter::once(None)
+            .chain(UI_LANGUAGES.map(Some))
+            .map(|lang| {
+                let key = lang.unwrap_or("system");
+                (lang, get(&format!("view.language.{key}")))
+            })
+            .collect()
+    })
 }
 
 /// Every command, in ribbon order.
