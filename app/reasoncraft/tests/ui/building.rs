@@ -6,9 +6,8 @@ use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
 use reasoncraft::canvas::measure::{EguiMeasure, MeasureCache};
 use reasoncraft::i18n::t;
-mod common;
 
-use common::glide;
+use crate::common::glide;
 use reasoncraft_core::{BoxKind, CardKind, Document, Item, Layout, LayoutParams, Parent, layout};
 
 type H = Harness<'static, ReasonCraftApp>;

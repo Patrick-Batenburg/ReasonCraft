@@ -166,7 +166,7 @@ fn about_shows_third_party_notices() {
     )));
     assert!(has("MIT OR Apache-2.0"));
     // Every heading and every line of THIRD-PARTY.md shows.
-    let notices = include_str!("../../../THIRD-PARTY.md");
+    let notices = include_str!("../../../../THIRD-PARTY.md");
     for line in notices.lines().map(str::trim).filter(|l| !l.is_empty()) {
         let text = line.trim_start_matches(['#', '-', ' ']).replace('`', "");
         let start: String = text.chars().take(30).collect();

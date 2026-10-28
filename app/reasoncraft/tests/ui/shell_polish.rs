@@ -1,7 +1,5 @@
 //! Tab titles and side panel widths.
 
-mod common;
-
 use std::path::PathBuf;
 
 use eframe::egui;
@@ -24,7 +22,7 @@ fn harness() -> H {
 
 /// The text of every text shape painted in the last frame.
 fn painted_texts(h: &H) -> Vec<String> {
-    common::painted_texts(h)
+    crate::common::painted_texts(h)
         .into_iter()
         .map(|(t, _)| t)
         .collect()

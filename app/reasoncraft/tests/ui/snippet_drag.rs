@@ -1,8 +1,6 @@
 //! UI tests for dragging snippet text onto the map.
 
-mod common;
-
-use common::{glide, painted_texts};
+use crate::common::{glide, painted_texts};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::{Harness, kittest::Queryable};
 use reasoncraft::ReasonCraftApp;
