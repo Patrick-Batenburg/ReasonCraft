@@ -66,6 +66,25 @@ fn broken_and_huge_inputs_are_refused() {
 }
 
 #[test]
+fn scaling_counts_toward_the_memory_limit() {
+    // 12000×11500 RGB decodes to 414 MB: under the limit alone, but not
+    // with the buffers scaling it down needs. Refused from the header.
+    let header = png_header_only(12_000, 11_500);
+    assert_eq!(prepare_image(&header), Err(ImageError::TooLarge));
+    // A smaller one passes the header check (its data is missing, so it
+    // is corrupt rather than too large).
+    let header = png_header_only(9_000, 9_000);
+    assert_eq!(prepare_image(&header), Err(ImageError::Corrupt));
+}
+
+#[test]
+fn very_large_images_are_shrunk_in_two_steps() {
+    let (out, aspect) = prepare_image(&png(4000, 1000)).unwrap();
+    assert_eq!(dimensions(&out), (1600, 400));
+    assert!((aspect - 0.25).abs() < 1e-6, "{aspect}");
+}
+
+#[test]
 fn error_texts_exist() {
     for e in [
         ImageError::TooLarge,

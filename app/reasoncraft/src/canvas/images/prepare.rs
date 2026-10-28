@@ -14,10 +14,21 @@ use crate::i18n::{FluentArgs, t, t_args};
 pub const MAX_INPUT_BYTES: u64 = 40 * 1024 * 1024;
 /// Wider or taller images are refused before their pixels are allocated.
 pub const MAX_DIMENSION: u32 = 12_000;
-/// The most a decoder may allocate.
+/// The most preparing an image may allocate: the decoded pixels and the
+/// scaling's buffers ([`FIT_SCRATCH`]).
 const MAX_ALLOC: u64 = 512 * 1024 * 1024;
 /// Stored images are scaled down so their longest side is at most this.
 pub const MAX_SIDE: u32 = 1600;
+/// Larger images are first shrunk (by averaging, in 8 bits) to this
+/// longest side, so the Lanczos pass works on a small image.
+const SHRINK_SIDE: u32 = 2 * MAX_SIDE;
+/// The most [`fit`] allocates beside the decoded image: the shrunk copy
+/// (RGBA, 8 bits per channel) and Lanczos's intermediate (one pass at
+/// full width, RGBA in `f32`) and result.
+const FIT_SCRATCH: u64 = {
+    let (s, m) = (SHRINK_SIDE as u64, MAX_SIDE as u64);
+    s * s * 4 + s * m * 16 + m * m * 4
+};
 
 /// Why a picked file cannot go in a box.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,12 +62,14 @@ fn classify(err: &image::ImageError) -> ImageError {
 
 /// Decode `bytes` (any enabled format), upright per its EXIF orientation.
 /// Images wider or taller than `max_side`, or needing more than
-/// `max_alloc` bytes, are refused from their header, before their pixels
-/// are allocated.
+/// `max_alloc` bytes besides `scratch` (what the caller allocates for its
+/// work on them), are refused from their header, before their pixels are
+/// allocated.
 pub(super) fn decode(
     bytes: &[u8],
     max_side: u32,
     max_alloc: u64,
+    scratch: u64,
 ) -> Result<DynamicImage, ImageError> {
     let mut reader = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
@@ -72,7 +85,7 @@ pub(super) fn decode(
     let mut decoder = reader.into_decoder().map_err(|e| classify(&e))?;
     // The output buffer counts too (`ImageReader::decode` does the same).
     limits
-        .reserve(decoder.total_bytes())
+        .reserve(decoder.total_bytes().saturating_add(scratch))
         .map_err(|e| classify(&e))?;
     let orientation = decoder.orientation().ok();
     let mut img = DynamicImage::from_decoder(decoder).map_err(|e| classify(&e))?;
@@ -85,9 +98,15 @@ pub(super) fn decode(
     Ok(img)
 }
 
-/// `img` scaled down (Lanczos3) so its longest side is at most [`MAX_SIDE`].
-fn fit(img: DynamicImage) -> DynamicImage {
-    if img.width().max(img.height()) > MAX_SIDE {
+/// `img` scaled down (Lanczos3) so its longest side is at most
+/// [`MAX_SIDE`]; a very large one is first shrunk to [`SHRINK_SIDE`], so
+/// the scaling never needs more than [`FIT_SCRATCH`] bytes.
+fn fit(mut img: DynamicImage) -> DynamicImage {
+    let longest = img.width().max(img.height());
+    if longest > SHRINK_SIDE {
+        img = img.thumbnail(SHRINK_SIDE, SHRINK_SIDE);
+    }
+    if longest > MAX_SIDE {
         img.resize(MAX_SIDE, MAX_SIDE, FilterType::Lanczos3)
     } else {
         img
@@ -101,7 +120,7 @@ pub fn prepare_image(bytes: &[u8]) -> Result<(Vec<u8>, f32), ImageError> {
     if bytes.len() as u64 > MAX_INPUT_BYTES {
         return Err(ImageError::TooLarge);
     }
-    let img = decode(bytes, MAX_DIMENSION, MAX_ALLOC)?;
+    let img = decode(bytes, MAX_DIMENSION, MAX_ALLOC, FIT_SCRATCH)?;
     let aspect = img.height() as f32 / img.width() as f32;
     let mut png = Vec::new();
     fit(img)

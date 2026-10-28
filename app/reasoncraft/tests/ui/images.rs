@@ -207,17 +207,12 @@ fn second_insert_for_the_same_box_replaces_the_first() {
     fake.set_image(photo(dir.path(), "wide.png", 40, 20));
     h.get_by_label(&t("action.image")).click();
     h.step();
-    // The second job finishes first.
-    h.state_mut().image_jobs.hold = None;
+    // Images are prepared one at a time: the second waits for the first,
+    // whose result arrives first and is dropped.
     fake.set_image(photo(dir.path(), "tall.png", 20, 40));
     h.get_by_label(&t("action.image")).click();
     h.step();
-    let start = Instant::now();
-    while h.state().image_jobs.running() > 1 {
-        assert!(start.elapsed() < Duration::from_secs(60), "image job hangs");
-        h.step();
-        std::thread::sleep(Duration::from_millis(5));
-    }
+    assert_eq!(h.state().image_jobs.running(), 2);
     hold.release();
     wait(&mut h);
     let tab = h.state().active_tab();

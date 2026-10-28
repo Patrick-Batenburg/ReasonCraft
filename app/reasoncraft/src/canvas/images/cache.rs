@@ -27,7 +27,7 @@ pub const MAX_TEXTURE_SIDE: u32 = 1024;
 /// not decode or is larger than this build ever stores. Exports decode
 /// with it too, so they refuse what the canvas refuses.
 pub fn decode_stored(bytes: &[u8]) -> Option<DynamicImage> {
-    decode(bytes, MAX_STORED_SIDE, MAX_STORED_ALLOC).ok()
+    decode(bytes, MAX_STORED_SIDE, MAX_STORED_ALLOC, 0).ok()
 }
 
 /// [`MAX_TEXTURE_SIDE`] px on the longest side; `None` when it does not
