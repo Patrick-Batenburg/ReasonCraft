@@ -72,6 +72,7 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
         .show(ctx, |ui| {
             ui.set_width(420.0);
             ui.spacing_mut().item_spacing.y = 10.0;
+            crate::a11y::name_dialog(ui, &t("link.title"));
             let heading = egui::RichText::new(t("link.title")).strong().size(16.0);
             ui.label(heading.color(tk.box_text));
             let field_id = egui::Id::unique("link_modal_url");

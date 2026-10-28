@@ -210,7 +210,10 @@ fn failed_export_shows_error_and_essay_waits() {
     h.run_steps(2);
     wait(&mut h);
     assert!(h.state().modal.is_some(), "an error modal");
-    h.get_by_label(&t("export.error.title"));
+    h.get_by_role_and_label(
+        eframe::egui::accesskit::Role::Dialog,
+        &t("export.error.title"),
+    );
     h.get_by_label(&t("modal.ok")).click();
     h.run();
 

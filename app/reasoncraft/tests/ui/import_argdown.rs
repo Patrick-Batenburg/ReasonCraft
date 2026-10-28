@@ -32,7 +32,10 @@ fn backstage_imports_argdown_with_report() {
     assert!(matches!(&app.modal, Some(Modal::ImportReport(n)) if n.len() == 1));
 
     // The report names the line and what was left out; OK closes it.
-    h.get_by_label(&t("argdown.report.title"));
+    h.get_by_role_and_label(
+        eframe::egui::accesskit::Role::Dialog,
+        &t("argdown.report.title"),
+    );
     h.get_by_label(&t("modal.ok")).click();
     h.run();
     assert_eq!(h.state().modal, None);

@@ -73,7 +73,10 @@ fn close_while_exporting(fake: &FakeDialogs, file: PathBuf) -> (H, Hold) {
     h.run_steps(3);
     assert_eq!(h.state().modal, Some(Modal::ExportsRunning));
     assert!(!h.state().close_confirmed(), "the export is not dropped");
-    h.get_by_label(&t("closing.exports.title"));
+    h.get_by_role_and_label(
+        eframe::egui::accesskit::Role::Dialog,
+        &t("closing.exports.title"),
+    );
     h.get_by_label(&t("closing.exports.waiting"));
     h.get_by_label(&t("closing.exports.quit"));
     (h, hold)

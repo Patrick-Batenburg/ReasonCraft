@@ -157,7 +157,9 @@ fn recovery_prompt_lists_documents_and_restores() {
     crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
     let mut h = crate::common::build(app_with_recovery(rec.path()));
     h.run();
-    h.get_by_label(&t("recovery.title"));
+    // The heading, and the dialog named after it.
+    h.get_by_role_and_label(egui::accesskit::Role::Label, &t("recovery.title"));
+    h.get_by_role_and_label(egui::accesskit::Role::Dialog, &t("recovery.title"));
     // One label: the message, then a line per document.
     let entry = format!("{}\n• robots (", t("recovery.message"));
     h.get_by_label_contains(&entry);
@@ -362,4 +364,26 @@ fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
         }
     }
     out
+}
+
+/// The startup prompt has the keyboard focus on Restore all, so Enter
+/// restores (the finding: Enter did nothing and Tab landed on "Decide
+/// later") (ROB-7).
+#[test]
+fn recovery_prompt_enter_restores() {
+    let rec = tempfile::tempdir().unwrap();
+    let docs = tempfile::tempdir().unwrap();
+    crash_with_edited_file(rec.path(), &docs.path().join("robots.rcraft"));
+    let mut h = harness(app_with_recovery(rec.path()));
+    assert!(matches!(h.state().modal, Some(Modal::Recover(_))));
+    h.key_press(egui::Key::Enter);
+    h.run();
+    assert!(h.state().modal.is_none(), "Enter answered");
+    assert!(
+        h.state()
+            .tabs
+            .iter()
+            .any(|t| t.doc.boxes[&t.doc.root].text == "Edited"),
+        "the crashed document is back"
+    );
 }

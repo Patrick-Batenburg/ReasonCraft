@@ -113,7 +113,8 @@ fn failed_open_keeps_tabs() {
     assert_eq!(first.doc.boxes[&first.doc.root].text, "Unsaved work");
     assert!(app.modal.is_some());
     h.get_by_label(&t("error.open.not_a_file"));
-    h.get_by_label_contains("garbage.rcraft");
+    // In the heading and in the dialog's name.
+    assert!(h.query_all_by_label_contains("garbage.rcraft").count() >= 1);
 
     h.get_by_label(&t("modal.ok")).click();
     h.run();
@@ -274,7 +275,10 @@ fn appended_extension_asks_before_replacing() {
     fake.set_save(dir.path().join("robots"));
     cmd(&mut h, egui::Key::S);
     assert!(h.state().modal.is_some());
-    h.get_by_label(&replace_title("robots.rcraft"));
+    h.get_by_role_and_label(
+        eframe::egui::accesskit::Role::Dialog,
+        &replace_title("robots.rcraft"),
+    );
     h.get_by_label(&t("replace.cancel")).click();
     h.run();
     assert!(h.state().modal.is_none());

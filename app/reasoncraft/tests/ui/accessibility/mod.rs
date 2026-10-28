@@ -22,6 +22,7 @@ use reasoncraft::theme::ThemeChoice;
 use reasoncraft_core::argdown::{ImportNote, ImportNoteKind};
 use reasoncraft_core::{CardKind, Document, Item, NodeId, Parent};
 
+mod dialogs;
 mod keyboard;
 mod order;
 mod settings;

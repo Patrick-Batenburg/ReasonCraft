@@ -68,40 +68,49 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
     let frame = egui::Frame::popup(&ctx.global_style())
         .fill(tk.panel)
         .inner_margin(egui::Margin::same(20));
-    let response = egui::Modal::new(egui::Id::unique("export_dialog"))
-        .frame(frame)
-        .show(ctx, |ui| {
-            ui.set_width(380.0);
-            ui.spacing_mut().item_spacing.y = 8.0;
-            let title = match dialog.format {
-                Some(format) => {
-                    let mut args = FluentArgs::new();
-                    args.set("format", t(format.name_key()));
-                    t_args("export.dialog.title", &args)
-                }
-                None => t("export.page_setup.title"),
+    let title = match dialog.format {
+        Some(format) => {
+            let mut args = FluentArgs::new();
+            args.set("format", t(format.name_key()));
+            t_args("export.dialog.title", &args)
+        }
+        None => t("export.page_setup.title"),
+    };
+    let id = egui::Id::unique("export_dialog");
+    // The confirm button takes the focus as the dialog opens; Enter with
+    // nothing focused confirms too.
+    let opened = crate::a11y::dialog_opened(ctx, id, &title);
+    let enter = ctx.memory(|m| m.focused().is_none())
+        && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter));
+    let response = egui::Modal::new(id).frame(frame).show(ctx, |ui| {
+        ui.set_width(380.0);
+        ui.spacing_mut().item_spacing.y = 8.0;
+        crate::a11y::name_dialog(ui, &title);
+        ui.label(RichText::new(&title).strong().size(16.0).color(tk.box_text));
+        match dialog.format {
+            Some(format) => image_options(ui, &tk, format, &mut dialog, has_selection),
+            None => page_options(ui, &tk, &mut dialog.page),
+        }
+        ui.add_space(6.0);
+        let mut answer = None;
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let confirm = match dialog.format {
+                Some(_) => t("export.dialog.export"),
+                None => t("export.dialog.ok"),
             };
-            ui.label(RichText::new(title).strong().size(16.0).color(tk.box_text));
-            match dialog.format {
-                Some(format) => image_options(ui, &tk, format, &mut dialog, has_selection),
-                None => page_options(ui, &tk, &mut dialog.page),
+            let confirm = ui.button(confirm);
+            if opened {
+                confirm.request_focus();
             }
-            ui.add_space(6.0);
-            let mut answer = None;
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let confirm = match dialog.format {
-                    Some(_) => t("export.dialog.export"),
-                    None => t("export.dialog.ok"),
-                };
-                if ui.button(confirm).clicked() {
-                    answer = Some(dialog.confirm());
-                }
-                if ui.button(t("export.dialog.cancel")).clicked() {
-                    answer = Some(Action::CloseExportDialog);
-                }
-            });
-            answer
+            if confirm.clicked() || enter {
+                answer = Some(dialog.confirm());
+            }
+            if ui.button(t("export.dialog.cancel")).clicked() {
+                answer = Some(Action::CloseExportDialog);
+            }
         });
+        answer
+    });
     let cancel = response.should_close().then_some(Action::CloseExportDialog);
     match response.inner.or(cancel) {
         Some(action) => app.push(action),

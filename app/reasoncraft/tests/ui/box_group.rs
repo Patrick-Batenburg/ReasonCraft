@@ -169,7 +169,10 @@ fn failed_open_shows_error() {
     let mut h = harness_with(d, &opener);
     h.get_by_label(&link_label("https://a.b")).click();
     h.run();
-    h.get_by_label(&t("link.open_failed"));
+    h.get_by_role_and_label(
+        eframe::egui::accesskit::Role::Dialog,
+        &t("link.open_failed"),
+    );
     h.get_by_label(&t("modal.ok")).click();
     h.run();
     assert_eq!(h.state().modal, None);
