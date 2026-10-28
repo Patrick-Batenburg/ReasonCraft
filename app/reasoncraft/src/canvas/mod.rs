@@ -69,9 +69,6 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     } = app;
     images.evict_unused(tabs);
     let tab = &mut tabs[*active];
-    if images.load(&ctx, &tab.doc, &tab.assets) {
-        ctx.request_repaint();
-    }
     // Recomputed every frame: about 0.3 ms for 500 boxes, and never stale.
     let measure = EguiMeasure::new(&ctx, measure_cache);
     let params = settings.layout_params();
@@ -110,6 +107,11 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
     }
     let panning = navigate(ui, &response, &mut tab.camera, rect);
     drag::autoscroll(ui, &response, &mut tab.camera);
+    let ppp = ctx.pixels_per_point();
+    let wanted = images::wanted(&tab.doc, &layout, &tab.camera, rect, ppp);
+    if images.load(&ctx, &wanted, &tab.assets) {
+        ctx.request_repaint();
+    }
 
     if tab.connect_mode.is_none()
         && response.clicked()
