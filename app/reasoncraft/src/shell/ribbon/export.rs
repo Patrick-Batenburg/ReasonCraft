@@ -23,39 +23,23 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let mut out = Vec::new();
     group(ui, &tk, Icon::ExportPng, &t("group.image"), |ui| {
         let images = [
-            (Icon::ExportPng, "export.png"),
-            (Icon::ExportSvg, "export.svg"),
-            (Icon::ExportPdf, "export.pdf"),
-            (Icon::CopyImage, "export.copy_image"),
+            "export.png",
+            "export.svg",
+            "export.pdf",
+            "export.copy_image",
         ];
-        for (icon, id) in images {
-            command(ui, &tk, icon, id, true, false, &mut out);
+        for id in images {
+            command(ui, &tk, id, true, false, &mut out);
         }
     });
     group(ui, &tk, Icon::Essay, &t("group.text"), |ui| {
         menu(ui, &tk, Icon::Outline, "export.outline", &OUTLINE, &mut out);
         menu(ui, &tk, Icon::Essay, "export.essay", &ESSAY, &mut out);
-        command(
-            ui,
-            &tk,
-            Icon::Argdown,
-            "export.argdown",
-            true,
-            false,
-            &mut out,
-        );
+        command(ui, &tk, "export.argdown", true, false, &mut out);
     });
     group(ui, &tk, Icon::Print, &t("group.print"), |ui| {
-        command(
-            ui,
-            &tk,
-            Icon::PageSetup,
-            "export.page_setup",
-            true,
-            false,
-            &mut out,
-        );
-        command(ui, &tk, Icon::Print, "export.print", true, false, &mut out);
+        command(ui, &tk, "export.page_setup", true, false, &mut out);
+        command(ui, &tk, "export.print", true, false, &mut out);
     });
     app.pending.extend(out);
 }

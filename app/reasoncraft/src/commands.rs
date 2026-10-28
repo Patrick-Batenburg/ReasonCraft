@@ -1,13 +1,14 @@
 //! Every command the ribbon, the backstage and the Search commands box
-//! offer, in one registry: a stable id, a label and the action it runs.
+//! offer, in one registry: a stable id, a label, the ribbon icon and the
+//! action it runs.
 //!
-//! The ribbon and backstage take their labels and actions from here (their
-//! icons stay with them); the title bar's Search commands box (Alt+Q)
-//! searches it. Shortcuts live in one table, [`crate::canvas::input::SHORTCUTS`].
+//! The ribbon and backstage take their labels, icons and actions from
+//! here; the title bar's Search commands box (Alt+Q) searches it. Shortcuts live in one table, [`crate::canvas::input::SHORTCUTS`].
 
 use std::sync::OnceLock;
 
 use crate::actions::Action;
+use crate::shell::icons::Icon;
 
 mod registry;
 mod search;
@@ -28,10 +29,31 @@ pub struct Command {
     /// The i18n key of the ribbon group (or File page) it belongs to,
     /// e.g. `group.add`; shown beside the label in search results.
     pub group: &'static str,
+    /// Its icon on the ribbon (`None` for commands the ribbon shows
+    /// otherwise: File page entries, menu items, source types).
+    pub icon: Option<Icon>,
     pub action: Action,
 }
 
 impl Command {
+    /// This command with ribbon icon `icon`.
+    pub fn with_icon(self, icon: Icon) -> Self {
+        Self {
+            icon: Some(icon),
+            ..self
+        }
+    }
+
+    /// Its ribbon icon.
+    ///
+    /// # Panics
+    ///
+    /// When it has none: a programmer error that the ribbon tests catch.
+    pub fn ribbon_icon(&self) -> Icon {
+        self.icon
+            .unwrap_or_else(|| panic!("command `{}` has no ribbon icon", self.id))
+    }
+
     /// The i18n key of the ribbon tab the command sits on, from the first
     /// part of its id (`view.zoom_100` is on View).
     pub fn tab(&self) -> &'static str {

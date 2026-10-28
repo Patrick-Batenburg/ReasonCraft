@@ -103,14 +103,13 @@ fn tab_strip(ui: &mut Ui, app: &mut ReasonCraftApp) {
 fn command(
     ui: &mut Ui,
     tk: &Tokens,
-    icon: Icon,
     id: &str,
     enabled: bool,
     selected: bool,
     out: &mut Vec<Action>,
 ) -> Response {
     let cmd = commands::get(id);
-    let resp = large(ui, tk, icon, &t(cmd.label), enabled, selected);
+    let resp = large(ui, tk, cmd.ribbon_icon(), &t(cmd.label), enabled, selected);
     if resp.clicked() {
         out.push(cmd.action.clone());
         close_drop_down(ui, &cmd.action);
@@ -130,13 +129,12 @@ fn close_drop_down(ui: &Ui, action: &Action) {
 fn small_command(
     ui: &mut Ui,
     tk: &Tokens,
-    icon: Icon,
     id: &str,
     enabled: bool,
     out: &mut Vec<Action>,
 ) -> Response {
     let cmd = commands::get(id);
-    let resp = small(ui, tk, icon, &t(cmd.label), enabled);
+    let resp = small(ui, tk, cmd.ribbon_icon(), &t(cmd.label), enabled);
     if resp.clicked() {
         out.push(cmd.action.clone());
         close_drop_down(ui, &cmd.action);

@@ -20,57 +20,40 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
     let mut out = Vec::new();
     group(ui, &tk, Icon::ZoomFit, &t("group.zoom"), |ui| {
+        command(ui, &tk, "view.zoom_fit", true, false, &mut out);
+        command(ui, &tk, "view.zoom_100", true, false, &mut out);
         command(
             ui,
             &tk,
-            Icon::ZoomFit,
-            "view.zoom_fit",
-            true,
-            false,
-            &mut out,
-        );
-        command(
-            ui,
-            &tk,
-            Icon::Zoom100,
-            "view.zoom_100",
-            true,
-            false,
-            &mut out,
-        );
-        command(
-            ui,
-            &tk,
-            Icon::ZoomFitSelection,
             "view.zoom_fit_selection",
             app.active_tab().selection.is_some(),
             false,
             &mut out,
         );
         small_column(ui, |ui| {
-            small_command(ui, &tk, Icon::ZoomIn, "view.zoom_in", true, &mut out);
-            small_command(ui, &tk, Icon::ZoomOut, "view.zoom_out", true, &mut out);
+            small_command(ui, &tk, "view.zoom_in", true, &mut out);
+            small_command(ui, &tk, "view.zoom_out", true, &mut out);
         });
     });
     group(ui, &tk, Icon::ThemeSystem, &t("group.theme"), |ui| {
         let themes = [
-            (Icon::ThemeSystem, "view.theme.system", ThemeChoice::System),
-            (Icon::ThemeLight, "view.theme.light", ThemeChoice::Light),
-            (Icon::ThemeDark, "view.theme.dark", ThemeChoice::Dark),
+            ("view.theme.system", ThemeChoice::System),
+            ("view.theme.light", ThemeChoice::Light),
+            ("view.theme.dark", ThemeChoice::Dark),
         ];
-        for (icon, id, choice) in themes {
+        for (id, choice) in themes {
             let on = app.settings.theme == choice;
-            command(ui, &tk, icon, id, true, on, &mut out);
+            command(ui, &tk, id, true, on, &mut out);
         }
     });
     language_group(ui, app, &mut out);
     group(ui, &tk, Icon::PanelLeft, &t("group.panels"), |ui| {
         let panels = [
-            (Icon::PanelLeft, "view.panel_left", app.left_panel),
-            (Icon::PanelRight, "view.panel_right", app.right_panel),
+            ("view.panel_left", app.left_panel),
+            ("view.panel_right", app.right_panel),
         ];
-        for (icon, id, on) in panels {
-            command(ui, &tk, icon, id, true, on, &mut out);
+        for (id, on) in panels {
+            command(ui, &tk, id, true, on, &mut out);
         }
     });
     layout_group(ui, app, &mut out);
@@ -80,25 +63,9 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     });
     #[cfg(debug_assertions)]
     group(ui, &tk, Icon::Open, &t("group.debug"), |ui| {
-        command(
-            ui,
-            &tk,
-            Icon::Open,
-            "view.load_sample",
-            true,
-            false,
-            &mut out,
-        );
+        command(ui, &tk, "view.load_sample", true, false, &mut out);
         let on = app.show_source_icons;
-        command(
-            ui,
-            &tk,
-            Icon::Source,
-            "view.source_icons",
-            true,
-            on,
-            &mut out,
-        );
+        command(ui, &tk, "view.source_icons", true, on, &mut out);
     });
     app.pending.extend(out);
 }
@@ -178,6 +145,6 @@ fn overview_group(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
             }
         });
         let on = app.settings.show_numbers;
-        command(ui, &tk, Icon::Numbers, "view.numbers", true, on, out);
+        command(ui, &tk, "view.numbers", true, on, out);
     });
 }

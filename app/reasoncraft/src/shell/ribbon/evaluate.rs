@@ -33,19 +33,19 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     use CardStrength as C;
     use SourceRating as S;
     let claim = [
-        (Icon::Accept, "evaluate.accept", A::Accept),
-        (Icon::Unsure, "evaluate.unsure", A::Unsure),
-        (Icon::Reject, "evaluate.reject", A::Reject),
+        ("evaluate.accept", A::Accept),
+        ("evaluate.unsure", A::Unsure),
+        ("evaluate.reject", A::Reject),
     ];
     let card = [
-        (Icon::Strong, "evaluate.strong", C::Strong),
-        (Icon::Weak, "evaluate.weak", C::Weak),
-        (Icon::Nil, "evaluate.card_nil", C::Nil),
+        ("evaluate.strong", C::Strong),
+        ("evaluate.weak", C::Weak),
+        ("evaluate.card_nil", C::Nil),
     ];
     let src = [
-        (Icon::Strong, "evaluate.solid", S::Solid),
-        (Icon::Weak, "evaluate.shaky", S::Shaky),
-        (Icon::Nil, "evaluate.source_nil", S::Nil),
+        ("evaluate.solid", S::Solid),
+        ("evaluate.shaky", S::Shaky),
+        ("evaluate.source_nil", S::Nil),
     ];
     let name = t("group.eval_claim");
     group(ui, &tk, Icon::Accept, &name, |ui| {
@@ -109,8 +109,7 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         }
         let id = "evaluate.clear_map";
         let on = is_enabled(tab, &commands::get(id).action);
-        command(ui, &tk, Icon::Clear, id, on, false, &mut out)
-            .on_hover_text(tip("eval.tip.clear_map"));
+        command(ui, &tk, id, on, false, &mut out).on_hover_text(tip("eval.tip.clear_map"));
     });
     group(ui, &tk, Icon::Markers, &t("group.eval_view"), |ui| {
         display_toggles(ui, app, &mut out);
@@ -128,17 +127,17 @@ fn scale<T: Copy + PartialEq>(
     tab: &DocTab,
     (group, tip): (&str, &str),
     current: Option<T>,
-    values: [(Icon, &str, T); 3],
+    values: [(&str, T); 3],
     set: fn(Option<T>) -> Action,
 ) -> Option<Action> {
     let mut clicked = None;
-    for (icon, id, value) in values {
+    for (id, value) in values {
         let on = current == Some(value);
         let cmd = commands::get(id);
         let action = cmd.action.clone();
         let enabled = is_enabled(tab, &action);
         let label = t(cmd.label);
-        let button = large(ui, tk, icon, &label, enabled, on);
+        let button = large(ui, tk, cmd.ribbon_icon(), &label, enabled, on);
         if labelled(button, in_group(group, &label))
             .on_hover_text(tip)
             .clicked()
@@ -153,11 +152,11 @@ fn scale<T: Copy + PartialEq>(
 pub(super) fn display_toggles(ui: &mut Ui, app: &ReasonCraftApp, out: &mut Vec<Action>) {
     let tk = app.tokens;
     let toggles = [
-        (Icon::Markers, "evaluate.markers", app.settings.show_markers),
-        (Icon::Shading, "evaluate.shading", app.settings.eval_shading),
+        ("evaluate.markers", app.settings.show_markers),
+        ("evaluate.shading", app.settings.eval_shading),
     ];
-    for (icon, id, on) in toggles {
-        command(ui, &tk, icon, id, true, on, out);
+    for (id, on) in toggles {
+        command(ui, &tk, id, true, on, out);
     }
 }
 

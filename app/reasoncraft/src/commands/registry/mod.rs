@@ -37,6 +37,7 @@ fn cmd(id: &'static str, label: &'static str, group: &'static str, action: Actio
         id,
         label,
         group,
+        icon: None,
         action,
     }
 }
