@@ -9,7 +9,7 @@ use crate::i18n::t;
 
 mod action;
 mod classify;
-use classify::{continues_session, keeps_notes};
+
 mod box_group;
 pub use action::{Action, Dir, Panel, UnsavedChoice};
 mod enabled;
@@ -50,7 +50,7 @@ pub use crate::canvas::camera::{ZOOM_MAX, ZOOM_MIN};
 ///
 /// Every action first ends the running edit session, so it lands in
 /// history before anything else happens, except live text for that same
-/// kind of session (see `continues_session`).
+/// kind of session (see `Action::traits`).
 /// Every action but picking a target then ends "Connect to…" in the active
 /// tab, app-level ones (inserting, comments, links, switching tabs) too.
 pub fn apply(app: &mut ReasonCraftApp, action: Action) {
@@ -61,15 +61,18 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         return;
     }
     // The user moved on: the last status note and export notice go.
-    if !keeps_notes(&action) {
+    let traits = action.traits();
+    if !traits.keeps_notes {
         app.status_note = None;
         app.export.notice = None;
     }
     if let Some(tab) = app.tabs.get_mut(app.active) {
-        if !continues_session(&action, tab.session()) {
+        if !action.continues(tab.session()) {
             tab.commit_session();
         }
-        connect::end_unless_kept(tab, &action);
+        if !traits.keeps_connect {
+            tab.connect_mode = None;
+        }
     }
     match action {
         Action::New => {

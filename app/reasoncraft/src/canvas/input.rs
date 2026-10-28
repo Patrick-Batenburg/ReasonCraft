@@ -7,7 +7,6 @@ use reasoncraft_core::{Document, Item, LayoutDirection, Parent};
 use super::editor::editor_id;
 use crate::actions::{Action, Dir, can_run};
 use crate::app::ReasonCraftApp;
-use shortcuts::works_while_editing;
 
 mod shortcuts;
 pub use shortcuts::{
@@ -43,13 +42,14 @@ pub fn key_to_action(os: Os, key: Key, mods: Modifiers, editing: bool) -> Option
             return None;
         }
         let editable = |a: &Action| match os {
-            Os::Mac => works_while_editing(a),
+            Os::Mac => a.traits().works_while_editing,
             Os::Windows | Os::Linux => *a == A::OpenCommandSearch,
         };
         return shortcuts::lookup(os, key, mods).filter(|a| !editing || editable(a));
     }
     if shortcuts::mac_ctrl(mods) {
-        return shortcuts::lookup(os, key, mods).filter(|a| !editing || works_while_editing(a));
+        return shortcuts::lookup(os, key, mods)
+            .filter(|a| !editing || a.traits().works_while_editing);
     }
     let (cmd, shift) = (mods.command, mods.shift);
     let context = match (key, cmd, shift) {
@@ -64,7 +64,7 @@ pub fn key_to_action(os: Os, key: Key, mods: Modifiers, editing: bool) -> Option
         return context;
     }
     if editing {
-        return shortcuts::lookup(os, key, mods).filter(works_while_editing);
+        return shortcuts::lookup(os, key, mods).filter(|a| a.traits().works_while_editing);
     }
     let context = match (key, cmd, shift) {
         (Key::Enter, false, false) => Some(A::Edit),

@@ -197,28 +197,6 @@ fn is_digit(key: Key) -> bool {
     key.name().len() == 1 && key.name().chars().all(|c| c.is_ascii_digit())
 }
 
-/// The table's commands that also end an inline edit (see
-/// [`super::key_to_action`]).
-pub(super) fn works_while_editing(action: &Action) -> bool {
-    matches!(
-        action,
-        Action::TargetWholeCard(_)
-            | Action::AddSource(SourceType::Source)
-            | Action::Save
-            | Action::SaveAs
-            | Action::Open
-            | Action::New
-            | Action::OpenCommandSearch
-            | Action::OpenFind { .. }
-            | Action::FindNext
-            | Action::FindPrev
-            | Action::OpenSpelling
-            | Action::NextPane
-            | Action::PrevPane
-            | Action::ContextHelp
-    )
-}
-
 /// Paste (egui's own key, not in the table): Ctrl+V, or Cmd+V on macOS.
 pub fn paste_shortcut() -> Shortcut {
     Shortcut::new(Key::V, CMD)

@@ -30,7 +30,7 @@ pub(super) fn apply(tab: &mut DocTab, action: Action) {
                 tab.reveal_pending = true;
             }
         }
-        // `end_unless_kept` has already ended the mode.
+        // `apply` has already ended the mode.
         Action::CancelConnect => {}
         _ => unreachable!("not a connect action"),
     }
@@ -42,52 +42,5 @@ pub(super) fn is_enabled(tab: &DocTab, action: &Action) -> Option<bool> {
         Action::StartConnect => Some(connect_item(tab).is_some()),
         Action::CancelConnect => Some(tab.connect_mode.is_some()),
         _ => None,
-    }
-}
-
-/// End "Connect to…" for every action but picking a target (selecting,
-/// navigating, revealing, zooming), starting it again and view preferences
-/// (theme, connector style, rating display, panels, the Text panel tab,
-/// outline switches and checks).
-/// A connecting move ends it too. The inline editor's own "stop editing"
-/// (sent when it loses focus, e.g. to the ribbon's "Connect to…") keeps it:
-/// `apply` committed the edit when the mode started, and Esc reaches here as
-/// [`Action::CancelConnect`].
-pub(super) fn end_unless_kept(tab: &mut DocTab, action: &Action) {
-    let keeps = matches!(
-        action,
-        Action::Select(_)
-            | Action::RevealSelection
-            | Action::Navigate(_)
-            | Action::JumpParking
-            | Action::ZoomIn
-            | Action::ZoomOut
-            | Action::ZoomFit
-            | Action::ZoomFitSelection
-            | Action::Zoom100
-            | Action::SetZoom(_)
-            | Action::StartConnect
-            | Action::StopEditing
-            | Action::SetTheme(_)
-            | Action::SetUiLanguage(_)
-            | Action::SetUiScale(_)
-            | Action::NextPane
-            | Action::PrevPane
-            | Action::SetConnectorStyle(_)
-            | Action::TogglePanel(_)
-            | Action::ShowPanel(_)
-            | Action::ToggleMarkers
-            | Action::SetMinimap(_)
-            | Action::ToggleNumbers
-            | Action::ToggleShading
-            | Action::SetTextTab(_)
-            | Action::SetOutlineOption(..)
-            | Action::SetCheckEnabled(..)
-            | Action::OpenHelp(_)
-            | Action::ContextHelp
-            | Action::HelpBack
-    );
-    if !keeps {
-        tab.connect_mode = None;
     }
 }
