@@ -4,12 +4,12 @@
 //! words are lowercase and folded (no diacritics) and sorted, so lookups
 //! use a binary search.
 
-use crate::meta::primary_language;
+use crate::lang::pack;
 
 /// English function words, plus the stems left of negative contractions
 /// once the apostrophe suffix is dropped ("shouldn't" -> "shouldn").
 #[rustfmt::skip]
-pub(super) const EN: &[&str] = &[
+pub(crate) const EN: &[&str] = &[
     "a", "about", "above", "across", "after", "again", "against", "all", "already", "also",
     "although", "always", "am", "among", "an", "and", "another", "any", "anything", "are", "aren",
     "around", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both",
@@ -32,7 +32,7 @@ pub(super) const EN: &[&str] = &[
 
 /// Dutch function words.
 #[rustfmt::skip]
-pub(super) const NL: &[&str] = &[
+pub(crate) const NL: &[&str] = &[
     "aan", "al", "alle", "alleen", "alles", "als", "alsof", "altijd", "andere", "anderen",
     "anders", "beide", "ben", "bent", "bij", "binnen", "boven", "buiten", "daar", "daarbij",
     "daardoor", "daarna", "daarom", "dan", "dat", "de", "deed", "deze", "die", "dit", "doch",
@@ -51,21 +51,10 @@ pub(super) const NL: &[&str] = &[
     "zulke", "zullen",
 ];
 
-/// Whether `lang` names Dutch: `"nl"` in any case, alone or with a region
-/// (`"nl-NL"`, `"nl_BE"`; see [`primary_language`]). Anything else is
-/// treated as English.
-pub(crate) fn is_dutch(lang: &str) -> bool {
-    primary_language(lang).eq_ignore_ascii_case("nl")
-}
-
-/// The stopword list for `lang`: Dutch when [`is_dutch`], otherwise English.
-pub(super) fn list(lang: &str) -> &'static [&'static str] {
-    if is_dutch(lang) { NL } else { EN }
-}
-
-/// Whether the folded, lowercase `word` is a stopword in `lang`.
+/// Whether the folded, lowercase `word` is a stopword in `lang` (the list of
+/// its [`pack`]).
 pub(super) fn is_stopword(word: &str, lang: &str) -> bool {
-    list(lang).binary_search(&word).is_ok()
+    pack(lang).stopwords.binary_search(&word).is_ok()
 }
 
 #[cfg(test)]
@@ -100,15 +89,5 @@ mod tests {
         assert!(is_stopword("more", "de"));
         assert!(is_stopword("meer", "nl-NL"));
         assert!(is_stopword("meer", "NL"));
-    }
-
-    #[test]
-    fn dutch_language_codes() {
-        for lang in ["nl", "NL", "nl-NL", "nl_be", "Nl-nl"] {
-            assert!(is_dutch(lang), "{lang}");
-        }
-        for lang in ["", "en", "nld", "fr-NL", "n"] {
-            assert!(!is_dutch(lang), "{lang}");
-        }
     }
 }

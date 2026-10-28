@@ -8,8 +8,10 @@
 //! names included, lives in the app's `i18n/*.ftl` files only; core text
 //! exports take those words from the caller (see
 //! [`crate::outline_md::outline_markdown`]).
+//!
+//! The words themselves are in the language table, [`crate::lang`].
 
-use crate::checks::stopwords::is_dutch;
+use crate::lang::pack;
 use crate::outline::LinkLabel;
 
 /// The words that link a premise to what it supports or opposes.
@@ -23,19 +25,7 @@ pub struct LinkingWords {
 /// The linking words for `lang`: Dutch for `nl` (any case or region),
 /// English otherwise.
 pub fn linking_words(lang: &str) -> LinkingWords {
-    if is_dutch(lang) {
-        LinkingWords {
-            because: "omdat",
-            but: "maar",
-            however: "echter",
-        }
-    } else {
-        LinkingWords {
-            because: "because",
-            but: "but",
-            however: "however",
-        }
-    }
+    pack(lang).linking
 }
 
 impl LinkingWords {
@@ -50,13 +40,10 @@ impl LinkingWords {
     }
 }
 
-/// The heading above parked fragments.
+/// The heading written above parked fragments (see
+/// [`crate::lang::LangPack::not_connected`]).
 pub fn not_connected_heading(lang: &str) -> &'static str {
-    if is_dutch(lang) {
-        "Niet verbonden"
-    } else {
-        "Not connected"
-    }
+    pack(lang).not_connected[0]
 }
 
 /// The headings of the essay.
@@ -70,14 +57,11 @@ pub enum EssayHeading {
 
 /// An essay heading word in the document language.
 pub fn essay_heading(lang: &str, which: EssayHeading) -> &'static str {
-    let nl = is_dutch(lang);
+    let p = pack(lang);
     match which {
-        EssayHeading::Introduction if nl => "Inleiding",
-        EssayHeading::Introduction => "Introduction",
-        EssayHeading::Section if nl => "Deel",
-        EssayHeading::Section => "Section",
-        EssayHeading::Conclusion if nl => "Conclusie",
-        EssayHeading::Conclusion => "Conclusion",
+        EssayHeading::Introduction => p.introduction,
+        EssayHeading::Section => p.section,
+        EssayHeading::Conclusion => p.conclusion,
     }
 }
 

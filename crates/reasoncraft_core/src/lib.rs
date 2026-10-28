@@ -14,6 +14,7 @@ pub mod find;
 pub mod fixtures;
 pub mod history;
 pub mod ids;
+pub mod lang;
 pub mod layout;
 pub mod link;
 pub mod meta;

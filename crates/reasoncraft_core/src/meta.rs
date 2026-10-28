@@ -4,8 +4,8 @@ use crate::caps::{MAX_META_CHARS, capped};
 use crate::edit::EditError;
 use crate::model::Document;
 
-/// The languages checks know about.
-pub const LANGUAGES: [&str; 2] = ["en", "nl"];
+/// The document languages (see [`crate::lang`]).
+pub use crate::lang::LANGUAGES;
 
 /// The language part of a language tag: `nl` of `nl`, `nl-NL`, `nl_BE`,
 /// `nl_BE.UTF-8` or `nl@euro`. The one rule for reading tags, in the core
@@ -15,17 +15,14 @@ pub fn primary_language(tag: &str) -> &str {
 }
 
 /// The language of [`LANGUAGES`] that `tag` names: `"nl"` for Dutch in any
-/// case or region (`nl-NL`, `NL_be`), `"en"` for anything else.
+/// case or region (`nl-NL`, `NL_be`), `"en"` for anything else (see
+/// [`crate::lang::pack`]).
 pub fn language_code(tag: &str) -> &'static str {
-    if primary_language(tag).eq_ignore_ascii_case("nl") {
-        "nl"
-    } else {
-        "en"
-    }
+    crate::lang::pack(tag).code
 }
 
 impl Document {
-    /// Set the document language: `"en"` or `"nl"`, else
+    /// Set the document language: one of [`LANGUAGES`], else
     /// [`EditError::NotAllowed`]. Setting the current language changes
     /// nothing, not even the modified time.
     pub fn set_language(&mut self, lang: &str) -> Result<(), EditError> {

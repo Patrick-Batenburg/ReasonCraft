@@ -355,13 +355,9 @@ impl<'a> Run<'a> {
 }
 
 /// The conjunctions the Compound check looks for in a document in `lang`:
-/// "and"/"or" in English, "en"/"of" in Dutch (see [`stopwords::is_dutch`]).
+/// "and"/"or" in English, "en"/"of" in Dutch (see [`crate::lang::pack`]).
 pub fn compound_conjunctions(lang: &str) -> [&'static str; 2] {
-    if stopwords::is_dutch(lang) {
-        ["en", "of"]
-    } else {
-        ["and", "or"]
-    }
+    crate::lang::pack(lang).conjunctions
 }
 
 /// The distinct standalone conjunctions of [`compound_conjunctions`] in

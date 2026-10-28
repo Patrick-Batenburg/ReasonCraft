@@ -13,7 +13,7 @@ use super::report::{ArgdownError, ImportNoteKind as K, ImportReport, MAX_ARGDOWN
 use super::text::clean;
 use crate::link::safe_link;
 use crate::model::{CardKind, Document};
-use crate::words::not_connected_heading;
+use crate::lang::not_connected_forms;
 
 /// Read an Argdown text as a map, with a report of what could not be
 /// kept as written. See `docs/argdown.md`.
@@ -327,14 +327,13 @@ impl<'a> Reader<'a> {
 
     /// Find the "Not connected" heading and the items after it.
     fn parking(&mut self) {
-        let names = [not_connected_heading("en"), not_connected_heading("nl")];
         let mut after = false;
         let tree = self.tree;
         for &top in &tree.tops {
             let e = &tree.entries[top];
             match (&e.kind, self.class[top]) {
                 (EntryKind::Heading(h), _) if !after => {
-                    if names.iter().any(|n| n.eq_ignore_ascii_case(h)) {
+                    if not_connected_forms().any(|n| n.eq_ignore_ascii_case(h)) {
                         after = true;
                         self.g.heading = Some(e.line);
                     }
