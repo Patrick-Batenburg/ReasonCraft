@@ -25,6 +25,7 @@ mod connector_style;
 mod doc_tabs;
 mod document;
 mod essay;
+mod essay_grouping;
 mod examples;
 mod export;
 mod export_fixture;

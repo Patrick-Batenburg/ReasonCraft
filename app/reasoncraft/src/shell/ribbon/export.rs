@@ -3,7 +3,7 @@
 use eframe::egui::{Button, Ui};
 
 use super::{command, group, large_menu, menu_item, menu_popup};
-use crate::actions::Action;
+use crate::actions::{Action, is_enabled};
 use crate::app::ReasonCraftApp;
 use crate::commands;
 use crate::i18n::t;
@@ -33,8 +33,11 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         }
     });
     group(ui, &tk, Icon::Essay, &t("group.text"), |ui| {
-        menu(ui, &tk, Icon::Outline, "export.outline", &OUTLINE, &mut out);
-        menu(ui, &tk, Icon::Essay, "export.essay", &ESSAY, &mut out);
+        let tab = app.active_tab();
+        let on = |id: &str| is_enabled(tab, &commands::get(id).action);
+        let (outline, essay) = (on(OUTLINE[0]), on(ESSAY[0]));
+        menu(ui, &tk, Icon::Outline, "export.outline", &OUTLINE, outline, &mut out);
+        menu(ui, &tk, Icon::Essay, "export.essay", &ESSAY, essay, &mut out);
         command(ui, &tk, "export.argdown", true, false, &mut out);
     });
     group(ui, &tk, Icon::Print, &t("group.print"), |ui| {
@@ -44,9 +47,18 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     app.pending.extend(out);
 }
 
-/// A dropdown of text formats (registry command ids).
-fn menu(ui: &mut Ui, tk: &Tokens, icon: Icon, key: &str, ids: &[&str], out: &mut Vec<Action>) {
-    let resp = large_menu(ui, tk, icon, &t(key), true);
+/// A dropdown of text formats (registry command ids), greyed out when
+/// they are not `enabled` (Essay in a grouping map).
+fn menu(
+    ui: &mut Ui,
+    tk: &Tokens,
+    icon: Icon,
+    key: &str,
+    ids: &[&str],
+    enabled: bool,
+    out: &mut Vec<Action>,
+) {
+    let resp = large_menu(ui, tk, icon, &t(key), enabled);
     menu_popup(ui, &resp, |ui| {
         for &id in ids {
             let cmd = commands::get(id);

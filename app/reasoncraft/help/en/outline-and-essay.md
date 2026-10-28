@@ -26,7 +26,7 @@ The Essay tab is a writing plan that follows your map. It gives you a text field
 
 Click a statement in the Essay tab to find it on the map. Typing in a field is one undo step, from the first key to the moment you leave the field.
 
-The essay is saved inside the map's file. It is for reasoning maps; a grouping map has no essay.
+The essay is saved inside the map's file. It is for reasoning maps; a grouping map has no essay, so there the Essay tab only says so and Export > Essay is greyed out.
 
 ## Text that has no place right now
 

@@ -94,6 +94,9 @@ fn part(ui: &mut Ui, cx: &Ctx, part: &Part, spell: &mut SpellFields, out: &mut V
         Part::NoSections => {
             ui.label(RichText::new(t("essay.no_sections")).color(cx.tk.text_muted));
         }
+        Part::Grouping => {
+            ui.label(RichText::new(t("essay.grouping")).color(cx.tk.text_muted));
+        }
         Part::Section(n, section) => {
             ui.add_space(10.0);
             section_heading(ui, cx, n, section);

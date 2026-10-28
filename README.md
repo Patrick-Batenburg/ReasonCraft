@@ -50,7 +50,7 @@ Files from older versions open unchanged, and files from newer versions keep any
 
 ## The Essay tab
 
-The Essay tab in the Text panel turns the map into the outline of an essay and gives you a text field for each part:
+The Essay tab in the Text panel turns a reasoning map into the outline of an essay and gives you a text field for each part (a grouping map has no essay: the tab says so and Export → Essay is greyed out):
 
 - **Introduction** shows the claim; write the paragraph that introduces it.
 - **One section per branch** under the claim, strongest first: strong cards, then unrated ones, then weak, then nil, and within the same strength reasons before objections. A section lists its premises with their evidence, then the objections and the rebuttals that answer them, each with a field for its paragraph. The dots in a section's heading show the card's strength.

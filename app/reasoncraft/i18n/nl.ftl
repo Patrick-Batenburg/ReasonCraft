@@ -369,6 +369,7 @@ essay-conclusion-field = Alinea van de conclusie
 essay-conclusion-hint = Herhaal de bewering en de belangrijkste redenen
 essay-section = Deel { $n }
 essay-section_with = Deel { $n }: { $premises }
+essay-grouping = Een groeperingskaart heeft geen betoog: een betoog schrijf je vanuit de redenen en bezwaren van een argumentkaart. Het tabblad Opzet zet je categorieën op een rij.
 essay-no_sections = Zet redenen of bezwaren onder de bewering: elk wordt een deel van het betoog.
 essay-paragraph_for = Alinea bij: { $statement }
 essay-hint = Schrijf dit deel van het betoog

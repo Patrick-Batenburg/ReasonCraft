@@ -40,6 +40,12 @@ impl ExportFormat {
         matches!(self.kind(), FormatKind::Image(_))
     }
 
+    /// Whether this is an essay export (a reasoning map's, not a grouping
+    /// map's).
+    pub fn is_essay(self) -> bool {
+        matches!(self, Self::EssayMarkdown | Self::EssayText | Self::EssayDocx)
+    }
+
     /// What this format is made from: the map's picture, or the document.
     pub fn kind(self) -> FormatKind {
         use FormatKind::{Image, Text};

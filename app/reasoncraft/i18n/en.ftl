@@ -368,6 +368,7 @@ essay-conclusion-field = Conclusion paragraph
 essay-conclusion-hint = Repeat the claim and the main reasons
 essay-section = Section { $n }
 essay-section_with = Section { $n }: { $premises }
+essay-grouping = A grouping map has no essay: an essay is written from the reasons and objections of a reasoning map. The Outline tab lists your categories.
 essay-no_sections = Add reasons or objections under the claim: each one becomes a section of the essay.
 essay-paragraph_for = Paragraph for: { $statement }
 essay-hint = Write this part of the essay

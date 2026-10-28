@@ -31,7 +31,7 @@ Een kaart is het een of het ander. Maak voor elk een aparte kaart (en een apart 
 ## Wat anders werkt
 
 - De Opzet toont de categorieën op volgorde, met nummers als je wilt. Zie [Opzet en betoog](outline-and-essay).
-- Het tabblad Betoog en de controles op beoordelingen zijn alleen voor argumentkaarten.
+- Een groeperingskaart heeft geen betoog: het tabblad Betoog zegt dat, en Exporteren > Betoog is grijs. Ook de controles op beoordelingen zijn alleen voor argumentkaarten.
 - Het tabblad Controle meldt een hoofdcategorie zonder iets eronder (**Lege categorieën**).
 - Exporteren en Argdown werken zoals bij elke kaart. Zie [Exporteren en afdrukken](exports-and-print).
 

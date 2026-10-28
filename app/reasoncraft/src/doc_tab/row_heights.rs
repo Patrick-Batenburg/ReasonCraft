@@ -15,6 +15,8 @@ use reasoncraft_core::essay::EssaySlot;
 pub enum EssayRow {
     /// The "How to use" note.
     Help,
+    /// The note that a grouping map has no essay.
+    Grouping,
     /// A statement with its paragraph field: the introduction, the
     /// conclusion or an element of a section.
     Slot(EssaySlot),

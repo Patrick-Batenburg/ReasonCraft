@@ -1,6 +1,6 @@
 //! Whether a command would do something right now.
 
-use reasoncraft_core::{CardKind, Item, NewItem, Parent, can_attach};
+use reasoncraft_core::{CardKind, Item, MapKind, NewItem, Parent, can_attach};
 
 use super::{
     Action, box_group, clipboard, comments, connect, evaluate, find, images, insert, selected_card,
@@ -56,6 +56,8 @@ pub fn is_enabled(tab: &DocTab, action: &Action) -> bool {
         Action::Copy | Action::Cut => clipboard::can_copy(tab),
         Action::JumpParking => parking_jump(&tab.doc, sel).is_some(),
         Action::ZoomFitSelection => sel.is_some(),
+        // A grouping map has no essay (help: Outline and essay).
+        Action::OpenExport(f) if f.is_essay() => tab.doc.map_kind() != MapKind::Grouping,
         Action::Undo => !tab.history.undo.is_empty() || tab.has_pending_session(),
         // Redo first ends the edit session, and one with text to record
         // clears the redo steps.
