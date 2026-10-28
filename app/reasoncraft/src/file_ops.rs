@@ -43,7 +43,8 @@ pub enum Modal {
     },
     /// Saving tab `tab` to `path` would replace an existing file that the
     /// save dialog never checked (`.rcraft` was appended to the chosen name),
-    /// or, `original_changed`, a restored tab's original that changed since.
+    /// or, `original_changed`, the tab's file, changed on disk since the
+    /// tab opened or saved it (or, restored, since the crashed app did).
     ConfirmReplace {
         tab: usize,
         path: PathBuf,
@@ -86,8 +87,8 @@ pub enum SaveOutcome {
     /// Nothing was written yet: `.rcraft` was appended to the chosen name
     /// and that file exists, so the user must confirm replacing it.
     NeedsReplaceConfirm(PathBuf),
-    /// Nothing was written yet: the tab was restored after a crash and its
-    /// original file changed since, so the user must confirm replacing it.
+    /// Nothing was written yet: the tab's file changed on disk since the
+    /// tab opened or saved it, so the user must confirm replacing it.
     OriginalChanged(PathBuf),
 }
 
@@ -166,14 +167,14 @@ pub(crate) fn same_file(a: &Path, b: &Path) -> bool {
     }
 }
 
-/// A blank tab nobody has worked in: untitled, with no history, no edit
-/// and only an empty claim (an example or template opened clean is not
-/// blank, so it stays).
+/// A blank tab nobody has worked in: untitled, with no history, no edit,
+/// no image being prepared and only an empty claim (an example or
+/// template opened clean is not blank, so it stays).
 fn is_untouched(tab: &DocTab) -> bool {
     tab.path.is_none()
         && tab.history.undo.is_empty()
         && tab.history.redo.is_empty()
-        && !tab.is_dirty()
+        && !tab.has_unsaved_work()
         && tab.doc.boxes.len() == 1
         && tab
             .doc
@@ -214,16 +215,27 @@ fn open_or_activate(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileErr
     Ok(())
 }
 
-/// Show a loaded `tab` in the active tab when that one is untouched, else
-/// in a new tab; it becomes active. Returns its index.
+/// Show a loaded `tab` in place of a tab showing its file without unsaved
+/// work (a restored copy of a file open already), else in the active tab
+/// when that one is untouched, else in a new tab; it becomes active.
+/// Returns its index.
 pub(crate) fn place_tab(app: &mut ReasonCraftApp, mut tab: DocTab) -> usize {
-    let reused = app.tabs.get(app.active).filter(|t| is_untouched(t));
-    tab.mark_loaded(reused.map_or(0, DocTab::revision));
-    if reused.is_some() {
-        app.tabs[app.active] = tab;
-    } else {
-        app.tabs.push(tab);
-        app.active = app.tabs.len() - 1;
+    let same_file_tab = tab.path.as_deref().and_then(|path| {
+        app.tabs.iter().position(|t| {
+            !t.has_unsaved_work() && t.path.as_deref().is_some_and(|p| same_file(p, path))
+        })
+    });
+    let untouched = Some(app.active).filter(|&i| app.tabs.get(i).is_some_and(is_untouched));
+    match same_file_tab.or(untouched) {
+        Some(i) => {
+            tab.mark_loaded(app.tabs[i].revision());
+            app.tabs[i] = tab;
+            app.active = i;
+        }
+        None => {
+            app.tabs.push(tab);
+            app.active = app.tabs.len() - 1;
+        }
     }
     app.active
 }
@@ -316,5 +328,7 @@ pub fn resolve_unsaved(app: &mut ReasonCraftApp, choice: UnsavedChoice) {
     }
 }
 
+#[cfg(test)]
+mod open_tests;
 #[cfg(test)]
 mod tests;

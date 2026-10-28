@@ -1,6 +1,6 @@
 //! Saving tabs: the dialogs, the replace prompts and the write itself.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use reasoncraft_core::Package;
 use reasoncraft_core::file::{self, FileError};
@@ -31,7 +31,7 @@ pub(super) fn save_tab_at(
 ) -> Result<SaveOutcome, (PathBuf, FileError)> {
     tab.commit_session();
     let path = match (&tab.path, save_as) {
-        (Some(path), false) if crate::recovery::original_changed(tab, path) => {
+        (Some(path), false) if changed_on_disk(tab, path) => {
             return Ok(SaveOutcome::OriginalChanged(path.clone()));
         }
         (Some(path), false) => path.clone(),
@@ -50,6 +50,13 @@ pub(super) fn save_tab_at(
     };
     write_tab(tab, path)?;
     Ok(SaveOutcome::Saved)
+}
+
+/// Whether saving `tab` to its file `path` would overwrite changes made
+/// there since the tab opened or last saved it (or, for a restored tab,
+/// since the crashed app did): by someone else, or another app.
+fn changed_on_disk(tab: &DocTab, path: &Path) -> bool {
+    path.exists() && crate::recovery::file_mtime(path) != tab.disk_mtime
 }
 
 /// Write `tab` to `path`. Only on success does the tab take the path and

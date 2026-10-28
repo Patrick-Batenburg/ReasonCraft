@@ -118,18 +118,6 @@ pub(crate) fn forget(app: &ReasonCraftApp, tab: &DocTab) {
     }
 }
 
-/// Whether saving restored tab `tab` to `path` would overwrite its
-/// original file, changed since the copy was made (by someone else, or
-/// another app).
-pub(crate) fn original_changed(tab: &DocTab, path: &Path) -> bool {
-    let Some(meta) = &tab.recovered_from else {
-        return false;
-    };
-    meta.original.as_deref() == Some(path)
-        && path.exists()
-        && file_mtime(path) != meta.original_mtime
-}
-
 /// When `path` was last modified, if it can be read.
 pub(crate) fn file_mtime(path: &Path) -> Option<std::time::SystemTime> {
     std::fs::metadata(path).and_then(|m| m.modified()).ok()

@@ -14,6 +14,7 @@ use reasoncraft_core::file;
 
 mod autosave;
 mod restore;
+mod restore_open;
 
 pub fn app_with_recovery(dir: &Path) -> ReasonCraftApp {
     ReasonCraftApp::new_for_test_with_recovery(dir.to_path_buf())
