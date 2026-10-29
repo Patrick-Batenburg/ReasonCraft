@@ -459,3 +459,4 @@ Six independent reviewers (core bugs, app bugs, security, maintainability, reada
 - [ ] Deleting a very large branch is quadratic (edit/move_remove.rs shift_remove) — one-off cost, not per frame
 - [ ] Layout reruns every frame (linear in map size); caching per revision would cut idle-redraw cost on huge maps
 - [ ] Owner's PC: the processor logs WHEA parity errors under load (ruling R2-6); update BIOS (microcode ≥ 0x12F). If an abort ever appears on CI hardware, R2-6 no longer holds — reopen MAINT-R3
+- [x] Review follow-ups PKG-13 (ICE exit), PKG-14 (self-test summary), PKG-15 (glibc 2.35 minimum) fixed; reviewer approved.
