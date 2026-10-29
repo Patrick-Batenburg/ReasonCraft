@@ -48,9 +48,10 @@ function Test-MsiValidation([string] $Msi, [string] $Arch) {
   $exit = $LASTEXITCODE
   $unexpected = @()
   $known = 0
+  $knownErrors = 0
   foreach ($line in $output) {
     if ($line -notmatch ': (error|warning) WIX\d+: (.*)$') { continue }
-    $text = $Matches[2]
+    $severity = $Matches[1]; $text = $Matches[2]
     $ok = $false
     if ($text -match '^(ICE\d+): (.*)$') {
       $ice = $Matches[1]; $message = $Matches[2]
@@ -58,11 +59,12 @@ function Test-MsiValidation([string] $Msi, [string] $Arch) {
         $_.Ice -eq $ice -and (-not $_.ContainsKey('Arch') -or $_.Arch -eq $Arch) -and $message -match $_.Pattern
       }).Count -gt 0
     }
-    if ($ok) { $known++ } else { $unexpected += $line }
+    if ($ok) { $known++; if ($severity -eq 'error') { $knownErrors++ } } else { $unexpected += $line }
   }
   if ($unexpected.Count) { throw "ICE validation of $Arch found:`n$($unexpected -join "`n")" }
-  # wix exits non-zero for an ICE error, also a known one (ICE03 above); anything else must be clean.
-  if ($exit -ne 0 -and $known -eq 0) { throw "wix msi validate failed for $Arch (exit $exit):`n$($output -join "`n")" }
+  # wix exits non-zero for an ICE error, also a known one (ICE03 above). Known warnings alone never
+  # explain a failing exit (a crash after them must fail), so a non-zero exit needs a known error.
+  if ($exit -ne 0 -and $knownErrors -eq 0) { throw "wix msi validate failed for $Arch (exit $exit):`n$($output -join "`n")" }
   Write-Output "PASS $Arch ICE validation ($known known message(s), each explained in test-install-policy.ps1)."
 }
 
