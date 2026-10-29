@@ -84,7 +84,7 @@ Downloads are named `reasoncraft-<version>-<os>-<architecture>`, and `SHA256SUMS
 
 - **Windows** (x64, x86 or arm64): run `reasoncraft-<version>-windows-x64.msi`. It asks whether to install only for you (the default, without administrator rights, into `%LOCALAPPDATA%\Programs\ReasonCraft`) or for everyone on the computer (into `Program Files\ReasonCraft`, with an administrator's permission). It adds a Start menu shortcut and opens `.rcraft` files with ReasonCraft. If SmartScreen stops it, choose **More info**, then **Run anyway**. Updates go where the installed copy is. Uninstall from Settings → Apps; your maps and the recovery folder stay. For a silent install: `msiexec /i reasoncraft-<version>-windows-x64.msi /qn` (add `ALLUSERS=1` for everyone). The `-portable.zip` holds the exe with the readme and licences, to run without installing.
 - **macOS** (11 or later, Apple silicon and Intel): open `reasoncraft-<version>-macos-universal.dmg` and drag ReasonCraft to Applications. While the app is not signed, open it the first time with right-click (or Control-click) → **Open**. Double-clicking a `.rcraft` file starts the app but does not open the file yet; use File → Open.
-- **Linux** (x86_64 or aarch64, glibc 2.35 or later: Ubuntu 22.04, Debian 12, Fedora 36, RHEL 10, openSUSE Leap 16 or newer), any of:
+- **Linux** (x86_64 or aarch64, glibc 2.35 or later: Ubuntu 22.04, Debian 12, Fedora 36, RHEL 10, openSUSE Leap 15.6 or newer), any of:
   - Debian, Ubuntu and derivatives: `sudo apt install ./reasoncraft-<version>-linux-x86_64.deb`;
   - Fedora, RHEL and derivatives: `sudo dnf install ./reasoncraft-<version>-linux-x86_64.rpm`;
   - openSUSE: `sudo zypper install ./reasoncraft-<version>-linux-x86_64.rpm`;

@@ -43,7 +43,7 @@ description: |-
 # GLIBC_2.35 (hypot, hypotf; check with `objdump -T reasoncraft | grep -o 'GLIBC_[0-9.]*' |
 # sort -uV | tail -1`), so a distro with an older glibc refuses the package instead of
 # installing a binary that does not start (Debian 11, Ubuntu 20.04, RHEL 8 and 9, openSUSE
-# Leap 15). libm and libc come from the one glibc package, so the libc requirement covers both.
+# Leap 15.5). libm and libc come from the one glibc package, so the libc requirement covers both.
 overrides:
   deb:
     depends:
