@@ -101,6 +101,7 @@
   - [x] Task 8: Remove cargo-packager and NSIS; notices and supported targets (About › Licences lists WiX and the AppImage runtime; deny/about cover x86, arm64 Windows and aarch64 Linux)
   - [x] Task 9: Workflows: release, packaging lint and CI (actionlint 1.7.12 clean; the lint job rehearsed in ubuntu:24.04 and the install-policy job on this machine; the release workflow runs for the first time once a remote exists)
   - [x] Task 10: Docs, rulings and the release checklist (docs/release.md rewritten; README Install and CHANGELOG 0.1.0; rulings PK-1 to PK-14)
+  - [x] Branch review findings PKG-1 to PKG-12 fixed (rulings PK-15 to PK-19; see the review notes below)
   - [ ] Whole-branch review (superpowers:requesting-code-review), then merge `artcraft-packaging` into `main` locally (never push)
   - [x] Decided by the owner (2026-10-28): install folders `Programs\ReasonCraft` / `Program Files\ReasonCraft`; maintainer and publisher "ReasonCraft contributors" without an address; no homepage URL (the ARP, the metainfo and the packages leave it out; once there is one, set `REASONCRAFT_SIGN_URL` for signing, add `<url type="homepage">` to the metainfo and drop the lint override, ruling PK-13)
   - [ ] **Open for the owner before a public release:** confirm the app ID `nl.reasoncraft.app` (ruling PK-10). It is a reverse-DNS name, which implies control of the domain `reasoncraft.nl` that the project does not own; Flathub checks that, and changing the ID after a release breaks file associations, the Flatpak's data folder and update channels
@@ -402,6 +403,8 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 - `rg -i "packager|nsis|setup.exe|installer.nsi"` outside the plans finds only the history in `docs/rulings.md` and `docs/todo.md`, and the test that guards against it.
 
 **Not checked here (carry-overs above):** the release workflow has never run (no remote): the macOS build, signing and notarization, Windows arm64, Linux aarch64 and the Flatpak on aarch64 run for the first time there.
+
+**Branch review fixes (PKG-1 to PKG-12, 2026-10-29):** rpm deps by soname, installed and run on Fedora 42, openSUSE Leap 15.6 and Tumbleweed (PK-15); partly configured signing fails on `release`, outcome in the job summary (PK-16; Windows cases in `test-packaging-script.ps1`, macOS against stubs in Docker); checked rustup-init and WiX packages, base image by digest, no version input on `release`, job time limits (PK-17); HKLM searched in both registry views, checked in the VM in both directions, ICE validation, MSI version limits, dead WordCraft checks removed (PK-18); full AppImage runtime licence texts incl. mimalloc (PK-19); `package.sh` AppStream 1.0 override; MIME icon; `check-version-order.sh` in the packaging lint. Gate: 1095 pass, 19 ignored; clippy, release check, doc, deny clean; notices unchanged.
 
 ## Carry-over from step 4 reviews
 - [x] Step 5 (Tasks 1, 15): draw PDF bold once (no duplicate text on copy); non-PNG assets in exports; split `crates/reasoncraft_core/src/edit.rs` (916 lines) and `file.rs` (603 lines)
