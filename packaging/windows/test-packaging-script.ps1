@@ -15,7 +15,7 @@
      outcome lands in the job summary, and no secret's value is printed.
   4. package.ps1 refuses versions an MSI cannot hold (major or minor above 255, patch above 65535)
      before building anything, and -SkipBuild with REASONCRAFT_VERSION=0.2.0-rc.1 writes an MSI
-     whose ProductVersion is 0.2.0.
+     whose ProductVersion is 0.2.0; the real job summary (GITHUB_STEP_SUMMARY) stays untouched.
   Needs the x64 release exe (package.ps1 -Arch x64, or cargo build --release with +crt-static) and
   the debug exe (cargo build -p reasoncraft) in CARGO_TARGET_DIR (default: target), and WiX.
 #>
@@ -88,6 +88,12 @@ $signVars = @('WINDOWS_CERTIFICATE', 'WINDOWS_CERTIFICATE_PASSWORD') + $azureVar
   'REASONCRAFT_REFUSE_PARTIAL_SIGNING', 'SIGNTOOL', 'GITHUB_STEP_SUMMARY', 'GITHUB_ACTIONS'
 $saved = @{}
 foreach ($name in $signVars + 'REASONCRAFT_VERSION', 'DIST') { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
+# The real job summary (in CI) must come out of this self-test unchanged.
+function Get-RealSummary {
+  $path = $saved['GITHUB_STEP_SUMMARY']
+  if ($path -and (Test-Path -LiteralPath $path)) { (Get-FileHash -LiteralPath $path).Hash } else { '' }
+}
+$realSummary = Get-RealSummary
 # Runs sign.ps1 on the copy with only the given settings; returns its exit code, output and the
 # job summary it wrote. SIGNTOOL is a stub that logs its arguments, so no real signing happens.
 $summaryFile = Join-Path $work 'summary.md'
@@ -128,6 +134,8 @@ try {
   if ($log -notmatch '(?m)^signtool-stub sign .*/f .*reasoncraft\.exe' -or $log -notmatch '(?m)^signtool-stub verify /pa') { throw "Unexpected signtool calls: $log" }
   if ((Get-AuthenticodeSignature -LiteralPath $copy).Status -eq 'Valid') { throw 'The stub signed the file.' }
   foreach ($name in $signVars) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
+  # The test MSI below must not add a line to the real job summary (the finally block restores it).
+  $env:GITHUB_STEP_SUMMARY = $null
 
   # ---- 4. versions an MSI cannot hold, and a pre-release version ---------------------------------
   foreach ($bad in '256.0.0', '1.256.0', '1.2.65536', '1.2') {
@@ -158,6 +166,8 @@ try {
   foreach ($com in @($record, $view, $database, $installer)) { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($com) }
   if ($productVersion -ne '0.2.0') { throw "ProductVersion of a 0.2.0-rc.1 MSI is '$productVersion', expected 0.2.0." }
   Write-Output 'PASS a 0.2.0-rc.1 MSI has ProductVersion 0.2.0.'
+  if ((Get-RealSummary) -ne $realSummary) { throw 'The self-test wrote to the real job summary (GITHUB_STEP_SUMMARY).' }
+  Write-Output 'PASS the real job summary is untouched by the test packages.'
 } finally {
   foreach ($name in $saved.Keys) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
 }
