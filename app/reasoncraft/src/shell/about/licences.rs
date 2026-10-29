@@ -9,9 +9,10 @@ use eframe::egui::{self, CollapsingHeader, Label, RichText, ScrollArea};
 use crate::i18n::{FluentArgs, t, t_args};
 use crate::theme::Tokens;
 
-/// The licences of the bundled fonts, dictionaries, spell checker and
-/// installer: the i18n key of each header, and the text.
-pub const BUNDLED: [(&str, &str); 7] = [
+/// The licences of the bundled fonts, dictionaries, spell checker and the
+/// installer parts (the WiX UI and custom action in the MSI, the AppImage
+/// runtime): the i18n key of each header, and the text.
+pub const BUNDLED: [(&str, &str); 8] = [
     (
         "about.licences.ubuntu",
         include_str!("../../../assets/licences/ubuntu-font-licence.txt"),
@@ -37,10 +38,38 @@ pub const BUNDLED: [(&str, &str); 7] = [
         include_str!("../../../assets/licences/spellbook.txt"),
     ),
     (
-        "about.licences.nsis",
-        include_str!("../../../assets/licences/nsis.txt"),
+        "about.licences.wix",
+        include_str!("../../../assets/licences/wix.txt"),
     ),
+    ("about.licences.appimage", APPIMAGE_RUNTIME),
 ];
+
+/// The AppImage type2-runtime's licence, then the full text of each library
+/// it links statically, as upstream has it at the version runtime release
+/// 20251108 was built with (THIRD-PARTY.md, "Linux AppImage"). The files in
+/// `assets/licences/appimage-runtime/` are byte for byte upstream's.
+const APPIMAGE_RUNTIME: &str = concat!(
+    "AppImage type2-runtime 20251108 (MIT)\n\n",
+    include_str!("../../../assets/licences/appimage-runtime/type2-runtime-LICENSE.txt"),
+    "\nThe runtime also links mimalloc (MIT), which the notice above leaves out. \
+     The full texts follow, at the versions the runtime was built with.\n",
+    "\n\n---- musl 1.2.5 (MIT) ----\n\n",
+    include_str!("../../../assets/licences/appimage-runtime/musl-COPYRIGHT.txt"),
+    "\n\n---- libfuse 3.15.0, patched (LGPL-2.1) ----\n\n",
+    "The runtime's source at its tag 20251108 (https://github.com/AppImage/type2-runtime) \
+     builds libfuse 3.15.0 with its patch and can relink the runtime with a changed libfuse.\n\n",
+    include_str!("../../../assets/licences/appimage-runtime/libfuse-LICENSE.txt"),
+    "\n",
+    include_str!("../../../assets/licences/appimage-runtime/libfuse-LGPL2.txt"),
+    "\n\n---- squashfuse 0.5.2 (BSD-2-Clause) ----\n\n",
+    include_str!("../../../assets/licences/appimage-runtime/squashfuse-LICENSE.txt"),
+    "\n\n---- zstd 1.5.6 (BSD-3-Clause; zstd is BSD-3-Clause OR GPL-2.0) ----\n\n",
+    include_str!("../../../assets/licences/appimage-runtime/zstd-LICENSE.txt"),
+    "\n\n---- zlib 1.3.1 (Zlib) ----\n\n",
+    include_str!("../../../assets/licences/appimage-runtime/zlib-LICENSE.txt"),
+    "\n\n---- mimalloc 2.1.7 (MIT) ----\n\n",
+    include_str!("../../../assets/licences/appimage-runtime/mimalloc-LICENSE.txt"),
+);
 
 /// The licence texts of the Rust crates the app is built from, written by
 /// `cargo run -p xtask -- notices`.
@@ -214,6 +243,27 @@ mod tests {
         assert!(text("about.licences.dict_nl").contains("OpenTaal"));
         let spellbook = text("about.licences.spellbook");
         assert!(spellbook.contains("https://github.com/helix-editor/spellbook"));
-        assert!(text("about.licences.nsis").contains("zlib/libpng"));
+        assert!(text("about.licences.wix").contains("Microsoft Reciprocal License"));
+        // The runtime's own licence and the full text of each library it links
+        // statically (THIRD-PARTY.md, "Linux AppImage").
+        let appimage = text("about.licences.appimage");
+        for (part, marker) in [
+            ("type2-runtime", "Copyright (c) 2004-23 probonopd"),
+            ("musl", "Copyright © 2005-2020 Rich Felker, et al."),
+            (
+                "libfuse",
+                "GNU LESSER GENERAL PUBLIC LICENSE\n                       Version 2.1",
+            ),
+            ("libfuse's scope", "- All files in the lib/ directory."),
+            ("squashfuse", "Copyright (c) 2012 Dave Vasilevsky"),
+            ("zstd", "For Zstandard software"),
+            ("zlib", "(C) 1995-2022 Jean-loup Gailly and Mark Adler"),
+            (
+                "mimalloc",
+                "Copyright (c) 2018-2021 Microsoft Corporation, Daan Leijen",
+            ),
+        ] {
+            assert!(appimage.contains(marker), "the {part} licence text");
+        }
     }
 }

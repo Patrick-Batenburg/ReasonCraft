@@ -1,6 +1,7 @@
-//! App identity and installers: the icon assets rendered from the SVG
-//! master, the packager configuration with the `.rcraft` association, and
-//! a document path handed over by the OS (as a double-click does).
+//! App identity: the icon assets rendered from the SVG master, no trace of
+//! the old cargo-packager setup, a document path handed over by the OS (as
+//! a double-click does), and `--version`. The installers' own checks are in
+//! `packaging_windows`, `packaging_linux` and `packaging_macos`.
 
 use std::path::{Path, PathBuf};
 
@@ -90,130 +91,19 @@ fn icon_assets_present_and_sized() {
 }
 
 #[test]
-fn packager_config_has_association() {
+fn no_cargo_packager_left() {
+    // The installers come from `packaging/` (WiX, nfpm, appimagetool, the
+    // macOS scripts); nothing is left of cargo-packager and its NSIS
+    // template.
     let manifest = std::fs::read_to_string(crate_dir().join("Cargo.toml")).unwrap();
-    let manifest: toml::Table = manifest.parse().expect("valid TOML");
-    let packager = &manifest["package"]["metadata"]["packager"];
-    let text = |v: &toml::Value| v.as_str().expect("a string").to_owned();
-    let list = |v: &toml::Value| -> Vec<String> {
-        v.as_array().expect("a list").iter().map(text).collect()
-    };
-
-    assert_eq!(text(&packager["product-name"]), "ReasonCraft");
-    assert_eq!(text(&packager["identifier"]), "nl.reasoncraft.app");
-    assert_eq!(text(&packager["publisher"]), "ReasonCraft contributors");
-    // The installer's licence page holds both licences (dual licence).
-    let licence = std::fs::read_to_string(crate_dir().join(text(&packager["license-file"])))
-        .expect("the licence file exists");
-    let workspace = crate_dir().join("../..");
-    for name in ["LICENSE-MIT", "LICENSE-APACHE"] {
-        let full = std::fs::read_to_string(workspace.join(name)).unwrap();
-        assert!(
-            licence.contains(full.trim_end()),
-            "the licence page lacks {name}; run `cargo run -p xtask -- licence`"
-        );
-    }
-
-    let formats = list(&packager["formats"]);
-    for format in ["nsis", "app", "dmg", "deb", "appimage"] {
-        assert!(formats.iter().any(|f| f == format), "format {format}");
-    }
-    let icons = list(&packager["icons"]);
-    for ext in [".png", ".ico", ".icns"] {
-        assert!(icons.iter().any(|i| i.ends_with(ext)), "an {ext} icon");
-    }
-
-    let nsis = &packager["nsis"];
-    assert_eq!(
-        text(&nsis["installer-mode"]),
-        "currentUser",
-        "per user, no admin"
-    );
-    assert_eq!(
-        text(&nsis["compression"]),
-        "zlib",
-        "zlib-licensed decompressor"
-    );
-    // The vendored template's ProgID and clean-up (see its header).
-    let template = std::fs::read_to_string(crate_dir().join(text(&nsis["template"])))
-        .expect("the NSIS template exists");
-    for needle in [
-        r#"!insertmacro APP_ASSOCIATE "{{ext}}" "${PRODUCTNAME}.{{ext}}""#,
-        r#"!insertmacro APP_UNASSOCIATE "{{ext}}" "${PRODUCTNAME}.{{ext}}""#,
-        r#"${OrIf} $R0 == "${PRODUCTNAME}.{{ext}}""#,
-        r#"DeleteRegKey SHCTX "${MANUPRODUCTKEY}""#,
-    ] {
-        assert!(
-            template.contains(needle),
-            "the NSIS template lacks `{needle}`"
-        );
-    }
-
-    let associations = packager["file-associations"].as_array().expect("a list");
-    assert_eq!(associations.len(), 1);
-    let rcraft = &associations[0];
-    assert_eq!(list(&rcraft["extensions"]), ["rcraft"]);
-    assert_eq!(text(&rcraft["name"]), "ReasonCraft map");
-    assert_eq!(text(&rcraft["description"]), "ReasonCraft map");
-    assert_eq!(text(&rcraft["mime-type"]), "application/x-reasoncraft");
-    assert_eq!(text(&rcraft["role"]), "editor", "CFBundleTypeRole Editor");
-
-    // Linux learns the MIME type from the shared-mime-info file.
-    let mime = std::fs::read_to_string(crate_dir().join("packaging/linux/reasoncraft-mime.xml"))
-        .expect("the MIME description exists");
-    assert!(mime.contains(r#"type="application/x-reasoncraft""#));
-    assert!(mime.contains(r#"pattern="*.rcraft""#));
-    let desktop = std::fs::read_to_string(crate_dir().join("packaging/linux/reasoncraft.desktop"))
-        .expect("the desktop entry exists");
-    assert!(desktop.contains("MimeType=application/x-reasoncraft;"));
-}
-
-/// The `.deb` control fields. The binary links only libc; winit, wgpu and
-/// glow open the windowing and graphics libraries at run time, so dpkg
-/// cannot see them and the package has to name them.
-#[test]
-fn deb_names_its_runtime_libraries() {
-    let manifest = std::fs::read_to_string(crate_dir().join("Cargo.toml")).unwrap();
-    let manifest: toml::Table = manifest.parse().expect("valid TOML");
-    let packager = &manifest["package"]["metadata"]["packager"];
-
-    // Not the default, the product name in kebab case ("reason-craft").
-    assert_eq!(
-        packager["deb"]["package-name"].as_str(),
-        Some("reasoncraft")
-    );
-    let authors = packager["authors"]
-        .as_array()
-        .expect("authors, the Maintainer");
-    assert_eq!(authors[0].as_str(), Some("ReasonCraft contributors"));
     assert!(
-        packager["long-description"]
-            .as_str()
-            .is_some_and(|d| !d.is_empty())
+        !manifest.contains("metadata.packager"),
+        "the app's Cargo.toml still configures cargo-packager"
     );
-
-    let depends: Vec<&str> = packager["deb"]["depends"]
-        .as_array()
-        .expect("a list of packages")
-        .iter()
-        .map(|d| d.as_str().expect("a package name"))
-        .collect();
-    for lib in [
-        "libc6",
-        "libgcc-s1",
-        "libxkbcommon0",
-        "libxkbcommon-x11-0",
-        "libx11-6",
-        "libx11-xcb1",
-        "libxcursor1",
-        "libxi6",
-        "libwayland-client0",
-        "libwayland-egl1",
-        "libegl1",
-        "libgl1",
-    ] {
-        assert!(depends.contains(&lib), "the .deb lacks Depends: {lib}");
-    }
+    assert!(
+        !crate_dir().join("packaging").exists(),
+        "app/reasoncraft/packaging is gone (see packaging/ at the root)"
+    );
 }
 
 #[test]
@@ -235,5 +125,48 @@ fn cli_path_opens_file() {
     assert_eq!(
         tab.doc.boxes[&tab.doc.root].text,
         "Robots will take our jobs"
+    );
+}
+
+#[test]
+fn version_flag_prints_version() {
+    use std::io::Read as _;
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+
+    // Should `--version` ever open the window, it does so on a throw-away
+    // profile and is stopped, never touching the real settings.
+    let profile = tempfile::tempdir().unwrap();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_reasoncraft"))
+        .arg("--version")
+        .env(reasoncraft::profile::PROFILE_DIR_VAR, profile.path())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("the app starts");
+    let started = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if started.elapsed() > Duration::from_secs(60) {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("`reasoncraft --version` did not exit (it opened the window?)");
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    };
+    let mut stdout = String::new();
+    child
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_string(&mut stdout)
+        .unwrap();
+    assert!(status.success(), "{status:?}");
+    assert_eq!(
+        stdout,
+        format!("ReasonCraft {}\n", env!("CARGO_PKG_VERSION"))
     );
 }

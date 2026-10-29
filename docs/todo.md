@@ -1,7 +1,7 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** none — steps 1–6 merged; see "Carry-over after step 6"
+**Active plan:** [docs/plans/2026-10-28-artcraft-packaging.md](plans/2026-10-28-artcraft-packaging.md): packaging the ArtCraft way, Tasks 1–10 done on branch `artcraft-packaging` (whole-branch review and the local merge into `main` still to do); steps 1–6 merged
 **Merged:** steps 1–6 (step 6 is complete on branch `step6-release-readiness`)
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
@@ -89,6 +89,24 @@
   - [x] Task 12: Linux and macOS builds and CI
   - [x] Task 13: End-to-end check and release docs
   - [x] Task 14: Interactive UX pass (real keyboard and mouse, user-authorised) and fixes
+- [ ] Packaging the ArtCraft way ([plan](plans/2026-10-28-artcraft-packaging.md))
+  - [x] Prerequisite: .NET SDK 8 (`winget install Microsoft.DotNet.SDK.8`), then `dotnet tool install --global wix --version 5.0.2` and its UI and Util extensions
+  - [x] Task 1: One version source (`cargo xtask version`), `--version`, and the licence RTF in xtask
+  - [x] Task 2: WiX source and the install-policy checks (no app build)
+  - [x] Task 3: Windows packaging script, PE checks and signing (x64 and x86 built here; arm64 needs the MSVC ARM64 tools and is built in CI only)
+  - [x] Task 4: Check the MSI in the VM (per user, per machine, upgrade, cross-scope refusal, uninstall; the same package in the other scope reconfigures instead of being refused, ruling PK-9)
+  - [x] Task 5: Linux: shared env, tar.gz, deb, rpm and AppImage (verified in Docker: Ubuntu 22.04 build, deb installed on a clean 22.04, rpm on Fedora 42)
+  - [x] Task 6: Flatpak bundle (shellcheck and `flatpak-builder --show-manifest`; also built and smoke-tested locally in a privileged Docker container on Ubuntu 24.04 with a D-Bus session. The release workflow's `flatpak` job still has to run once, on the first dispatch after a remote exists, and aarch64 is CI only)
+  - [x] Task 7: macOS: universal app, DMG, signing and verification (no Mac here: the plist test, shellcheck, xmllint and plistlib, and a run of the three scripts against logging stubs of the macOS tools in Docker; the real build, signing and notarization are for the release workflow's `macos` job and a real Mac)
+  - [x] Task 8: Remove cargo-packager and NSIS; notices and supported targets (About › Licences lists WiX and the AppImage runtime; deny/about cover x86, arm64 Windows and aarch64 Linux)
+  - [x] Task 9: Workflows: release, packaging lint and CI (actionlint 1.7.12 clean; the lint job rehearsed in ubuntu:24.04 and the install-policy job on this machine; the release workflow runs for the first time once a remote exists)
+  - [x] Task 10: Docs, rulings and the release checklist (docs/release.md rewritten; README Install and CHANGELOG 0.1.0; rulings PK-1 to PK-14)
+  - [x] Branch review findings PKG-1 to PKG-12 fixed (rulings PK-15 to PK-19; see the review notes below)
+  - [ ] Whole-branch review (superpowers:requesting-code-review), then merge `artcraft-packaging` into `main` locally (never push)
+  - [x] Decided by the owner (2026-10-28): install folders `Programs\ReasonCraft` / `Program Files\ReasonCraft`; maintainer and publisher "ReasonCraft contributors" without an address; no homepage URL (the ARP, the metainfo and the packages leave it out; once there is one, set `REASONCRAFT_SIGN_URL` for signing, add `<url type="homepage">` to the metainfo and drop the lint override, ruling PK-13)
+  - [ ] **Open for the owner before a public release:** confirm the app ID `nl.reasoncraft.app` (ruling PK-10). It is a reverse-DNS name, which implies control of the domain `reasoncraft.nl` that the project does not own; Flathub checks that, and changing the ID after a release breaks file associations, the Flatpak's data folder and update channels
+  - [ ] Carry-over, once a remote exists: the first release-workflow run (macOS universal DMG, signing and notarization when the secrets exist, Flatpak on both architectures, Windows arm64, Linux aarch64) and the packaging lint run; the CI must be green on all three platforms
+  - [ ] Carry-over: a real Mac check of the DMG (release checklist); macOS opening a double-clicked `.rcraft` (Apple Event, ruling S6-T11-2); a DMG background (needs a design); an install smoke test of the arm64 MSI on `windows-11-arm`; confirm on CI that the Linux build needs no `libgtk-3-dev` (only needed to switch to the suite's reusable workflow)
 
 ## Review
 
@@ -373,6 +391,21 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 - From step 5, still open: the official Argdown map view may show a redundant relation for whole-card conclusions (could not be checked offline); comment dates, the links and comments of notes, where notes sit among their siblings, images and the layout direction are not carried in Argdown; Find does not search comments (ruling B3); ignoring the "not rated yet" hint holds only while the number of unrated items stays the same; in exports, a box with only a link or comments keeps a blank indicator band (ruling T6-4); in the PDF the bold outline is not selectable text (ruling T15-1).
 - A box with many connectors grows to keep their arrowheads apart, so it can be wider (or taller, left to right) than its text needs (ruling S6-T7-2).
 
+### Packaging the ArtCraft way (2026-10-29)
+
+**Tests:** 1095 pass, 19 ignored, across the workspace (`cargo test --workspace -j 4`). `cargo fmt --check`, `cargo clippy --workspace --all-targets -j 4 -- -D warnings`, `cargo check --workspace --release --all-targets -j 4` and `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items` are clean. `cargo deny check` passes with the seven release targets, and `cargo xtask notices` leaves `crates.txt` unchanged.
+
+**Checked:**
+- Windows: `package.ps1 -Arch x64` rebuilt `dist/release/reasoncraft-0.1.0-windows-x64.msi` and the portable zip after cargo-packager was removed (`PASS ReasonCraft: 24 scope cases…`, unsigned with the expected warning), and `test-packaging-script.ps1` passes. x86 was built in Task 3; the VM check (Task 4) passed with the x64 MSI.
+- Linux: tar.gz, deb, rpm and AppImage built in Docker (Ubuntu 22.04), the deb installed on a clean 22.04 and the rpm on Fedora 42 (Task 5); the Flatpak built and run in a privileged Ubuntu 24.04 container (Task 6).
+- macOS: static checks only (plist test, shellcheck, xmllint, the scripts against stubs; Task 7).
+- Workflows: actionlint 1.7.12 (Docker, with shellcheck) reports nothing; the lint job's shell steps were run in `ubuntu:24.04` (shellcheck, xmllint, desktop-file-validate, appstreamcli with the homepage override, the GUID check, which also catches a planted duplicate); the PowerShell parse and the Windows install-policy job (WiX 5.0.2 into a temp tool folder, then `test-install-policy.ps1`: x64, x86 and arm64 PASS) ran on this machine; the release workflow's version step was run against `""`, `v0.2.0-rc.1`, `v1.2.3` (accepted) and `1.0`, `1.0.0+meta`, `01.0.0` and a line break (refused). All actions are pinned by SHA; nothing in `.github/` uses the suite's workflows.
+- `rg -i "packager|nsis|setup.exe|installer.nsi"` outside the plans finds only the history in `docs/rulings.md` and `docs/todo.md`, and the test that guards against it.
+
+**Not checked here (carry-overs above):** the release workflow has never run (no remote): the macOS build, signing and notarization, Windows arm64, Linux aarch64 and the Flatpak on aarch64 run for the first time there.
+
+**Branch review fixes (PKG-1 to PKG-12, 2026-10-29):** rpm deps by soname, installed and run on Fedora 42, openSUSE Leap 15.6 and Tumbleweed (PK-15); partly configured signing fails on `release`, outcome in the job summary (PK-16; Windows cases in `test-packaging-script.ps1`, macOS against stubs in Docker); checked rustup-init and WiX packages, base image by digest, no version input on `release`, job time limits (PK-17); HKLM searched in both registry views, checked in the VM in both directions, ICE validation, MSI version limits, dead WordCraft checks removed (PK-18); full AppImage runtime licence texts incl. mimalloc (PK-19); `package.sh` AppStream 1.0 override; MIME icon; `check-version-order.sh` in the packaging lint. Gate: 1095 pass, 19 ignored; clippy, release check, doc, deny clean; notices unchanged.
+
 ## Carry-over from step 4 reviews
 - [x] Step 5 (Tasks 1, 15): draw PDF bold once (no duplicate text on copy); non-PNG assets in exports; split `crates/reasoncraft_core/src/edit.rs` (916 lines) and `file.rs` (603 lines)
 - [x] Step 5 (Task 15): virtualise the Essay tab (cached heights) and the Check tab
@@ -413,7 +446,7 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 ## Carry-over after step 6 (before a public v0.1.0)
 - [ ] CI green on windows-latest, macos-latest and ubuntu-latest once a remote exists (macOS code has never compiled or run)
 - [ ] Release checklist in docs/release.md: interactive installer run in the VM (licence page), 200 % UI-scale check, macOS manual checks, Wayland and real Linux clipboard, Word/LibreOffice open checks
-- [ ] Verify the zlib and nsis_tauri_utils notices upstream; consider collecting Apache NOTICE files; drop the Noto Emoji OFL entry if the font isn't compiled in
+- [ ] Consider collecting Apache NOTICE files (the zlib and nsis_tauri_utils notices went with NSIS, ruling PK-1); drop the Noto Emoji OFL entry if the font isn't compiled in
 - [ ] macOS: open a double-clicked .rcraft (Apple Event), custom app menu (Hide/Quit through the unsaved prompt), Dock-quit prompt
 - [ ] Owner review of the Dutch glossary (docs/glossary-nl.md)
 - [ ] Split files at ~400 lines before the next feature (canvas/input.rs, app.rs, icons/mod.rs)
@@ -426,3 +459,4 @@ Six independent reviewers (core bugs, app bugs, security, maintainability, reada
 - [ ] Deleting a very large branch is quadratic (edit/move_remove.rs shift_remove) — one-off cost, not per frame
 - [ ] Layout reruns every frame (linear in map size); caching per revision would cut idle-redraw cost on huge maps
 - [ ] Owner's PC: the processor logs WHEA parity errors under load (ruling R2-6); update BIOS (microcode ≥ 0x12F). If an abort ever appears on CI hardware, R2-6 no longer holds — reopen MAINT-R3
+- [x] Review follow-ups PKG-13 (ICE exit), PKG-14 (self-test summary), PKG-15 (glibc 2.35 minimum) fixed; reviewer approved.

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/wordcraft.wxs
+     at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: ReasonCraft's identity, GUIDs
+     and .rcraft association (set as the default, as it is our own type), the install folder directly
+     under Programs / Program Files, no ARP URLs, no CLI and no font licences.
+
+     One dual-scope package: per user by default into %LOCALAPPDATA%\Programs\ReasonCraft, per
+     machine ("Everyone") into Program Files\ReasonCraft. install-policy.wxi chooses the scope and
+     refuses a second copy in the other scope; check-install-policy.ps1 checks the compiled result.
+     The UpgradeCode and the component GUIDs never change (install-policy.json records them).
+
+     Variables: Version (numeric X.Y.Z), BinDir, IconPath, LicenseRtf, AppNoticesDir. -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="ReasonCraft" Manufacturer="ReasonCraft contributors" Version="$(var.Version)" UpgradeCode="C498BDE9-0F26-4C84-909C-602AB9B2A49A" Scope="perUserOrMachine" Compressed="yes" Language="1033">
+    <SummaryInformation Description="ReasonCraft argument mapping" Manufacturer="ReasonCraft contributors" />
+    <?include $(sys.SOURCEFILEDIR)install-policy.wxi?>
+    <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
+         (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of ReasonCraft is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="ReasonCraftIcon.ico" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="ReasonCraftIcon.ico" />
+
+    <!-- Installer UI: WixUI_Minimal is welcome + licence, progress, then a finish page. Its dialogs
+         and bitmaps are WiX's own (WixToolset.UI.wixext); `cargo xtask licence-rtf` builds the
+         licence RTF from LICENSE-MIT and LICENSE-APACHE. The finish page offers to launch
+         ReasonCraft (ticked) through WixShellExec (WixToolset.Util.wixext); silent installs (/qn)
+         never show it. -->
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch ReasonCraft" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <Property Id="WixShellExecTarget" Value="[#ReasonCraftExe]" />
+    <CustomAction Id="LaunchReasonCraft" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixShellExec" Impersonate="yes" Return="ignore" />
+    <UI>
+      <ui:WixUI Id="WixUI_Minimal" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchReasonCraft" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    </UI>
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="ReasonCraft" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <Feature Id="Main" Title="ReasonCraft" Level="1">
+      <ComponentGroupRef Id="AppNotices" />
+      <ComponentGroupRef Id="ReasonCraftFiles" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <!-- LICENSE-MIT, LICENSE-APACHE and THIRD-PARTY.md. -->
+    <ComponentGroup Id="AppNotices" Directory="INSTALLFOLDER">
+      <Files Include="$(var.AppNoticesDir)\**" />
+    </ComponentGroup>
+    <ComponentGroup Id="ReasonCraftFiles" Directory="INSTALLFOLDER">
+      <Component Id="ReasonCraftApp" Guid="EB979508-10F7-4BDF-9918-12F28A502C34">
+        <File Id="ReasonCraftExe" Source="$(var.BinDir)\reasoncraft.exe" KeyPath="yes">
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="ReasonCraft" Description="Map out arguments: claims, reasons and objections." WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="ReasonCraftIcon.ico" IconIndex="0" />
+        </File>
+        <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\reasoncraft.exe" Value="[#ReasonCraftExe]" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\ReasonCraft" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
+      </Component>
+
+      <!-- The .rcraft association. The ProgId (name, icon, open command with the path quoted as one
+           argument) is the default for .rcraft, our own type, and is also listed under
+           OpenWithProgids and as ReasonCraft's Capabilities (Settings > Default apps). Windows keeps
+           a choice the user made in "Open with" over this default. Removed again on uninstall. -->
+      <Component Id="ReasonCraftFileTypes" Guid="F0FBE489-951A-4156-8345-B998E72C9B89">
+        <RegistryValue Root="HKMU" Key="Software\RegisteredApplications" Name="ReasonCraft" Value="Software\ReasonCraft\Capabilities" Type="string" KeyPath="yes" />
+        <RegistryValue Root="HKMU" Key="Software\ReasonCraft\Capabilities" Name="ApplicationName" Value="ReasonCraft" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\ReasonCraft\Capabilities" Name="ApplicationDescription" Value="Map out arguments: claims, reasons and objections." Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\ReasonCraft\Capabilities" Name="ApplicationIcon" Value="&quot;[#ReasonCraftExe]&quot;,0" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\ReasonCraft\Capabilities\FileAssociations" Name=".rcraft" Value="ReasonCraft.rcraft" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\reasoncraft.exe" Name="FriendlyAppName" Value="ReasonCraft" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\reasoncraft.exe\shell\open\command" Value="&quot;[#ReasonCraftExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\reasoncraft.exe\SupportedTypes" Name=".rcraft" Value="" Type="string" />
+
+        <ProgId Id="ReasonCraft.rcraft" Description="ReasonCraft map" Icon="ReasonCraftExe" IconIndex="0" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\ReasonCraft.rcraft\shell\open\command" Value="&quot;[#ReasonCraftExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.rcraft" Value="ReasonCraft.rcraft" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.rcraft" Name="Content Type" Value="application/x-reasoncraft" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.rcraft\OpenWithProgids" Name="ReasonCraft.rcraft" Value="" Type="string" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

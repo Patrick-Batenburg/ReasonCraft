@@ -1,0 +1,5 @@
+# Adapted from WordCraft (https://github.com/storytold/wordcraft, .shellcheckrc at aadb077),
+# MIT OR Apache-2.0, used under Apache-2.0; changed: this comment only.
+# Let shellcheck follow `. "$(dirname ...)/../env.sh"` relative to each script.
+source-path=SCRIPTDIR
+external-sources=true

@@ -1,0 +1,3 @@
+*
+!rust-toolchain.toml
+!packaging/linux/install-rustup.sh

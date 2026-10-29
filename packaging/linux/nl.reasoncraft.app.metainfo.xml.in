@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Adapted from WordCraft (https://github.com/storytold/wordcraft,
+     packaging/linux/ai.storyteller.wordcraft.metainfo.xml.in at aadb077), MIT OR Apache-2.0, used
+     under Apache-2.0; changed: ReasonCraft's identity, text and document type; no URLs and no
+     screenshots (there is no public homepage yet).
+
+     AppStream metadata (software centres). Template: package.sh substitutes @VERSION@ and @DATE@
+     from Cargo.toml and the build date. -->
+<component type="desktop-application">
+  <id>nl.reasoncraft.app</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+  <name>ReasonCraft</name>
+  <summary>Map out arguments: claims, reasons and objections</summary>
+  <summary xml:lang="nl">Breng argumenten in kaart: stellingen, redenen en bezwaren</summary>
+  <developer id="nl.reasoncraft">
+    <name>ReasonCraft contributors</name>
+  </developer>
+  <description>
+    <p>
+      ReasonCraft is a free, open-source app for argument maps and grouping maps. Lay out a claim with the reasons for it and the objections against it, rate them, write an essay along the map, and export it as an image or a PDF. It works fully offline.
+    </p>
+    <p xml:lang="nl">
+      ReasonCraft is een gratis opensource-app voor argumentkaarten en groeperingskaarten. Zet een stelling uiteen met de redenen ervoor en de bezwaren ertegen, beoordeel ze, schrijf er een betoog bij, en exporteer de kaart als afbeelding of pdf. Hij werkt volledig offline.
+    </p>
+  </description>
+  <launchable type="desktop-id">nl.reasoncraft.app.desktop</launchable>
+  <icon type="stock">nl.reasoncraft.app</icon>
+  <categories>
+    <category>Education</category>
+    <category>Office</category>
+  </categories>
+  <keywords>
+    <keyword>argument map</keyword>
+    <keyword>reasoning</keyword>
+    <keyword>critical thinking</keyword>
+    <keyword>debate</keyword>
+  </keywords>
+  <requires>
+    <display_length compare="ge">760</display_length>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+  <provides>
+    <binary>reasoncraft</binary>
+    <mediatype>application/x-reasoncraft</mediatype>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@VERSION@" date="@DATE@"/>
+  </releases>
+</component>

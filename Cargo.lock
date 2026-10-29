@@ -2948,7 +2948,6 @@ dependencies = [
  "svg2pdf",
  "sys-locale",
  "tempfile",
- "toml",
  "unic-langid",
  "unicode-normalization",
  "winit",

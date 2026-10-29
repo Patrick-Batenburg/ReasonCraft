@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/macos/Info.plist.in
+     at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: ReasonCraft's identity,
+     copyright and category, English and Dutch localizations, no build commit, and the .rcraft
+     type exported and owned.
+
+     Template: packaging/macos/package.sh substitutes @VERSION@ (full, e.g. 0.2.0-rc.1) and
+     @SHORT_VERSION@ (numeric X.Y.Z). -->
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>nl</string>
+  </array>
+  <key>CFBundleDisplayName</key>
+  <string>ReasonCraft</string>
+  <key>CFBundleName</key>
+  <string>ReasonCraft</string>
+  <key>CFBundleExecutable</key>
+  <string>ReasonCraft</string>
+  <key>CFBundleIdentifier</key>
+  <string>nl.reasoncraft.app</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleSignature</key>
+  <string>????</string>
+  <key>CFBundleShortVersionString</key>
+  <string>@SHORT_VERSION@</string>
+  <key>CFBundleVersion</key>
+  <string>@SHORT_VERSION@</string>
+  <key>ReasonCraftVersion</key>
+  <string>@VERSION@</string>
+  <key>CFBundleIconFile</key>
+  <string>ReasonCraft</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.education</string>
+  <!-- Must match MACOSX_DEPLOYMENT_TARGET in package.sh (a test checks it). Big Sur is the first
+       release on Apple silicon and has the Metal feature set wgpu targets. -->
+  <key>LSMinimumSystemVersion</key>
+  <string>11.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>NSSupportsAutomaticGraphicsSwitching</key>
+  <true/>
+  <key>NSRequiresAquaSystemAppearance</key>
+  <false/>
+  <key>NSHumanReadableCopyright</key>
+  <string>Copyright © Patrick van Batenburg and ReasonCraft contributors. MIT OR Apache-2.0.</string>
+
+  <!-- ReasonCraft's own document type: a zip-based map with the .rcraft extension. -->
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>nl.reasoncraft.map</string>
+      <key>UTTypeDescription</key>
+      <string>ReasonCraft map</string>
+      <key>UTTypeIconFile</key>
+      <string>ReasonCraft</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.data</string>
+        <string>public.zip-archive</string>
+      </array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>rcraft</string>
+        </array>
+        <key>public.mime-type</key>
+        <array>
+          <string>application/x-reasoncraft</string>
+        </array>
+      </dict>
+    </dict>
+  </array>
+  <!-- Opening a double-clicked map needs the Apple Event "open", which the app does not handle
+       yet (ruling S6-T11-2): the app starts without the file. -->
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>ReasonCraft map</string>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>ReasonCraft</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>nl.reasoncraft.map</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>
