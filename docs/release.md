@@ -144,6 +144,8 @@ The script builds for the host's architecture (x86_64 or aarch64), stages one FH
 `desktop-file-validate` and `appstreamcli validate` check the staged files when they are installed.
 The binary links only libc: winit, wgpu and glow open the X11, Wayland, xkbcommon, EGL and OpenGL libraries at run time, so the `.deb` and `.rpm` name them in `packaging/linux/nfpm.yaml`, and a test checks both lists.
 The `.deb` names Debian's packages; the `.rpm` names the libraries by soname (`libxkbcommon.so.0()(64bit)`, …), which Fedora and openSUSE both resolve to their own package names (ruling PK-15).
+Both require glibc 2.35 or later (`libc6 (>= 2.35)`, `libc.so.6(GLIBC_2.35)(64bit)`): built on Ubuntu 22.04, the binary's newest glibc symbol version is `GLIBC_2.35` (`hypot`; check with `objdump -T reasoncraft | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1` and update both lists and their test when the build image changes).
+Distributions with an older glibc refuse the packages instead of installing a binary that does not start: Debian 11, Ubuntu 20.04, RHEL 8 and 9 (and their rebuilds), openSUSE Leap 15 and Fedora 35 or older; the AppImage and the tarball do not run there either, the Flatpak does.
 The packages' maintainer is `REASONCRAFT_MAINTAINER` (default "ReasonCraft contributors").
 The AppImage embeds the pinned static runtime, so users need no libfuse2; it is built with `APPIMAGE_EXTRACT_AND_RUN=1`, so the build needs no FUSE either.
 In GitHub Actions it also carries update information and gets a `.zsync` beside it for delta updates; a local build has neither.
@@ -295,7 +297,7 @@ The packaging scripts build from the workspace, so the installers are unaffected
    - check the known gap: double-clicking a `.rcraft` file starts the app without opening the file.
 6. Linux, on a desktop (X11 and Wayland if possible):
    - install the `.deb` with `sudo apt install ./reasoncraft-<v>-linux-x86_64.deb` and start ReasonCraft from the app menu;
-   - install the `.rpm` on Fedora (`sudo dnf install ./reasoncraft-<v>-linux-x86_64.rpm`) and on openSUSE (`sudo zypper install ./reasoncraft-<v>-linux-x86_64.rpm`), and start it;
+   - install the `.rpm` on Fedora (`sudo dnf install ./reasoncraft-<v>-linux-x86_64.rpm`) and on openSUSE Tumbleweed or Leap 16 (Leap 15's glibc is too old; `sudo zypper install ./reasoncraft-<v>-linux-x86_64.rpm`), and start it;
    - install the Flatpak with `flatpak install --user reasoncraft-<v>-linux-x86_64.flatpak` and start it; open and save a map in Documents;
    - start the AppImage on a second distribution;
    - double-click a `.rcraft` file: it opens in ReasonCraft;

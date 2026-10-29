@@ -112,6 +112,8 @@ fn mime_and_metainfo_declare_rcraft() {
 /// The `.deb` and `.rpm` dependencies. The binary links only libc;
 /// winit, wgpu and glow open the windowing and graphics libraries at run
 /// time, so dpkg and rpm cannot see them and the packages have to name them.
+/// Built on Ubuntu 22.04, the binary needs glibc 2.35 (`hypot`), which
+/// both packages require so that an older distro refuses to install them.
 #[test]
 fn packages_name_their_runtime_libraries() {
     let yaml = read("nfpm.yaml");
@@ -136,7 +138,7 @@ fn packages_name_their_runtime_libraries() {
     assert_eq!(
         deb_depends,
         [
-            "libc6",
+            "libc6 (>= 2.35)",
             "libgcc-s1",
             "libxkbcommon0",
             "libxkbcommon-x11-0",
@@ -161,6 +163,7 @@ fn packages_name_their_runtime_libraries() {
     assert_eq!(
         rpm,
         [
+            "libc.so.6(GLIBC_2.35)(64bit)",
             "libxkbcommon.so.0()(64bit)",
             "libxkbcommon-x11.so.0()(64bit)",
             "libEGL.so.1()(64bit)",

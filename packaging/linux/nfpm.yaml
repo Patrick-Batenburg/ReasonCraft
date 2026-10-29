@@ -38,10 +38,16 @@ description: |-
 # differ between rpm distributions (Fedora's libxkbcommon is openSUSE's libxkbcommon0), the
 # sonames are the same everywhere (ruling PK-15). `()(64bit)` is rpm's marker for a library of
 # any 64-bit ELF architecture, so the same names hold for x86_64 and aarch64.
+#
+# glibc 2.35 at least: built on Ubuntu 22.04, the binary's newest glibc symbol version is
+# GLIBC_2.35 (hypot, hypotf; check with `objdump -T reasoncraft | grep -o 'GLIBC_[0-9.]*' |
+# sort -uV | tail -1`), so a distro with an older glibc refuses the package instead of
+# installing a binary that does not start (Debian 11, Ubuntu 20.04, RHEL 8 and 9, openSUSE
+# Leap 15). libm and libc come from the one glibc package, so the libc requirement covers both.
 overrides:
   deb:
     depends:
-      - libc6
+      - libc6 (>= 2.35)
       - libgcc-s1
       - libxkbcommon0
       - libxkbcommon-x11-0
@@ -57,6 +63,7 @@ overrides:
       - xdg-desktop-portal
   rpm:
     depends:
+      - libc.so.6(GLIBC_2.35)(64bit)
       - libxkbcommon.so.0()(64bit)
       - libxkbcommon-x11.so.0()(64bit)
       - libEGL.so.1()(64bit)
