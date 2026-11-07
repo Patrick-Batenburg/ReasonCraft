@@ -113,7 +113,7 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
                     }
                 }
                 if ui.button(t("link.cancel")).clicked() {
-                    answer = Some(Action::DismissModal);
+                    answer = Some(Action::CloseLinkEdit);
                 }
                 let remove = ui.add_enabled(has_link, egui::Button::new(t("link.remove")));
                 if remove.clicked() {
@@ -125,7 +125,7 @@ pub fn show(ctx: &egui::Context, app: &mut ReasonCraftApp) {
     let close = response.should_close();
     let answer = response
         .inner
-        .or_else(|| close.then_some(Action::DismissModal));
+        .or_else(|| close.then_some(Action::CloseLinkEdit));
     if let Some(action) = answer {
         app.push(action);
     }

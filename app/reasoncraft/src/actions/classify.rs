@@ -136,6 +136,7 @@ impl Action {
             | Action::OpenSelectedLink
             | Action::OpenExportFolder
             | Action::DismissModal
+            | Action::CloseLinkEdit
             | Action::CloseFind
             | Action::SetFindQuery(_)
             | Action::SetReplaceText(_)

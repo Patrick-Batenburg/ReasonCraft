@@ -23,6 +23,7 @@ mod close_waits;
 mod command_search;
 mod connector_style;
 mod deep_maps;
+mod dialog_queue;
 mod doc_tabs;
 mod document;
 mod essay;

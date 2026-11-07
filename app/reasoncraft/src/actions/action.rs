@@ -53,6 +53,8 @@ pub enum Action {
     ResolveReplace(bool),
     /// Close the error message.
     DismissModal,
+    /// Close the link editor without a change (Cancel, Esc).
+    CloseLinkEdit,
     Undo,
     Redo,
     AddReason,

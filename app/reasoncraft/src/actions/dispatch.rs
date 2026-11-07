@@ -76,10 +76,8 @@ pub(super) fn run(app: &mut ReasonCraftApp, action: Action) {
             }
         }
         Action::ResolveReplace(replace) => file_ops::resolve_replace(app, replace),
-        Action::DismissModal => {
-            app.modal = None;
-            app.link_edit = None;
-        }
+        Action::DismissModal => app.modal = None,
+        Action::CloseLinkEdit => app.link_edit = None,
         Action::ActivateTab(i) => {
             if i < app.tabs.len() {
                 app.active = i;

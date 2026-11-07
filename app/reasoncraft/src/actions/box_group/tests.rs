@@ -67,7 +67,7 @@ fn edit_link_opens_editor_and_set_link_saves_once() {
 
     // Cancel (Esc) closes the editor without a change.
     apply(&mut a, Action::EditLink);
-    apply(&mut a, Action::DismissModal);
+    apply(&mut a, Action::CloseLinkEdit);
     assert!(a.link_edit.is_none());
 
     apply(&mut a, Action::SetLink(None));
