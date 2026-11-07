@@ -22,6 +22,10 @@ pub use write::{save, save_package, save_package_private};
 use zip::result::ZipError;
 
 const DOCUMENT_ENTRY: &str = "document.json";
+/// The build that writes a file, in its `"generator"` field.
+pub const GENERATOR: &str = concat!("ReasonCraft ", env!("CARGO_PKG_VERSION"));
+/// The field of `document.json` that names the build that wrote it.
+const GENERATOR_FIELD: &str = "generator";
 const IMAGES_DIR: &str = "images/";
 
 /// Largest `document.json` that [`open`] will read (64 MiB, far beyond

@@ -95,6 +95,11 @@ pub fn asset_key(ext: &str, bytes: &[u8]) -> String {
 /// left out data that was too large or unsafe (see [`crate::file::open`]);
 /// `parked_on_open` is true when it moved branches nested deeper than
 /// [`crate::MAX_DEPTH`] levels to the parking area. Saving ignores both.
+///
+/// `generator` names the build that wrote the opened file (its
+/// `"generator"` field, such as `"ReasonCraft 0.1.0"`), `None` for a file
+/// without one or a new package. Saving always writes this build's
+/// ([`crate::file::GENERATOR`]).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Package {
     pub doc: Document,
@@ -102,6 +107,7 @@ pub struct Package {
     pub other_entries: Vec<(String, Arc<[u8]>)>,
     pub cut_on_open: bool,
     pub parked_on_open: bool,
+    pub generator: Option<String>,
 }
 
 impl Package {
@@ -112,6 +118,7 @@ impl Package {
             other_entries: Vec::new(),
             cut_on_open: false,
             parked_on_open: false,
+            generator: None,
         }
     }
 }

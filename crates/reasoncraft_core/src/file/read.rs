@@ -8,8 +8,8 @@ use serde::Deserialize;
 use zip::result::ZipError;
 
 use super::{
-    DOCUMENT_ENTRY, FileError, IMAGES_DIR, MAX_ASSET_BYTES, MAX_DOCUMENT_BYTES, MAX_JSON_VALUES,
-    MAX_TOTAL_BYTES, sanitize, zip_to_io,
+    DOCUMENT_ENTRY, FileError, GENERATOR_FIELD, IMAGES_DIR, MAX_ASSET_BYTES, MAX_DOCUMENT_BYTES,
+    MAX_JSON_VALUES, MAX_TOTAL_BYTES, sanitize, zip_to_io,
 };
 use crate::essay::EssaySlot;
 use crate::ids::Item;
@@ -133,6 +133,13 @@ pub(super) fn open_package_with_limits(
     let mut doc: Document =
         serde_json::from_str(&text).map_err(|e| FileError::Malformed(e.to_string()))?;
     doc.validate().map_err(FileError::Malformed)?;
+    // Not part of the document: saving writes this build's.
+    let generator = match doc.extra.remove(GENERATOR_FIELD) {
+        Some(serde_json::Value::String(name)) => {
+            Some(crate::caps::capped(&name, crate::caps::MAX_META_CHARS).to_owned())
+        }
+        _ => None,
+    };
     let (boxes, cards) = (&doc.boxes, &doc.cards);
     doc.essay.salvage_orphans(|slot| match slot {
         EssaySlot::Item(Item::Box(b)) => boxes.contains_key(b),
@@ -186,5 +193,6 @@ pub(super) fn open_package_with_limits(
         other_entries,
         cut_on_open,
         parked_on_open,
+        generator,
     })
 }

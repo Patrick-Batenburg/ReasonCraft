@@ -4,16 +4,29 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use serde::Serialize;
 use zip::write::SimpleFileOptions;
 
 use super::atomic::atomic_write;
-use super::{DOCUMENT_ENTRY, FileError, IMAGES_DIR, zip_to_io};
+use super::{DOCUMENT_ENTRY, FileError, GENERATOR, IMAGES_DIR, zip_to_io};
 use crate::model::Document;
 use crate::package::Package;
 
+/// `document.json`: the document, led by the build that wrote it.
+#[derive(Serialize)]
+struct Saved<'a> {
+    generator: &'static str,
+    #[serde(flatten)]
+    doc: &'a Document,
+}
+
 fn write_archive(pkg: &Package, file: &mut File) -> Result<(), FileError> {
+    let saved = Saved {
+        generator: GENERATOR,
+        doc: &pkg.doc,
+    };
     let json =
-        serde_json::to_vec_pretty(&pkg.doc).map_err(|e| FileError::Malformed(e.to_string()))?;
+        serde_json::to_vec_pretty(&saved).map_err(|e| FileError::Malformed(e.to_string()))?;
     let mut zip = zip::ZipWriter::new(file);
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
     zip.start_file(DOCUMENT_ENTRY, options).map_err(zip_to_io)?;

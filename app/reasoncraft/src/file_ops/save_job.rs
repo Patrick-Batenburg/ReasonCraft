@@ -115,6 +115,7 @@ pub(super) fn snapshot(tab: &DocTab) -> Package {
         other_entries: tab.other_entries.clone(),
         cut_on_open: false,
         parked_on_open: false,
+        generator: None,
     }
 }
 

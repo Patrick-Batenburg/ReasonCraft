@@ -179,6 +179,7 @@ impl DocTab {
             other_entries,
             cut_on_open: _,
             parked_on_open: _,
+            generator: _,
         } = pkg;
         let selection = Some(Item::Box(doc.root));
         Self {

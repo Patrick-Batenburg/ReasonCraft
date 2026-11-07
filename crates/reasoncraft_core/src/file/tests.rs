@@ -206,6 +206,8 @@ fn package_roundtrip_keeps_ratings_comments_links() {
         other_entries: vec![("extra/x.bin".into(), vec![7; 10].into())],
         cut_on_open: false,
         parked_on_open: false,
+        // What a reopened file says.
+        generator: Some(GENERATOR.into()),
     };
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("m.rcraft");
@@ -276,6 +278,7 @@ fn image_entries_are_stored_uncompressed() {
     pkg.doc.boxes[&root].image = Some(crate::ImageRef::new(key.clone(), 1.0));
     pkg.other_entries
         .push(("extra.bin".into(), vec![0; 4096].into()));
+    pkg.generator = Some(GENERATOR.into());
     let dir = tempfile::tempdir().unwrap();
     let p = dir.path().join("x.rcraft");
     save_package(&pkg, &p).unwrap();
