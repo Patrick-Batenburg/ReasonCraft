@@ -55,7 +55,7 @@ pwsh packaging/windows/package.ps1 -Arch x64     # also x86 and arm64
 ```
 
 The script builds the exe with a static C runtime (`+crt-static`), checks it, signs it (see [Signing](#signing)), builds the licence page (`cargo xtask licence-rtf`) and the MSI (`wix build`), checks the MSI's install policy, signs the MSI and writes the portable zip (`reasoncraft.exe`, `README.md`, the licences and `THIRD-PARTY.md`).
-Before packaging, `pe-checks.ps1` refuses an exe whose PE machine is not the `-Arch` asked for, whose subsystem is not GUI, or that imports the C runtime (`vcruntime*`, `msvcp*`, `api-ms-win-crt-*`), so the zip needs no Visual C++ redistributable.
+Before packaging, `pe-checks.ps1` refuses an exe whose PE machine is not the `-Arch` asked for, whose subsystem is not GUI, or that imports the C runtime (`vcruntime*`, `msvcp*`, `api-ms-win-crt-*`), so the zip needs no Visual C++ redistributable, or whose `DependentLoadFlags` lack `0x800` (System32 only, set by `app/reasoncraft/build.rs`): with `SetDefaultDllDirectories` at the start of `main`, no DLL planted in the folder of an opened file or of the exe is ever loaded.
 `-SkipBuild` packages the exe already built.
 `packaging/windows/test-packaging-script.ps1` checks the script itself: the policy check comes before the MSI's single signing, the PE checks pass the release exe and refuse the debug exe, `sign.ps1` without secrets warns and exits 0 and with partly configured secrets warns or (on `release`) fails, versions beyond the MSI limits are refused, and a `0.2.0-rc.1` MSI has ProductVersion `0.2.0`.
 It needs the x64 release exe (run `package.ps1 -Arch x64` first) and a debug build (`cargo build -p reasoncraft`).

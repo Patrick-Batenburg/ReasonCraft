@@ -1,6 +1,7 @@
 //! Generates the index of the help pages: every `help/<lang>/<topic>.md`,
 //! embedded with `include_str!` (see `src/help/index.rs`). On Windows, also
-//! gives the exe its icon and version information.
+//! gives the exe its icon and version information, and loads the DLLs it
+//! imports from System32 only.
 
 use std::fmt::Write as _;
 use std::path::Path;
@@ -35,6 +36,18 @@ fn main() {
     let dest = Path::new(&env::var("OUT_DIR").expect("set by cargo")).join("help_index.rs");
     fs::write(dest, out).expect("OUT_DIR is writable");
     windows_resources();
+    dll_search();
+}
+
+/// The exe's imported DLLs come from System32 only, never from the current
+/// or the exe's folder (MSVC targets; `src/dll_search.rs` does the same for
+/// DLLs loaded at run time). 0x800 is `LOAD_LIBRARY_SEARCH_SYSTEM32`.
+fn dll_search() {
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
+        && env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc")
+    {
+        println!("cargo:rustc-link-arg-bins=/DEPENDENTLOADFLAG:0x800");
+    }
 }
 
 /// The exe's icon and the details Explorer shows (Windows targets only).

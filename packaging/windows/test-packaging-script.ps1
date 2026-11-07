@@ -7,8 +7,8 @@
   Check the real packaging script without installing anything.
 .DESCRIPTION
   1. package.ps1 runs one policy check on the MSI, before it signs that MSI once (read from its syntax tree).
-  2. Assert-ReleaseExe accepts the x64 release exe, refuses it labelled arm64 ("machine") and refuses
-     the debug exe, which imports the C runtime.
+  2. Assert-ReleaseExe accepts the x64 release exe, refuses it labelled arm64 ("machine"), refuses
+     the debug exe, which imports the C runtime, and a copy without DependentLoadFlags 0x800.
   3. sign.ps1 without signing secrets warns, leaves the file unsigned and exits 0, also on the
      release branch; a partly configured set warns, and fails with
      REASONCRAFT_REFUSE_PARTIAL_SIGNING=1; a certificate signs (with a stub signtool); each
@@ -73,6 +73,15 @@ Assert-ReleaseExe $release 'x64' | Out-Null
 Write-Output 'PASS the x64 release exe is an x64 GUI exe with a static C runtime.'
 Assert-Throws 'an x64 exe labelled arm64 is refused' 'machine' { Assert-ReleaseExe $release 'arm64' }
 Assert-Throws 'the debug exe, which needs the C runtime, is refused' 'C runtime' { Assert-ReleaseExe $debug 'x64' }
+# A copy of the release exe with DependentLoadFlags cleared stands for a build without build.rs's flag.
+$unflagged = Join-Path $TargetDir 'packaging-script-test-unflagged.exe'
+$layout = Get-PeLayout $release
+$config = ConvertTo-PeOffset $layout ([BitConverter]::ToUInt32($layout.Bytes, $layout.Directories + 80))
+$field = if ($layout.Magic -eq 0x10B) { 0x36 } else { 0x4E }
+$layout.Bytes[$config + $field] = 0; $layout.Bytes[$config + $field + 1] = 0
+[IO.File]::WriteAllBytes($unflagged, $layout.Bytes)
+Assert-Throws 'an exe that may load its DLLs from its own folder is refused' 'DependentLoadFlags' { Assert-ReleaseExe $unflagged 'x64' }
+Remove-Item -LiteralPath $unflagged
 $imports = @(Get-PeImports $release)
 if ('KERNEL32.dll' -notin $imports) { throw "Import walk found no KERNEL32.dll: $($imports -join ', ')" }
 

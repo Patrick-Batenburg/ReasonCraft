@@ -2950,6 +2950,7 @@ dependencies = [
  "tempfile",
  "unic-langid",
  "unicode-normalization",
+ "windows-sys 0.61.2",
  "winit",
  "winresource",
  "zip 9.1.0",

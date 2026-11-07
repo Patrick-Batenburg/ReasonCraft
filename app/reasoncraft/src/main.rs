@@ -11,6 +11,10 @@ use reasoncraft::{ReasonCraftApp, startup};
 const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
 fn main() -> ExitCode {
+    // Before anything can load a DLL: none from the current folder.
+    if !reasoncraft::dll_search::system32_only() {
+        eprintln!("warning: could not restrict the DLL search to System32");
+    }
     // Before any window or profile: packaging smoke tests run this.
     let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
     if reasoncraft::cli::wants_version(&args) {
@@ -74,6 +78,7 @@ fn native_options(
     eframe::NativeOptions {
         viewport,
         renderer,
+        wgpu_options: startup::wgpu_options(),
         event_loop_builder: event_loop_hook(),
         persistence_path: settings_file,
         ..Default::default()

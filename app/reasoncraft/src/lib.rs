@@ -10,6 +10,7 @@ pub mod app;
 pub mod canvas;
 pub mod cli;
 pub mod commands;
+pub mod dll_search;
 pub mod doc_tab;
 pub mod export;
 pub mod file_ops;
