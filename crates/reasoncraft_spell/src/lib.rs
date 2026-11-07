@@ -16,6 +16,11 @@ pub fn personal_word(word: &str) -> Option<&str> {
     (!word.is_empty() && !word.contains('/')).then_some(word)
 }
 
+/// The longest word that gets suggestions, in characters (Hunspell's
+/// MAXWORDLEN): finding them takes time superlinear in the length, and a
+/// worker cannot be stopped half way.
+pub const MAX_SUGGEST_CHARS: usize = 100;
+
 /// Supported dictionary languages.
 pub const LANGUAGES: [&str; 2] = ["en", "nl"];
 
@@ -71,8 +76,13 @@ impl Speller {
             .collect()
     }
 
+    /// Up to `max` corrections for `word`; none for a word longer than
+    /// [`MAX_SUGGEST_CHARS`].
     pub fn suggest(&self, word: &str, max: usize) -> Vec<String> {
         let mut out = Vec::new();
+        if word.chars().nth(MAX_SUGGEST_CHARS).is_some() {
+            return out;
+        }
         self.dict.suggest(&word.replace('’', "'"), &mut out);
         out.truncate(max);
         out
