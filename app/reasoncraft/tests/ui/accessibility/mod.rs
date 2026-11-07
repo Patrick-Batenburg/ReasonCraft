@@ -209,7 +209,7 @@ fn every_interactive_widget_has_a_name() {
     act(&mut h, Action::Select(Some(Item::Box(reason))));
     act(&mut h, Action::EditLink);
     all.extend(problems(&h, "link editor"));
-    act(&mut h, Action::DismissModal);
+    act(&mut h, Action::CloseLinkEdit);
     act(&mut h, Action::OpenComments(reason));
     all.extend(problems(&h, "comments"));
     act(&mut h, Action::CloseComments);
