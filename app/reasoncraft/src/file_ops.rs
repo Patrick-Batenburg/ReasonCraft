@@ -163,12 +163,47 @@ pub fn open_paths(app: &mut ReasonCraftApp, args: impl IntoIterator<Item = OsStr
     }
 }
 
-/// Whether `a` and `b` name the same file (compared as given when either
-/// cannot be resolved).
-pub(crate) fn same_file(a: &Path, b: &Path) -> bool {
-    match (a.canonicalize(), b.canonicalize()) {
-        (Ok(a), Ok(b)) => a == b,
-        _ => a == b,
+/// Whether `tab` shows the file `path`, whose resolved form is `resolved`
+/// (links and short names followed; `None` when it cannot be resolved,
+/// then only the path as given counts). The tab's own resolved path was
+/// kept when it opened or saved the file, so this does not touch the disk
+/// (but for a tab that never did, such as a restored one).
+pub(crate) fn shows_file(tab: &DocTab, path: &Path, resolved: Option<&Path>) -> bool {
+    let Some(own) = tab.path.as_deref() else {
+        return false;
+    };
+    if own == path {
+        return true;
+    }
+    let Some(resolved) = resolved else {
+        return false;
+    };
+    match &tab.resolved_path {
+        Some(own) => own == resolved,
+        None => own.canonicalize().is_ok_and(|own| own == resolved),
+    }
+}
+
+/// Tab `key` was just saved: any other tab showing the same file would
+/// show what is no longer in it (and Open would find that tab first). It
+/// closes when it has no unsaved work, else it becomes an untitled,
+/// unsaved copy, so its work stays and no save overwrites the file.
+pub(crate) fn release_other_tabs(app: &mut ReasonCraftApp, key: Uuid) {
+    let Some(saved) = tab_index(app, key) else {
+        return;
+    };
+    let Some(path) = app.tabs[saved].path.clone() else {
+        return;
+    };
+    let resolved = app.tabs[saved].resolved_path.clone();
+    while let Some(j) = (app.tabs.iter())
+        .position(|t| t.recovery_key != key && shows_file(t, &path, resolved.as_deref()))
+    {
+        if app.tabs[j].has_unsaved_work() {
+            as_unsaved_copy(&mut app.tabs[j]);
+        } else {
+            remove_tab(app, j);
+        }
     }
 }
 
@@ -201,10 +236,9 @@ fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
 }
 
 fn open_or_activate(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
-    let open_tab = app
-        .tabs
-        .iter()
-        .position(|tab| tab.path.as_deref().is_some_and(|p| same_file(p, path)));
+    // On this thread: the file is read here anyway.
+    let resolved = path.canonicalize().ok();
+    let open_tab = (app.tabs.iter()).position(|tab| shows_file(tab, path, resolved.as_deref()));
     if let Some(i) = open_tab {
         app.active = i;
         return Ok(());
@@ -219,6 +253,7 @@ fn open_or_activate(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileErr
         as_unsaved_copy(&mut tab);
     } else {
         tab.path = Some(path.to_path_buf());
+        tab.resolved_path = resolved;
         tab.disk_mtime = crate::recovery::file_mtime(path);
     }
     place_tab(app, tab);
@@ -245,6 +280,7 @@ pub(crate) fn open_note(pkg: &reasoncraft_core::Package) -> Option<String> {
 /// what was cut) without the user choosing it in the save dialog.
 pub(crate) fn as_unsaved_copy(tab: &mut DocTab) {
     tab.path = None;
+    tab.resolved_path = None;
     tab.disk_mtime = None;
     tab.history.saved_marker = None;
 }
@@ -255,9 +291,9 @@ pub(crate) fn as_unsaved_copy(tab: &mut DocTab) {
 /// Returns its index.
 pub(crate) fn place_tab(app: &mut ReasonCraftApp, mut tab: DocTab) -> usize {
     let same_file_tab = tab.path.as_deref().and_then(|path| {
-        app.tabs.iter().position(|t| {
-            !t.has_unsaved_work() && t.path.as_deref().is_some_and(|p| same_file(p, path))
-        })
+        let resolved = (tab.resolved_path.clone()).or_else(|| path.canonicalize().ok());
+        (app.tabs.iter())
+            .position(|t| !t.has_unsaved_work() && shows_file(t, path, resolved.as_deref()))
     });
     let untouched = Some(app.active).filter(|&i| app.tabs.get(i).is_some_and(is_untouched));
     match same_file_tab.or(untouched) {

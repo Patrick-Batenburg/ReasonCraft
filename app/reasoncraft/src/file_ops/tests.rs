@@ -405,6 +405,6 @@ fn command_line_paths_are_stored_absolute() {
     open_paths(&mut app, [relative.into_os_string()]);
     let stored = app.active_tab().path.clone().unwrap();
     assert!(stored.is_absolute(), "{stored:?}");
-    assert!(same_file(&stored, &file));
+    assert_eq!(stored.canonicalize().unwrap(), file.canonicalize().unwrap());
     assert!(app.settings.recent_files.iter().all(|p| p.is_absolute()));
 }

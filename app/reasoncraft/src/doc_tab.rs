@@ -133,6 +133,10 @@ pub struct DocTab {
     /// saved it (autosave records it, so a restore can tell whether the
     /// file changed since).
     pub disk_mtime: Option<std::time::SystemTime>,
+    /// [`Self::path`] with links and short names resolved, as found when
+    /// the tab opened or saved it, so a tab is found by its file without
+    /// touching the disk (a network share may hang); `None` when unknown.
+    pub resolved_path: Option<std::path::PathBuf>,
     /// Where this tab was restored from after a crash, until it is saved.
     pub recovered_from: Option<crate::recovery::RecoveryMeta>,
     /// Unique to this tab, so its text fields' widget state (cursor, undo
@@ -217,6 +221,7 @@ impl DocTab {
             recovery_key: Uuid::new_v4(),
             autosaved_revision: None,
             disk_mtime: None,
+            resolved_path: None,
             recovered_from: None,
             ui_key: NEXT_UI_KEY.fetch_add(1, Ordering::Relaxed),
         }
