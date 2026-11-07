@@ -56,12 +56,24 @@ fn write_archive(pkg: &Package, file: &mut File) -> Result<(), FileError> {
 /// renames it over `path`, so a failed save never damages an existing
 /// file (see [`atomic_write`]); a replaced file keeps its permissions.
 /// Assets the document does not refer to are not written.
+///
+/// A map with more text than opening keeps
+/// ([`crate::caps::MAX_DOCUMENT_CHARS`]) is refused with
+/// [`FileError::TooMuchText`] before anything is written: the file would
+/// open cut.
 pub fn save_package(pkg: &Package, path: &Path) -> Result<(), FileError> {
+    let chars = pkg.doc.total_text_chars();
+    let max = crate::caps::MAX_DOCUMENT_CHARS;
+    if chars > max {
+        return Err(FileError::TooMuchText { chars, max });
+    }
     atomic_write(path, false, |file| write_archive(pkg, file))
 }
 
 /// [`save_package`] for a private copy: on Unix only the user may read it
-/// (mode 0600). Used for recovery copies.
+/// (mode 0600). Used for recovery copies, which are written whatever the
+/// map's length: a cut copy is better than none (a restored copy that
+/// was cut opens untitled, with a note).
 pub fn save_package_private(pkg: &Package, path: &Path) -> Result<(), FileError> {
     atomic_write(path, true, |file| write_archive(pkg, file))
 }

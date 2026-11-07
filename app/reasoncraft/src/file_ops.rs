@@ -210,6 +210,24 @@ fn open_or_activate(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileErr
         return Ok(());
     }
     let pkg = file::open_package(path)?;
+    if let Some(note) = open_note(&pkg) {
+        app.status_note = Some(note);
+    }
+    let cut = pkg.cut_on_open;
+    let mut tab = DocTab::from_package(pkg);
+    if cut {
+        as_unsaved_copy(&mut tab);
+    } else {
+        tab.path = Some(path.to_path_buf());
+        tab.disk_mtime = crate::recovery::file_mtime(path);
+    }
+    place_tab(app, tab);
+    Ok(())
+}
+
+/// What the status bar says about an opened `pkg`: that something was
+/// cut or left out, that branches were parked; `None` when neither.
+pub(crate) fn open_note(pkg: &reasoncraft_core::Package) -> Option<String> {
     let mut notes = Vec::new();
     if pkg.cut_on_open {
         notes.push(crate::i18n::t("status.open_cut"));
@@ -219,14 +237,16 @@ fn open_or_activate(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileErr
         args.set("max", reasoncraft_core::MAX_DEPTH);
         notes.push(crate::i18n::t_args("status.open_too_deep", &args));
     }
-    if !notes.is_empty() {
-        app.status_note = Some(notes.join(" "));
-    }
-    let mut tab = DocTab::from_package(pkg);
-    tab.path = Some(path.to_path_buf());
-    tab.disk_mtime = crate::recovery::file_mtime(path);
-    place_tab(app, tab);
-    Ok(())
+    (!notes.is_empty()).then(|| notes.join(" "))
+}
+
+/// A document that lost part of its file on opening is an unsaved copy:
+/// untitled and dirty, so no save overwrites the file (which still holds
+/// what was cut) without the user choosing it in the save dialog.
+pub(crate) fn as_unsaved_copy(tab: &mut DocTab) {
+    tab.path = None;
+    tab.disk_mtime = None;
+    tab.history.saved_marker = None;
 }
 
 /// Show a loaded `tab` in place of a tab showing its file without unsaved

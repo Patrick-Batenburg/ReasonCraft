@@ -92,3 +92,42 @@ fn save_keeps_the_files_permissions_and_private_saves_are_private() {
     save_package_private(&crate::Package::new(Document::new("p")), &private).unwrap();
     assert_eq!(mode(&private), 0o600);
 }
+
+/// Opening keeps at most `MAX_DOCUMENT_CHARS` of text, while editing has no
+/// such limit: a map past it is not saved, so no file this app writes is
+/// cut when it is opened again (ruling RR-1). The case from the review:
+/// 161 snippets of 50,000 characters, written by editing.
+#[test]
+fn a_map_too_long_to_open_whole_is_not_saved() {
+    use crate::caps::MAX_DOCUMENT_CHARS;
+    use crate::essay::EssaySlot;
+    let mut d = Document::new("Claim");
+    let big = "word ".repeat(10_000);
+    for _ in 0..161 {
+        d.add_snippet(&big);
+    }
+    d.set_essay_text(EssaySlot::Intro, "My introduction, written by hand.")
+        .unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("map.rcraft");
+    match save(&d, &path) {
+        Err(FileError::TooMuchText { chars, max }) => {
+            assert_eq!((chars, max), (d.total_text_chars(), MAX_DOCUMENT_CHARS));
+            assert!(chars > max);
+        }
+        other => panic!("saved: {other:?}"),
+    }
+    assert!(names(dir.path()).is_empty(), "nothing written");
+
+    // At the limit exactly, the file is saved and opens whole.
+    d.snippets.truncate(159);
+    let intro =
+        MAX_DOCUMENT_CHARS - (d.total_text_chars() - "My introduction, written by hand.".len());
+    d.set_essay_text(EssaySlot::Intro, &"i".repeat(intro))
+        .unwrap();
+    assert_eq!(d.total_text_chars(), MAX_DOCUMENT_CHARS);
+    save(&d, &path).unwrap();
+    let back = open_package(&path).unwrap();
+    assert!(!back.cut_on_open);
+    assert_eq!(back.doc, d);
+}

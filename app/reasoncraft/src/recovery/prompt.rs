@@ -89,12 +89,20 @@ pub(crate) fn resolve(app: &mut ReasonCraftApp, choice: RecoveryChoice) {
 /// path (from an older build) is dropped: it named a folder that is not
 /// known any more, so the tab is untitled.
 fn restore(app: &mut ReasonCraftApp, doc: &RecoveredDoc) -> Result<(), FileError> {
-    let mut tab = DocTab::from_package(file::open_package(&doc.package)?);
+    let pkg = file::open_package(&doc.package)?;
+    if let Some(note) = file_ops::open_note(&pkg) {
+        app.status_note = Some(note);
+    }
+    let cut = pkg.cut_on_open;
+    let mut tab = DocTab::from_package(pkg);
     tab.path = doc.meta.original.clone().filter(|p| p.is_absolute());
     if tab.path.is_some() {
         tab.disk_mtime = doc.meta.original_mtime;
     }
     tab.history.saved_marker = None;
+    if cut {
+        file_ops::as_unsaved_copy(&mut tab);
+    }
     tab.recovered_from = Some(doc.meta.clone());
     let i = file_ops::place_tab(app, tab);
     if let Some(store) = &app.recovery {

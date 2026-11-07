@@ -113,8 +113,28 @@ impl Document {
         cut
     }
 
+    /// The characters of every text [`MAX_DOCUMENT_CHARS`] counts: box
+    /// texts with their comments, snippets with their citations, essay
+    /// paragraphs and unplaced notes. Saving refuses a map past the cap
+    /// (see [`crate::file::save_package`]), as opening would cut it.
+    pub fn total_text_chars(&self) -> usize {
+        let chars = |s: &String| s.chars().count();
+        let boxes = self
+            .boxes
+            .values()
+            .map(|b| chars(&b.text) + b.comments.iter().map(|c| chars(&c.text)).sum::<usize>());
+        let snippets = self
+            .snippets
+            .iter()
+            .map(|s| chars(&s.text) + s.source.as_ref().map_or(0, |src| chars(&src.citation)));
+        let essay = self.essay.paragraphs.values().map(chars);
+        let unplaced = self.essay.unplaced.iter().map(|u| chars(&u.text));
+        boxes.chain(snippets).chain(essay).chain(unplaced).sum()
+    }
+
     /// Cut the texts past [`MAX_DOCUMENT_CHARS`] all together, in
-    /// document order; true when anything was cut.
+    /// document order (as [`Self::total_text_chars`] counts them); true
+    /// when anything was cut.
     fn cap_total_text(&mut self) -> bool {
         let mut left = MAX_DOCUMENT_CHARS;
         let mut cut = false;

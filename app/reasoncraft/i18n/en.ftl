@@ -202,6 +202,7 @@ error-open-malformed = This ReasonCraft file is damaged and cannot be read. ({ $
 error-open-newer_version = This map was made with a newer version of ReasonCraft (file version { $found }; this version reads up to version { $supported }). Update ReasonCraft to open it.
 error-open-io = The file could not be read: { $detail }
 error-save-io = The file could not be written: { $detail }. Your changes are still open and unsaved.
+error-save-too_much_text = This map holds { $chars } characters of text, more than ReasonCraft opens from one file ({ $max }), so it was not saved: it would be cut the next time it is opened. Move part of it to another map or shorten some texts. Your changes are still open and unsaved.
 error-save-other = The map could not be saved: { $detail }. Your changes are still open and unsaved.
 
 ## Argdown import
@@ -677,7 +678,7 @@ status-saving = Saving…
 # programs get it; Paste with it brings the item back).
 clipboard-empty_item = (empty)
 status-text_cut = Text was cut to 50 000 characters.
-status-open_cut = Some of this file was too large or unsafe: long texts were shortened and the rest left out.
+status-open_cut = Some of this file was too large, damaged or unsafe: long texts were shortened and the rest left out. It is open as an unsaved copy, so the file itself stays as it was.
 status-open_too_deep = Parts of this map were nested more than { $max } levels deep; they are in the parking area.
 status-too_deep = That would nest the map more than { $max } levels deep.
 status-jobs-exports = { $count ->

@@ -61,6 +61,12 @@ pub enum FileError {
         "This file was made with a newer version of ReasonCraft (file version {found}, this version supports {supported})."
     )]
     NewerVersion { found: u32, supported: u32 },
+    /// Not saved: opening keeps at most `max` characters of text
+    /// ([`crate::caps::MAX_DOCUMENT_CHARS`]), and the map holds `chars`.
+    #[error(
+        "This map holds {chars} characters of text; a file may hold at most {max}, or it would be cut when opened."
+    )]
+    TooMuchText { chars: usize, max: usize },
 }
 
 fn zip_to_io(e: ZipError) -> FileError {

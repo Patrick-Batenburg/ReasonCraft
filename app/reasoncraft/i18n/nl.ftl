@@ -203,6 +203,7 @@ error-open-malformed = Dit ReasonCraft-bestand is beschadigd en kan niet worden 
 error-open-newer_version = Deze kaart is gemaakt met een nieuwere versie van ReasonCraft (bestandsversie { $found }; deze versie leest tot en met versie { $supported }). Werk ReasonCraft bij om hem te openen.
 error-open-io = Het bestand kon niet worden gelezen: { $detail }
 error-save-io = Het bestand kon niet worden geschreven: { $detail }. Je wijzigingen staan nog open en zijn niet opgeslagen.
+error-save-too_much_text = Deze kaart bevat { $chars } tekens tekst, meer dan ReasonCraft uit één bestand opent ({ $max }), dus hij is niet opgeslagen: bij de volgende keer openen zou hij worden ingekort. Zet een deel in een andere kaart of maak teksten korter. Je wijzigingen staan nog open en zijn niet opgeslagen.
 error-save-other = De kaart kon niet worden opgeslagen: { $detail }. Je wijzigingen staan nog open en zijn niet opgeslagen.
 
 ## Argdown import
@@ -676,7 +677,7 @@ status-preparing_image = Afbeelding voorbereiden…
 status-saving = Opslaan…
 clipboard-empty_item = (leeg)
 status-text_cut = Tekst is ingekort tot 50 000 tekens.
-status-open_cut = Een deel van dit bestand was te groot of onveilig: lange teksten zijn ingekort en de rest is weggelaten.
+status-open_cut = Een deel van dit bestand was te groot, beschadigd of onveilig: lange teksten zijn ingekort en de rest is weggelaten. Het is geopend als niet-opgeslagen kopie, dus het bestand zelf blijft zoals het was.
 status-open_too_deep = Delen van deze kaart zaten meer dan { $max } niveaus diep; ze staan nu bij Niet verbonden.
 status-too_deep = Dan zou de kaart meer dan { $max } niveaus diep worden.
 status-jobs-exports = { $count ->

@@ -16,6 +16,7 @@ pub fn error_key(op: FileOp, err: &FileError) -> &'static str {
         (FileOp::Open, FileError::MissingDocument) => "error.open.missing_document",
         (FileOp::Open, FileError::Malformed(_)) => "error.open.malformed",
         (FileOp::Open, FileError::NewerVersion { .. }) => "error.open.newer_version",
+        (_, FileError::TooMuchText { .. }) => "error.save.too_much_text",
         (FileOp::Save, FileError::Io(_)) => "error.save.io",
         (FileOp::Save, _) => "error.save.other",
     }
@@ -28,6 +29,10 @@ pub fn error_text(op: FileOp, err: &FileError) -> String {
         FileError::NewerVersion { found, supported } => {
             args.set("found", *found);
             args.set("supported", *supported);
+        }
+        FileError::TooMuchText { chars, max } => {
+            args.set("chars", *chars);
+            args.set("max", *max);
         }
         FileError::Io(e) => args.set("detail", e.to_string()),
         FileError::Malformed(detail) => args.set("detail", detail.clone()),

@@ -68,3 +68,24 @@ fn save_asks_when_the_file_changed_on_disk() {
     assert!(app.modal.is_none());
     assert_eq!(root_text(&path), "Mine again");
 }
+
+#[test]
+fn a_map_too_long_to_open_whole_stays_unsaved() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("long.rcraft");
+    let mut tab = DocTab::new();
+    tab.path = Some(path.clone());
+    let big = "word ".repeat(10_000);
+    tab.edit(|d| {
+        for _ in 0..161 {
+            d.add_snippet(&big);
+        }
+        Ok::<_, reasoncraft_core::EditError>(())
+    })
+    .unwrap();
+    let err = save_tab(&mut tab, &FakeDialogs::default(), false).unwrap_err();
+    assert!(matches!(err, FileError::TooMuchText { .. }), "{err:?}");
+    assert!(!path.exists());
+    assert!(tab.is_dirty());
+    assert_eq!(tab.path, Some(path));
+}

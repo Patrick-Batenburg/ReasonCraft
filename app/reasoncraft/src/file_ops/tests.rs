@@ -34,6 +34,16 @@ fn error_keys_per_variant() {
     assert_eq!(error_key(Open, &newer()), "error.open.newer_version");
     assert_eq!(error_key(Save, &io()), "error.save.io");
     assert_eq!(error_key(Save, &malformed()), "error.save.other");
+    let too_long = || FileError::TooMuchText {
+        chars: 8_000_001,
+        max: 8_000_000,
+    };
+    assert_eq!(error_key(Save, &too_long()), "error.save.too_much_text");
+    let text = error_text(Save, &too_long());
+    assert!(
+        text.contains("8000001") && text.contains("8000000"),
+        "{text}"
+    );
 
     let text = error_text(Open, &newer());
     assert!(text.contains('7') && text.contains('1'), "{text}");
@@ -45,6 +55,7 @@ fn error_keys_per_variant() {
         (Open, malformed()),
         (Save, io()),
         (Save, malformed()),
+        (Save, too_long()),
     ] {
         let text = error_text(op, &err);
         assert!(!text.starts_with("error."), "missing ftl entry: {text}");
@@ -368,12 +379,17 @@ fn opening_a_file_with_oversized_text_says_it_was_cut() {
         reasoncraft_core::MAX_BOX_CHARS
     );
     assert_eq!(app.status_note, Some(crate::i18n::t("status.open_cut")));
+    // An unsaved copy: a save never overwrites the file unasked.
+    assert_eq!(tab.path, None);
+    assert!(tab.is_dirty());
 
     let normal = dir.path().join("normal.rcraft");
     file::save(&reasoncraft_core::Document::new("n"), &normal).unwrap();
     let mut app = ReasonCraftApp::new_for_test();
     open_into_app(&mut app, &normal);
     assert_eq!(app.status_note, None);
+    assert_eq!(app.active_tab().path.as_deref(), Some(normal.as_path()));
+    assert!(!app.active_tab().is_dirty());
 }
 
 #[test]
