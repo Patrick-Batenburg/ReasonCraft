@@ -67,7 +67,10 @@ fn plist_declares_rcraft() {
         .find(|n| n.has_tag_name("dict"))
         .expect("a top-level <dict>");
 
-    assert_eq!(string(root, "CFBundleIdentifier"), "nl.reasoncraft.app");
+    assert_eq!(
+        string(root, "CFBundleIdentifier"),
+        "io.github.Patrick-Batenburg.ReasonCraft"
+    );
     assert_eq!(string(root, "CFBundleExecutable"), "ReasonCraft");
     assert_eq!(string(root, "CFBundleIconFile"), "ReasonCraft");
     assert_eq!(string(root, "CFBundleShortVersionString"), "0.2.0");
@@ -81,7 +84,10 @@ fn plist_declares_rcraft() {
     );
 
     let uti = only_dict(value(root, "UTExportedTypeDeclarations"));
-    assert_eq!(string(uti, "UTTypeIdentifier"), "nl.reasoncraft.map");
+    assert_eq!(
+        string(uti, "UTTypeIdentifier"),
+        "io.github.Patrick-Batenburg.ReasonCraft.map"
+    );
     assert_eq!(
         strings(value(uti, "UTTypeConformsTo")),
         ["public.data", "public.zip-archive"]
@@ -102,7 +108,7 @@ fn plist_declares_rcraft() {
     assert_eq!(string(doc_type, "LSHandlerRank"), "Owner");
     assert_eq!(
         strings(value(doc_type, "LSItemContentTypes")),
-        ["nl.reasoncraft.map"]
+        ["io.github.Patrick-Batenburg.ReasonCraft.map"]
     );
 
     // The bundle claims no older macOS than the binary is built for.

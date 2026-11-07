@@ -6,7 +6,7 @@
     <comment xml:lang="nl">ReasonCraft-kaart</comment>
     <!-- The app's icon (installed in hicolor under apps/); without it a file manager falls back
          to the parent type's, a zip archive. -->
-    <icon name="nl.reasoncraft.app"/>
+    <icon name="io.github.Patrick_Batenburg.ReasonCraft"/>
     <sub-class-of type="application/zip"/>
     <glob pattern="*.rcraft"/>
   </mime-type>

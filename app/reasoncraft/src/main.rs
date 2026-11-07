@@ -55,7 +55,7 @@ fn native_options(
 ) -> eframe::NativeOptions {
     let mut viewport = egui::ViewportBuilder::default()
         .with_title(reasoncraft::i18n::t("app.name"))
-        .with_app_id("nl.reasoncraft.app")
+        .with_app_id("io.github.Patrick_Batenburg.ReasonCraft")
         .with_inner_size([1280.0, 800.0])
         .with_min_inner_size(reasoncraft::app::MIN_WINDOW);
     viewport = if cfg!(target_os = "macos") {

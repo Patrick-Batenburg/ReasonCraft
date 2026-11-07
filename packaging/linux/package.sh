@@ -24,7 +24,7 @@ set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 HERE="$ROOT/packaging/linux"
 ASSETS="$ROOT/app/reasoncraft/assets"
-APP_ID=nl.reasoncraft.app
+APP_ID=io.github.Patrick_Batenburg.ReasonCraft
 
 SKIP_BUILD=0
 FORMATS="appimage deb rpm tar"

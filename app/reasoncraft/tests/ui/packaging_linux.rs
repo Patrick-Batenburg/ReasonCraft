@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-const APP_ID: &str = "nl.reasoncraft.app";
+const APP_ID: &str = "io.github.Patrick_Batenburg.ReasonCraft";
 
 fn linux_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packaging/linux")
