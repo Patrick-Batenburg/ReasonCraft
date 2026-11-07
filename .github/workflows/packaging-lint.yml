@@ -71,10 +71,10 @@ jobs:
       # that, and the override lowers it to a note.
       - name: Desktop entry and AppStream metadata
         run: |
-          desktop-file-validate packaging/linux/nl.reasoncraft.app.desktop
-          metainfo="$RUNNER_TEMP/nl.reasoncraft.app.metainfo.xml"
+          desktop-file-validate packaging/linux/io.github.Patrick_Batenburg.ReasonCraft.desktop
+          metainfo="$RUNNER_TEMP/io.github.Patrick_Batenburg.ReasonCraft.metainfo.xml"
           sed -e 's/@VERSION@/0.0.0/g' -e "s/@DATE@/$(date -u +%Y-%m-%d)/g" \
-            packaging/linux/nl.reasoncraft.app.metainfo.xml.in > "$metainfo"
+            packaging/linux/io.github.Patrick_Batenburg.ReasonCraft.metainfo.xml.in > "$metainfo"
           appstreamcli validate --no-net --explain --override=url-homepage-missing=info "$metainfo"
 
       # A pre-release sorts before its release in dpkg and rpm: placeholder

@@ -16,12 +16,12 @@
 # per user from Flathub. flatpak-builder needs unprivileged user namespaces (not available in a
 # Docker Desktop container). Unless --no-test, the bundle is then installed per user and
 # `reasoncraft --version` is run inside the sandbox as a smoke test.
-# Manifest: packaging/linux/flatpak/nl.reasoncraft.app.bundle.yml.
+# Manifest: packaging/linux/flatpak/io.github.Patrick_Batenburg.ReasonCraft.bundle.yml.
 set -euo pipefail
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 HERE="$ROOT/packaging/linux"
-APP_ID=nl.reasoncraft.app
+APP_ID=io.github.Patrick_Batenburg.ReasonCraft
 FLATHUB=https://dl.flathub.org/repo/flathub.flatpakrepo
 
 TEST=1

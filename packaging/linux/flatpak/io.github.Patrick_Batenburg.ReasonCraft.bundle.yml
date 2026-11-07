@@ -13,7 +13,7 @@
 # file. The binary needs glibc >= 2.35 and loads X11, Wayland, xkbcommon, EGL and GL at run time;
 # the freedesktop runtime has all of them, and the GPU driver comes from its
 # org.freedesktop.Platform.GL extension.
-id: nl.reasoncraft.app
+id: io.github.Patrick_Batenburg.ReasonCraft
 runtime: org.freedesktop.Platform
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
@@ -37,10 +37,10 @@ modules:
     buildsystem: simple
     build-commands:
       - install -Dm755 bin/reasoncraft /app/bin/reasoncraft
-      - install -Dm644 share/applications/nl.reasoncraft.app.desktop /app/share/applications/nl.reasoncraft.app.desktop
-      - install -Dm644 share/mime/packages/nl.reasoncraft.app.xml /app/share/mime/packages/nl.reasoncraft.app.xml
+      - install -Dm644 share/applications/io.github.Patrick_Batenburg.ReasonCraft.desktop /app/share/applications/io.github.Patrick_Batenburg.ReasonCraft.desktop
+      - install -Dm644 share/mime/packages/io.github.Patrick_Batenburg.ReasonCraft.xml /app/share/mime/packages/io.github.Patrick_Batenburg.ReasonCraft.xml
       # Already has the release's version and date substituted by package.sh.
-      - install -Dm644 share/metainfo/nl.reasoncraft.app.metainfo.xml /app/share/metainfo/nl.reasoncraft.app.metainfo.xml
+      - install -Dm644 share/metainfo/io.github.Patrick_Batenburg.ReasonCraft.metainfo.xml /app/share/metainfo/io.github.Patrick_Batenburg.ReasonCraft.metainfo.xml
       - mkdir -p /app/share/icons /app/share/doc && cp -R share/icons/hicolor /app/share/icons/ && cp -R share/doc/reasoncraft /app/share/doc/
     sources:
       - type: dir

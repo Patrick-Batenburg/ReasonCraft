@@ -120,7 +120,7 @@ packaging/macos/package.sh --arch universal
 packaging/macos/verify.sh --arch universal
 ```
 
-`package.sh` builds `aarch64-apple-darwin` and `x86_64-apple-darwin` (macOS 11 or later), joins them with `lipo` into `ReasonCraft.app` (bundle ID `nl.reasoncraft.app`, with the `.rcraft` document type), signs it inside-out with the hardened runtime, and puts it on a plain DMG with a link to Applications.
+`package.sh` builds `aarch64-apple-darwin` and `x86_64-apple-darwin` (macOS 11 or later), joins them with `lipo` into `ReasonCraft.app` (bundle ID `io.github.Patrick-Batenburg.ReasonCraft`, with the `.rcraft` document type), signs it inside-out with the hardened runtime, and puts it on a plain DMG with a link to Applications.
 Without a signing identity it signs ad hoc, which runs only on the Mac that built it.
 With a Developer ID identity and all three Apple credentials it also notarizes the DMG and staples the ticket; with the identity alone it signs and warns that it did not notarize.
 `verify.sh` checks the DMG as users download it: strictly when the identity and the notarization credentials are all set, and otherwise only the signature's integrity, with warnings.
@@ -138,7 +138,7 @@ packaging/linux/package.sh [--skip-build] [--formats "appimage deb rpm tar"]
 
 The script builds for the host's architecture (x86_64 or aarch64), stages one FHS tree and makes every format from it:
 - the binary, stripped, as `/usr/bin/reasoncraft`;
-- the desktop entry `nl.reasoncraft.app.desktop` (`Exec=reasoncraft %F`, `MimeType=application/x-reasoncraft;`), the shared-mime-info file that makes `*.rcraft` files `application/x-reasoncraft`, the AppStream metainfo, and the icons in `hicolor`;
+- the desktop entry `io.github.Patrick_Batenburg.ReasonCraft.desktop` (`Exec=reasoncraft %F`, `MimeType=application/x-reasoncraft;`), the shared-mime-info file that makes `*.rcraft` files `application/x-reasoncraft`, the AppStream metainfo, and the icons in `hicolor`;
 - the readme, the licences and `THIRD-PARTY.md` in `/usr/share/doc/reasoncraft/`.
 
 `desktop-file-validate` and `appstreamcli validate` check the staged files when they are installed.

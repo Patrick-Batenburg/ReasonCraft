@@ -23,7 +23,7 @@
   <key>CFBundleExecutable</key>
   <string>ReasonCraft</string>
   <key>CFBundleIdentifier</key>
-  <string>nl.reasoncraft.app</string>
+  <string>io.github.Patrick-Batenburg.ReasonCraft</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundlePackageType</key>
@@ -58,7 +58,7 @@
   <array>
     <dict>
       <key>UTTypeIdentifier</key>
-      <string>nl.reasoncraft.map</string>
+      <string>io.github.Patrick-Batenburg.ReasonCraft.map</string>
       <key>UTTypeDescription</key>
       <string>ReasonCraft map</string>
       <key>UTTypeIconFile</key>
@@ -96,7 +96,7 @@
       <string>ReasonCraft</string>
       <key>LSItemContentTypes</key>
       <array>
-        <string>nl.reasoncraft.map</string>
+        <string>io.github.Patrick-Batenburg.ReasonCraft.map</string>
       </array>
     </dict>
   </array>
