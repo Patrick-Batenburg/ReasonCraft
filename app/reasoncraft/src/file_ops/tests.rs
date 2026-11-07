@@ -134,8 +134,9 @@ fn open_reuses_untouched_tab_else_adds() {
     assert!(matches!(app.modal, Some(Modal::Error { .. })));
 }
 
+/// UX-8: a missing file (or a folder) on the command line says so.
 #[test]
-fn command_line_skips_non_files_and_reports_bad_ones() {
+fn command_line_reports_missing_files_and_bad_ones() {
     let dir = tempfile::tempdir().unwrap();
     let good = dir.path().join("good.rcraft");
     let bad = dir.path().join("bad.rcraft");
@@ -144,7 +145,21 @@ fn command_line_skips_non_files_and_reports_bad_ones() {
 
     let mut app = ReasonCraftApp::new_for_test();
     open_paths(&mut app, [dir.path().join("nope.rcraft").into_os_string()]);
-    assert!(app.modal.is_none(), "missing files are skipped");
+    match app.modal.take() {
+        Some(Modal::Error { title, message }) => {
+            assert!(title.contains("nope.rcraft"), "{title}");
+            assert_eq!(message, crate::i18n::t("error.open.not_found"));
+        }
+        other => panic!("a missing file is not reported: {other:?}"),
+    }
+    open_paths(&mut app, [dir.path().as_os_str().to_owned()]);
+    match app.modal.take() {
+        Some(Modal::Error { message, .. }) => {
+            assert_eq!(message, crate::i18n::t("error.open.not_a_file"));
+        }
+        other => panic!("a folder is not reported: {other:?}"),
+    }
+    assert_eq!(app.tabs.len(), 1);
     open_paths(&mut app, [bad.into_os_string(), good.into_os_string()]);
     assert_eq!(app.tabs.len(), 1);
     assert_eq!(app.tabs[0].doc.boxes[&app.tabs[0].doc.root].text, "G");

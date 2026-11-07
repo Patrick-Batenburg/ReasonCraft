@@ -147,20 +147,34 @@ pub fn open_recent(app: &mut ReasonCraftApp, path: &Path) {
     }
 }
 
-/// Open the files named on the command line. Arguments that are not
-/// existing files are skipped; the first file that fails to open is shown.
+/// Open the files named on the command line; the first one that fails to
+/// open (also one that does not exist, or a folder) is shown.
 pub fn open_paths(app: &mut ReasonCraftApp, args: impl IntoIterator<Item = OsString>) {
-    let mut first_error = None;
-    for path in args.into_iter().map(PathBuf::from).filter(|p| p.is_file()) {
-        if let Err(err) = try_open(app, &path) {
-            first_error.get_or_insert((path, err));
-        }
-    }
-    if let Some((path, err)) = first_error {
+    if let Some((path, err)) = open_all(app, args.into_iter().map(PathBuf::from)) {
         // The recovery prompt of this start shows once the error is closed.
         crate::recovery::defer_offer(app);
         show_error(app, FileOp::Open, &path, &err);
     }
+}
+
+/// Open each of `paths`, an open one by activating its tab; returns the
+/// first that failed, and why.
+pub(crate) fn open_all(
+    app: &mut ReasonCraftApp,
+    paths: impl IntoIterator<Item = PathBuf>,
+) -> Option<(PathBuf, FileError)> {
+    let mut first_error = None;
+    for path in paths {
+        let opened = if path.is_dir() {
+            Err(FileError::NotAReasonCraftFile)
+        } else {
+            try_open(app, &path)
+        };
+        if let Err(err) = opened {
+            first_error.get_or_insert((path, err));
+        }
+    }
+    first_error
 }
 
 /// Whether `tab` shows the file `path`, whose resolved form is `resolved`
