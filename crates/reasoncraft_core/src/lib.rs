@@ -37,7 +37,9 @@ pub use argdown::{
 };
 pub use connector::ConnectorStyle;
 pub use edit::{EditError, Fragment, MAX_DEPTH, NewLoose, RemoveMode};
-pub use essay::{EssayPlan, EssaySlot, essay_markdown, essay_order, essay_plain_text};
+pub use essay::{
+    EssayPlan, EssaySlot, UnplacedNote, essay_markdown, essay_order, essay_plain_text,
+};
 pub use evaluate::ClearScope;
 pub use find::{FindHit, FindOptions, find_all};
 pub use history::History;

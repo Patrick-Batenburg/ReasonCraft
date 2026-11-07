@@ -176,7 +176,7 @@ fn e2e_essay_exports_save_reopen() {
     assert!(!doc.boxes.contains_key(&weak));
     assert_eq!(
         doc.essay.unplaced,
-        [(
+        [reasoncraft_core::UnplacedNote::new(
             "Fewer accidents on the way".to_owned(),
             "Rested drivers crash less.".to_owned()
         )]

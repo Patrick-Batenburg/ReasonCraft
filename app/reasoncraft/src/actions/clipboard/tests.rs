@@ -105,15 +105,7 @@ fn paste_into_another_tab_brings_the_images() {
     let (mut a, _, a1) = app();
     let key = a.tabs[0].assets.insert("png", vec![1, 2, 3]);
     a.tabs[0]
-        .edit(|d| {
-            d.set_image(
-                a1,
-                Some(ImageRef {
-                    asset: key.clone(),
-                    aspect: 1.0,
-                }),
-            )
-        })
+        .edit(|d| d.set_image(a1, Some(ImageRef::new(key.clone(), 1.0))))
         .unwrap();
     select(&mut a, Item::Box(a1));
     apply(&mut a, Action::Copy);

@@ -9,6 +9,8 @@ mod write;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_compat;
+#[cfg(test)]
 mod tests_hostile;
 #[cfg(test)]
 mod tests_save;

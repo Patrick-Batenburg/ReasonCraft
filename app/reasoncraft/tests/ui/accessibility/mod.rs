@@ -118,11 +118,18 @@ fn sample() -> (Document, NodeId) {
         .unwrap();
     d.add_card(root, CardKind::Objection, "They scratch")
         .unwrap();
-    d.essay
-        .unplaced
-        .push((String::new(), "An old paragraph".into()));
-    d.essay.unplaced.push(("Gone".into(), "Another one".into()));
-    d.essay.unplaced.push(("Gone".into(), "A third one".into()));
+    d.essay.unplaced.push(reasoncraft_core::UnplacedNote::new(
+        String::new(),
+        "An old paragraph".into(),
+    ));
+    d.essay.unplaced.push(reasoncraft_core::UnplacedNote::new(
+        "Gone".into(),
+        "Another one".into(),
+    ));
+    d.essay.unplaced.push(reasoncraft_core::UnplacedNote::new(
+        "Gone".into(),
+        "A third one".into(),
+    ));
     d.add_snippet("A quote from a book");
     (d, reason)
 }
@@ -242,9 +249,10 @@ fn every_interactive_widget_has_a_name() {
 #[test]
 fn unplaced_note_without_label_is_named() {
     let mut doc = Document::new("Claim");
-    doc.essay
-        .unplaced
-        .push(("  ".to_owned(), "Old text".to_owned()));
+    doc.essay.unplaced.push(reasoncraft_core::UnplacedNote::new(
+        "  ".to_owned(),
+        "Old text".to_owned(),
+    ));
     let mut app = app_with_doc(doc);
     app.settings.text_tab = TextTab::Essay;
     let mut h = harness(app);

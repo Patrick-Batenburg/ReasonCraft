@@ -354,7 +354,7 @@ fn unplaced(ui: &mut Ui, cx: &Ctx, i: usize, label: &str, text: &str, out: &mut 
         .essay
         .unplaced
         .iter()
-        .filter(|(l, _)| l == label)
+        .filter(|u| u.label == label)
         .count()
         > 1;
     let label = if label.trim().is_empty() {

@@ -188,7 +188,7 @@ fn empty_item_text_gives_ellipsis_label() {
     d.set_essay_text(EssaySlot::Item(Item::Box(p)), "para P")
         .unwrap();
     d.remove_item(Item::Card(card), RemoveMode::Branch).unwrap();
-    assert!(d.essay.unplaced.iter().all(|(l, _)| l == "\u{2026}"));
+    assert!(d.essay.unplaced.iter().all(|u| u.label == "\u{2026}"));
     assert_eq!(d.essay.unplaced.len(), 2);
 }
 
@@ -213,7 +213,12 @@ fn deleting_branch_moves_its_paragraph_to_unplaced() {
     d.set_essay_text(EssaySlot::Intro, "intro").unwrap();
     d.remove_item(Item::Card(card), RemoveMode::Branch).unwrap();
     assert_eq!(d.essay.paragraphs.len(), 1, "only the intro stays");
-    let mut got = d.essay.unplaced.clone();
+    let mut got: Vec<(String, String)> = d
+        .essay
+        .unplaced
+        .iter()
+        .map(|u| (u.label.clone(), u.text.clone()))
+        .collect();
     got.sort();
     let o_label: String = "long ".repeat(30).chars().take(60).collect();
     assert_eq!(o_label.chars().count(), 60);
@@ -247,7 +252,10 @@ fn keep_children_and_moves_salvage_only_removed_items() {
         .unwrap();
     d.remove_item(Item::Card(card), RemoveMode::KeepChildren)
         .unwrap();
-    assert_eq!(d.essay.unplaced, [("P".to_owned(), "para P".to_owned())]);
+    assert_eq!(
+        d.essay.unplaced,
+        [UnplacedNote::new("P".into(), "para P".into())]
+    );
     assert!(
         d.essay
             .paragraphs
@@ -267,7 +275,10 @@ fn keep_children_and_moves_salvage_only_removed_items() {
         .unwrap();
     d.move_item(Item::Box(pa), Parent::Card(b), None).unwrap();
     assert!(!d.cards.contains_key(&a));
-    assert_eq!(d.essay.unplaced[1], ("A".to_owned(), "para A".to_owned()));
+    assert_eq!(
+        d.essay.unplaced[1],
+        UnplacedNote::new("A".into(), "para A".into())
+    );
     assert_eq!(
         d.essay.paragraphs[&EssaySlot::Item(Item::Box(pa)).key()],
         "para pa"
@@ -362,7 +373,9 @@ fn essay_roundtrip_and_old_files() {
     let old: Document = serde_json::from_str(&json).unwrap();
     assert!(old.essay.is_empty());
 
-    d.essay.unplaced.push(("label".into(), "text".into()));
+    d.essay
+        .unplaced
+        .push(UnplacedNote::new("label".into(), "text".into()));
     d.essay
         .extra
         .insert("future".into(), serde_json::json!({"x": 1}));
@@ -383,9 +396,11 @@ fn oversized_texts_from_files_are_capped() {
     let mut d = Document::new("C");
     let long: String = "é日a".chars().cycle().take(60_000).collect();
     d.essay.paragraphs.insert("intro".into(), long.clone());
-    d.essay.unplaced.push(("é".repeat(80), long));
+    d.essay
+        .unplaced
+        .push(UnplacedNote::new("é".repeat(80), long));
     d.cap_essay_texts();
-    assert_eq!(d.essay.unplaced[0].0, "é".repeat(LABEL_CHARS));
+    assert_eq!(d.essay.unplaced[0].label, "é".repeat(LABEL_CHARS));
     assert_eq!(d.essay.paragraphs["intro"].chars().count(), MAX_ESSAY_CHARS);
-    assert_eq!(d.essay.unplaced[0].1.chars().count(), MAX_ESSAY_CHARS);
+    assert_eq!(d.essay.unplaced[0].text.chars().count(), MAX_ESSAY_CHARS);
 }

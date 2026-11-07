@@ -28,6 +28,7 @@ fn oversized() -> Document {
         text: "日".repeat(MAX_COMMENT_CHARS + 1),
         verdict: None,
         created: "2".repeat(MAX_META_CHARS + 1),
+        extra: Default::default(),
     });
     let other = crate::SourceType::Other("o".repeat(MAX_META_CHARS + 1));
     d.add_box(
@@ -121,6 +122,17 @@ fn oversized_unknown_fields_are_dropped() {
     let pkg = open_doc(&d, &[]);
     assert!(pkg.cut_on_open);
     assert!(pkg.doc.boxes[&p].extra.is_empty() && pkg.doc.cards[&card].extra.is_empty());
+
+    // And fields kept in nested objects: the meta and a comment.
+    let mut d = Document::new("c");
+    let root = d.root;
+    d.add_comment(root, "a", "t", None).unwrap();
+    let half = serde_json::Value::from("x".repeat(MAX_EXTRA_BYTES / 2));
+    d.meta.extra.insert("a".into(), half.clone());
+    d.boxes[&root].comments[0].extra.insert("b".into(), half);
+    let pkg = open_doc(&d, &[]);
+    assert!(pkg.cut_on_open);
+    assert!(pkg.doc.meta.extra.is_empty() && pkg.doc.boxes[&root].comments[0].extra.is_empty());
 }
 
 #[test]

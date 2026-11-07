@@ -116,7 +116,7 @@ fn place(app: &mut ReasonCraftApp, i: usize, node: NodeId, image: PreparedImage)
     // Only ever "png": the bytes were re-encoded as PNG.
     let asset = tab.assets.insert("png", image.png);
     let aspect = image.aspect;
-    tab.edit(|d| d.set_image(node, Some(ImageRef { asset, aspect })));
+    tab.edit(|d| d.set_image(node, Some(ImageRef::new(asset, aspect))));
 }
 
 /// An error message for `failure`, or a status note when another message

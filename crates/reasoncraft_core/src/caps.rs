@@ -134,8 +134,8 @@ impl Document {
         for text in plan.paragraphs.values_mut() {
             cut |= take_chars(text, &mut left);
         }
-        for (_, text) in &mut plan.unplaced {
-            cut |= take_chars(text, &mut left);
+        for note in &mut plan.unplaced {
+            cut |= take_chars(&mut note.text, &mut left);
         }
         cut
     }

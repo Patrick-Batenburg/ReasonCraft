@@ -202,6 +202,7 @@ mod tests {
             text: "T".into(),
             verdict,
             created: String::new(),
+            extra: Default::default(),
         }
     }
 

@@ -66,11 +66,13 @@ fn dangling_hint_is_harmless() {
         kind: "compound".into(),
         item: issue.item,
         terms: vec!["or".into()],
+        extra: Default::default(),
     });
     d.ignored_hints.push(IgnoredHint {
         kind: "future_kind".into(),
         item: Item::Box(d.root),
         terms: Vec::new(),
+        extra: Default::default(),
     });
     d.validate().unwrap();
     assert!(run_checks(&d, &CheckSet::default()).is_empty());

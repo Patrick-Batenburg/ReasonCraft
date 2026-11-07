@@ -166,12 +166,7 @@ fn svg_embeds_images() {
         .add_card(Parent::Box(root), CardKind::Reason, "Lost its picture")
         .unwrap()
         .1;
-    let image = |asset: &str| {
-        Some(ImageRef {
-            asset: asset.into(),
-            aspect: 0.5,
-        })
-    };
+    let image = |asset: &str| Some(ImageRef::new(asset.into(), 0.5));
     doc.set_image(p, image(&key)).unwrap();
     doc.set_image(q, image("gone.png")).unwrap();
     let svg = svg_of(&doc, &assets, &live());
@@ -204,10 +199,7 @@ fn svg_refuses_images_the_screen_refuses() {
     let mut assets = Assets::default();
     let key = assets.insert("png", bytes);
     let root = doc.root;
-    let image = Some(ImageRef {
-        asset: key,
-        aspect: 0.5,
-    });
+    let image = Some(ImageRef::new(key, 0.5));
     doc.set_image(root, image).unwrap();
     let svg = svg_of(&doc, &assets, &live());
     assert!(!svg.contains("<image"), "{svg}");
@@ -327,14 +319,8 @@ pub(super) fn preview_doc(assets: &mut Assets) -> Document {
         )
         .unwrap();
     let key = assets.insert("png", png(9, 6));
-    doc.set_image(
-        p,
-        Some(ImageRef {
-            asset: key,
-            aspect: 6.0 / 9.0,
-        }),
-    )
-    .unwrap();
+    doc.set_image(p, Some(ImageRef::new(key, 6.0 / 9.0)))
+        .unwrap();
     let (_, o) = doc
         .add_card(
             root,

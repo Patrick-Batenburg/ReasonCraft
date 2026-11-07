@@ -109,6 +109,7 @@ impl Document {
             text: capped(text, MAX_COMMENT_CHARS).to_owned(),
             verdict,
             created: now_rfc3339(),
+            extra: Default::default(),
         };
         let cid = comment.id;
         node.comments.push(comment);
@@ -321,12 +322,7 @@ mod tests {
     fn images_not_on_notes() {
         let mut d = Document::new("C");
         let note = d.add_box(Parent::Box(d.root), BoxKind::Note, "n").unwrap();
-        let img = || {
-            Some(ImageRef {
-                asset: "k".into(),
-                aspect: 0.75,
-            })
-        };
+        let img = || Some(ImageRef::new("k".into(), 0.75));
         assert_eq!(d.set_image(note, img()), Err(EditError::NotAllowed));
         let root = d.root;
         d.set_image(root, img()).unwrap();

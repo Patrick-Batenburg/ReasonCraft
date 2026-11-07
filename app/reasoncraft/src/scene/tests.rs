@@ -86,6 +86,7 @@ fn scene_has_no_overlays_for_export() {
         text: "Nice".into(),
         verdict: Some(Verdict::Positive),
         created: String::new(),
+        extra: Default::default(),
     });
     doc.add_loose(NewLoose::Note, "Parked");
     let layout = lay_out(&doc);

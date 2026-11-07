@@ -85,13 +85,13 @@ impl<'de> Deserialize<'de> for EssaySlot {
 }
 
 /// The written essay: paragraphs by slot key, and notes whose item was
-/// removed, as `(label, text)` with the label taken from the item's text.
+/// removed.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct EssayPlan {
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
     pub paragraphs: IndexMap<String, String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub unplaced: Vec<(String, String)>,
+    pub unplaced: Vec<UnplacedNote>,
     /// Unknown fields, kept so files roundtrip.
     #[serde(flatten)]
     pub extra: Map<String, Value>,
@@ -124,8 +124,54 @@ impl EssayPlan {
             .into_iter()
             .partition::<IndexMap<_, _>, _>(|(k, _)| orphan(k));
         self.paragraphs = kept;
-        self.unplaced
-            .extend(gone.into_values().map(|text| (String::new(), text)));
+        self.unplaced.extend(
+            gone.into_values()
+                .map(|text| UnplacedNote::new(String::new(), text)),
+        );
+    }
+}
+
+/// A paragraph whose box or card was removed, labelled with the item's
+/// text. Written as `{"label": …, "text": …}`; files from before 0.1.0
+/// hold `[label, text]`, which still reads.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct UnplacedNote {
+    pub label: String,
+    pub text: String,
+    /// Unknown fields, kept so files roundtrip.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+impl UnplacedNote {
+    pub fn new(label: String, text: String) -> Self {
+        Self {
+            label,
+            text,
+            extra: Map::new(),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for UnplacedNote {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct Fields {
+            label: String,
+            text: String,
+            #[serde(flatten)]
+            extra: Map<String, Value>,
+        }
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Form {
+            Note(Fields),
+            Pair(String, String),
+        }
+        Ok(match Form::deserialize(d)? {
+            Form::Note(Fields { label, text, extra }) => Self { label, text, extra },
+            Form::Pair(label, text) => Self::new(label, text),
+        })
     }
 }
 
@@ -204,7 +250,7 @@ impl Document {
             };
             let node = label_box.and_then(|b| self.boxes.get(&b));
             let label = label_of(node.map_or("", |n| n.text.as_str()));
-            self.essay.unplaced.push((label, text));
+            self.essay.unplaced.push(UnplacedNote::new(label, text));
         }
     }
 
@@ -217,9 +263,9 @@ impl Document {
         for text in plan.paragraphs.values_mut() {
             cut |= cap_chars(text, MAX_ESSAY_CHARS);
         }
-        for (label, text) in &mut plan.unplaced {
-            cut |= cap_chars(label, LABEL_CHARS);
-            cut |= cap_chars(text, MAX_ESSAY_CHARS);
+        for note in &mut plan.unplaced {
+            cut |= cap_chars(&mut note.label, LABEL_CHARS);
+            cut |= cap_chars(&mut note.text, MAX_ESSAY_CHARS);
         }
         cut
     }

@@ -347,10 +347,7 @@ fn image_adds_height() {
         )
         .unwrap();
     let before = run(&doc).boxes[&p].height();
-    doc.boxes.get_mut(&p).unwrap().image = Some(ImageRef {
-        asset: "a".into(),
-        aspect: 0.5,
-    });
+    doc.boxes.get_mut(&p).unwrap().image = Some(ImageRef::new("a".into(), 0.5));
     let after = run(&doc).boxes[&p].height();
     let expected = (156.0 - 12.0) * 0.5 + 6.0 + IMAGE_GAP;
     assert!((after - before - expected).abs() < 0.5, "{before} {after}");

@@ -22,6 +22,7 @@ impl Document {
             + meta.created.capacity()
             + meta.modified.capacity()
             + meta.language.capacity()
+            + extra_bytes(&meta.extra)
             + extra_bytes(&self.extra);
         n += self.boxes.values().map(box_bytes).sum::<usize>();
         n += self.cards.values().map(card_bytes).sum::<usize>();
@@ -43,7 +44,9 @@ impl Document {
         n += essay
             .unplaced
             .iter()
-            .map(|(l, t)| 2 * size_of::<String>() + l.capacity() + t.capacity())
+            .map(|u| {
+                size_of_val(u) + u.label.capacity() + u.text.capacity() + extra_bytes(&u.extra)
+            })
             .sum::<usize>();
         n += extra_bytes(&essay.extra);
         n += self
@@ -53,6 +56,7 @@ impl Document {
                 size_of_val(h)
                     + h.kind.capacity()
                     + h.terms.iter().map(String::capacity).sum::<usize>()
+                    + extra_bytes(&h.extra)
             })
             .sum::<usize>();
         n
@@ -66,11 +70,17 @@ fn box_bytes(b: &BoxNode) -> usize {
         + b.text.capacity()
         + b.children.capacity() * size_of::<crate::Item>()
         + b.link.as_ref().map_or(0, String::capacity)
-        + b.image.as_ref().map_or(0, |i| i.asset.capacity())
+        + b.image
+            .as_ref()
+            .map_or(0, |i| i.asset.capacity() + extra_bytes(&i.extra))
         + b.comments
             .iter()
             .map(|c| {
-                size_of_val(c) + c.author.capacity() + c.text.capacity() + c.created.capacity()
+                size_of_val(c)
+                    + c.author.capacity()
+                    + c.text.capacity()
+                    + c.created.capacity()
+                    + extra_bytes(&c.extra)
             })
             .sum::<usize>()
         + extra_bytes(&b.extra)

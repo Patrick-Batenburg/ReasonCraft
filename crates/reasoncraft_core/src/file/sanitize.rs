@@ -47,8 +47,16 @@ impl io::Write for Count {
 
 /// Every map of unknown fields in `doc`.
 fn extras(doc: &mut Document) -> Vec<&mut Map<String, Value>> {
-    let mut all = vec![&mut doc.extra, &mut doc.essay.extra];
-    all.extend(doc.boxes.values_mut().map(|b| &mut b.extra));
+    let mut all = vec![&mut doc.extra, &mut doc.meta.extra, &mut doc.essay.extra];
+    all.extend(doc.essay.unplaced.iter_mut().map(|u| &mut u.extra));
+    all.extend(doc.ignored_hints.iter_mut().map(|h| &mut h.extra));
+    for b in doc.boxes.values_mut() {
+        all.push(&mut b.extra);
+        all.extend(b.comments.iter_mut().map(|c| &mut c.extra));
+        if let Some(image) = &mut b.image {
+            all.push(&mut image.extra);
+        }
+    }
     all.extend(doc.cards.values_mut().map(|c| &mut c.extra));
     for s in &mut doc.snippets {
         all.push(&mut s.extra);

@@ -317,6 +317,7 @@ fn marker_and_badge_inside_box() {
                     text: "T".into(),
                     verdict: None,
                     created: String::new(),
+                    extra: Default::default(),
                 });
             }
         }

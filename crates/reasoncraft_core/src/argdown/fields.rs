@@ -102,6 +102,7 @@ fn comment(v: &Value) -> Option<Comment> {
         text: field("text").unwrap_or_default(),
         verdict,
         created: now_rfc3339(),
+        extra: Default::default(),
     })
 }
 
