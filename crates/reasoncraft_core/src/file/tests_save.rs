@@ -131,3 +131,31 @@ fn a_map_too_long_to_open_whole_is_not_saved() {
     assert!(!back.cut_on_open);
     assert_eq!(back.doc, d);
 }
+
+/// A save to a symbolic link updates the file it points to and keeps the
+/// link (CORE-6). Windows needs a privilege to make links: skipped there
+/// without it.
+#[test]
+fn saving_through_a_link_keeps_the_link() {
+    let dir = tempfile::tempdir().unwrap();
+    let real = dir.path().join("real.rcraft");
+    save(&Document::new("old"), &real).unwrap();
+    let link = dir.path().join("link.rcraft");
+    #[cfg(unix)]
+    std::os::unix::fs::symlink("real.rcraft", &link).unwrap();
+    #[cfg(windows)]
+    if let Err(e) = std::os::windows::fs::symlink_file("real.rcraft", &link) {
+        eprintln!("skipped: no symbolic link ({e})");
+        return;
+    }
+    let new = Document::new("new");
+    save(&new, &link).unwrap();
+    assert!(
+        std::fs::symlink_metadata(&link)
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+    assert_eq!(open(&real).unwrap(), new);
+    assert_eq!(names(dir.path()), ["link.rcraft", "real.rcraft"]);
+}
