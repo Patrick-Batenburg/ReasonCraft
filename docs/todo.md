@@ -1,7 +1,7 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** none. Packaging the ArtCraft way ([plan](plans/2026-10-28-artcraft-packaging.md)) is merged into `main` (c14a68c, 2026-10-29); steps 1–6 merged
+**Active:** pre-release review before the public repo and 0.1.0 (seven seats: core, app, security, release pipeline, maintainability, UX, public-repo readiness; ledger `.superpowers/sdd/release-review/`). Previous plan: Packaging the ArtCraft way ([plan](plans/2026-10-28-artcraft-packaging.md)) is merged into `main` (c14a68c, 2026-10-29); steps 1–6 merged
 **Merged:** steps 1–6 (step 6 is complete on branch `step6-release-readiness`)
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
