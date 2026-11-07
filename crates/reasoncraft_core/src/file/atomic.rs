@@ -77,7 +77,8 @@ fn create_temp(path: &Path, private: bool) -> io::Result<(PathBuf, File)> {
 /// `path` is left as it was.
 ///
 /// On Unix a `private` file is made with mode 0600 (recovery copies);
-/// otherwise a replaced file keeps its permissions. When `path` is a
+/// otherwise a replaced file keeps its permissions, and a read-only one
+/// is not replaced (`PermissionDenied`). When `path` is a
 /// symbolic link, the file it points to is replaced and the link stays.
 pub fn atomic_write<E: From<io::Error>>(
     path: &Path,
@@ -85,6 +86,12 @@ pub fn atomic_write<E: From<io::Error>>(
     write: impl FnOnce(&mut File) -> Result<(), E>,
 ) -> Result<(), E> {
     let path = &link_target(path);
+    // A rename would replace a read-only file on Unix (and keep it
+    // read-only); Windows refuses it. Refused alike everywhere.
+    if !private && std::fs::metadata(path).is_ok_and(|m| m.permissions().readonly()) {
+        let read_only = io::Error::new(io::ErrorKind::PermissionDenied, "the file is read-only");
+        return Err(read_only.into());
+    }
     let (tmp, mut file) = create_temp(path, private)?;
     let result = write(&mut file).and_then(|()| {
         file.sync_all()?;

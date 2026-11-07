@@ -20,7 +20,7 @@ mod save;
 mod save_job;
 pub use dialogs::{FakeDialogs, FileDialogs, RfdDialogs};
 pub(crate) use errors::show_error;
-pub use errors::{error_key, error_text};
+pub use errors::{error_key, error_text, io_detail};
 use save::save_and_report;
 pub use save::{resolve_replace, save_active, save_tab};
 pub use save_job::{SAVE_CLOSE_WAIT, SaveJobs, poll_saves, wait_for_saves};

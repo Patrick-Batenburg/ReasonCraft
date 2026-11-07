@@ -159,3 +159,30 @@ fn saving_through_a_link_keeps_the_link() {
     assert_eq!(open(&real).unwrap(), new);
     assert_eq!(names(dir.path()), ["link.rcraft", "real.rcraft"]);
 }
+
+/// UX-3: a read-only file is not replaced, on any OS (on Unix a rename
+/// would replace it, and keep it read-only); the save fails as "permission
+/// denied" and leaves the file as it was.
+#[test]
+fn a_read_only_file_is_not_replaced() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("ro.rcraft");
+    save(&Document::new("Kept"), &path).unwrap();
+    let set_read_only = |on: bool| {
+        let mut perm = std::fs::metadata(&path).unwrap().permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        perm.set_readonly(on);
+        std::fs::set_permissions(&path, perm).unwrap();
+    };
+    set_read_only(true);
+    let result = save(&Document::new("Replaced"), &path);
+    let kept = open(&path).map(|d| d.boxes[&d.root].text.clone());
+    set_read_only(false);
+    match result {
+        Err(FileError::Io(e)) => assert_eq!(e.kind(), std::io::ErrorKind::PermissionDenied),
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(kept.unwrap(), "Kept");
+    let left = std::fs::read_dir(dir.path()).unwrap().count();
+    assert_eq!(left, 1, "no temporary file left behind");
+}
