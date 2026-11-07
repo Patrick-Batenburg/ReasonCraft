@@ -170,3 +170,25 @@ fn version_flag_prints_version() {
         format!("ReasonCraft {}\n", env!("CARGO_PKG_VERSION"))
     );
 }
+
+/// UX-7: `--version` with nowhere to print (stdout closed, as when the
+/// reader went away) exits quietly instead of panicking.
+#[test]
+fn version_flag_survives_a_closed_stdout() {
+    use std::process::{Command, Stdio};
+
+    let profile = tempfile::tempdir().unwrap();
+    let (reader, writer) = std::io::pipe().unwrap();
+    drop(reader);
+    let output = Command::new(env!("CARGO_BIN_EXE_reasoncraft"))
+        .arg("--version")
+        .env(reasoncraft::profile::PROFILE_DIR_VAR, profile.path())
+        .stdin(Stdio::null())
+        .stdout(writer)
+        .stderr(Stdio::piped())
+        .output()
+        .expect("the app starts");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{:?}: {stderr}", output.status);
+    assert!(!stderr.contains("panicked"), "{stderr}");
+}

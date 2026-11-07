@@ -18,7 +18,7 @@ fn main() -> ExitCode {
     // Before any window or profile: packaging smoke tests run this.
     let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
     if reasoncraft::cli::wants_version(&args) {
-        println!("ReasonCraft {}", env!("CARGO_PKG_VERSION"));
+        reasoncraft::cli::print_version();
         return ExitCode::SUCCESS;
     }
     let profile = reasoncraft::profile::Profile::from_env();

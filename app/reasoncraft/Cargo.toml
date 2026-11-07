@@ -42,9 +42,10 @@ serde_json.workspace = true
 [target.'cfg(target_os = "macos")'.dependencies]
 winit = { version = "0.30", default-features = false }
 
-# Restricts where run-time DLLs come from (see `src/dll_search.rs`).
+# Restricts where run-time DLLs come from (see `src/dll_search.rs`); the
+# console for `--version` (`src/cli.rs`).
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_System_LibraryLoader"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Console", "Win32_System_LibraryLoader"] }
 
 [dev-dependencies]
 egui_kittest = "0.37"
