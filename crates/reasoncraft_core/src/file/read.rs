@@ -35,20 +35,39 @@ pub fn open(path: &Path) -> Result<Document, FileError> {
 /// to their caps ([`crate::caps`]); branches nested deeper than
 /// [`crate::MAX_DEPTH`] levels are moved to the parking area; links that are too long, unknown JSON
 /// fields past [`super::MAX_EXTRA_BYTES`] in all, entries with unsafe names
-/// and image entries whose name is not a content key are left out.
+/// and image entries whose name is not a content key are left out, and so
+/// is any entry but the document whose bytes are damaged (the image shows
+/// as missing).
 pub fn open_package(path: &Path) -> Result<Package, FileError> {
     open_package_with_limits(path, MAX_DOCUMENT_BYTES, MAX_ASSET_BYTES, MAX_TOTAL_BYTES)
 }
 
-/// Reads all of `entry`, failing with `Malformed` if it exceeds `limit`
-/// bytes or would push the running `total` past `total_limit`.
+/// Why an entry was not read.
+enum EntryError {
+    /// Its bytes are damaged (a wrong checksum, broken compression): only
+    /// the document is required, any other such entry is left out.
+    Damaged(String),
+    /// Past a size limit: the whole file is refused.
+    TooLarge(String),
+}
+
+impl From<EntryError> for FileError {
+    fn from(e: EntryError) -> Self {
+        match e {
+            EntryError::Damaged(why) | EntryError::TooLarge(why) => FileError::Malformed(why),
+        }
+    }
+}
+
+/// Reads all of `entry`. Too large when it exceeds `limit` bytes or
+/// would push the running `total` past `total_limit`.
 fn read_capped(
     entry: impl Read,
     what: &str,
     limit: u64,
     total: &mut u64,
     total_limit: u64,
-) -> Result<Vec<u8>, FileError> {
+) -> Result<Vec<u8>, EntryError> {
     let mut buf = Vec::new();
     // Never read past what the total still allows, nor one byte past the
     // entry limit (that byte tells "exactly at" from "over").
@@ -56,14 +75,14 @@ fn read_capped(
     let read = entry
         .take(allowed.saturating_add(1))
         .read_to_end(&mut buf)
-        .map_err(|e| FileError::Malformed(e.to_string()))? as u64;
+        .map_err(|e| EntryError::Damaged(format!("{what}: {e}")))? as u64;
     if read > limit {
-        return Err(FileError::Malformed(format!(
+        return Err(EntryError::TooLarge(format!(
             "{what} is larger than {limit} bytes"
         )));
     }
     if read > allowed {
-        return Err(FileError::Malformed(format!(
+        return Err(EntryError::TooLarge(format!(
             "the file holds more than {total_limit} bytes"
         )));
     }
@@ -112,7 +131,8 @@ pub(super) fn open_package_with_limits(
     })?;
     let mut total = 0;
     let bytes = match zip.by_name(DOCUMENT_ENTRY) {
-        Ok(entry) => read_capped(entry, "the document", doc_limit, &mut total, total_limit)?,
+        Ok(entry) => read_capped(entry, "the document", doc_limit, &mut total, total_limit)
+            .map_err(FileError::from)?,
         Err(ZipError::FileNotFound) => return Err(FileError::MissingDocument),
         Err(e) => return Err(zip_to_io(e)),
     };
@@ -153,7 +173,16 @@ pub(super) fn open_package_with_limits(
     let mut assets = Assets::default();
     let mut other_entries = Vec::new();
     for i in 0..zip.len() {
-        let entry = zip.by_index(i).map_err(zip_to_io)?;
+        let entry = match zip.by_index(i) {
+            Ok(entry) => entry,
+            Err(ZipError::Io(e)) => return Err(FileError::Io(e)),
+            // An entry this zip reader cannot open (an unknown compression
+            // method, a broken header): left out like a damaged one.
+            Err(_) => {
+                cut_on_open = true;
+                continue;
+            }
+        };
         let name = entry
             .name()
             .map_err(|e| FileError::Malformed(e.to_string()))?
@@ -171,7 +200,14 @@ pub(super) fn open_package_with_limits(
             if entry.is_dir() {
                 continue;
             }
-            let bytes = read_capped(entry, &name, asset_limit, &mut total, total_limit)?;
+            let bytes = match read_capped(entry, &name, asset_limit, &mut total, total_limit) {
+                Ok(bytes) => bytes,
+                Err(EntryError::Damaged(_)) => {
+                    cut_on_open = true;
+                    continue;
+                }
+                Err(too_large) => return Err(too_large.into()),
+            };
             // Keys are content hashes and the image cache is shared by all
             // tabs: an entry whose bytes do not match its key is dropped
             // (shown as missing) so it cannot stand in for another image.
@@ -183,8 +219,11 @@ pub(super) fn open_package_with_limits(
         } else if entry.is_dir() {
             other_entries.push((name, Vec::new().into()));
         } else {
-            let bytes = read_capped(entry, &name, total_limit, &mut total, total_limit)?;
-            other_entries.push((name, bytes.into()));
+            match read_capped(entry, &name, total_limit, &mut total, total_limit) {
+                Ok(bytes) => other_entries.push((name, bytes.into())),
+                Err(EntryError::Damaged(_)) => cut_on_open = true,
+                Err(too_large) => return Err(too_large.into()),
+            }
         }
     }
     Ok(Package {
