@@ -1,7 +1,7 @@
 # ReasonCraft — Status
 
 **Design:** [docs/superpowers/specs/2026-10-25-reasoncraft-design.md](superpowers/specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active plan:** [docs/plans/2026-10-28-artcraft-packaging.md](plans/2026-10-28-artcraft-packaging.md): packaging the ArtCraft way, Tasks 1–10 done on branch `artcraft-packaging` (whole-branch review and the local merge into `main` still to do); steps 1–6 merged
+**Active plan:** none. Packaging the ArtCraft way ([plan](plans/2026-10-28-artcraft-packaging.md)) is merged into `main` (c14a68c, 2026-10-29); steps 1–6 merged
 **Merged:** steps 1–6 (step 6 is complete on branch `step6-release-readiness`)
 **Done:** [docs/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
@@ -89,7 +89,7 @@
   - [x] Task 12: Linux and macOS builds and CI
   - [x] Task 13: End-to-end check and release docs
   - [x] Task 14: Interactive UX pass (real keyboard and mouse, user-authorised) and fixes
-- [ ] Packaging the ArtCraft way ([plan](plans/2026-10-28-artcraft-packaging.md))
+- [x] Packaging the ArtCraft way ([plan](plans/2026-10-28-artcraft-packaging.md))
   - [x] Prerequisite: .NET SDK 8 (`winget install Microsoft.DotNet.SDK.8`), then `dotnet tool install --global wix --version 5.0.2` and its UI and Util extensions
   - [x] Task 1: One version source (`cargo xtask version`), `--version`, and the licence RTF in xtask
   - [x] Task 2: WiX source and the install-policy checks (no app build)
@@ -102,7 +102,7 @@
   - [x] Task 9: Workflows: release, packaging lint and CI (actionlint 1.7.12 clean; the lint job rehearsed in ubuntu:24.04 and the install-policy job on this machine; the release workflow runs for the first time once a remote exists)
   - [x] Task 10: Docs, rulings and the release checklist (docs/release.md rewritten; README Install and CHANGELOG 0.1.0; rulings PK-1 to PK-14)
   - [x] Branch review findings PKG-1 to PKG-12 fixed (rulings PK-15 to PK-19; see the review notes below)
-  - [ ] Whole-branch review (superpowers:requesting-code-review), then merge `artcraft-packaging` into `main` locally (never push)
+  - [x] Whole-branch review (superpowers:requesting-code-review; follow-ups PKG-13 to PKG-15, reviewer approved), then merged `artcraft-packaging` into `main` locally as c14a68c (not pushed)
   - [x] Decided by the owner (2026-10-28): install folders `Programs\ReasonCraft` / `Program Files\ReasonCraft`; maintainer and publisher "ReasonCraft contributors" without an address; no homepage URL (the ARP, the metainfo and the packages leave it out; once there is one, set `REASONCRAFT_SIGN_URL` for signing, add `<url type="homepage">` to the metainfo and drop the lint override, ruling PK-13)
   - [ ] **Open for the owner before a public release:** confirm the app ID `nl.reasoncraft.app` (ruling PK-10). It is a reverse-DNS name, which implies control of the domain `reasoncraft.nl` that the project does not own; Flathub checks that, and changing the ID after a release breaks file associations, the Flatpak's data folder and update channels
   - [ ] Carry-over, once a remote exists: the first release-workflow run (macOS universal DMG, signing and notarization when the secrets exist, Flatpak on both architectures, Windows arm64, Linux aarch64) and the packaging lint run; the CI must be green on all three platforms
