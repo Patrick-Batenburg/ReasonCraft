@@ -25,7 +25,6 @@ mod find;
 mod help;
 pub(crate) use export::close_after_exports;
 pub use export::poll_exports;
-pub(crate) use find::cap_box;
 mod images;
 pub use images::{poll_images, wait_for_images};
 mod meta;

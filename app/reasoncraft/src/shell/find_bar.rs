@@ -165,6 +165,8 @@ fn bar(ui: &mut Ui, tab: &mut DocTab, tk: &Tokens, out: &mut Vec<Action>) {
             TextEdit::singleline(&mut text)
                 .id(replace_id)
                 .hint_text(&hint)
+                // No replacement can make a box longer than its cap.
+                .char_limit(reasoncraft_core::MAX_BOX_CHARS)
                 .desired_width(FIELD_W),
         );
         resp.widget_info(|| WidgetInfo::labeled(Role::TextInput, true, &hint));

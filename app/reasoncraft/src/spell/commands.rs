@@ -3,11 +3,10 @@
 //! under it (or the command names another word), the pass looks again
 //! from where it is instead.
 
-use reasoncraft_core::{EditError, FindHit, FindOptions, NodeId, find_all};
+use reasoncraft_core::{EditError, FindHit, FindOptions, find_all};
 
 use super::SpellService;
 use super::pass::{SpellPass, advance, current, resume_at};
-use crate::actions::cap_box;
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
 use crate::i18n::t;
@@ -99,10 +98,7 @@ pub(crate) fn change(app: &mut ReasonCraftApp, hit: FindHit, with: &str) {
         return advance(tab, spell);
     };
     if word != with {
-        let done = tab.edit(|d| {
-            d.replace_range(hit.node, hit.range.clone(), with)?;
-            Ok(cap_box(d, hit.node))
-        });
+        let done = tab.edit(|d| d.replace_range(hit.node, hit.range.clone(), with));
         if done == Some(true) {
             app.status_note = Some(t("status.text_cut"));
         }
@@ -129,13 +125,11 @@ pub(crate) fn change_all(app: &mut ReasonCraftApp, word: &str, with: &str) {
         .iter()
         .filter(|h| h.node == hit.node && h.range.start < hit.range.start)
         .count();
-    let mut nodes: Vec<NodeId> = hits.iter().map(|h| h.node).collect();
-    nodes.dedup();
     let changed = word != with
         && tab
             .edit(|d| match d.replace_all(&word, with, opts) {
-                0 => Err(EditError::NotFound),
-                _ => Ok(nodes.into_iter().fold(false, |cut, n| cap_box(d, n) | cut)),
+                done if done.count == 0 => Err(EditError::NotFound),
+                done => Ok(done.cut),
             })
             .inspect(|&cut| {
                 if cut {
