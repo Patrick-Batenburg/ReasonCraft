@@ -59,7 +59,7 @@ Write-Output 'PASS the MSI is policy-checked before it is signed.'
 
 # ---- 1b. the build apart from the signing ---------------------------------------------------------
 # The release workflow builds with -BuildOnly in a step without the signing secrets and packages with
-# -SkipBuild in the step that has them (SEC-2): only `cargo xtask`, built by -BuildOnly, may run
+# -SkipBuild in the step that has them: only `cargo xtask`, built by -BuildOnly, may run
 # cargo outside the build block, and -BuildOnly stops before anything is signed.
 $ifs = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.IfStatementAst] }, $true))
 function Get-IfBody([string] $Condition) {

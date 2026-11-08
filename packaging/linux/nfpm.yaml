@@ -33,7 +33,7 @@ description: |-
 # entries and the packages have to name them. No libxrandr2: the binary never opens it (ruling
 # S6-T13-3). The file dialogs go through the XDG desktop portal (rfd 0.17), which shows them
 # with a backend (the desktop's own, or the GTK one); when the portal fails, rfd runs zenity
-# instead. With neither, Open and Save show nothing, hence the three recommendations (UX-6);
+# instead. With neither, Open and Save show nothing, hence the three recommendations;
 # rpm takes the backend as a rich dependency (rpm 4.13 and later).
 #
 # The rpm names the libraries by soname, as rpm's own dependency generator would: package names

@@ -6,7 +6,7 @@
 # docs/release.md).
 #
 # No step that runs cargo has a signing secret in its environment: each
-# platform builds in a step of its own and signs in the next (SEC-2).
+# platform builds in a step of its own and signs in the next.
 # Signing runs when the secrets exist (the `release` environment on the
 # `release` branch); without them each script warns and ships unsigned
 # (ruling L3), and a partly configured set fails on `release` (PK-16). Each
