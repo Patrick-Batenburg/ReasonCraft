@@ -231,3 +231,63 @@ fn a_handed_over_file_that_fails_says_why() {
         Some(crate::file_ops::Modal::Error { .. })
     ));
 }
+
+/// Start closing the window of `app` with one tab of unsaved work: the
+/// unsaved-changes prompt shows.
+fn closing_with_unsaved_work(app: &mut ReasonCraftApp) {
+    let root = app.active_tab().doc.root;
+    apply(app, Action::Edit);
+    apply(app, Action::EditText {
+        node: root,
+        text: "unsaved".into(),
+    });
+    apply(app, Action::StopEditing);
+    apply(app, Action::CloseWindow);
+    assert!(matches!(
+        app.modal,
+        Some(crate::file_ops::Modal::Unsaved { window: true, .. })
+    ));
+}
+
+#[test]
+fn a_closing_window_takes_no_files() {
+    use crate::actions::UnsavedChoice;
+    let dir = tempfile::tempdir().unwrap();
+    let a = saved(dir.path(), "a.rcraft", "A");
+    let (mut app, tx) = app_with_inbox();
+    closing_with_unsaved_work(&mut app);
+    assert!(
+        !hand_over(&mut app, &tx, vec![a.clone()]),
+        "the launch opens its own window instead"
+    );
+    apply(&mut app, Action::ResolveUnsaved(UnsavedChoice::Discard));
+    assert!(app.close_confirmed());
+    // Waiting for running exports is still part of the close.
+    let (mut app, tx) = app_with_inbox();
+    app.modal = Some(crate::file_ops::Modal::ExportsRunning);
+    assert!(!hand_over(&mut app, &tx, vec![a]));
+}
+
+#[test]
+fn files_handed_over_during_a_cancelled_close_open_after_it() {
+    use crate::actions::UnsavedChoice;
+    let dir = tempfile::tempdir().unwrap();
+    let a = saved(dir.path(), "a.rcraft", "A");
+    let (mut app, tx) = app_with_inbox();
+    closing_with_unsaved_work(&mut app);
+    let (taken, was_taken) = mpsc::sync_channel(1);
+    tx.send(Handover {
+        paths: vec![a.clone()],
+        taken,
+    })
+    .unwrap();
+    poll(&mut app);
+    assert!(was_taken.try_recv().is_err(), "not taken while closing");
+    apply(&mut app, Action::ResolveUnsaved(UnsavedChoice::Cancel));
+    poll(&mut app);
+    for action in std::mem::take(&mut app.pending) {
+        apply(&mut app, action);
+    }
+    assert!(was_taken.try_recv().is_ok(), "taken once the close is off");
+    assert!(app.tabs.iter().any(|t| t.path.as_deref() == Some(a.as_path())));
+}

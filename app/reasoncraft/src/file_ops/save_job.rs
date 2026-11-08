@@ -87,6 +87,17 @@ impl SaveJobs {
         !self.running.is_empty()
     }
 
+    /// Whether a save being written, or what one left to do, carries on a
+    /// window close.
+    pub(super) fn part_of_window_close(&self) -> bool {
+        let closes = |then: &AfterSave| *then == AfterSave::ContinueWindowClose;
+        self.running.iter().any(|r| closes(&r.then))
+            || self.next.iter().any(|n| match n {
+                Next::Then(_, then) | Next::Changed(_, _, then) => closes(then),
+                Next::Failed(..) => false,
+            })
+    }
+
     /// Where the last save of `tab` that is still being written goes: a
     /// Save meanwhile writes there too, not to the tab's old file.
     pub fn pending_path(&self, tab: &DocTab) -> Option<&Path> {

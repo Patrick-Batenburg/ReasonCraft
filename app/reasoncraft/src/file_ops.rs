@@ -197,6 +197,23 @@ pub fn request_close_window(app: &mut ReasonCraftApp) {
     save_job::after_dialogs(app, first, AfterSave::ContinueWindowClose);
 }
 
+/// Whether the window is closing: a prompt or a save of the close is
+/// pending, or it is waiting for exports, or it was let go.
+pub fn window_closing(app: &ReasonCraftApp) -> bool {
+    let prompt = matches!(
+        app.modal,
+        Some(
+            Modal::Unsaved { window: true, .. }
+                | Modal::ExportsRunning
+                | Modal::ConfirmReplace {
+                    then: AfterSave::ContinueWindowClose,
+                    ..
+                }
+        )
+    );
+    prompt || app.close_confirmed() || app.saves.part_of_window_close()
+}
+
 /// Ask about the first dirty tab at or after `from`; with none left, close
 /// (once the running exports finish).
 fn ask_from(app: &mut ReasonCraftApp, from: usize) {

@@ -241,10 +241,15 @@ pub fn attach(app: &mut ReasonCraftApp, inbox: Inbox, ctx: &egui::Context) {
 
 /// Take what later launches handed over: answer them, bring the window to
 /// the front, and open the files once no dialog is open (one acts on the
-/// active tab, which opening changes). Run once per frame.
+/// active tab, which opening changes). While the window is closing nothing
+/// is taken: a launch not answered in time opens its own window, and one
+/// still waiting when the close is cancelled is taken then. Run once per
+/// frame.
 pub fn poll(app: &mut ReasonCraftApp) {
     let mut arrived = false;
-    if let Some(inbox) = &app.incoming.inbox {
+    if let Some(inbox) = &app.incoming.inbox
+        && !crate::file_ops::window_closing(app)
+    {
         while let Ok(handover) = inbox.rx.try_recv() {
             // A launch that gave up already starts its own window.
             if handover.taken.send(()).is_ok() {
