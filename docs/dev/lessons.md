@@ -17,7 +17,7 @@ Patterns learned from corrections during this project. Review at session start.
 ## Build machine
 - **Always run workspace builds and tests with `-j 4`.** Linking ~30 app test binaries in parallel with MSVC `link.exe` (~2.7 GB each) once exhausted the machine's memory.
 - **Check a release build too, not only the debug tests.** Debug-only items (`cfg(debug_assertions)`) referenced from normal code compile in tests but break `--release`; the CI runs `cargo check --workspace --release`.
-- **Check the machine before chasing "impossible" memory corruption.** Random crashes in safe code under heavy load on this machine came from its processor (WHEA-Logger event 19, corrected machine checks; the processor on an old BIOS). Look at `Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-WHEA-Logger'}` first.
+- **Check the machine before chasing "impossible" memory corruption.** Random crashes in safe code under heavy load can be hardware faults. Look at the system's hardware error log first.
 - **Git Bash turns off Windows Error Reporting for what it starts**, so a crash there leaves no dump and no event (exit 139 is an access violation, 127 an abort). Start crash hunts from PowerShell, or catch the first fatal exception with a vectored handler that writes a minidump.
 
 ## A test that starts the real exe must isolate its profile from the first run

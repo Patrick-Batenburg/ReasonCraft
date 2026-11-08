@@ -26,12 +26,12 @@ Two clean-ups from earlier reviews come first:
 
 **Tech Stack:** step 3's stack plus `resvg` + `usvg` 0.49 and `svg2pdf` 0.13 (all MIT/Apache; pick versions that share one `usvg`), `docx-rs` 0.4 (MIT), and `arboard` 3 with `image-data` (MIT/Apache). The fonts embedded in exports are egui's bundled default fonts (OFL/Ubuntu Font Licence/Apache), so exports look like the screen.
 
-**Spec:** `docs/superpowers/specs/2026-10-25-reasoncraft-design.md`:
+**Spec:** `docs/dev/specs/2026-10-25-reasoncraft-design.md`:
 - §6: the Essay tab and the Export ribbon.
 - §9: exports — PNG with chooseable scale and optional transparent background; SVG; PDF with page setup; copy as image; whole map or current selection; Outline/Essay as Markdown, plain text and .docx; print via PDF.
 - §5: exports default to the light theme, with an option for the current theme.
 
-Also the step-2 and step-3 carry-overs in `docs/todo.md`.
+Also the step-2 and step-3 carry-overs in `docs/dev/todo-history.md`.
 
 ## Global Constraints
 
@@ -368,7 +368,7 @@ app/reasoncraft/src/
 
 ### Task 12: End-to-end verification and docs
 
-**Files:** modify `app/reasoncraft/tests/e2e/*`, `README.md`, `docs/todo.md`, `docs/rulings.md`.
+**Files:** modify `app/reasoncraft/tests/e2e/*`, `README.md`, `docs/dev/todo-history.md`, `docs/rulings.md`.
 
 - [ ] **Step 1:** Extend e2e through actions:
   - write essay text in the intro and two sections;
@@ -382,7 +382,7 @@ app/reasoncraft/src/
   - prepare a sample `.rcraft` (Dutch, rated, with an image and essay text) and export it in all formats through a headless example binary or a kittest that writes into the SDD workspace;
   - look at the PNG and the SVG→PNG; look at the PDF by rendering a page with `pdfium` if available, otherwise list its page count and fonts;
   - take window screenshots of the Essay tab and the Export tab;
-  - record the results in the `docs/todo.md` "Review — step 4" section, and tick the carry-overs done.
+  - record the results in the `docs/dev/todo-history.md` "Review — step 4" section, and tick the carry-overs done.
 - [ ] **Step 4:** README: an Export/Print section and an Essay section, with shortcut tables kept exact. Add the step-4 rulings from the ledger to `docs/rulings.md`.
 - [ ] **Step 5:** Commit `docs: step 4 verification and usage notes`.
 

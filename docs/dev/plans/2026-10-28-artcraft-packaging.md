@@ -26,7 +26,7 @@
 - craft-launcher@deccd0a: `packaging/macos/verify.sh`;
 - the contract of craft-common-actions@fa5ef18: `.github/workflows/release.yml` and `actions/*`.
 
-Also read [docs/release.md](../release.md), [docs/rulings.md](../rulings.md) (Step 6: L3, M3, S6-T11-3/4, S6-F2/F3) and [docs/lessons.md](../lessons.md).
+Also read [docs/release.md](../../release.md), [docs/rulings.md](../../rulings.md) (Step 6: L3, M3, S6-T11-3/4, S6-F2/F3) and [docs/dev/lessons.md](../lessons.md).
 
 ## Scope and why
 
@@ -270,7 +270,7 @@ The Flatpak bundle stays in scope because the reusable workflow's `flatpak` job 
   - `usr/share/icons/hicolor/<s>x<s>/apps/nl.reasoncraft.app.png` for s in 16 24 32 48 64 128 256 512, from `assets/icons/icon-<s>.png`, plus `scalable/apps/nl.reasoncraft.app.svg` from `assets/icon.svg`;
   - `usr/share/doc/reasoncraft/` with the documents from `copy_docs`.
 - Desktop entry: `Exec=reasoncraft %F`, `TryExec=reasoncraft`, `Icon=nl.reasoncraft.app`, `StartupWMClass=nl.reasoncraft.app` (equal to `with_app_id` in `main.rs`), `Categories=Education;Office;`, `MimeType=application/x-reasoncraft;`.
-- nfpm: `name: reasoncraft`, `version_schema: semver`, `maintainer: ${REASONCRAFT_MAINTAINER}` (default `ReasonCraft contributors`, with no address; which address to publish is an open question in `docs/todo.md`), `vendor: ReasonCraft contributors`, `license: MIT OR Apache-2.0`, `section: education`.
+- nfpm: `name: reasoncraft`, `version_schema: semver`, `maintainer: ${REASONCRAFT_MAINTAINER}` (default `ReasonCraft contributors`, with no address; which address to publish is an open question in `docs/dev/todo-history.md`), `vendor: ReasonCraft contributors`, `license: MIT OR Apache-2.0`, `section: education`.
   - deb `depends`: exactly today's list, `libc6 libgcc-s1 libxkbcommon0 libxkbcommon-x11-0 libx11-6 libx11-xcb1 libxcursor1 libxi6 libwayland-client0 libwayland-egl1 libegl1 libgl1` (ruling S6-T13-3: no libxrandr2). Recommends `xdg-desktop-portal`, since rfd 0.17 uses the portal; there is no gtk-sys in Cargo.lock.
   - rpm `depends`: `libxkbcommon`, `libxkbcommon-x11`, `(libglvnd-egl or mesa-libEGL)`. Recommends `libX11 libX11-xcb libXcursor libXi libwayland-client libwayland-egl xdg-desktop-portal`.
 - AppImage: appimagetool 1.9.1 and type2-runtime 20251108, with the SHA-256s from WordCraft's `package.sh`. Re-check them against the upstream release downloads before committing.
@@ -299,7 +299,7 @@ The Flatpak bundle stays in scope because the reusable workflow's `flatpak` job 
 **Interfaces:**
 - `flatpak-bundle.sh [--no-test] [TARBALL]` → `$DIST/reasoncraft-<v>-linux-<arch>.flatpak`. The reusable workflow calls it with exactly one tarball argument. The smoke test is `flatpak run nl.reasoncraft.app --version`.
 
-- [ ] **Step 1: Verify in CI only.** flatpak-builder needs user namespaces, which a Docker Desktop container lacks. So the check is `shellcheck`, plus `flatpak-builder --show-manifest` in the Linux image. The real build runs in the release workflow's `flatpak` job (Task 9) on the first dispatch once a remote exists. Record that in `docs/todo.md`.
+- [ ] **Step 1: Verify in CI only.** flatpak-builder needs user namespaces, which a Docker Desktop container lacks. So the check is `shellcheck`, plus `flatpak-builder --show-manifest` in the Linux image. The real build runs in the release workflow's `flatpak` job (Task 9) on the first dispatch once a remote exists. Record that in `docs/dev/todo-history.md`.
 - [ ] **Step 2:** Commit `feat(packaging): Flatpak bundle from the release tarball`.
 
 ### Task 7: macOS: universal app, DMG, signing and verification
@@ -352,7 +352,7 @@ The Flatpak bundle stays in scope because the reusable workflow's `flatpak` job 
 
 - [ ] **Step 1: Update the tests first.** In the `licences.rs` test, `text("about.licences.wix")` contains "Microsoft Reciprocal License", and `text("about.licences.appimage")` contains "libfuse". Add `no_cargo_packager_left`: the app's Cargo.toml has no `metadata.packager`, and `app/reasoncraft/packaging` does not exist.
 - [ ] **Step 2:** Run `cargo test --workspace -j 4`. Expected: it FAILS.
-- [ ] **Step 3: Implement.** Then run `rg -i "packager|nsis|setup\.exe|installer\.nsi" --glob '!docs/plans/**' --glob '!docs/superpowers/**' --glob '!target/**'`. Expected: hits only in `docs/rulings.md`'s history and `docs/todo.md`'s history.
+- [ ] **Step 3: Implement.** Then run `rg -i "packager|nsis|setup\.exe|installer\.nsi" --glob '!docs/dev/plans/**' --glob '!docs/dev/specs/**' --glob '!target/**'`. Expected: hits only in `docs/rulings.md`'s history and `docs/dev/todo-history.md`'s history.
 - [ ] **Step 4:** Run the full gate, plus `cargo check --workspace --release --all-targets -j 4`, `cargo deny check` and `cargo xtask notices && git diff --exit-code app/reasoncraft/assets/licences/crates.txt` (after committing the regenerated file). Expected: all PASS.
 - [ ] **Step 5:** Commit `refactor(packaging): drop cargo-packager and NSIS; WiX and AppImage notices; all release targets in deny/about`.
 
@@ -410,7 +410,7 @@ The Flatpak bundle stays in scope because the reusable workflow's `flatpak` job 
     - the checklist, updated for MSI scope choice, the DMG, rpm, the Flatpak, and an AppImage on a second distribution.
   - `README.md` (Install), and the CHANGELOG 0.1.0 "Installing" section. 0.1.0 was never tagged or published, so it is edited in place, and no NSIS-to-MSI migration is needed.
   - `docs/rulings.md`: append "Packaging the ArtCraft way" with rulings PK-1…PK-8 (below). Add "(superseded by PK-n)" to L3 (format part only), S6-T11-3, S6-T11-4, S6-F2 and S6-F3's NSIS mention.
-  - `docs/todo.md`: tick the items, add the review section, and the carry-overs: the first CI run for macOS, Flatpak and arm64, the Mac check, the Apple Event, the DMG background, and an arm64 install smoke test on `windows-11-arm`.
+  - `docs/dev/todo-history.md`: tick the items, add the review section, and the carry-overs: the first CI run for macOS, Flatpak and arm64, the Mac check, the Apple Event, the DMG background, and an arm64 install smoke test on `windows-11-arm`.
 
 Compatibility section, to state in `docs/release.md`. To switch to `storytold/craft-common-actions/.github/workflows/release.yml`:
 - the caller passes `app-name: reasoncraft`, `app-title: ReasonCraft`, `craft-fonts-ref: ''`, and `has-web`, `has-riscv64`, `has-freebsd` and `has-arch` all `false`;

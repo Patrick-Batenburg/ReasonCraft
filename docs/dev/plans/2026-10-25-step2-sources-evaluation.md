@@ -23,14 +23,14 @@
 - `sha2` 0.10: content hashes for assets.
 - `open` 5: opening links in the system browser.
 
-**Spec:** `docs/superpowers/specs/2026-10-25-reasoncraft-design.md`. This step covers:
+**Spec:** `docs/dev/specs/2026-10-25-reasoncraft-design.md`. This step covers:
 - §4: sources, evaluation, comments, notes, image + hyperlink, parking "Connect to…";
 - §5: rating visuals;
 - §6: the Evaluate ribbon tab, the building panel, the Home Box group;
 - §8: keyboard for every evaluate action;
 - §10: settings (comment author name).
 
-It also covers the step-1 carry-over items in `docs/todo.md`.
+It also covers the step-1 carry-over items in `docs/dev/todo-history.md`.
 
 ## Global Constraints
 
@@ -529,7 +529,7 @@ app/reasoncraft/src/
 ### Task 12: End-to-end verification and docs
 
 **Files:**
-- Modify: `app/reasoncraft/tests/e2e.rs`, `README.md`, `docs/todo.md`
+- Modify: `app/reasoncraft/tests/e2e.rs`, `README.md`, `docs/dev/todo-history.md`
 - Test: e2e
 
 - [ ] **Step 1: Extend `e2e_build_save_reopen`.** Through actions only, add:
@@ -542,7 +542,7 @@ app/reasoncraft/src/
 
   Save, reopen, and assert full `Document` equality, equal `Assets`, and an equal layout within 0.5 px.
 - [ ] **Step 2: Run** `cargo test --workspace` → PASS; `cargo clippy --workspace --all-targets -- -D warnings` clean; `cargo build --release -p reasoncraft` succeeds.
-- [ ] **Step 3: Manual check** in the release build: evaluate a small map by keyboard (Alt+digits), add sources from the panel by drag, add comments via presets, reorder with Alt+arrows, connect a parking item, insert an image, and toggle markers/shading. Take screenshots in dark and light. Record the results in the `docs/todo.md` Review section for step 2, and tick the step-2 carry-over items that were done.
+- [ ] **Step 3: Manual check** in the release build: evaluate a small map by keyboard (Alt+digits), add sources from the panel by drag, add comments via presets, reorder with Alt+arrows, connect a parking item, insert an image, and toggle markers/shading. Take screenshots in dark and light. Record the results in the `docs/dev/todo-history.md` Review section for step 2, and tick the step-2 carry-over items that were done.
 - [ ] **Step 4: README.** Add a feature overview for step 2 and keep the shortcut tables exact.
 - [ ] **Step 5: Commit** `docs: step 2 verification and usage notes`.
 
