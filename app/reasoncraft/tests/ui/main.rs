@@ -35,6 +35,7 @@ mod export_formats;
 mod export_replace;
 mod field_shortcuts;
 mod find;
+mod find_bar_narrow;
 mod help;
 mod help_wrap;
 mod images;
