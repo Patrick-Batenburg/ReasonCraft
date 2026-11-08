@@ -237,10 +237,13 @@ fn a_handed_over_file_that_fails_says_why() {
 fn closing_with_unsaved_work(app: &mut ReasonCraftApp) {
     let root = app.active_tab().doc.root;
     apply(app, Action::Edit);
-    apply(app, Action::EditText {
-        node: root,
-        text: "unsaved".into(),
-    });
+    apply(
+        app,
+        Action::EditText {
+            node: root,
+            text: "unsaved".into(),
+        },
+    );
     apply(app, Action::StopEditing);
     apply(app, Action::CloseWindow);
     assert!(matches!(
@@ -289,5 +292,9 @@ fn files_handed_over_during_a_cancelled_close_open_after_it() {
         apply(&mut app, action);
     }
     assert!(was_taken.try_recv().is_ok(), "taken once the close is off");
-    assert!(app.tabs.iter().any(|t| t.path.as_deref() == Some(a.as_path())));
+    assert!(
+        app.tabs
+            .iter()
+            .any(|t| t.path.as_deref() == Some(a.as_path()))
+    );
 }

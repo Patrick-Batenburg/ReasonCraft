@@ -2,16 +2,18 @@
 //! user can enter (mode 0700, owned by this user, checked before use):
 //! under `$XDG_RUNTIME_DIR` (in the Flatpak sandbox the app's own part of
 //! it, `$XDG_RUNTIME_DIR/app/<id>`, which every copy of the app shares),
-//! else in the temp folder (per user on macOS). Which copy serves is
+//! else in `rc-<uid>` in the temp folder (per user on macOS; short, as a
+//! socket's path may have at most 103 bytes there). Which copy serves is
 //! settled by a lock on a file beside the socket, which the system drops
 //! when its process ends: a socket file a crashed copy left behind is
 //! replaced by the next copy that gets the lock.
 
+use std::ffi::OsString;
 use std::fs::{self, DirBuilder, File, TryLockError};
 use std::io;
 use std::os::unix::fs::{DirBuilderExt as _, MetadataExt as _, OpenOptionsExt as _};
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use super::Elected;
@@ -84,21 +86,28 @@ pub(super) fn not_there(e: &io::Error) -> bool {
 /// Nothing to do: the answer is read before the socket closes.
 pub(super) fn finish(_: &Conn) {}
 
+/// Where the folder for the lock and socket files is, from
+/// `$XDG_RUNTIME_DIR`, `$FLATPAK_ID`, the temp folder and the user id.
+fn dir_for(runtime: Option<PathBuf>, flatpak: Option<OsString>, temp: &Path, uid: u32) -> PathBuf {
+    match (runtime.filter(|p| p.is_absolute()), flatpak) {
+        (Some(runtime), Some(id)) => runtime.join("app").join(id).join("instance"),
+        (Some(runtime), None) => runtime.join(crate::settings_store::APP_ID),
+        (None, _) => temp.join(format!("rc-{uid}")),
+    }
+}
+
 /// The folder for the lock and socket files, made (mode 0700) when
 /// missing; refused unless it is a real folder of this user's that no one
 /// else may enter.
 fn private_dir() -> io::Result<PathBuf> {
     // SAFETY: getuid has no preconditions and cannot fail.
     let uid = unsafe { libc::getuid() };
-    let app = crate::settings_store::APP_ID;
-    let runtime = std::env::var_os("XDG_RUNTIME_DIR")
-        .map(PathBuf::from)
-        .filter(|p| p.is_absolute());
-    let dir = match (runtime, std::env::var_os("FLATPAK_ID")) {
-        (Some(runtime), Some(id)) => runtime.join("app").join(id).join("instance"),
-        (Some(runtime), None) => runtime.join(app),
-        (None, _) => std::env::temp_dir().join(format!("{app}-{uid}")),
-    };
+    let dir = dir_for(
+        std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from),
+        std::env::var_os("FLATPAK_ID"),
+        &std::env::temp_dir(),
+        uid,
+    );
     match DirBuilder::new().mode(0o700).create(&dir) {
         Err(e) if e.kind() != io::ErrorKind::AlreadyExists => return Err(e),
         _ => {}
@@ -125,6 +134,35 @@ pub(super) fn forget(scope: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// macOS keeps a socket's path in 104 bytes with the closing NUL.
+    #[test]
+    fn the_socket_path_fits_on_macos() {
+        // The longest scope: a profile folder's settings file.
+        let scope = super::super::scope(Some(Path::new("/any/settings/file.ron")));
+        let tmpdir = format!("/var/folders/xx/{}/T/", "a".repeat(30));
+        let dir = dir_for(None, None, Path::new(&tmpdir), u32::MAX);
+        let socket = dir.join(format!("{scope}.sock"));
+        let len = socket.as_os_str().len();
+        assert!(len <= 103, "{} is {len} bytes", socket.display());
+    }
+
+    #[test]
+    fn linux_and_flatpak_use_the_runtime_folder() {
+        let run = Some(PathBuf::from("/run/user/1000"));
+        let temp = Path::new("/tmp");
+        assert_eq!(
+            dir_for(run.clone(), None, temp, 1000),
+            Path::new("/run/user/1000").join(crate::settings_store::APP_ID)
+        );
+        let flatpak = Some(OsString::from("org.example.App"));
+        assert_eq!(
+            dir_for(run, flatpak, temp, 1000),
+            Path::new("/run/user/1000/app/org.example.App/instance")
+        );
+        let relative = Some(PathBuf::from("run"));
+        assert_eq!(dir_for(relative, None, temp, 7), Path::new("/tmp/rc-7"));
+    }
 
     #[test]
     fn the_folder_is_private() {
