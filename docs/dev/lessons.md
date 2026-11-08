@@ -23,5 +23,11 @@ Patterns learned from corrections during this project. Review at session start.
 ## A test that starts the real exe must isolate its profile from the first run
 A `--version` test, while still RED, launched the real app window with the owner's real profile and left a recovery session folder behind. Any test (or script) that spawns `reasoncraft.exe` sets `REASONCRAFT_PROFILE_DIR` to a temp dir and kills the process on timeout — even when it only expects a quick exit, because the RED run is the one that won't exit.
 
+## CI on other platforms
+- **Compare paths in tests the way the app stores them.** macOS's temporary folder is behind the `/var` → `/private/var` link, so a test comparing a stored, resolved path with the path it saved under passes on Windows and Linux and fails on macOS. Resolve both sides (`canonicalize`).
+- **A test of drawn UI must follow the platform's branches.** Where the code draws something only on some systems (`cfg!(target_os = ...)`), the test's expectation takes the same branch.
+- **In PowerShell, build a splatted argument list with `@(...)` around the whole expression.** `$x = if (...) { @('-g') }` unwraps to the string `'-g'`, and `@x` then passes it per character. Run each code path of a packaging script once (here the global extension install was only ever run on CI).
+- **The first push into a new repository may start no workflow.** Start CI by hand after creating the repo (`gh workflow run`).
+
 ## Agent tooling
 - **Never write backslashes through a Bash heredoc into a script that writes files.** The shell tool turned the two-character sequences backslash-v and backslash-t inside a quoted heredoc into a vertical tab and a tab, which corrupted a path in the docs and a PowerShell line. Use the Edit/Write tools for text with backslashes, and grep the changed files for control characters (`grep -P '[\x00-\x08\x0b\x0c\x0e-\x1f]'`) before committing.
