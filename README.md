@@ -80,10 +80,10 @@ Exports show exactly what the map shows (layout, wrapped lines, colours, ratings
 
 ## Install
 
-Downloads are named `reasoncraft-<version>-<os>-<architecture>`, and `SHA256SUMS.txt` beside them lets you check a download. The installers are not code-signed yet, so Windows and macOS warn the first time you start them.
+Downloads are named `reasoncraft-<version>-<os>-<architecture>`, and `SHA256SUMS.txt` beside them lets you check a download. With the [GitHub CLI](https://cli.github.com), `gh attestation verify <file> --repo Patrick-Batenburg/ReasonCraft` also shows that the file was built by this repository's release workflow, and from which commit. The installers are not code-signed yet, so Windows and macOS warn the first time you start them.
 
 - **Windows** (x64, x86 or arm64): run `reasoncraft-<version>-windows-x64.msi`. It asks whether to install only for you (the default, without administrator rights, into `%LOCALAPPDATA%\Programs\ReasonCraft`) or for everyone on the computer (into `Program Files\ReasonCraft`, with an administrator's permission). It adds a Start menu shortcut and opens `.rcraft` files with ReasonCraft. If SmartScreen stops it, choose **More info**, then **Run anyway**. Updates go where the installed copy is. Uninstall from Settings → Apps; your maps and the recovery folder stay. For a silent install: `msiexec /i reasoncraft-<version>-windows-x64.msi /qn` (add `ALLUSERS=1` for everyone). The `-portable.zip` holds the exe with the readme and licences, to run without installing.
-- **macOS** (11 or later, Apple silicon and Intel): open `reasoncraft-<version>-macos-universal.dmg` and drag ReasonCraft to Applications. While the app is not signed, open it the first time with right-click (or Control-click) → **Open**. Double-clicking a `.rcraft` file starts the app but does not open the file yet; use File → Open.
+- **macOS** (11 or later, Apple silicon and Intel): open `reasoncraft-<version>-macos-universal.dmg` and drag ReasonCraft to Applications. While the app is not signed, macOS blocks it the first time you open it. On macOS 15 (Sequoia) and later, try to open it once, then go to System Settings → Privacy & Security, choose **Open Anyway** next to the note about ReasonCraft, and confirm with **Open**. On macOS 11 to 14, right-click (or Control-click) the app and choose **Open**. After that it starts normally. Double-clicking a `.rcraft` file starts the app but does not open the file yet; use File → Open.
 - **Linux** (x86_64 or aarch64, glibc 2.35 or later: Ubuntu 22.04, Debian 12, Fedora 36, RHEL 10, openSUSE Leap 15.6 or newer), any of:
   - Debian, Ubuntu and derivatives: `sudo apt install ./reasoncraft-<version>-linux-x86_64.deb`;
   - Fedora, RHEL and derivatives: `sudo dnf install ./reasoncraft-<version>-linux-x86_64.rpm`;
@@ -101,7 +101,7 @@ How the installers are built and checked is described in [docs/release.md](docs/
 
 ## Build and run
 
-You need [rustup](https://rustup.rs). The Rust version is pinned in `rust-toolchain.toml`, so rustup installs and uses the right toolchain by itself the first time you build.
+You need [rustup](https://rustup.rs). The Rust version is pinned in `rust-toolchain.toml`, so rustup installs and uses the right toolchain by itself the first time you build. On Linux you need no extra `-dev` packages, only a C compiler and linker (`build-essential` on Debian and Ubuntu).
 
 ```sh
 cargo run -p reasoncraft --release
