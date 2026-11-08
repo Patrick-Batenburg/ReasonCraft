@@ -782,12 +782,12 @@ startup-failed-body = ReasonCraft kon zijn venster niet openen. Het grafische st
 startup-failed-details = Technische details: { $details }
 
 ## Ribbon tooltips: why an add command is greyed out
-ribbon-why-add_card = Selecteer een bewering of een premisse om een reden of bezwaar toe te voegen.
+ribbon-why-add_card = Kies een bewering of een premisse om een reden of bezwaar toe te voegen.
 ribbon-why-claim_has_categories = Een bewering met categorieën krijgt geen redenen of bezwaren.
-ribbon-why-add_co_premise = Selecteer een premisse om een medepremisse toe te voegen.
-ribbon-why-add_category = Selecteer een bewering of een categorie om een categorie toe te voegen.
+ribbon-why-add_co_premise = Kies een premisse om een medepremisse toe te voegen.
+ribbon-why-add_category = Kies een bewering of een categorie om een categorie toe te voegen.
 ribbon-why-claim_has_cards = Een bewering met redenen of bezwaren krijgt geen categorieën.
-ribbon-why-add_note = Selecteer een vak dat geen notitie is om een notitie toe te voegen.
-ribbon-why-comment = Selecteer een vak om een opmerking toe te voegen.
-ribbon-why-whole_card = Selecteer een premisse om een reden of bezwaar bij het hele blok toe te voegen.
-ribbon-why-add_source = Selecteer een bewering of een premisse om er een bron bij te zetten, of niets om de bron bij Niet verbonden te zetten.
+ribbon-why-add_note = Kies een vak dat geen notitie is om een notitie toe te voegen.
+ribbon-why-comment = Kies een vak om een opmerking toe te voegen.
+ribbon-why-whole_card = Kies een premisse om een reden of bezwaar bij het hele blok toe te voegen.
+ribbon-why-add_source = Kies een bewering of een premisse om er een bron bij te zetten, of niets om de bron bij Niet verbonden te zetten.
