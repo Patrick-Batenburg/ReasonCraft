@@ -117,6 +117,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items
 ```
 
+The full set of checks CI runs, how the code is organised and how to add a command, a string or a help page are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Separate profile (portable use and testing)
 
 Set the environment variable `REASONCRAFT_PROFILE_DIR` to an absolute folder to keep the settings file (`app.ron`) and the recovery folder there instead of in your user profile. This is useful for running from a USB stick or for trying things out without touching your own settings, for example in PowerShell: `$env:REASONCRAFT_PROFILE_DIR = "$env:TEMP\rc-test"; reasoncraft`. An empty or relative value is ignored (with a warning on stderr). A copy started with another profile folder runs in a window of its own.
@@ -241,4 +243,8 @@ Dragging also reorders: drop an item between its siblings (an insertion bar show
 
 Copyright (c) 2026 Patrick van Batenburg and ReasonCraft contributors.
 
-Licensed under either of MIT or Apache-2.0, at your option.
+Licensed under either of the [MIT licence](LICENSE-MIT) or the [Apache License, Version 2.0](LICENSE-APACHE), at your option. The components ReasonCraft uses or adapts, and their licences, are listed in [THIRD-PARTY.md](THIRD-PARTY.md).
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in ReasonCraft by you, as defined in the Apache-2.0 licence, shall be dual licensed as above, without any additional terms or conditions.
+
+To report a security problem, see [SECURITY.md](SECURITY.md); to contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
