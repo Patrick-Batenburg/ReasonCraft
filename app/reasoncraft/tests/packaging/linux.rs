@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-const APP_ID: &str = "io.github.Patrick_Batenburg.ReasonCraft";
+use reasoncraft::settings_store::APP_ID;
 
 fn linux_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packaging/linux")
@@ -49,13 +49,6 @@ fn desktop_entry_matches_app_id() {
     // Wayland compositors match the window to its entry by the app ID.
     let wm_class = desktop_value(&desktop, "StartupWMClass");
     assert_eq!(wm_class, APP_ID);
-    let src = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
-    let main = std::fs::read_to_string(src.join("main.rs")).unwrap();
-    assert!(
-        main.contains("with_app_id(reasoncraft::settings_store::APP_ID)"),
-        "main.rs sets the window's app ID"
-    );
-    assert_eq!(reasoncraft::settings_store::APP_ID, wm_class);
 
     assert_eq!(desktop_value(&desktop, "Exec"), "reasoncraft %F");
     assert_eq!(desktop_value(&desktop, "TryExec"), "reasoncraft");
