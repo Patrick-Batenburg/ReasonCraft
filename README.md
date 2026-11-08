@@ -2,6 +2,8 @@
 
 ReasonCraft is a free, open-source desktop app for argument mapping. It lets you lay out a claim, the reasons that support it, the objections that oppose it and the rebuttals to those objections as a clear tree of boxes and connectors. Maps are saved as `.rcraft` files, everything works offline, and the app is built natively in Rust with egui for Windows, macOS and Linux. The interface is in English and Dutch.
 
+![A reasoning map in ReasonCraft, with its outline in the Text panel](docs/images/reasoning-map.png)
+
 New here? The [user guide](docs/user-guide.md) is a short tour, and the full help is built into the app (F1).
 
 ## What you can do
@@ -49,6 +51,8 @@ Files from older versions open unchanged, and files from newer versions keep any
 - **Build the map from snippets.** Select text in a snippet and drag the **Drag to map** chip onto the map, or hold Alt and drag a snippet's handle to take its whole text. On a claim or premise the text becomes a new reason under it, on a card a reason for the whole card, on empty canvas a reason in the parking area, and on a category a new category. The snippet's source goes under the new premise, and the drop is one undo step. Change the new card's type afterwards with **Type**. Blank text, notes and sources refuse the drop and show red.
 
 ## The Essay tab
+
+![The Essay tab beside the map](docs/images/essay-tab.png)
 
 The Essay tab in the Text panel turns a reasoning map into the outline of an essay and gives you a text field for each part (a grouping map has no essay: the tab says so and Export → Essay is greyed out):
 

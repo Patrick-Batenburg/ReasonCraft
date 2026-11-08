@@ -2,7 +2,7 @@
 <!-- Adapted from WordCraft (https://github.com/storytold/wordcraft,
      packaging/linux/ai.storyteller.wordcraft.metainfo.xml.in at aadb077), MIT OR Apache-2.0, used
      under Apache-2.0; changed: ReasonCraft's identity, text and document type; the repository's
-     URLs (no `vcs-browser`: it equals the homepage, and AppStream 0.15 on the Ubuntu 22.04 build
+     URLs and the README's screenshots (no `vcs-browser`: it equals the homepage, and AppStream 0.15 on the Ubuntu 22.04 build
      image fails the file for that type).
 
      AppStream metadata (software centres). Template: package.sh substitutes @VERSION@ and @DATE@
@@ -27,6 +27,18 @@
       ReasonCraft is een gratis opensource-app voor argumentkaarten en groeperingskaarten. Zet een bewering uiteen met de redenen ervoor en de bezwaren ertegen, beoordeel ze, schrijf er een betoog bij, en exporteer de kaart als afbeelding of pdf. Hij werkt volledig offline.
     </p>
   </description>
+  <screenshots>
+    <screenshot type="default">
+      <caption>A reasoning map with its outline</caption>
+      <caption xml:lang="nl">Een argumentkaart met de opzet</caption>
+      <image>https://raw.githubusercontent.com/Patrick-Batenburg/ReasonCraft/main/docs/images/reasoning-map.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Writing an essay along the map</caption>
+      <caption xml:lang="nl">Een betoog schrijven langs de kaart</caption>
+      <image>https://raw.githubusercontent.com/Patrick-Batenburg/ReasonCraft/main/docs/images/essay-tab.png</image>
+    </screenshot>
+  </screenshots>
   <launchable type="desktop-id">io.github.Patrick_Batenburg.ReasonCraft.desktop</launchable>
   <icon type="stock">io.github.Patrick_Batenburg.ReasonCraft</icon>
   <categories>

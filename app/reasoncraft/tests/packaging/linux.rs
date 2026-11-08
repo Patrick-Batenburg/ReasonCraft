@@ -206,6 +206,38 @@ fn nfpm_takes_the_version_as_semver() {
     assert!(yaml.lines().any(|l| l == homepage), "{homepage}");
 }
 
+/// The metainfo's screenshots are the README's, in `docs/images/`, as
+/// GitHub serves them from `main`; the first is the default.
+#[test]
+fn metainfo_screenshots_are_in_the_repository() {
+    let metainfo = read(&format!("{APP_ID}.metainfo.xml.in"));
+    let doc = roxmltree::Document::parse(&metainfo).unwrap();
+    let raw = "https://raw.githubusercontent.com/Patrick-Batenburg/ReasonCraft/main/";
+    let shots: Vec<_> = doc
+        .descendants()
+        .filter(|n| n.has_tag_name("screenshot"))
+        .collect();
+    assert!(!shots.is_empty(), "the metainfo shows screenshots");
+    assert_eq!(shots[0].attribute("type"), Some("default"));
+    let readme = std::fs::read_to_string(linux_dir().join("../../README.md")).unwrap();
+    for shot in shots {
+        let image = shot.children().find(|n| n.has_tag_name("image")).unwrap();
+        let url = image.text().unwrap();
+        let path = url.strip_prefix(raw).unwrap_or_else(|| panic!("{url}"));
+        assert!(path.starts_with("docs/images/"), "{url}");
+        assert!(linux_dir().join("../..").join(path).is_file(), "{path}");
+        assert!(
+            readme.contains(&format!("]({path})")),
+            "README shows {path}"
+        );
+        let caption = shot.children().find(|n| n.has_tag_name("caption"));
+        assert!(
+            caption.and_then(|c| c.text()).is_some(),
+            "{path} has a caption"
+        );
+    }
+}
+
 /// With the homepage in the metainfo, `appstreamcli validate` runs without
 /// lowering any check (ruling RR-8 retired PK-13's override).
 #[test]
