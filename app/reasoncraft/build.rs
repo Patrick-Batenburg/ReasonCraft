@@ -62,7 +62,10 @@ fn windows_resources() {
         .set("ProductName", "ReasonCraft")
         .set("FileDescription", "ReasonCraft")
         .set("CompanyName", "ReasonCraft contributors")
-        .set("LegalCopyright", "Copyright (c) ReasonCraft contributors")
+        .set(
+            "LegalCopyright",
+            "Copyright (c) 2026 Patrick van Batenburg and ReasonCraft contributors",
+        )
         .set("OriginalFilename", "reasoncraft.exe");
     res.compile().expect("the Windows resources compile");
 }

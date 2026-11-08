@@ -51,7 +51,7 @@
   <key>NSRequiresAquaSystemAppearance</key>
   <false/>
   <key>NSHumanReadableCopyright</key>
-  <string>Copyright © Patrick van Batenburg and ReasonCraft contributors. MIT OR Apache-2.0.</string>
+  <string>Copyright © 2026 Patrick van Batenburg and ReasonCraft contributors. MIT OR Apache-2.0.</string>
 
   <!-- ReasonCraft's own document type: a zip-based map with the .rcraft extension. -->
   <key>UTExportedTypeDeclarations</key>
