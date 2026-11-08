@@ -3,7 +3,7 @@
 The status log kept while ReasonCraft was built (steps 1–6, packaging, the full code review), with test counts, manual checks and carry-overs. Kept as written at the time; the current status is in [docs/todo.md](../todo.md).
 
 **Design:** [docs/dev/specs/2026-10-25-reasoncraft-design.md](specs/2026-10-25-reasoncraft-design.md) (approved 2026-10-25)
-**Active:** pre-release review before the public repo and 0.1.0 (seven seats: core, app, security, release pipeline, maintainability, UX, public-repo readiness; ledger `.superpowers/sdd/release-review/`). Previous plan: Packaging the ArtCraft way ([plan](plans/2026-10-28-artcraft-packaging.md)) is merged into `main` (98edc8f, 2026-10-29); steps 1–6 merged
+**Active:** pre-release review before the public repo and 0.1.0 (seven seats: core, app, security, release pipeline, maintainability, UX, public-repo readiness; ledger `.superpowers/sdd/release-review/`). Previous plan: Packaging the ArtCraft way ([plan](plans/2026-10-28-artcraft-packaging.md)) is merged into `main` (7efad9b, 2026-10-29); steps 1–6 merged
 **Merged:** steps 1–6 (step 6 is complete on branch `step6-release-readiness`)
 **Done:** [docs/dev/plans/2026-10-25-core-editor.md](plans/2026-10-25-core-editor.md) — step 1, core editor (merged)
 
@@ -104,7 +104,7 @@ The status log kept while ReasonCraft was built (steps 1–6, packaging, the ful
   - [x] Task 9: Workflows: release, packaging lint and CI (actionlint 1.7.12 clean; the lint job rehearsed in ubuntu:24.04 and the install-policy job on this machine; the release workflow runs for the first time once a remote exists)
   - [x] Task 10: Docs, rulings and the release checklist (docs/release.md rewritten; README Install and CHANGELOG 0.1.0; rulings PK-1 to PK-14)
   - [x] Branch review findings PKG-1 to PKG-12 fixed (rulings PK-15 to PK-19; see the review notes below)
-  - [x] Whole-branch review (superpowers:requesting-code-review; follow-ups PKG-13 to PKG-15, reviewer approved), then merged `artcraft-packaging` into `main` locally as 98edc8f (not pushed)
+  - [x] Whole-branch review (superpowers:requesting-code-review; follow-ups PKG-13 to PKG-15, reviewer approved), then merged `artcraft-packaging` into `main` locally as 7efad9b (not pushed)
   - [x] Decided by the owner (2026-10-28): install folders `Programs\ReasonCraft` / `Program Files\ReasonCraft`; maintainer and publisher "ReasonCraft contributors" without an address; no homepage URL (the ARP, the metainfo and the packages leave it out; once there is one, set `REASONCRAFT_SIGN_URL` for signing, add `<url type="homepage">` to the metainfo and drop the lint override, ruling PK-13)
   - [x] App ID decided by the owner (2026-11-07): no domain, so `io.github.Patrick_Batenburg.ReasonCraft` (macOS `io.github.Patrick-Batenburg.ReasonCraft`), from the repo `github.com/Patrick-Batenburg/ReasonCraft` (ruling PK-20, supersedes PK-10)
   - [ ] Carry-over, once a remote exists: the first release-workflow run (macOS universal DMG, signing and notarization when the secrets exist, Flatpak on both architectures, Windows arm64, Linux aarch64) and the packaging lint run; the CI must be green on all three platforms
@@ -455,7 +455,7 @@ Setting the document language back to Dutch instead of English in step 3 makes t
 - [ ] Smaller: Recent shows \?\UNC paths for network shares; profile warning invisible in GUI builds; per-frame Fluent lookups in the scene; thousands separators
 
 ## Full code review (2026-10-28) — merged
-Six independent reviewers (core bugs, app bugs, security, maintainability, readability, robustness/UX/accessibility) reviewed main at cb01ef1; ~75 findings were fixed in 8 batches and 4 re-check rounds on branch `review-fixes`, merged as afac8f6 after all six granted approval. Ledger, findings and round files: `.superpowers/sdd/full-review/`. Rulings B1-…, B4–B8, R1-n, R2-n in docs/rulings.md.
+Six independent reviewers (core bugs, app bugs, security, maintainability, readability, robustness/UX/accessibility) reviewed main at c53d94c; ~75 findings were fixed in 8 batches and 4 re-check rounds on branch `review-fixes`, merged as 604199a after all six granted approval. Ledger, findings and round files: `.superpowers/sdd/full-review/`. Rulings B1-…, B4–B8, R1-n, R2-n in docs/rulings.md.
 - [ ] Open still runs on the UI thread (ruling B6-5); save is a background job
 - [ ] Screen-reader tree only covers items on screen (B7-8)
 - [ ] Deleting a very large branch is quadratic (edit/move_remove.rs shift_remove) — one-off cost, not per frame
