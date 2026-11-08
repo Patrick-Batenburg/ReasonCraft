@@ -203,12 +203,24 @@ fn recent_files_capped_and_deduplicated() {
     fake.set_save(saved.clone());
     apply(&mut app, Action::Save);
     reasoncraft::file_ops::wait_for_saves(&mut app);
-    assert_eq!(app.settings.recent_files, vec![saved.clone()]);
+    assert_eq!(
+        resolved(&app.settings.recent_files),
+        resolved(std::slice::from_ref(&saved))
+    );
     let other = dir.path().join("b.rcraft");
     reasoncraft_core::file::save(&Document::new("B"), &other).unwrap();
     fake.set_open(other.clone());
     apply(&mut app, Action::Open);
-    assert_eq!(app.settings.recent_files, vec![other, saved]);
+    assert_eq!(
+        resolved(&app.settings.recent_files),
+        resolved(&[other, saved])
+    );
+}
+
+/// `paths` resolved: the recent files store files resolved, and macOS's
+/// temporary folder is behind a link.
+fn resolved(paths: &[PathBuf]) -> Vec<PathBuf> {
+    paths.iter().map(|p| p.canonicalize().unwrap()).collect()
 }
 
 /// A file name that is not valid UTF-8.

@@ -56,7 +56,14 @@ fn save_is_written_on_a_worker_and_marks_the_tab_saved_when_done() {
     assert!(!app.tabs[0].is_dirty());
     assert_eq!(app.tabs[0].path.as_deref(), Some(path.as_path()));
     assert_eq!(root_text(&path), "Written");
-    assert_eq!(app.settings.recent_files, [path]);
+    // Stored resolved: macOS's temporary folder is behind a link.
+    let recent: Vec<_> = app
+        .settings
+        .recent_files
+        .iter()
+        .map(|p| p.canonicalize().unwrap())
+        .collect();
+    assert_eq!(recent, [path.canonicalize().unwrap()]);
 }
 
 #[test]

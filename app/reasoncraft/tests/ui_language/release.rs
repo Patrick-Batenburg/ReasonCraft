@@ -141,7 +141,14 @@ fn release_flow() {
     assert!(h.state().modal.is_none(), "{:?}", h.state().modal);
     assert!(saved.is_file());
     assert!(!h.state().active_tab().is_dirty());
-    assert_eq!(h.state().settings.recent_files.first(), Some(&saved));
+    // Stored resolved: macOS's temporary folder is behind a link.
+    let resolved = |paths: &[std::path::PathBuf]| -> Vec<std::path::PathBuf> {
+        paths.iter().map(|p| p.canonicalize().unwrap()).collect()
+    };
+    assert_eq!(
+        resolved(&h.state().settings.recent_files[..1]),
+        resolved(std::slice::from_ref(&saved))
+    );
 
     // 5. Reset to defaults keeps the recent files; the UI follows the
     // (Dutch) OS again.
@@ -151,7 +158,10 @@ fn release_flow() {
     let settings = &h.state().settings;
     assert_eq!(settings.ui_scale, 1.0);
     assert_eq!(settings.ui_language, None);
-    assert_eq!(settings.recent_files, vec![saved.clone()]);
+    assert_eq!(
+        resolved(&settings.recent_files),
+        resolved(std::slice::from_ref(&saved))
+    );
     assert_eq!(ui_language(), "nl");
 
     // 6. F1 opens the help, in Dutch.
