@@ -3,12 +3,13 @@
 use eframe::egui::{self, Color32, Stroke, Theme, Visuals};
 use serde::{Deserialize, Serialize};
 
-/// The theme the user picked. `System` follows the OS.
+/// The theme the user picked. `System` follows the OS, and is what a
+/// first run starts with (ruling RR-5); saved settings keep their choice.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThemeChoice {
+    #[default]
     System,
     Light,
-    #[default]
     Dark,
 }
 
@@ -110,6 +111,13 @@ impl Tokens {
             on_danger: hex(0xFFFFFF),
         }
     }
+}
+
+/// Whether the OS's theme, as the window reports it, is dark. When the OS
+/// does not say (some Linux desktops without a portal, or before the
+/// window knows), dark: the app's own look.
+pub fn os_dark(system: Option<Theme>) -> bool {
+    system.is_none_or(|t| t == Theme::Dark)
 }
 
 /// The tokens for `choice`; `os_dark` decides for [`ThemeChoice::System`].
@@ -313,5 +321,14 @@ mod tests {
         assert!(!resolve(ThemeChoice::System, false).dark);
         assert!(resolve(ThemeChoice::Dark, false).dark);
         assert!(!resolve(ThemeChoice::Light, true).dark);
+    }
+
+    /// An OS that does not say (some Linux desktops) gets the dark theme.
+    #[test]
+    fn an_unknown_os_theme_counts_as_dark() {
+        assert!(os_dark(None));
+        assert!(os_dark(Some(Theme::Dark)));
+        assert!(!os_dark(Some(Theme::Light)));
+        assert_eq!(ThemeChoice::default(), ThemeChoice::System);
     }
 }

@@ -134,7 +134,8 @@ impl ReasonCraftApp {
         let app = Self {
             tabs: vec![DocTab::with_language(settings.new_doc_language(os_locale))],
             active: 0,
-            tokens: theme::resolve(settings.theme, true),
+            // The first frame resolves System with the OS's theme.
+            tokens: theme::resolve(settings.theme, theme::os_dark(None)),
             spell: SpellService::new(&settings.spell_words),
             settings,
             os_locale,
@@ -364,7 +365,7 @@ impl ReasonCraftApp {
     }
 
     fn sync_theme(&mut self, ctx: &egui::Context) {
-        let os_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
+        let os_dark = theme::os_dark(ctx.system_theme());
         self.tokens = theme::resolve(self.settings.theme, os_dark);
         if self.applied != Some(self.tokens) {
             // Ctrl+=/-/0 zoom the map, not the whole interface.

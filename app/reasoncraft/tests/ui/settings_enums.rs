@@ -31,6 +31,16 @@ fn from_ron(text: &str) -> Settings {
     eframe::get_value(&storage, SETTINGS_KEY).expect("settings load")
 }
 
+/// Saved settings keep their theme now that the first run follows the
+/// OS (D3): only settings without one take System.
+#[test]
+fn a_saved_theme_is_kept() {
+    for theme in [ThemeChoice::Dark, ThemeChoice::Light, ThemeChoice::System] {
+        assert_eq!(from_ron(&format!("(theme:{theme:?})")).theme, theme);
+    }
+    assert_eq!(from_ron("(author:\"Ann\")").theme, ThemeChoice::System);
+}
+
 #[test]
 fn unknown_enum_values_keep_other_settings() {
     let s = from_ron("(author:\"Ann\",theme:Sepia,connector_style:Zigzag,minimap:Huge)");

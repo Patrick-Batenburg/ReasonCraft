@@ -346,7 +346,7 @@ pub enum TextTab {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            theme: ThemeChoice::Dark,
+            theme: ThemeChoice::System,
             ui_language: None,
             author: String::new(),
             show_markers: true,
