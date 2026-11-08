@@ -200,3 +200,29 @@ fn nfpm_takes_the_version_as_semver() {
     assert!(yaml.lines().any(|l| l == "version_schema: semver"));
     assert!(yaml.lines().any(|l| l == "version: ${VERSION}"));
 }
+
+/// The Dutch texts of the desktop entry and the AppStream metadata use
+/// the app's term for a claim, "bewering" (ruling J3, UX-10); "stelling"
+/// stays only as a search keyword.
+#[test]
+fn dutch_package_texts_use_the_glossary_terms() {
+    let desktop = read(&format!("{APP_ID}.desktop"));
+    let comment = desktop_value(&desktop, "Comment[nl]");
+    assert!(comment.contains("beweringen"), "{comment}");
+    let keywords = desktop_value(&desktop, "Keywords[nl]");
+    assert!(keywords.split(';').any(|k| k == "bewering"), "{keywords}");
+
+    let metainfo = read(&format!("{APP_ID}.metainfo.xml.in"));
+    let doc = roxmltree::Document::parse(&metainfo).unwrap();
+    let dutch: Vec<String> = doc
+        .descendants()
+        .filter(|n| n.attribute(("http://www.w3.org/XML/1998/namespace", "lang")) == Some("nl"))
+        .map(|n| n.text().unwrap_or_default().to_owned())
+        .collect();
+    assert!(dutch.len() >= 2, "a Dutch summary and description");
+    for text in &dutch {
+        assert!(!text.to_lowercase().contains("stelling"), "{text}");
+    }
+    assert!(dutch.iter().any(|t| t.contains("bewering")));
+    assert!(!comment.to_lowercase().contains("stelling"), "{comment}");
+}

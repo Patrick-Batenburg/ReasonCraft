@@ -12,7 +12,7 @@
   <project_license>MIT OR Apache-2.0</project_license>
   <name>ReasonCraft</name>
   <summary>Map out arguments: claims, reasons and objections</summary>
-  <summary xml:lang="nl">Breng argumenten in kaart: stellingen, redenen en bezwaren</summary>
+  <summary xml:lang="nl">Breng argumenten in kaart: beweringen, redenen en bezwaren</summary>
   <developer id="io.github.patrick_batenburg">
     <name>ReasonCraft contributors</name>
   </developer>
@@ -21,7 +21,7 @@
       ReasonCraft is a free, open-source app for argument maps and grouping maps. Lay out a claim with the reasons for it and the objections against it, rate them, write an essay along the map, and export it as an image or a PDF. It works fully offline.
     </p>
     <p xml:lang="nl">
-      ReasonCraft is een gratis opensource-app voor argumentkaarten en groeperingskaarten. Zet een stelling uiteen met de redenen ervoor en de bezwaren ertegen, beoordeel ze, schrijf er een betoog bij, en exporteer de kaart als afbeelding of pdf. Hij werkt volledig offline.
+      ReasonCraft is een gratis opensource-app voor argumentkaarten en groeperingskaarten. Zet een bewering uiteen met de redenen ervoor en de bezwaren ertegen, beoordeel ze, schrijf er een betoog bij, en exporteer de kaart als afbeelding of pdf. Hij werkt volledig offline.
     </p>
   </description>
   <launchable type="desktop-id">io.github.Patrick_Batenburg.ReasonCraft.desktop</launchable>
