@@ -19,7 +19,7 @@ mod entries;
 mod new_page;
 mod recent;
 
-use entries::{entries, entry_width};
+use entries::{entries, entry_height, entry_width};
 
 /// A page beside the entries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -107,10 +107,12 @@ pub fn show(ui: &mut egui::Ui, app: &mut ReasonCraftApp) {
             let left = ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                 ui.vertical(|ui| {
                     ui.set_width(entry_width(compact));
-                    // The entries scroll too when they do not fit (at a
-                    // large UI scale), apart from the page.
+                    // In a short window the entries get lower; when even
+                    // that does not fit (at a large UI scale), they
+                    // scroll, apart from the page.
+                    let row_h = entry_height(ui.available_height());
                     let scroll = egui::ScrollArea::vertical().id_salt("backstage_entries");
-                    scroll.show(ui, |ui| entries(ui, app, &mut page, compact));
+                    scroll.show(ui, |ui| entries(ui, app, &mut page, compact, row_h));
                 });
                 {
                     ui.add_space(gap);
