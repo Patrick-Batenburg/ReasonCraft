@@ -5,6 +5,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 mod testing;
+mod window;
+pub use window::{FIRST_SIZE, MIN_WINDOW, min_window_size};
 
 use crate::actions::{self, Action, LinkOpener, SystemOpener};
 use crate::canvas::images::{ImageCache, ImageJobs};
@@ -20,20 +22,6 @@ use crate::shell::link_modal::LinkEdit;
 use crate::spell::SpellService;
 use crate::theme::{self, Tokens};
 use eframe::egui;
-
-/// The smallest window at 100 % interface size, in screen points.
-pub const MIN_WINDOW: [f32; 2] = [800.0, 500.0];
-
-/// The smallest window, in the interface's own points: [`MIN_WINDOW`], so
-/// a larger interface keeps the room it is laid out for, but never more
-/// than 90 % of the `monitor` (when known). egui-winit turns these points
-/// into pixels with the interface size (egui's zoom factor times the
-/// display scale) and gives the monitor's size in the same points, so no
-/// scale is applied here.
-pub fn min_window_size(monitor: Option<egui::Vec2>) -> egui::Vec2 {
-    let base = egui::Vec2::from(MIN_WINDOW);
-    monitor.map_or(base, |m| base.min(m * 0.9))
-}
 
 /// Which ribbon tab is showing. `File` shows the backstage instead of the map.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -122,6 +110,9 @@ pub struct ReasonCraftApp {
     close_confirmed: bool,
     /// Send the close command at the end of this frame.
     close_now: bool,
+    /// The first run: maximise the window if it does not fit (see
+    /// [`window`]).
+    fit_window: bool,
     /// Show the source icon preview window.
     #[cfg(debug_assertions)]
     pub show_source_icons: bool,
@@ -171,6 +162,7 @@ impl ReasonCraftApp {
             window_title: String::new(),
             close_confirmed: false,
             close_now: false,
+            fit_window: false,
             #[cfg(debug_assertions)]
             show_source_icons: false,
         };
@@ -207,6 +199,7 @@ impl ReasonCraftApp {
             Box::new(SystemOpener),
             Arc::new(Mutex::new(SystemClipboard::default())),
         );
+        app.fit_window = !crate::settings_store::storage_has_window(cc.storage);
         app.start_recovery(recovery_dir);
         app
     }
@@ -283,6 +276,7 @@ impl ReasonCraftApp {
         shell::statusbar::expire_notes(&ctx, self);
         self.sync_theme(&ctx);
         self.sync_ui_scale(&ctx);
+        self.fit_first_window(&ctx);
         self.sync_window_title(&ctx);
         // The OS (or the title bar on macOS) asks to close, or Cmd+Q on
         // macOS: ask about unsaved changes first.
@@ -363,29 +357,6 @@ impl ReasonCraftApp {
             ctx.options_mut(|o| o.zoom_with_keyboard = false);
             theme::apply(ctx, &self.tokens);
             self.applied = Some(self.tokens);
-        }
-    }
-
-    /// The whole interface at the size the settings ask for (egui's zoom
-    /// factor). The map's zoom works in points, so it comes on top. The
-    /// window's minimum size, in these points, grows with it on screen
-    /// (see [`min_window_size`]), once the screen's size is known.
-    fn sync_ui_scale(&self, ctx: &egui::Context) {
-        let scale = self.settings.ui_scale_factor();
-        if ctx.zoom_factor() != scale {
-            ctx.set_zoom_factor(scale);
-        }
-        let Some(monitor) = ctx.input(|i| i.viewport().monitor_size) else {
-            return;
-        };
-        // Sent again once the interface size changes (egui applies a new
-        // zoom factor from the next pass on, and egui-winit turns the
-        // points into pixels with the zoom factor in force).
-        let min = (min_window_size(Some(monitor)), ctx.zoom_factor());
-        let sent = egui::Id::unique("min_window_sent");
-        if ctx.data(|d| d.get_temp::<(egui::Vec2, f32)>(sent)) != Some(min) {
-            ctx.data_mut(|d| d.insert_temp(sent, min));
-            ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min.0));
         }
     }
 

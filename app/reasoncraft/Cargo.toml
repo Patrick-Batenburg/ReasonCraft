@@ -36,6 +36,8 @@ unicode-normalization = "0.1.26"
 # Autosave: the recovery folder's meta files.
 chrono = { workspace = true, features = ["serde"] }
 serde_json.workspace = true
+# Reads the settings file as eframe writes it (see `src/settings_store.rs`).
+ron = "0.12"
 
 # Turns off the default app menu on macOS, whose Quit item would quit
 # without asking about unsaved changes (the same winit eframe uses).

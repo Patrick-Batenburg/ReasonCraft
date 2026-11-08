@@ -22,10 +22,15 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     let profile = reasoncraft::profile::Profile::from_env();
+    let settings_file = reasoncraft::settings_store::settings_file(profile.settings_file.clone());
+    // The first run (no window place kept yet) opens centred.
+    let first_run = !(settings_file.as_deref())
+        .and_then(reasoncraft::settings_store::Stored::read)
+        .is_some_and(|s| s.has_window());
     let outcome = startup::first_that_starts(&startup::RENDERERS, |renderer, started| {
         eframe::run_native(
             "ReasonCraft",
-            native_options(renderer, profile.settings_file.clone()),
+            native_options(renderer, profile.settings_file.clone(), first_run),
             Box::new(|cc| {
                 started.set(true);
                 let recovery_dir = profile.recovery_dir.clone();
@@ -52,15 +57,17 @@ fn main() -> ExitCode {
 }
 
 /// The main window, drawn with `renderer`, keeping its settings in
-/// `settings_file` (or eframe's per-user default when `None`).
+/// `settings_file` (or eframe's per-user default when `None`); centred on
+/// the `first_run` (later runs get the place it had).
 fn native_options(
     renderer: eframe::Renderer,
     settings_file: Option<std::path::PathBuf>,
+    first_run: bool,
 ) -> eframe::NativeOptions {
     let mut viewport = egui::ViewportBuilder::default()
         .with_title(reasoncraft::i18n::t("app.name"))
-        .with_app_id("io.github.Patrick_Batenburg.ReasonCraft")
-        .with_inner_size([1280.0, 800.0])
+        .with_app_id(reasoncraft::settings_store::APP_ID)
+        .with_inner_size(reasoncraft::app::FIRST_SIZE)
         .with_min_inner_size(reasoncraft::app::MIN_WINDOW);
     viewport = if cfg!(target_os = "macos") {
         // Keep the native traffic lights; our title bar draws under them.
@@ -81,6 +88,7 @@ fn native_options(
         wgpu_options: startup::wgpu_options(),
         event_loop_builder: event_loop_hook(),
         persistence_path: settings_file,
+        centered: first_run,
         ..Default::default()
     }
 }

@@ -22,6 +22,7 @@ pub mod profile;
 pub mod recovery;
 pub mod scene;
 pub mod settings;
+pub mod settings_store;
 pub mod shell;
 pub mod spell;
 pub mod startup;
