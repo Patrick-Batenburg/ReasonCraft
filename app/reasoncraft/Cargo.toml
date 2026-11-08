@@ -3,6 +3,8 @@ name = "reasoncraft"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 rust-version.workspace = true
 description = "Map out arguments: claims, reasons and objections."
 # Not published to crates.io: the About page embeds the workspace's
@@ -36,11 +38,36 @@ unicode-normalization = "0.1.26"
 # Autosave: the recovery folder's meta files.
 chrono = { workspace = true, features = ["serde"] }
 serde_json.workspace = true
+# Reads the settings file as eframe writes it (see `src/settings_store.rs`).
+ron = "0.12"
 
 # Turns off the default app menu on macOS, whose Quit item would quit
 # without asking about unsaved changes (the same winit eframe uses).
 [target.'cfg(target_os = "macos")'.dependencies]
 winit = { version = "0.30", default-features = false }
+
+# Restricts where run-time DLLs come from (see `src/dll_search.rs`); the
+# console for `--version` (`src/cli.rs`); the single-instance pipe
+# (`src/instance/windows.rs`).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Console",
+    "Win32_System_IO",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Pipes",
+    "Win32_System_RemoteDesktop",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+# The user ID for the single-instance socket's folder
+# (`src/instance/unix.rs`).
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 egui_kittest = "0.37"

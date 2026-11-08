@@ -8,8 +8,9 @@
 //! one appears or goes.
 //!
 //! The edge cues are adapted from WordCraft (github.com/storytold/wordcraft),
-//! Copyright (c) 2026 ArtCraft Team and the WordCraft contributors,
-//! Apache-2.0.
+//! Copyright (c) 2026 ArtCraft Team and the WordCraft contributors, used
+//! under MIT OR Apache-2.0; changed: drawn in ReasonCraft's theme colours
+//! over its ribbon row.
 
 use eframe::egui::{
     self, Align, Id, Layout, Rect, Role, ScrollArea, Sense, Shape, Stroke, Ui, Vec2, WidgetInfo,

@@ -15,7 +15,6 @@ use reasoncraft_core::outline::{OutlineLine, OutlineOptions};
 use reasoncraft_core::{Assets, Document, EditError, History, Item, NodeId, Package, Uuid};
 
 use crate::canvas::Camera;
-use crate::i18n::t;
 use crate::jobs::JobId;
 use crate::memo::Memo;
 
@@ -23,22 +22,20 @@ mod derived;
 mod essay_edit;
 mod find_state;
 mod meta_edit;
+mod naming;
 mod row_heights;
 mod session;
 mod snippet_edit;
 pub use derived::ISSUE_SETTLE;
 pub use essay_edit::EssayView;
 pub use find_state::FindState;
+pub use naming::FILE_STEM_CHARS;
 pub use row_heights::{CheckRow, EssayRow, RowHeights};
 pub use session::EditSession;
 pub use snippet_edit::{cap_snippet, tidy_source};
 
 /// The next [`DocTab::ui_key`].
 static NEXT_UI_KEY: AtomicU64 = AtomicU64::new(0);
-
-/// The longest file name (in characters, without extension) a Save or
-/// Export suggests from a document title.
-pub const FILE_STEM_CHARS: usize = 100;
 
 /// How many undo steps a tab keeps.
 pub const HISTORY_LIMIT: usize = 500;
@@ -133,6 +130,10 @@ pub struct DocTab {
     /// saved it (autosave records it, so a restore can tell whether the
     /// file changed since).
     pub disk_mtime: Option<std::time::SystemTime>,
+    /// [`Self::path`] with links and short names resolved, as found when
+    /// the tab opened or saved it, so a tab is found by its file without
+    /// touching the disk (a network share may hang); `None` when unknown.
+    pub resolved_path: Option<std::path::PathBuf>,
     /// Where this tab was restored from after a crash, until it is saved.
     pub recovered_from: Option<crate::recovery::RecoveryMeta>,
     /// Unique to this tab, so its text fields' widget state (cursor, undo
@@ -179,6 +180,7 @@ impl DocTab {
             other_entries,
             cut_on_open: _,
             parked_on_open: _,
+            generator: _,
         } = pkg;
         let selection = Some(Item::Box(doc.root));
         Self {
@@ -216,6 +218,7 @@ impl DocTab {
             recovery_key: Uuid::new_v4(),
             autosaved_revision: None,
             disk_mtime: None,
+            resolved_path: None,
             recovered_from: None,
             ui_key: NEXT_UI_KEY.fetch_add(1, Ordering::Relaxed),
         }
@@ -256,55 +259,6 @@ impl DocTab {
     /// prepared for one of its boxes.
     pub fn has_unsaved_work(&self) -> bool {
         self.is_dirty() || !self.pending_images.is_empty()
-    }
-
-    /// The file stem; without a file, the document's title (an imported
-    /// map, an example), else "Untitled".
-    pub fn name(&self) -> String {
-        if let Some(stem) = self.path.as_deref().and_then(|p| p.file_stem()) {
-            return stem.to_string_lossy().into_owned();
-        }
-        match self.doc.meta.title.trim() {
-            "" => t("untitled"),
-            title => title.to_owned(),
-        }
-    }
-
-    /// [`Self::name`] as the file name a Save or Export suggests: without
-    /// the characters file names cannot hold, at most [`FILE_STEM_CHARS`]
-    /// long ("Untitled" when nothing is left).
-    pub fn file_stem(&self) -> String {
-        let name = self.name();
-        let kept = name
-            .chars()
-            .map(|c| match c {
-                '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => ' ',
-                c if c.is_control() => ' ',
-                c => c,
-            })
-            .collect::<String>();
-        let words: Vec<&str> = kept.split_whitespace().collect();
-        let stem: String = words.join(" ").chars().take(FILE_STEM_CHARS).collect();
-        match stem.trim_end_matches(['.', ' ']) {
-            "" => t("untitled"),
-            stem => stem.to_owned(),
-        }
-    }
-
-    /// [`Self::name`], marked when restored after a crash (until saved),
-    /// followed by " •" when there are unsaved changes.
-    pub fn title(&self) -> String {
-        let mut name = self.name();
-        if self.recovered_from.is_some() {
-            let mut args = crate::i18n::FluentArgs::new();
-            args.set("name", name);
-            name = crate::i18n::t_args("recovery.tab_title", &args);
-        }
-        if self.is_dirty() {
-            format!("{name} •")
-        } else {
-            name
-        }
     }
 
     /// Run `edit` as one undoable step. A refused edit changes nothing and

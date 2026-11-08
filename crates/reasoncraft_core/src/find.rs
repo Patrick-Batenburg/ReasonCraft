@@ -15,7 +15,7 @@ use std::ops::Range;
 use crate::checks::walk::visit_order;
 use crate::edit::EditError;
 use crate::ids::{Item, NodeId};
-use crate::model::Document;
+use crate::model::{Document, MAX_BOX_CHARS};
 
 /// How a query matches text.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -24,6 +24,15 @@ pub struct FindOptions {
     pub match_case: bool,
     /// The hit must not touch a letter, digit or `_` on either side.
     pub whole_word: bool,
+}
+
+/// What [`Document::replace_all`] did.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Replaced {
+    /// How many hits were replaced.
+    pub count: usize,
+    /// Whether a box had to be cut to [`MAX_BOX_CHARS`].
+    pub cut: bool,
 }
 
 /// One match: a byte range in a box's text.
@@ -111,16 +120,44 @@ fn is_whole_word(text: &str, range: Range<usize>) -> bool {
     !before.is_some_and(word) && !after.is_some_and(word)
 }
 
+/// `text` with each of `ranges` (in order, not overlapping) replaced by
+/// `with`, built in one pass that stops at [`MAX_BOX_CHARS`] characters;
+/// true when it had to stop there.
+fn replaced(text: &str, ranges: &[Range<usize>], with: &str) -> (String, bool) {
+    let mut out = String::with_capacity(text.len().min(MAX_BOX_CHARS * 4));
+    let mut left = MAX_BOX_CHARS;
+    // Appends `part`, or as much as still fits; false once full.
+    let mut push = |out: &mut String, part: &str| {
+        let end = crate::caps::capped_len(part, left);
+        out.push_str(&part[..end]);
+        if end < part.len() {
+            return false;
+        }
+        left -= part.chars().count();
+        true
+    };
+    let mut at = 0;
+    for range in ranges {
+        if !push(&mut out, &text[at..range.start]) || !push(&mut out, with) {
+            return (out, true);
+        }
+        at = range.end;
+    }
+    let whole = push(&mut out, &text[at..]);
+    (out, !whole)
+}
+
 impl Document {
-    /// Replace the bytes `range` of box `node`'s text with `with`.
-    /// `NotFound` when the box does not exist or the range is out of
-    /// bounds, reversed or not on character boundaries.
+    /// Replace the bytes `range` of box `node`'s text with `with`, cut to
+    /// [`MAX_BOX_CHARS`]; true when it was cut. `NotFound` when the box
+    /// does not exist or the range is out of bounds, reversed or not on
+    /// character boundaries.
     pub fn replace_range(
         &mut self,
         node: NodeId,
         range: Range<usize>,
         with: &str,
-    ) -> Result<(), EditError> {
+    ) -> Result<bool, EditError> {
         let b = self.boxes.get_mut(&node).ok_or(EditError::NotFound)?;
         let valid = range.start <= range.end
             && b.text.is_char_boundary(range.start)
@@ -128,34 +165,39 @@ impl Document {
         if !valid {
             return Err(EditError::NotFound);
         }
-        b.text.replace_range(range, with);
+        let cut;
+        (b.text, cut) = replaced(&b.text, &[range], with);
         self.finish_edit();
-        Ok(())
+        Ok(cut)
     }
 
-    /// Replace every hit of `query` with `with`; returns how many were
-    /// replaced. Each box's hits are found first and replaced right to
-    /// left, so text just put in is never searched again.
+    /// Replace every hit of `query` with `with`. Each box's hits are found
+    /// first and its new text built in one pass, so text just put in is
+    /// never searched again; a box that would grow past [`MAX_BOX_CHARS`]
+    /// is cut there (see [`Replaced`]).
     ///
     /// Every hit counts, also one whose text already equals `with`. The
     /// app's Replace all reports only the hits that changed, so its count
     /// can be lower.
-    pub fn replace_all(&mut self, query: &str, with: &str, opts: FindOptions) -> usize {
-        let mut count = 0;
+    pub fn replace_all(&mut self, query: &str, with: &str, opts: FindOptions) -> Replaced {
+        let mut done = Replaced::default();
         for node in search_order(self) {
             let Some(b) = self.boxes.get_mut(&node) else {
                 continue;
             };
             let ranges = find_in_text(&b.text, query, opts);
-            for range in ranges.iter().rev() {
-                b.text.replace_range(range.clone(), with);
+            if ranges.is_empty() {
+                continue;
             }
-            count += ranges.len();
+            let cut;
+            (b.text, cut) = replaced(&b.text, &ranges, with);
+            done.count += ranges.len();
+            done.cut |= cut;
         }
-        if count > 0 {
+        if done.count > 0 {
             self.finish_edit();
         }
-        count
+        done
     }
 }
 

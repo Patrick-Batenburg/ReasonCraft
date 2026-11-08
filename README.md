@@ -2,6 +2,8 @@
 
 ReasonCraft is a free, open-source desktop app for argument mapping. It lets you lay out a claim, the reasons that support it, the objections that oppose it and the rebuttals to those objections as a clear tree of boxes and connectors. Maps are saved as `.rcraft` files, everything works offline, and the app is built natively in Rust with egui for Windows, macOS and Linux. The interface is in English and Dutch.
 
+![A reasoning map in ReasonCraft, with its outline in the Text panel](docs/images/reasoning-map.png)
+
 New here? The [user guide](docs/user-guide.md) is a short tour, and the full help is built into the app (F1).
 
 ## What you can do
@@ -50,6 +52,8 @@ Files from older versions open unchanged, and files from newer versions keep any
 
 ## The Essay tab
 
+![The Essay tab beside the map](docs/images/essay-tab.png)
+
 The Essay tab in the Text panel turns a reasoning map into the outline of an essay and gives you a text field for each part (a grouping map has no essay: the tab says so and Export → Essay is greyed out):
 
 - **Introduction** shows the claim; write the paragraph that introduces it.
@@ -80,10 +84,10 @@ Exports show exactly what the map shows (layout, wrapped lines, colours, ratings
 
 ## Install
 
-Downloads are named `reasoncraft-<version>-<os>-<architecture>`, and `SHA256SUMS.txt` beside them lets you check a download. The installers are not code-signed yet, so Windows and macOS warn the first time you start them.
+Download the latest version from the [releases page](https://github.com/Patrick-Batenburg/ReasonCraft/releases/latest). Downloads are named `reasoncraft-<version>-<os>-<architecture>`, and `SHA256SUMS.txt` beside them lets you check a download. With the [GitHub CLI](https://cli.github.com), `gh attestation verify <file> --repo Patrick-Batenburg/ReasonCraft` also shows that the file was built by this repository's release workflow, and from which commit. The installers are not code-signed yet, so Windows and macOS warn the first time you start them.
 
 - **Windows** (x64, x86 or arm64): run `reasoncraft-<version>-windows-x64.msi`. It asks whether to install only for you (the default, without administrator rights, into `%LOCALAPPDATA%\Programs\ReasonCraft`) or for everyone on the computer (into `Program Files\ReasonCraft`, with an administrator's permission). It adds a Start menu shortcut and opens `.rcraft` files with ReasonCraft. If SmartScreen stops it, choose **More info**, then **Run anyway**. Updates go where the installed copy is. Uninstall from Settings → Apps; your maps and the recovery folder stay. For a silent install: `msiexec /i reasoncraft-<version>-windows-x64.msi /qn` (add `ALLUSERS=1` for everyone). The `-portable.zip` holds the exe with the readme and licences, to run without installing.
-- **macOS** (11 or later, Apple silicon and Intel): open `reasoncraft-<version>-macos-universal.dmg` and drag ReasonCraft to Applications. While the app is not signed, open it the first time with right-click (or Control-click) → **Open**. Double-clicking a `.rcraft` file starts the app but does not open the file yet; use File → Open.
+- **macOS** (11 or later, Apple silicon and Intel): open `reasoncraft-<version>-macos-universal.dmg` and drag ReasonCraft to Applications. While the app is not signed, macOS blocks it the first time you open it. On macOS 15 (Sequoia) and later, try to open it once, then go to System Settings → Privacy & Security, choose **Open Anyway** next to the note about ReasonCraft, and confirm with **Open**. On macOS 11 to 14, right-click (or Control-click) the app and choose **Open**. After that it starts normally. Double-clicking a `.rcraft` file starts the app but does not open the file yet; use File → Open.
 - **Linux** (x86_64 or aarch64, glibc 2.35 or later: Ubuntu 22.04, Debian 12, Fedora 36, RHEL 10, openSUSE Leap 15.6 or newer), any of:
   - Debian, Ubuntu and derivatives: `sudo apt install ./reasoncraft-<version>-linux-x86_64.deb`;
   - Fedora, RHEL and derivatives: `sudo dnf install ./reasoncraft-<version>-linux-x86_64.rpm`;
@@ -93,11 +97,15 @@ Downloads are named `reasoncraft-<version>-<os>-<architecture>`, and `SHA256SUMS
 
   The deb, rpm and Flatpak add ReasonCraft to the app menu, and double-clicking a `.rcraft` file then opens it.
 
+  The Open and Save dialogs come from the desktop portal (`xdg-desktop-portal` with a backend such as `xdg-desktop-portal-gtk`, `-gnome` or `-kde`) or, without one, from `zenity`. The deb and rpm recommend them; with the AppImage or the `.tar.gz`, or when recommended packages are left out, install one of them if ReasonCraft says it cannot show the file dialog.
+
+ReasonCraft runs as one window per user: opening a map while it runs (by double-clicking it, or `reasoncraft map.rcraft`) opens it in a tab of the running window, or brings that tab forward when the map is open already.
+
 How the installers are built and checked is described in [docs/release.md](docs/release.md). Changes per version are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Build and run
 
-You need [rustup](https://rustup.rs). The Rust version is pinned in `rust-toolchain.toml`, so rustup installs and uses the right toolchain by itself the first time you build.
+You need [rustup](https://rustup.rs). The Rust version is pinned in `rust-toolchain.toml`, so rustup installs and uses the right toolchain by itself the first time you build. On Linux you need no extra `-dev` packages, only a C compiler and linker (`build-essential` on Debian and Ubuntu).
 
 ```sh
 cargo run -p reasoncraft --release
@@ -113,9 +121,11 @@ cargo clippy --workspace --all-targets -- -D warnings
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items
 ```
 
+The full set of checks CI runs, how the code is organised and how to add a command, a string or a help page are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Separate profile (portable use and testing)
 
-Set the environment variable `REASONCRAFT_PROFILE_DIR` to an absolute folder to keep the settings file (`app.ron`) and the recovery folder there instead of in your user profile. This is useful for running from a USB stick or for trying things out without touching your own settings, for example in PowerShell: `$env:REASONCRAFT_PROFILE_DIR = "$env:TEMP\rc-test"; reasoncraft`. An empty or relative value is ignored (with a warning on stderr).
+Set the environment variable `REASONCRAFT_PROFILE_DIR` to an absolute folder to keep the settings file (`app.ron`) and the recovery folder there instead of in your user profile. This is useful for running from a USB stick or for trying things out without touching your own settings, for example in PowerShell: `$env:REASONCRAFT_PROFILE_DIR = "$env:TEMP\rc-test"; reasoncraft`. An empty or relative value is ignored (with a warning on stderr). A copy started with another profile folder runs in a window of its own.
 
 A debug build (`cargo run -p reasoncraft`) adds **View → Load sample map (debug)**, which opens a generated map of 117 boxes.
 
@@ -139,8 +149,8 @@ macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, a
 
 | Windows / Linux | macOS | Action |
 | --- | --- | --- |
-| Tab | Tab | Add a reason (context) |
-| Shift+Tab | Shift+Tab | Add an objection (context) |
+| Tab | Tab | Add a reason |
+| Shift+Tab | Shift+Tab | Add an objection |
 | Ctrl+Enter | Cmd+Enter | Add a co-premise |
 | Ctrl+Shift+R | Shift+Cmd+R | Add a reason for the whole card (of the selected card or premise) |
 | Ctrl+Shift+O | Shift+Cmd+O | Add an objection to the whole card (of the selected card or premise) |
@@ -237,4 +247,8 @@ Dragging also reorders: drop an item between its siblings (an insertion bar show
 
 Copyright (c) 2026 Patrick van Batenburg and ReasonCraft contributors.
 
-Licensed under either of MIT or Apache-2.0, at your option.
+Licensed under either of the [MIT licence](LICENSE-MIT) or the [Apache License, Version 2.0](LICENSE-APACHE), at your option. The components ReasonCraft uses or adapts, and their licences, are listed in [THIRD-PARTY.md](THIRD-PARTY.md).
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in ReasonCraft by you, as defined in the Apache-2.0 licence, shall be dual licensed as above, without any additional terms or conditions.
+
+To report a security problem, see [SECURITY.md](SECURITY.md); to contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).

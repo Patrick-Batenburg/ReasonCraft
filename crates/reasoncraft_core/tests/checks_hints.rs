@@ -1,4 +1,4 @@
-//! Ignored hints and quoted text in the checks (step 5, task 14).
+//! Ignored hints and quoted text in the checks.
 
 use reasoncraft_core::checks::{CheckKind, CheckSet, run_checks};
 use reasoncraft_core::{CardKind, Document, IgnoredHint, Item, Parent, RemoveMode};
@@ -66,11 +66,13 @@ fn dangling_hint_is_harmless() {
         kind: "compound".into(),
         item: issue.item,
         terms: vec!["or".into()],
+        extra: Default::default(),
     });
     d.ignored_hints.push(IgnoredHint {
         kind: "future_kind".into(),
         item: Item::Box(d.root),
         terms: Vec::new(),
+        extra: Default::default(),
     });
     d.validate().unwrap();
     assert!(run_checks(&d, &CheckSet::default()).is_empty());

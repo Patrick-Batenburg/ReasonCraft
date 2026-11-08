@@ -270,3 +270,14 @@ fn dutch_plural_forms() {
     args.set("count", 2);
     assert_eq!(t_lang_args("nl", "status.boxes", &args), "2 vakken");
 }
+
+/// The glossary's "select = kiezen": the interface asks to choose a box,
+/// not to select one.
+#[test]
+fn dutch_says_kies_not_selecteer() {
+    let selecteer: Vec<_> = bundles::NL
+        .lines()
+        .filter(|line| line.contains("= Selecteer") || line.contains(" selecteer "))
+        .collect();
+    assert!(selecteer.is_empty(), "{selecteer:?}");
+}

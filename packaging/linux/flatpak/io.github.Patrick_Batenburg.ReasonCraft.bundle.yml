@@ -1,6 +1,6 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft,
-# packaging/linux/flatpak/ai.storyteller.wordcraft.bundle.yml at aadb077), MIT OR Apache-2.0,
-# used under Apache-2.0; changed: one binary, ReasonCraft's identity, no network and no Pictures
+# packaging/linux/flatpak/ai.storyteller.wordcraft.bundle.yml at aadb077),
+# used under MIT OR Apache-2.0; changed: one binary, ReasonCraft's identity, no network and no Pictures
 # access, and no from-source twin (that comes with a public repository).
 #
 # Flatpak manifest for the single-file bundle attached to every release

@@ -31,10 +31,7 @@ fn svg_with_image(bytes: Vec<u8>) -> String {
     let (_, card) = doc
         .add_card(Parent::Box(doc.root), CardKind::Reason, "Picture")
         .unwrap();
-    let image = ImageRef {
-        asset: key,
-        aspect: 0.5,
-    };
+    let image = ImageRef::new(key, 0.5);
     doc.set_image(card, Some(image)).unwrap();
     let (scene, _) = scene_of(&doc);
     let opts = SvgOptions {

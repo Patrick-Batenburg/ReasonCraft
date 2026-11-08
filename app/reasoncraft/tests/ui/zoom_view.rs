@@ -1,6 +1,5 @@
-//! The view follows the keyboard: zooming keeps the selection in view
-//! (ROB-11), and editing at a tiny zoom zooms in to a readable size
-//! first (ROB-3).
+//! The view follows the keyboard: zooming keeps the selection in view,
+//! and editing at a tiny zoom zooms in to a readable size first.
 
 use crate::common::{H, app_with_doc, build};
 use eframe::egui::{Key, Modifiers, Rect};

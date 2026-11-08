@@ -110,7 +110,7 @@ fn case_fold_with_length_change_is_safe() {
 #[test]
 fn replacement_containing_query_terminates() {
     let mut d = Document::new("banana");
-    assert_eq!(d.replace_all("a", "aa", OPTS), 3);
+    assert_eq!(d.replace_all("a", "aa", OPTS).count, 3);
     assert_eq!(d.boxes[&d.root].text, "baanaanaa");
 }
 
@@ -120,12 +120,12 @@ fn replace_all_with_empty_string() {
     let (_, p) = d
         .add_card(Parent::Box(d.root), CardKind::Reason, "-x-")
         .unwrap();
-    assert_eq!(d.replace_all("-", "", OPTS), 4);
+    assert_eq!(d.replace_all("-", "", OPTS).count, 4);
     assert_eq!(d.boxes[&d.root].text, "abc");
     assert_eq!(d.boxes[&p].text, "x");
-    assert_eq!(d.replace_all("-", "", OPTS), 0, "nothing left");
+    assert_eq!(d.replace_all("-", "", OPTS).count, 0, "nothing left");
     assert_eq!(
-        d.replace_all("", "y", OPTS),
+        d.replace_all("", "y", OPTS).count,
         0,
         "an empty query replaces nothing"
     );
@@ -150,4 +150,42 @@ fn replace_range_checks_bounds_and_boundaries() {
     assert_eq!(d.boxes[&root].text, "straße");
     d.replace_range(root, 4..6, "ss").unwrap();
     assert_eq!(d.boxes[&root].text, "strasse");
+}
+
+#[test]
+fn replacements_never_leave_a_box_past_its_cap() {
+    use crate::MAX_BOX_CHARS;
+    let chars = |d: &Document| d.boxes[&d.root].text.chars().count();
+    let long = "é".repeat(1_000);
+    let mut d = Document::new(&"a ".repeat(100));
+    assert_eq!(
+        d.replace_all("a", &long, OPTS),
+        Replaced {
+            count: 100,
+            cut: true
+        }
+    );
+    assert_eq!(chars(&d), MAX_BOX_CHARS);
+    assert!(d.boxes[&d.root].text.starts_with(&format!("{long} {long}")));
+
+    let mut d = Document::new("ab");
+    assert_eq!(d.replace_range(d.root, 0..1, &long), Ok(false));
+    let huge = "x".repeat(MAX_BOX_CHARS);
+    assert_eq!(d.replace_range(d.root, 0..2, &huge), Ok(true), "one é");
+    assert_eq!(chars(&d), MAX_BOX_CHARS);
+
+    // The review's case: 50,000 hits of a 100,000-character replacement
+    // took about 5 GB, replaced right to left; now one pass, stopped early.
+    let mut d = Document::new(&"a".repeat(MAX_BOX_CHARS));
+    let start = std::time::Instant::now();
+    let done = d.replace_all("a", &"x".repeat(100_000), OPTS);
+    assert_eq!(
+        done,
+        Replaced {
+            count: MAX_BOX_CHARS,
+            cut: true
+        }
+    );
+    assert_eq!(d.boxes[&d.root].text, "x".repeat(MAX_BOX_CHARS));
+    assert!(start.elapsed().as_secs() < 2, "{:?}", start.elapsed());
 }

@@ -28,6 +28,7 @@ fn oversized() -> Document {
         text: "日".repeat(MAX_COMMENT_CHARS + 1),
         verdict: None,
         created: "2".repeat(MAX_META_CHARS + 1),
+        extra: Default::default(),
     });
     let other = crate::SourceType::Other("o".repeat(MAX_META_CHARS + 1));
     d.add_box(
@@ -121,6 +122,17 @@ fn oversized_unknown_fields_are_dropped() {
     let pkg = open_doc(&d, &[]);
     assert!(pkg.cut_on_open);
     assert!(pkg.doc.boxes[&p].extra.is_empty() && pkg.doc.cards[&card].extra.is_empty());
+
+    // And fields kept in nested objects: the meta and a comment.
+    let mut d = Document::new("c");
+    let root = d.root;
+    d.add_comment(root, "a", "t", None).unwrap();
+    let half = serde_json::Value::from("x".repeat(MAX_EXTRA_BYTES / 2));
+    d.meta.extra.insert("a".into(), half.clone());
+    d.boxes[&root].comments[0].extra.insert("b".into(), half);
+    let pkg = open_doc(&d, &[]);
+    assert!(pkg.cut_on_open);
+    assert!(pkg.doc.meta.extra.is_empty() && pkg.doc.boxes[&root].comments[0].extra.is_empty());
 }
 
 #[test]
@@ -184,7 +196,7 @@ fn document_limit_is_modest() {
 /// All of a document's texts together keep at most
 /// [`crate::caps::MAX_DOCUMENT_CHARS`] characters: a file of many full
 /// boxes is cut on open (in document order), so laying it out and
-/// painting it stay bounded (SEC-R1).
+/// painting it stay bounded.
 #[test]
 fn a_documents_total_text_is_cut_on_open() {
     use crate::caps::MAX_DOCUMENT_CHARS;
@@ -222,7 +234,7 @@ fn a_documents_total_text_is_cut_on_open() {
 
 /// A document of millions of tiny JSON values (an unknown field from a
 /// "newer version" holding a huge array) is refused before it is parsed,
-/// as each value would take far more memory than its bytes (SEC-R3).
+/// as each value would take far more memory than its bytes.
 #[test]
 fn a_flood_of_json_values_is_refused() {
     let mut json = serde_json::to_value(Document::new("c")).unwrap();

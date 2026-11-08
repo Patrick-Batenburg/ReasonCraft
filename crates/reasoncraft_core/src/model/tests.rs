@@ -121,16 +121,14 @@ fn new_fields_do_not_leak_into_extra() {
     let b = d.boxes.get_mut(&root).unwrap();
     b.acceptance = Some(Acceptance::Accept);
     b.link = Some("https://example.org".into());
-    b.image = Some(ImageRef {
-        asset: "a".into(),
-        aspect: 0.5,
-    });
+    b.image = Some(ImageRef::new("a".into(), 0.5));
     b.comments.push(Comment {
         id: Uuid::new_v4(),
         author: "A".into(),
         text: "T".into(),
         verdict: Some(Verdict::NeedsWork),
         created: now_rfc3339(),
+        extra: Default::default(),
     });
     let json = serde_json::to_string(&d).unwrap();
     assert!(json.contains("\"acceptance\":\"accept\""));

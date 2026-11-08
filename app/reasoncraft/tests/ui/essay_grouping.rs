@@ -27,9 +27,10 @@ fn grouping_doc() -> Document {
 fn grouping_map_has_no_essay() {
     let mut doc = grouping_doc();
     // Text kept from when the map had reasons stays reachable.
-    doc.essay
-        .unplaced
-        .push(("An old reason".into(), "Its paragraph".into()));
+    doc.essay.unplaced.push(reasoncraft_core::UnplacedNote::new(
+        "An old reason".into(),
+        "Its paragraph".into(),
+    ));
     let mut app = app_with_doc(doc);
     app.settings.text_tab = TextTab::Essay;
     for format in ESSAYS {

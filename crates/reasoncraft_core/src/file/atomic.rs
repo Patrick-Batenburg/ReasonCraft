@@ -7,6 +7,9 @@ use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+/// How many symbolic links in a row a save follows (Linux's limit).
+const MAX_LINKS: usize = 40;
+
 /// How many names in a row may be refused with `PermissionDenied` before
 /// [`create_first_new_with`] gives up (a folder that refuses every name).
 const MAX_DENIED_NAMES: usize = 16;
@@ -74,12 +77,21 @@ fn create_temp(path: &Path, private: bool) -> io::Result<(PathBuf, File)> {
 /// `path` is left as it was.
 ///
 /// On Unix a `private` file is made with mode 0600 (recovery copies);
-/// otherwise a replaced file keeps its permissions.
+/// otherwise a replaced file keeps its permissions, and a read-only one
+/// is not replaced (`PermissionDenied`). When `path` is a
+/// symbolic link, the file it points to is replaced and the link stays.
 pub fn atomic_write<E: From<io::Error>>(
     path: &Path,
     private: bool,
     write: impl FnOnce(&mut File) -> Result<(), E>,
 ) -> Result<(), E> {
+    let path = &link_target(path);
+    // A rename would replace a read-only file on Unix (and keep it
+    // read-only); Windows refuses it. Refused alike everywhere.
+    if !private && std::fs::metadata(path).is_ok_and(|m| m.permissions().readonly()) {
+        let read_only = io::Error::new(io::ErrorKind::PermissionDenied, "the file is read-only");
+        return Err(read_only.into());
+    }
     let (tmp, mut file) = create_temp(path, private)?;
     let result = write(&mut file).and_then(|()| {
         file.sync_all()?;
@@ -95,6 +107,23 @@ pub fn atomic_write<E: From<io::Error>>(
         let _ = std::fs::remove_file(&tmp);
     }
     result
+}
+
+/// The file `path` names, following symbolic links (at most
+/// [`MAX_LINKS`]); a link's relative target is read from the link's
+/// folder. `path` itself when it is no link.
+fn link_target(path: &Path) -> PathBuf {
+    let mut path = path.to_path_buf();
+    for _ in 0..MAX_LINKS {
+        let Ok(target) = std::fs::read_link(&path) else {
+            break;
+        };
+        path = match path.parent() {
+            Some(dir) => dir.join(target),
+            None => target,
+        };
+    }
+    path
 }
 
 /// Give `tmp` the permissions of the file it replaces, if there is one.

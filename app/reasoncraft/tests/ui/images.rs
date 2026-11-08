@@ -98,10 +98,7 @@ fn image_button_inserts_and_remove_button_removes() {
 fn missing_asset_shows_placeholder() {
     let fake = FakeDialogs::default();
     let (mut h, premise) = harness(&fake);
-    let image = ImageRef {
-        asset: "0000.png".into(),
-        aspect: 0.5,
-    };
+    let image = ImageRef::new("0000.png".into(), 0.5);
     h.state_mut().tabs[0]
         .doc
         .set_image(premise, Some(image))

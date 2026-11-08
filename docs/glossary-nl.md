@@ -10,6 +10,7 @@ The table lists the other term choices (ruling S6-T4-2). They are open to review
 | card (frame holding premises) | blok | "Reden voor het hele blok"; chosen so it doesn't clash with "kaart" = map |
 | statement | uitspraak | |
 | item | onderdeel | |
+| select (a box, a card) | kiezen | "Kies een premisse …"; selecting text in a field stays "selecteren" |
 | parking area | Niet verbonden | one name everywhere: on the map, in the Check tab and in exports |
 | category / note / comment | categorie / notitie / opmerking | |
 | snippet | fragment | |

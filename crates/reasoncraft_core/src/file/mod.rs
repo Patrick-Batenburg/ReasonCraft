@@ -9,6 +9,8 @@ mod write;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_compat;
+#[cfg(test)]
 mod tests_hostile;
 #[cfg(test)]
 mod tests_save;
@@ -20,6 +22,10 @@ pub use write::{save, save_package, save_package_private};
 use zip::result::ZipError;
 
 const DOCUMENT_ENTRY: &str = "document.json";
+/// The build that writes a file, in its `"generator"` field.
+pub const GENERATOR: &str = concat!("ReasonCraft ", env!("CARGO_PKG_VERSION"));
+/// The field of `document.json` that names the build that wrote it.
+const GENERATOR_FIELD: &str = "generator";
 const IMAGES_DIR: &str = "images/";
 
 /// Largest `document.json` that [`open`] will read (64 MiB, far beyond
@@ -32,7 +38,7 @@ const MAX_EXTRA_BYTES: usize = 1 << 20;
 /// Most JSON values (objects, arrays, numbers, strings, ...) a
 /// `document.json` may hold: parsed, each takes far more memory than its
 /// bytes, so a "newer version" field holding a huge array of tiny values
-/// is refused before it is parsed (SEC-R3). A map of 10,000 boxes holds
+/// is refused before it is parsed. A map of 10,000 boxes holds
 /// about 400,000.
 const MAX_JSON_VALUES: usize = 2_000_000;
 /// Largest single image asset (32 MiB).
@@ -55,6 +61,12 @@ pub enum FileError {
         "This file was made with a newer version of ReasonCraft (file version {found}, this version supports {supported})."
     )]
     NewerVersion { found: u32, supported: u32 },
+    /// Not saved: opening keeps at most `max` characters of text
+    /// ([`crate::caps::MAX_DOCUMENT_CHARS`]), and the map holds `chars`.
+    #[error(
+        "This map holds {chars} characters of text; a file may hold at most {max}, or it would be cut when opened."
+    )]
+    TooMuchText { chars: usize, max: usize },
 }
 
 fn zip_to_io(e: ZipError) -> FileError {

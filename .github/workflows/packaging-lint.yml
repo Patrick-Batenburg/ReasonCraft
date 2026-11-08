@@ -5,7 +5,7 @@
 #
 # The windows-install-policy job is adapted from WordCraft
 # (https://github.com/storytold/wordcraft, .github/workflows/packaging-lint.yml
-# at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: the
+# at aadb077), used under MIT OR Apache-2.0; changed: the
 # folder names, comments and the checkout pin. The lint job is
 # ReasonCraft's own.
 # Actions are pinned to commit SHAs (the tag they had is in the comment).
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -66,16 +66,13 @@ jobs:
             packaging/macos/*.plist packaging/macos/Info.plist.in \
             packaging/linux/*.xml packaging/linux/*.xml.in
 
-      # ReasonCraft has no homepage yet (owner's decision 2026-10-28), so
-      # the metainfo has no <url type="homepage">; AppStream 1.0 warns about
-      # that, and the override lowers it to a note.
       - name: Desktop entry and AppStream metadata
         run: |
           desktop-file-validate packaging/linux/io.github.Patrick_Batenburg.ReasonCraft.desktop
           metainfo="$RUNNER_TEMP/io.github.Patrick_Batenburg.ReasonCraft.metainfo.xml"
           sed -e 's/@VERSION@/0.0.0/g' -e "s/@DATE@/$(date -u +%Y-%m-%d)/g" \
             packaging/linux/io.github.Patrick_Batenburg.ReasonCraft.metainfo.xml.in > "$metainfo"
-          appstreamcli validate --no-net --explain --override=url-homepage-missing=info "$metainfo"
+          appstreamcli validate --no-net --explain "$metainfo"
 
       # A pre-release sorts before its release in dpkg and rpm: placeholder
       # packages (never installed) built with nfpm.yaml as 0.2.0-rc.1,
@@ -120,7 +117,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 

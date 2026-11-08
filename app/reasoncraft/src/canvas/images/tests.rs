@@ -135,12 +135,7 @@ fn cache_marks_missing_and_corrupt_assets_and_evicts_unused() {
         .add_card(Parent::Box(root), CardKind::Reason, "")
         .unwrap()
         .1;
-    let image = |asset: &str| {
-        Some(ImageRef {
-            asset: asset.into(),
-            aspect: 0.5,
-        })
-    };
+    let image = |asset: &str| Some(ImageRef::new(asset.into(), 0.5));
     doc.set_image(root, image(&good)).unwrap();
     doc.set_image(p, image(&bad)).unwrap();
     doc.set_image(q, image("missing.png")).unwrap();
@@ -164,10 +159,7 @@ fn cache_marks_missing_and_corrupt_assets_and_evicts_unused() {
 #[test]
 fn image_sits_in_the_reserved_block_above_the_content() {
     let world = Rect::from_min_size(pos2(10.0, 20.0), egui::vec2(212.0, 300.0));
-    let img = ImageRef {
-        asset: "a.png".into(),
-        aspect: 0.5,
-    };
+    let img = ImageRef::new("a.png".into(), 0.5);
     let r = image_rect(world, &img);
     assert_eq!(r.min, pos2(16.0, 26.0));
     assert_eq!(r.width(), 200.0);
@@ -236,10 +228,7 @@ fn cache_refuses_assets_larger_than_this_build_stores() {
         boxes.push(b);
     }
     for (b, asset) in boxes.into_iter().zip([&tall, &huge, &ok]) {
-        let image = ImageRef {
-            asset: asset.clone(),
-            aspect: 1.0,
-        };
+        let image = ImageRef::new(asset.clone(), 1.0);
         doc.set_image(b, Some(image)).unwrap();
     }
 
@@ -259,10 +248,7 @@ fn textures_are_scaled_down_to_the_texture_limit() {
     let mut tab = DocTab::new();
     let root = tab.doc.root;
     let big = tab.assets.insert("png", png(1600, 1200));
-    let image = ImageRef {
-        asset: big.clone(),
-        aspect: 0.75,
-    };
+    let image = ImageRef::new(big.clone(), 0.75);
     tab.doc.set_image(root, Some(image)).unwrap();
     let mut cache = ImageCache::default();
     // Shown small, the texture is small...
@@ -306,8 +292,7 @@ fn image_state_is_pending_only_while_a_present_asset_waits() {
         .cloned()
         .chain([bad.clone(), "absent.png".into()]);
     for (b, asset) in boxes.into_iter().zip(assets) {
-        doc.set_image(b, Some(ImageRef { asset, aspect: 1.0 }))
-            .unwrap();
+        doc.set_image(b, Some(ImageRef::new(asset, 1.0))).unwrap();
     }
 
     let mut cache = ImageCache::default();
@@ -349,7 +334,7 @@ fn row_of_images(n: usize, side: u32) -> DocTab {
             .doc
             .add_card(Parent::Box(root), CardKind::Reason, "")
             .unwrap();
-        let image = ImageRef { asset, aspect: 1.0 };
+        let image = ImageRef::new(asset, 1.0);
         tab.doc.set_image(b, Some(image)).unwrap();
     }
     tab

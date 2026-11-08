@@ -12,16 +12,13 @@
 FROM ubuntu:22.04@sha256:e0f80c829509ef4df9e76bd8944eb7b8ec25cbb379b112a7f9448b2c77a77c9b
 
 ARG DEBIAN_FRONTEND=noninteractive
-# The C toolchain and egui's system libraries (winit, arboard), the validators package.sh runs
-# (desktop-file-validate, appstreamcli), zsyncmake for the AppImage's .zsync, and rpm to inspect
-# the .rpm. libgtk-3-dev matches CI; ReasonCraft itself does not need it (rfd 0.17 uses the
-# XDG portal).
+# The same packages as the release workflow's Linux job: the C toolchain (no -dev packages: winit,
+# wgpu, glow and rfd open the system libraries at run time or talk D-Bus in Rust), curl and git,
+# file (appimagetool needs it), the validators package.sh runs (desktop-file-validate,
+# appstreamcli), zsyncmake for the AppImage's .zsync, and rpm to inspect the .rpm.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential ca-certificates curl file git \
-        pkg-config libxkbcommon-dev libgtk-3-dev \
-        libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
-        libssl-dev \
         desktop-file-utils appstream zsync rpm \
     && rm -rf /var/lib/apt/lists/*
 

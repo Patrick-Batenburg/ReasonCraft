@@ -80,7 +80,7 @@ fn plist_declares_rcraft() {
     );
     assert_eq!(
         string(root, "NSHumanReadableCopyright"),
-        "Copyright © Patrick van Batenburg and ReasonCraft contributors. MIT OR Apache-2.0."
+        "Copyright © 2026 Patrick van Batenburg and ReasonCraft contributors. MIT OR Apache-2.0."
     );
 
     let uti = only_dict(value(root, "UTExportedTypeDeclarations"));

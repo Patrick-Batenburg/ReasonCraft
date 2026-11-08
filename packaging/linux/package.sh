@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/linux/package.sh at
-# aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: one binary (no CLI), no
+# aadb077), used under MIT OR Apache-2.0; changed: one binary (no CLI), no
 # cross-compiling, icons staged from app/reasoncraft/assets, REASONCRAFT_MAINTAINER, update
 # information and .zsync only for builds in GitHub Actions, and the --version smoke run on a
 # throw-away profile.
@@ -75,15 +75,8 @@ copy_docs "$STAGE/usr/share/doc/reasoncraft"
 if command -v desktop-file-validate >/dev/null; then
   desktop-file-validate "$STAGE/usr/share/applications/$APP_ID.desktop"
 fi
-# No homepage yet (owner's decision 2026-10-28): AppStream 1.0 and later fail the metainfo for its
-# missing <url type="homepage">; the override lowers that to a note, as in the packaging lint
-# (ruling PK-13). AppStream 0.15 (Ubuntu 22.04, the build image) neither warns nor knows the option.
 if command -v appstreamcli >/dev/null; then
-  as_args=(--no-net --explain)
-  if [[ "$(appstreamcli validate --help 2>&1)" == *--override* ]]; then
-    as_args+=(--override=url-homepage-missing=info)
-  fi
-  appstreamcli validate "${as_args[@]}" "$STAGE/usr/share/metainfo/$APP_ID.metainfo.xml"
+  appstreamcli validate --no-net --explain "$STAGE/usr/share/metainfo/$APP_ID.metainfo.xml"
 fi
 
 has() { local item="$1"; case " $FORMATS " in *" $item "*) return 0 ;; *) return 1 ;; esac; }
@@ -92,7 +85,11 @@ has() { local item="$1"; case " $FORMATS " in *" $item "*) return 0 ;; *) return
 if has tar; then
   mkdir -p "$WORK/tar"
   cp -R "$STAGE/usr" "$WORK/tar/$BASENAME"
-  tar -C "$WORK/tar" -czf "$DIST/$BASENAME.tar.gz" "$BASENAME"
+  # Owned by root and writable only by the owner in the archive, whatever the build user and its
+  # umask: unpacked as root, the files would otherwise belong to whoever has the build user's uid
+  # (1001 on GitHub's runners), with group-writable folders.
+  tar -C "$WORK/tar" --owner=0 --group=0 --numeric-owner --mode=u+rwX,go+rX,go-w \
+    -czf "$DIST/$BASENAME.tar.gz" "$BASENAME"
   echo "wrote $DIST/$BASENAME.tar.gz"
 fi
 

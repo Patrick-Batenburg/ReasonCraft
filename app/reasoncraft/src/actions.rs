@@ -11,6 +11,8 @@ pub use action::{Action, Dir, Panel, UnsavedChoice};
 mod enabled;
 pub use box_group::{FakeOpener, LinkOpener, SystemOpener};
 pub use enabled::{can_run, is_enabled};
+mod why_disabled;
+pub use why_disabled::{EXPLAINED as EXPLAINED_DISABLED, why_disabled};
 mod argdown;
 pub use argdown::report_text as import_report_text;
 mod clipboard;
@@ -25,7 +27,6 @@ mod find;
 mod help;
 pub(crate) use export::close_after_exports;
 pub use export::poll_exports;
-pub(crate) use find::cap_box;
 mod images;
 pub use images::{poll_images, wait_for_images};
 mod meta;
@@ -68,6 +69,7 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         }
     }
     dispatch::run(app, action);
+    crate::file_ops::explain_missing_dialog(app);
     if let Some(tab) = app.tabs.get_mut(app.active)
         && std::mem::take(&mut tab.refused_too_deep)
     {

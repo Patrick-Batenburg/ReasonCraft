@@ -1,8 +1,9 @@
 # Changelog
 
 All notable changes to ReasonCraft are listed here.
+A version's heading says "Unreleased" until its release is prepared; then it gets the release date (docs/release.md, release checklist).
 
-## [0.1.0] — 2026-10-27
+## [0.1.0] — Unreleased
 
 The first release.
 
@@ -37,6 +38,7 @@ The first release.
 - `.rcraft` files (a zip with the map, the essay, the snippets and the images); files from newer versions keep the parts this version does not know.
 - Autosave to a recovery folder and recovery after a crash.
 - `REASONCRAFT_PROFILE_DIR` keeps the settings and the recovery folder in one folder of your choice (portable use, testing).
+- One window per user: a map opened while ReasonCraft runs opens in a tab of the running window.
 - Export as PNG, SVG or PDF (with page setup and print), copy as image, the outline and the essay as Markdown, plain text or Word, and Argdown export and import.
 - Recent files, two example maps and four templates (Blank reasoning map, Blank grouping map, Essay plan, Peer review).
 
@@ -55,5 +57,7 @@ The first release.
 - A Windows MSI for x64, x86 and arm64: for the current user by default (no administrator rights) or for everyone on the computer, with a Start menu shortcut and the `.rcraft` file association; and a portable zip.
 - Linux packages for x86_64 and aarch64: `.deb`, `.rpm`, AppImage (with delta updates), Flatpak and a `.tar.gz`, with the `.rcraft` file type.
 - A macOS universal app on a `.dmg` (built in CI, not yet checked on a Mac).
-- `SHA256SUMS.txt` with every release, and `reasoncraft --version`.
+- `SHA256SUMS.txt` and build provenance (`gh attestation verify`) with every release, and `reasoncraft --version`.
 - The app starts on machines without a usable GPU (software rendering, then OpenGL) and shows an error dialog if no renderer works.
+
+[0.1.0]: https://github.com/Patrick-Batenburg/ReasonCraft/releases/tag/v0.1.0

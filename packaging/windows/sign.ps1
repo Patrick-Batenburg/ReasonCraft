@@ -1,6 +1,6 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/sign.ps1 at aadb077),
-# MIT OR Apache-2.0, used under Apache-2.0; changed: signs as ReasonCraft, with a /du link only when
-# REASONCRAFT_SIGN_URL is set.
+# used under MIT OR Apache-2.0; changed: signs as ReasonCraft, with the repository as the /du
+# link unless REASONCRAFT_SIGN_URL names another.
 
 <#
 .SYNOPSIS
@@ -24,7 +24,7 @@
   This is the one place to adapt when the signing setup changes (an HSM/cloud key, a different
   timestamp server, ...). Optional overrides: WINDOWS_TIMESTAMP_URL, SIGNTOOL (path to
   signtool.exe), REASONCRAFT_SIGN_URL (the signature's "more information" link, signtool /du;
-  none by default).
+  by default the repository, https://github.com/Patrick-Batenburg/ReasonCraft).
 
 .EXAMPLE
   pwsh packaging/windows/sign.ps1 target/windows-package/x64/reasoncraft.exe dist/release/reasoncraft-0.1.0-windows-x64.msi
@@ -99,8 +99,8 @@ if (-not $haveCert -and -not $haveAzure) {
 }
 
 $script:SignTool = Find-SignTool
-$common = @('sign', '/v', '/fd', 'SHA256', '/td', 'SHA256', '/d', 'ReasonCraft')
-if ($env:REASONCRAFT_SIGN_URL) { $common += @('/du', $env:REASONCRAFT_SIGN_URL) }
+$signUrl = if ($env:REASONCRAFT_SIGN_URL) { $env:REASONCRAFT_SIGN_URL } else { 'https://github.com/Patrick-Batenburg/ReasonCraft' }
+$common = @('sign', '/v', '/fd', 'SHA256', '/td', 'SHA256', '/d', 'ReasonCraft', '/du', $signUrl)
 $tmp = Join-Path ([IO.Path]::GetTempPath()) "reasoncraft-sign-$([IO.Path]::GetRandomFileName())"
 New-Item -ItemType Directory -Path $tmp | Out-Null
 

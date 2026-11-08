@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Adapted from WordCraft (https://github.com/storytold/wordcraft,
      packaging/linux/ai.storyteller.wordcraft.metainfo.xml.in at aadb077), MIT OR Apache-2.0, used
-     under Apache-2.0; changed: ReasonCraft's identity, text and document type; no URLs and no
-     screenshots (there is no public homepage yet).
+     under MIT OR Apache-2.0; changed: ReasonCraft's identity, text and document type; the repository's
+     URLs and the README's screenshots (no `vcs-browser`: it equals the homepage, and AppStream 0.15 on the Ubuntu 22.04 build
+     image fails the file for that type).
 
      AppStream metadata (software centres). Template: package.sh substitutes @VERSION@ and @DATE@
      from Cargo.toml and the build date. -->
@@ -12,18 +13,32 @@
   <project_license>MIT OR Apache-2.0</project_license>
   <name>ReasonCraft</name>
   <summary>Map out arguments: claims, reasons and objections</summary>
-  <summary xml:lang="nl">Breng argumenten in kaart: stellingen, redenen en bezwaren</summary>
+  <summary xml:lang="nl">Breng argumenten in kaart: beweringen, redenen en bezwaren</summary>
   <developer id="io.github.patrick_batenburg">
     <name>ReasonCraft contributors</name>
   </developer>
+  <url type="homepage">https://github.com/Patrick-Batenburg/ReasonCraft</url>
+  <url type="bugtracker">https://github.com/Patrick-Batenburg/ReasonCraft/issues</url>
   <description>
     <p>
       ReasonCraft is a free, open-source app for argument maps and grouping maps. Lay out a claim with the reasons for it and the objections against it, rate them, write an essay along the map, and export it as an image or a PDF. It works fully offline.
     </p>
     <p xml:lang="nl">
-      ReasonCraft is een gratis opensource-app voor argumentkaarten en groeperingskaarten. Zet een stelling uiteen met de redenen ervoor en de bezwaren ertegen, beoordeel ze, schrijf er een betoog bij, en exporteer de kaart als afbeelding of pdf. Hij werkt volledig offline.
+      ReasonCraft is een gratis opensource-app voor argumentkaarten en groeperingskaarten. Zet een bewering uiteen met de redenen ervoor en de bezwaren ertegen, beoordeel ze, schrijf er een betoog bij, en exporteer de kaart als afbeelding of pdf. Hij werkt volledig offline.
     </p>
   </description>
+  <screenshots>
+    <screenshot type="default">
+      <caption>A reasoning map with its outline</caption>
+      <caption xml:lang="nl">Een argumentkaart met de opzet</caption>
+      <image>https://raw.githubusercontent.com/Patrick-Batenburg/ReasonCraft/main/docs/images/reasoning-map.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Writing an essay along the map</caption>
+      <caption xml:lang="nl">Een betoog schrijven langs de kaart</caption>
+      <image>https://raw.githubusercontent.com/Patrick-Batenburg/ReasonCraft/main/docs/images/essay-tab.png</image>
+    </screenshot>
+  </screenshots>
   <launchable type="desktop-id">io.github.Patrick_Batenburg.ReasonCraft.desktop</launchable>
   <icon type="stock">io.github.Patrick_Batenburg.ReasonCraft</icon>
   <categories>

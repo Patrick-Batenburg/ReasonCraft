@@ -6,26 +6,49 @@
 use std::process::ExitCode;
 
 use eframe::egui;
-use reasoncraft::{ReasonCraftApp, startup};
+use reasoncraft::{ReasonCraftApp, instance, startup};
 
 const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
 fn main() -> ExitCode {
+    // Before anything can load a DLL: none from the current folder.
+    if !reasoncraft::dll_search::system32_only() {
+        eprintln!("warning: could not restrict the DLL search to System32");
+    }
     // Before any window or profile: packaging smoke tests run this.
     let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
     if reasoncraft::cli::wants_version(&args) {
-        println!("ReasonCraft {}", env!("CARGO_PKG_VERSION"));
+        reasoncraft::cli::print_version();
         return ExitCode::SUCCESS;
     }
     let profile = reasoncraft::profile::Profile::from_env();
+    // One window per user and profile: a later launch hands its files to
+    // the running copy and exits (see `reasoncraft::instance`).
+    let paths: Vec<std::path::PathBuf> = args.iter().map(Into::into).collect();
+    let scope = instance::scope(profile.settings_file.as_deref());
+    let inbox = match instance::claim(&scope, &paths, instance::TIMEOUTS) {
+        instance::Claim::Forwarded => return ExitCode::SUCCESS,
+        instance::Claim::First(listener) => Some(listener.start(instance::TIMEOUTS)),
+        instance::Claim::Alone => None,
+    };
+    let inbox = std::cell::Cell::new(inbox);
+    let settings_file = reasoncraft::settings_store::settings_file(profile.settings_file.clone());
+    // The first run (no window place kept yet) opens centred.
+    let first_run = !(settings_file.as_deref())
+        .and_then(reasoncraft::settings_store::Stored::read)
+        .is_some_and(|s| s.has_window());
     let outcome = startup::first_that_starts(&startup::RENDERERS, |renderer, started| {
         eframe::run_native(
             "ReasonCraft",
-            native_options(renderer, profile.settings_file.clone()),
+            native_options(renderer, profile.settings_file.clone(), first_run),
             Box::new(|cc| {
                 started.set(true);
                 let recovery_dir = profile.recovery_dir.clone();
                 let mut app = ReasonCraftApp::new(cc, recovery_dir, sys_locale::get_locale);
+                app.keep_settings_in(settings_file.clone());
+                if let Some(inbox) = inbox.take() {
+                    instance::attach(&mut app, inbox, &cc.egui_ctx);
+                }
                 // Files given on the command line (this is also how a
                 // double-clicked `.rcraft` file arrives on Windows and Linux).
                 reasoncraft::file_ops::open_paths(&mut app, args.iter().cloned());
@@ -48,15 +71,17 @@ fn main() -> ExitCode {
 }
 
 /// The main window, drawn with `renderer`, keeping its settings in
-/// `settings_file` (or eframe's per-user default when `None`).
+/// `settings_file` (or eframe's per-user default when `None`); centred on
+/// the `first_run` (later runs get the place it had).
 fn native_options(
     renderer: eframe::Renderer,
     settings_file: Option<std::path::PathBuf>,
+    first_run: bool,
 ) -> eframe::NativeOptions {
     let mut viewport = egui::ViewportBuilder::default()
         .with_title(reasoncraft::i18n::t("app.name"))
-        .with_app_id("io.github.Patrick_Batenburg.ReasonCraft")
-        .with_inner_size([1280.0, 800.0])
+        .with_app_id(reasoncraft::settings_store::APP_ID)
+        .with_inner_size(reasoncraft::app::FIRST_SIZE)
         .with_min_inner_size(reasoncraft::app::MIN_WINDOW);
     viewport = if cfg!(target_os = "macos") {
         // Keep the native traffic lights; our title bar draws under them.
@@ -74,8 +99,10 @@ fn native_options(
     eframe::NativeOptions {
         viewport,
         renderer,
+        wgpu_options: startup::wgpu_options(),
         event_loop_builder: event_loop_hook(),
         persistence_path: settings_file,
+        centered: first_run,
         ..Default::default()
     }
 }

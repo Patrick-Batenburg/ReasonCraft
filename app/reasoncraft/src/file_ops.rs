@@ -5,10 +5,9 @@
 //! tabs, and a failed save keeps the tab dirty and its old path.
 
 use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use reasoncraft_core::Uuid;
-use reasoncraft_core::file::{self, FileError};
 
 use crate::actions::UnsavedChoice;
 use crate::app::ReasonCraftApp;
@@ -16,11 +15,14 @@ use crate::doc_tab::DocTab;
 
 mod dialogs;
 mod errors;
+mod open;
 mod save;
 mod save_job;
 pub use dialogs::{FakeDialogs, FileDialogs, RfdDialogs};
-pub(crate) use errors::show_error;
-pub use errors::{error_key, error_text};
+pub use errors::{error_key, error_text, io_detail};
+pub(crate) use errors::{explain_missing_dialog, show_error};
+pub(crate) use open::{as_unsaved_copy, open_note, place_tab, release_other_tabs};
+pub use open::{open_handed_over, open_into_app, open_paths, open_recent, open_with_dialog};
 use save::save_and_report;
 pub use save::{resolve_replace, save_active, save_tab};
 pub use save_job::{SAVE_CLOSE_WAIT, SaveJobs, poll_saves, wait_for_saves};
@@ -122,138 +124,6 @@ pub fn with_extension(path: PathBuf, ext: &str) -> PathBuf {
     PathBuf::from(name)
 }
 
-/// Ask for a file and open it.
-pub fn open_with_dialog(app: &mut ReasonCraftApp) {
-    if let Some(path) = app.dialogs.pick_open() {
-        open_into_app(app, &path);
-    }
-}
-
-/// Open `path` in a tab, or show why it cannot be opened (no tab changes).
-pub fn open_into_app(app: &mut ReasonCraftApp, path: &Path) {
-    if let Err(err) = try_open(app, path) {
-        show_error(app, FileOp::Open, path, &err);
-    }
-}
-
-/// Open `path` from the recent-files list. When it cannot be opened, say
-/// why; when it is gone, it also leaves the list.
-pub fn open_recent(app: &mut ReasonCraftApp, path: &Path) {
-    if let Err(err) = try_open(app, path) {
-        if matches!(path.try_exists(), Ok(false)) {
-            app.settings.recent_files.retain(|p| p != path);
-        }
-        show_error(app, FileOp::Open, path, &err);
-    }
-}
-
-/// Open the files named on the command line. Arguments that are not
-/// existing files are skipped; the first file that fails to open is shown.
-pub fn open_paths(app: &mut ReasonCraftApp, args: impl IntoIterator<Item = OsString>) {
-    let mut first_error = None;
-    for path in args.into_iter().map(PathBuf::from).filter(|p| p.is_file()) {
-        if let Err(err) = try_open(app, &path) {
-            first_error.get_or_insert((path, err));
-        }
-    }
-    if let Some((path, err)) = first_error {
-        // The recovery prompt of this start shows once the error is closed.
-        crate::recovery::defer_offer(app);
-        show_error(app, FileOp::Open, &path, &err);
-    }
-}
-
-/// Whether `a` and `b` name the same file (compared as given when either
-/// cannot be resolved).
-pub(crate) fn same_file(a: &Path, b: &Path) -> bool {
-    match (a.canonicalize(), b.canonicalize()) {
-        (Ok(a), Ok(b)) => a == b,
-        _ => a == b,
-    }
-}
-
-/// A blank tab nobody has worked in: untitled, with no history, no edit,
-/// no image being prepared and only an empty claim (an example or
-/// template opened clean is not blank, so it stays).
-fn is_untouched(tab: &DocTab) -> bool {
-    tab.path.is_none()
-        && tab.history.undo.is_empty()
-        && tab.history.redo.is_empty()
-        && !tab.has_unsaved_work()
-        && tab.doc.boxes.len() == 1
-        && tab
-            .doc
-            .boxes
-            .get(&tab.doc.root)
-            .is_some_and(|b| b.text.is_empty())
-}
-
-/// Open `path`: activate its tab if it is already open, else load it into
-/// the active tab when that one is untouched, else into a new tab. Either
-/// way it goes first in the recent files. A relative path (from the
-/// command line) is made absolute first: the tab, the recent files and a
-/// recovered copy must not depend on the folder the app was started in.
-fn try_open(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
-    let path = std::path::absolute(path)?;
-    open_or_activate(app, &path)?;
-    app.settings.push_recent(&path);
-    Ok(())
-}
-
-fn open_or_activate(app: &mut ReasonCraftApp, path: &Path) -> Result<(), FileError> {
-    let open_tab = app
-        .tabs
-        .iter()
-        .position(|tab| tab.path.as_deref().is_some_and(|p| same_file(p, path)));
-    if let Some(i) = open_tab {
-        app.active = i;
-        return Ok(());
-    }
-    let pkg = file::open_package(path)?;
-    let mut notes = Vec::new();
-    if pkg.cut_on_open {
-        notes.push(crate::i18n::t("status.open_cut"));
-    }
-    if pkg.parked_on_open {
-        let mut args = fluent_bundle::FluentArgs::new();
-        args.set("max", reasoncraft_core::MAX_DEPTH);
-        notes.push(crate::i18n::t_args("status.open_too_deep", &args));
-    }
-    if !notes.is_empty() {
-        app.status_note = Some(notes.join(" "));
-    }
-    let mut tab = DocTab::from_package(pkg);
-    tab.path = Some(path.to_path_buf());
-    tab.disk_mtime = crate::recovery::file_mtime(path);
-    place_tab(app, tab);
-    Ok(())
-}
-
-/// Show a loaded `tab` in place of a tab showing its file without unsaved
-/// work (a restored copy of a file open already), else in the active tab
-/// when that one is untouched, else in a new tab; it becomes active.
-/// Returns its index.
-pub(crate) fn place_tab(app: &mut ReasonCraftApp, mut tab: DocTab) -> usize {
-    let same_file_tab = tab.path.as_deref().and_then(|path| {
-        app.tabs.iter().position(|t| {
-            !t.has_unsaved_work() && t.path.as_deref().is_some_and(|p| same_file(p, path))
-        })
-    });
-    let untouched = Some(app.active).filter(|&i| app.tabs.get(i).is_some_and(is_untouched));
-    match same_file_tab.or(untouched) {
-        Some(i) => {
-            tab.mark_loaded(app.tabs[i].revision());
-            app.tabs[i] = tab;
-            app.active = i;
-        }
-        None => {
-            app.tabs.push(tab);
-            app.active = app.tabs.len() - 1;
-        }
-    }
-    app.active
-}
-
 /// Where the tab `key` names is now, if it is still open.
 pub(crate) fn tab_index(app: &ReasonCraftApp, key: Uuid) -> Option<usize> {
     app.tabs.iter().position(|t| t.recovery_key == key)
@@ -327,6 +197,23 @@ pub fn request_close_window(app: &mut ReasonCraftApp) {
     save_job::after_dialogs(app, first, AfterSave::ContinueWindowClose);
 }
 
+/// Whether the window is closing: a prompt or a save of the close is
+/// pending, or it is waiting for exports, or it was let go.
+pub fn window_closing(app: &ReasonCraftApp) -> bool {
+    let prompt = matches!(
+        app.modal,
+        Some(
+            Modal::Unsaved { window: true, .. }
+                | Modal::ExportsRunning
+                | Modal::ConfirmReplace {
+                    then: AfterSave::ContinueWindowClose,
+                    ..
+                }
+        )
+    );
+    prompt || app.close_confirmed() || app.saves.part_of_window_close()
+}
+
 /// Ask about the first dirty tab at or after `from`; with none left, close
 /// (once the running exports finish).
 fn ask_from(app: &mut ReasonCraftApp, from: usize) {
@@ -367,6 +254,8 @@ pub fn resolve_unsaved(app: &mut ReasonCraftApp, choice: UnsavedChoice) {
     }
 }
 
+#[cfg(test)]
+mod image_tests;
 #[cfg(test)]
 mod open_tests;
 #[cfg(test)]

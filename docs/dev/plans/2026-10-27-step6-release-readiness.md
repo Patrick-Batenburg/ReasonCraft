@@ -24,7 +24,7 @@
 - Rust 1.99.1 and egui/eframe 0.37, as before.
 - New: `sys-locale` 0.3 (MIT/Apache) for the OS language, `cargo-packager` (a dev tool, not a dependency), and `embed-resource` or `winresource` (MIT) for the Windows exe icon.
 
-**Spec:** `docs/superpowers/specs/2026-10-25-reasoncraft-design.md`, sections §6 (File backstage: New from template, Recent, About; Help), §10 (languages, themes, accessibility, settings), §11 (bundled content), §12 (distribution) and §13 step 6.
+**Spec:** `docs/dev/specs/2026-10-25-reasoncraft-design.md`, sections §6 (File backstage: New from template, Recent, About; Help), §10 (languages, themes, accessibility, settings), §11 (bundled content), §12 (distribution) and §13 step 6.
 
 ## Global Constraints
 
@@ -473,7 +473,7 @@ Spec §12:
 
 ### Task 13: End-to-end check and release docs
 
-**Files:** create `app/reasoncraft/tests/e2e/release.rs`, `CHANGELOG.md` and `docs/user-guide.md` (short, links to the help topics); modify `README.md`, `docs/todo.md`, `docs/rulings.md` and `THIRD-PARTY.md`.
+**Files:** create `app/reasoncraft/tests/e2e/release.rs`, `CHANGELOG.md` and `docs/user-guide.md` (short, links to the help topics); modify `README.md`, `docs/dev/todo-history.md`, `docs/rulings.md` and `THIRD-PARTY.md`.
 
 - [ ] **Step 1: E2E `release_flow`** (actions only):
   1. Set the UI to nl.

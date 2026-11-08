@@ -116,7 +116,7 @@ fn navigate_reaches_whole_card_attackers_and_parking() {
 }
 
 /// The arrows follow the order the map shows a box's children in (notes
-/// and sources first), not the stored order (CORE-R1).
+/// and sources first), not the stored order.
 #[test]
 fn arrows_follow_the_shown_order() {
     let mut d = Document::new("Claim");

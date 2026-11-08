@@ -1,21 +1,24 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/test-packaging-script.ps1
-# at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: the PE checks, sign.ps1's handling
+# at aadb077), used under MIT OR Apache-2.0; changed: the PE checks, sign.ps1's handling
 # of missing and partly configured secrets, and the MSI version of a pre-release are checked too.
 
 <#
 .SYNOPSIS
   Check the real packaging script without installing anything.
 .DESCRIPTION
-  1. package.ps1 runs one policy check on the MSI, before it signs that MSI once (read from its syntax tree).
-  2. Assert-ReleaseExe accepts the x64 release exe, refuses it labelled arm64 ("machine") and refuses
-     the debug exe, which imports the C runtime.
+  1. package.ps1 runs one policy check on the MSI, before it signs that MSI once (read from its syntax tree);
+     -BuildOnly builds the exe and writes licence.rtf and returns before anything is signed, and no
+     cargo runs outside that build, so -SkipBuild runs nothing the build made; -BinDir needs -SkipBuild.
+  2. Assert-ReleaseExe accepts the x64 release exe, refuses it labelled arm64 ("machine"), refuses
+     the debug exe, which imports the C runtime, and a copy without DependentLoadFlags 0x800.
   3. sign.ps1 without signing secrets warns, leaves the file unsigned and exits 0, also on the
      release branch; a partly configured set warns, and fails with
      REASONCRAFT_REFUSE_PARTIAL_SIGNING=1; a certificate signs (with a stub signtool); each
      outcome lands in the job summary, and no secret's value is printed.
   4. package.ps1 refuses versions an MSI cannot hold (major or minor above 255, patch above 65535)
-     before building anything, and -SkipBuild with REASONCRAFT_VERSION=0.2.0-rc.1 writes an MSI
-     whose ProductVersion is 0.2.0; the real job summary (GITHUB_STEP_SUMMARY) stays untouched.
+     before building anything, and -SkipBuild -BinDir (a folder with the exe and licence.rtf) with
+     REASONCRAFT_VERSION=0.2.0-rc.1 writes an MSI whose ProductVersion is 0.2.0; the real job
+     summary (GITHUB_STEP_SUMMARY) stays untouched.
   Needs the x64 release exe (package.ps1 -Arch x64, or cargo build --release with +crt-static) and
   the debug exe (cargo build -p reasoncraft) in CARGO_TARGET_DIR (default: target), and WiX.
 #>
@@ -55,6 +58,35 @@ if ($signs.Count -ne 1) { throw 'Expected the MSI to be signed exactly once.' }
 if ($checks[0].Extent.StartOffset -ge $signs[0].Extent.StartOffset) { throw 'The MSI must pass the policy check before it is signed.' }
 Write-Output 'PASS the MSI is policy-checked before it is signed.'
 
+# ---- 1b. the build apart from the signing ---------------------------------------------------------
+# The release workflow builds with -BuildOnly in a job without the signing secrets and packages with
+# -SkipBuild in the job that has them: no cargo runs outside the build block (which also writes
+# licence.rtf), and -BuildOnly stops before anything is signed.
+$ifs = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.IfStatementAst] }, $true))
+function Get-IfBody([string] $Condition) {
+  $found = @($ifs | Where-Object { $_.Clauses.Count -eq 1 -and $_.Clauses[0].Item1.Extent.Text -eq $Condition })
+  if ($found.Count -ne 1) { throw "Expected one 'if ($Condition)' in the packaging script." }
+  $found[0].Clauses[0].Item2
+}
+$buildBody = Get-IfBody '-not $SkipBuild'
+foreach ($cargo in @($commands | Where-Object { $_.CommandElements[0].Extent.Text -eq 'cargo' })) {
+  $inBuild = $cargo.Extent.StartOffset -ge $buildBody.Extent.StartOffset -and $cargo.Extent.EndOffset -le $buildBody.Extent.EndOffset
+  if (-not $inBuild) { throw "cargo runs outside the build block: $($cargo.Extent.Text)" }
+}
+if (-not @($commands | Where-Object { $_.Extent.Text -match '^cargo xtask licence-rtf ' -and $_.Extent.StartOffset -ge $buildBody.Extent.StartOffset -and $_.Extent.EndOffset -le $buildBody.Extent.EndOffset }).Count) {
+  throw 'The build block must write licence.rtf, so that -SkipBuild runs nothing the build made.'
+}
+$stopBody = Get-IfBody '$BuildOnly'
+if (-not @($stopBody.FindAll({ param($node) $node -is [Management.Automation.Language.ReturnStatementAst] }, $true)).Count) { throw '-BuildOnly must return.' }
+foreach ($sign in @($commands | Where-Object { @($_.CommandElements | Where-Object { $_.Extent.Text -match 'sign.ps1' }).Count })) {
+  if ($stopBody.Extent.StartOffset -ge $sign.Extent.StartOffset) { throw '-BuildOnly must stop before anything is signed.' }
+}
+$out = & $Shell -NoProfile -ExecutionPolicy Bypass -File $script -Arch x64 -SkipBuild -BuildOnly 2>&1 | Out-String
+if ($LASTEXITCODE -eq 0 -or $out -notmatch 'exclude each other') { throw "package.ps1 took -SkipBuild with -BuildOnly: $out" }
+$out = & $Shell -NoProfile -ExecutionPolicy Bypass -File $script -Arch x64 -BinDir $TargetDir 2>&1 | Out-String
+if ($LASTEXITCODE -eq 0 -or $out -notmatch 'goes with -SkipBuild') { throw "package.ps1 took -BinDir without -SkipBuild: $out" }
+Write-Output 'PASS -BuildOnly builds the exe and licence.rtf and stops before signing; -SkipBuild runs no cargo.'
+
 # ---- 2. the PE checks -----------------------------------------------------------------------------
 . (Join-Path $PSScriptRoot 'pe-checks.ps1')
 $release = Join-Path $TargetDir 'x86_64-pc-windows-msvc\release\reasoncraft.exe'
@@ -73,6 +105,15 @@ Assert-ReleaseExe $release 'x64' | Out-Null
 Write-Output 'PASS the x64 release exe is an x64 GUI exe with a static C runtime.'
 Assert-Throws 'an x64 exe labelled arm64 is refused' 'machine' { Assert-ReleaseExe $release 'arm64' }
 Assert-Throws 'the debug exe, which needs the C runtime, is refused' 'C runtime' { Assert-ReleaseExe $debug 'x64' }
+# A copy of the release exe with DependentLoadFlags cleared stands for a build without build.rs's flag.
+$unflagged = Join-Path $TargetDir 'packaging-script-test-unflagged.exe'
+$layout = Get-PeLayout $release
+$config = ConvertTo-PeOffset $layout ([BitConverter]::ToUInt32($layout.Bytes, $layout.Directories + 80))
+$field = if ($layout.Magic -eq 0x10B) { 0x36 } else { 0x4E }
+$layout.Bytes[$config + $field] = 0; $layout.Bytes[$config + $field + 1] = 0
+[IO.File]::WriteAllBytes($unflagged, $layout.Bytes)
+Assert-Throws 'an exe that may load its DLLs from its own folder is refused' 'DependentLoadFlags' { Assert-ReleaseExe $unflagged 'x64' }
+Remove-Item -LiteralPath $unflagged
 $imports = @(Get-PeImports $release)
 if ('KERNEL32.dll' -notin $imports) { throw "Import walk found no KERNEL32.dll: $($imports -join ', ')" }
 
@@ -132,6 +173,7 @@ try {
   Assert-Sign 'a certificate signs (stub signtool) and the summary says so' @{ WINDOWS_CERTIFICATE = $fakePfx; WINDOWS_CERTIFICATE_PASSWORD = 'secret-value'; REASONCRAFT_REFUSE_PARTIAL_SIGNING = '1' } 0 'Signing with WINDOWS_CERTIFICATE' 'signed with a certificate file'
   $log = Get-Content -Raw -LiteralPath (Join-Path $work 'signtool.log')
   if ($log -notmatch '(?m)^signtool-stub sign .*/f .*reasoncraft\.exe' -or $log -notmatch '(?m)^signtool-stub verify /pa') { throw "Unexpected signtool calls: $log" }
+  if ($log -notmatch '(?m)^signtool-stub sign .*/du https://github\.com/Patrick-Batenburg/ReasonCraft ') { throw "The signature has no link to the repository: $log" }
   if ((Get-AuthenticodeSignature -LiteralPath $copy).Status -eq 'Valid') { throw 'The stub signed the file.' }
   foreach ($name in $signVars) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
   # The test MSI below must not add a line to the real job summary (the finally block restores it).
@@ -148,10 +190,16 @@ try {
     if (@(Get-ChildItem -LiteralPath $env:DIST -ErrorAction SilentlyContinue).Count) { throw "package.ps1 wrote files for version $bad." }
   }
   Write-Output 'PASS versions beyond the MSI limits (255.255.65535) are refused before anything is built.'
+  # A build handed over as the release workflow does: the exe and licence.rtf in a folder of their own.
+  $bin = Join-Path $work 'bin'
+  New-Item -ItemType Directory -Force -Path $bin | Out-Null
+  Copy-Item -LiteralPath $release $bin
+  & cargo xtask licence-rtf (Join-Path $bin 'licence.rtf')
+  if ($LASTEXITCODE -ne 0) { throw "cargo xtask licence-rtf exited $LASTEXITCODE." }
   $env:REASONCRAFT_VERSION = '0.2.0-rc.1'
   $env:DIST = Join-Path $work 'dist'
-  & $Shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'package.ps1') -Arch x64 -SkipBuild | Out-Host
-  if ($LASTEXITCODE -ne 0) { throw "package.ps1 -SkipBuild exited $LASTEXITCODE." }
+  & $Shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'package.ps1') -Arch x64 -SkipBuild -BinDir $bin | Out-Host
+  if ($LASTEXITCODE -ne 0) { throw "package.ps1 -SkipBuild -BinDir exited $LASTEXITCODE." }
   $msi = Join-Path $env:DIST 'reasoncraft-0.2.0-rc.1-windows-x64.msi'
   foreach ($file in $msi, (Join-Path $env:DIST 'reasoncraft-0.2.0-rc.1-windows-x64-portable.zip')) {
     if (-not (Test-Path -LiteralPath $file)) { throw "package.ps1 did not write $file." }

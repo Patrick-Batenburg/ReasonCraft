@@ -3,6 +3,12 @@ name = "reasoncraft_spell"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Offline English and Dutch spell checking for ReasonCraft, on bundled Hunspell dictionaries."
+# Not published to crates.io: the bundled dictionaries carry their own
+# licences (see THIRD-PARTY.md), and the crate only serves the app.
+publish = false
 rust-version.workspace = true
 
 [dependencies]

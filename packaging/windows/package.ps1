@@ -1,5 +1,5 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/package.ps1 at aadb077),
-# MIT OR Apache-2.0, used under Apache-2.0; changed: one app exe (no CLI and no CLI smoke run), no
+# used under MIT OR Apache-2.0; changed: one app exe (no CLI and no CLI smoke run), no
 # craft-fonts, PE checks in pe-checks.ps1 (also the C runtime imports), the licence RTF from
 # `cargo xtask licence-rtf`, REASONCRAFT_VERSION, rustup target add, CARGO_BUILD_JOBS.
 
@@ -19,6 +19,13 @@
   imports the C runtime. Signing is delegated to sign.ps1 (skipped with a warning when no signing
   secrets are set).
 
+  -BuildOnly builds the exe and writes the installer's licence page (licence.rtf) next to it, and
+  stops; -SkipBuild then packages that build and runs no cargo at all, nor anything the build made.
+  -BinDir names the folder holding reasoncraft.exe and licence.rtf (default: the build's own
+  folder). The release workflow builds in one job without the signing secrets, uploads that folder,
+  and signs and packages it in another job (with -SkipBuild -BinDir), so no build script, proc
+  macro or built program ever runs where the signing secrets are.
+
   Environment: REASONCRAFT_VERSION (default: [workspace.package] version in Cargo.toml), DIST,
   CARGO_TARGET_DIR, CARGO_BUILD_JOBS (default 4).
 
@@ -30,13 +37,19 @@
 .EXAMPLE
   pwsh packaging/windows/package.ps1 -Arch x64
   pwsh packaging/windows/package.ps1 -Arch x86 -SkipBuild
+  pwsh packaging/windows/package.ps1 -Arch x64 -BuildOnly    # then -SkipBuild with the secrets
+  pwsh packaging/windows/package.ps1 -Arch x64 -SkipBuild -BinDir C:\built\x64
   pwsh packaging/windows/package.ps1 -Arch arm64     # cross-compiled; needs the MSVC ARM64 build tools
 #>
 param(
   [ValidateSet('x64', 'x86', 'arm64')] [string] $Arch = 'x64',
-  [switch] $SkipBuild
+  [switch] $SkipBuild,
+  [switch] $BuildOnly,
+  [string] $BinDir
 )
 $ErrorActionPreference = 'Stop'
+if ($SkipBuild -and $BuildOnly) { throw '-SkipBuild and -BuildOnly exclude each other.' }
+if ($BinDir -and -not $SkipBuild) { throw '-BinDir goes with -SkipBuild: it packages a build made elsewhere.' }
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $PSScriptRoot 'pe-checks.ps1')
 
@@ -91,10 +104,20 @@ try {
     [Environment]::SetEnvironmentVariable($flagVar, '-C target-feature=+crt-static')
     try { Invoke-Native "cargo build ($Target)" { cargo build --release --locked -p reasoncraft --target $Target } }
     finally { [Environment]::SetEnvironmentVariable($flagVar, $oldFlags) }
+    # The installer's licence page, built from LICENSE-MIT and LICENSE-APACHE so it never drifts;
+    # written here, so that packaging runs nothing the build made.
+    $rtf = Join-Path $TargetDir "$Target\release\licence.rtf"
+    Invoke-Native 'cargo xtask licence-rtf' { cargo xtask licence-rtf $rtf }
   }
 
-  $Bin = Join-Path $TargetDir "$Target\release"
+  $Bin = if ($BinDir) { (Resolve-Path $BinDir).Path } else { Join-Path $TargetDir "$Target\release" }
   Assert-ReleaseExe (Join-Path $Bin 'reasoncraft.exe') $Arch
+  $LicenseRtf = Join-Path $Bin 'licence.rtf'
+  if (-not (Test-Path -LiteralPath $LicenseRtf)) { throw "Missing ${LicenseRtf}: build with -BuildOnly first." }
+  if ($BuildOnly) {
+    Write-Output "Built $(Join-Path $Bin 'reasoncraft.exe') and licence.rtf; package them with -SkipBuild."
+    return
+  }
 
   $Stage = Join-Path $TargetDir "windows-package\$Arch"
   Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
@@ -106,10 +129,6 @@ try {
   $AppNotices = Join-Path $Stage 'app-notices'
   New-Item -ItemType Directory -Force -Path $AppNotices | Out-Null
   Copy-Item -LiteralPath (Join-Path $Root 'LICENSE-MIT'), (Join-Path $Root 'LICENSE-APACHE'), (Join-Path $Root 'THIRD-PARTY.md') -Destination $AppNotices
-
-  # The installer's licence page, built from LICENSE-MIT and LICENSE-APACHE so it never drifts.
-  $LicenseRtf = Join-Path $Stage 'licence.rtf'
-  Invoke-Native 'cargo xtask licence-rtf' { cargo xtask licence-rtf $LicenseRtf }
 
   # One MSI from one dual-scope source (see reasoncraft.wxs and install-policy.wxi): per user by
   # default into %LOCALAPPDATA%\Programs\ReasonCraft, per machine into Program Files\ReasonCraft.

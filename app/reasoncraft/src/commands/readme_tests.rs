@@ -111,6 +111,8 @@ fn row_actions(head: &str) -> Option<Vec<Action>> {
         "Help" => vec![A::ContextHelp],
         "Switch to the next / previous open map" => vec![A::NextTab, A::PrevTab],
         "Close the open map" => vec![A::CloseActiveTab],
+        "Add a reason" => vec![A::AddReason],
+        "Add an objection" => vec![A::AddObjection],
         "Add a co-premise" => vec![A::AddCoPremise],
         "Add a reason for the whole card" => vec![A::TargetWholeCard(CardKind::Reason)],
         "Add an objection to the whole card" => vec![A::TargetWholeCard(CardKind::Objection)],

@@ -1,5 +1,5 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/check-install-policy.ps1
-# at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: no launcher (per-user only) branch,
+# at aadb077), used under MIT OR Apache-2.0; changed: no launcher (per-user only) branch,
 # no licence-page route of other apps, the install folder directly under Program Files / Programs,
 # no checks of saved options or shield buttons (ReasonCraft has neither), and the HKLM searches
 # checked in both registry views.

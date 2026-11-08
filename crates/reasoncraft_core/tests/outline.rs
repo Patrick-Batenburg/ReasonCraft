@@ -1,4 +1,4 @@
-//! Outline builder tests (step 3, task 2).
+//! Outline builder tests.
 
 use std::time::Instant;
 
@@ -230,7 +230,7 @@ fn outline_500_boxes_fast() {
     assert!(best.as_micros() < 5_000, "took {best:?}");
 }
 
-/// Numbers and indents stop growing with the depth (SEC-R4): a number
+/// Numbers and indents stop growing with the depth: a number
 /// keeps its last parts after an ellipsis, and the plain text indents at
 /// most `MAX_INDENT` levels, so a deep map's outline grows with its box
 /// count, not its square.

@@ -12,7 +12,7 @@ The app never mutates the document directly; every change goes through core so u
 
 **Tech Stack:** Rust 1.94 stable (edition 2024); egui/eframe 0.37 (glow backend, accesskit, persistence); emath 0.37 (geometry types in core); serde + serde_json; zip 9; uuid 1 (v4, serde); indexmap 2 (serde); rfd 0.17 (file dialogs); fluent-bundle 0.16 (UI strings); egui_kittest 0.37 (UI tests); thiserror 2.
 
-**Spec:** `docs/superpowers/specs/2026-10-25-reasoncraft-design.md` (§4 model, §5 map look, §6 app layout, §8 editing, §9 file format, §10 theme). This plan implements spec §13 step 1 only; steps 2–6 get their own plans.
+**Spec:** `docs/dev/specs/2026-10-25-reasoncraft-design.md` (§4 model, §5 map look, §6 app layout, §8 editing, §9 file format, §10 theme). This plan implements spec §13 step 1 only; steps 2–6 get their own plans.
 
 ## Global Constraints
 
@@ -574,7 +574,7 @@ fn dirty_tracks_saved_position() {
 ### Task 12: End-to-end verification and docs
 
 **Files:**
-- Modify: `README.md` (build and run instructions, keyboard shortcuts table), `docs/todo.md` (review section)
+- Modify: `README.md` (build and run instructions, keyboard shortcuts table), `docs/dev/todo-history.md` (review section)
 - Create: `app/reasoncraft/tests/e2e.rs`
 
 - [ ] **Step 1: Write the test** `e2e_build_save_reopen`. Through actions only:
@@ -582,7 +582,7 @@ fn dirty_tracks_saved_position() {
   - save, open in a new tab;
   - assert structural equality of the two documents, and equal layout `bounds` within 0.5 px.
 - [ ] **Step 2: Run** `cargo test --workspace` → PASS. Run `cargo clippy --workspace --all-targets -- -D warnings` → clean. Run `cargo build --release -p reasoncraft` → success.
-- [ ] **Step 3: Manual check:** run the release build, build a small map by keyboard only, save it, reopen it, switch theme and zoom fit. Then repeat the stress fixture view. Record the results and any defects in the `docs/todo.md` review section.
+- [ ] **Step 3: Manual check:** run the release build, build a small map by keyboard only, save it, reopen it, switch theme and zoom fit. Then repeat the stress fixture view. Record the results and any defects in the `docs/dev/todo-history.md` review section.
 - [ ] **Step 4: Commit** `docs: step 1 verification and usage notes`.
 
 ---

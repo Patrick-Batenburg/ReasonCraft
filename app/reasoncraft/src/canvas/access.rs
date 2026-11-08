@@ -1,4 +1,4 @@
-//! The map for screen readers (ROB-1). The map is painted, so AccessKit
+//! The map for screen readers. The map is painted, so AccessKit
 //! sees one canvas node; this gives it:
 //! - a value that describes the selection ("Reason, premise 1 of 2,
 //!   accepted: Cats purr"), or "Nothing selected";

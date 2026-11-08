@@ -20,7 +20,14 @@ use crate::doc_tab::DocTab;
 use crate::i18n::{FluentArgs, t, t_args};
 use crate::theme::Tokens;
 
+/// The width of the query and the replacement field; less when the map
+/// is narrower.
 const FIELD_W: f32 = 240.0;
+
+/// The field width that fits `ui`: [`FIELD_W`] or the whole row.
+fn field_width(ui: &Ui) -> f32 {
+    FIELD_W.min(ui.available_width())
+}
 
 /// Show the active tab's find bar, if it is open.
 pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
@@ -90,14 +97,16 @@ fn bar(ui: &mut Ui, tab: &mut DocTab, tk: &Tokens, out: &mut Vec<Action>) {
     let total = tab.find_hits().len();
     let position = tab.find_position();
     let found = total > 0;
-    ui.horizontal(|ui| {
+    // Rows wrap so that every control stays inside the map area however
+    // narrow it is (a plain row ran on under the Text panel).
+    ui.horizontal_wrapped(|ui| {
         let hint = t("find.query");
         let mut query = tab.find.query.clone();
         let resp = ui.add(
             TextEdit::singleline(&mut query)
                 .id(query_id)
                 .hint_text(&hint)
-                .desired_width(FIELD_W),
+                .desired_width(field_width(ui)),
         );
         resp.widget_info(|| WidgetInfo::labeled(Role::TextInput, true, &hint));
         if resp.changed() {
@@ -158,14 +167,16 @@ fn bar(ui: &mut Ui, tab: &mut DocTab, tk: &Tokens, out: &mut Vec<Action>) {
     if !tab.find.replace {
         return;
     }
-    ui.horizontal(|ui| {
+    ui.horizontal_wrapped(|ui| {
         let hint = t("find.replacement");
         let mut text = tab.find.replacement.clone();
         let resp = ui.add(
             TextEdit::singleline(&mut text)
                 .id(replace_id)
                 .hint_text(&hint)
-                .desired_width(FIELD_W),
+                // No replacement can make a box longer than its cap.
+                .char_limit(reasoncraft_core::MAX_BOX_CHARS)
+                .desired_width(field_width(ui)),
         );
         resp.widget_info(|| WidgetInfo::labeled(Role::TextInput, true, &hint));
         if resp.changed() {

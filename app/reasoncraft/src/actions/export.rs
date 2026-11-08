@@ -294,16 +294,17 @@ pub fn poll_exports(app: &mut ReasonCraftApp) {
             return;
         }
     }
-    if app.modal.is_none()
+    if !app.dialog_open()
         && let Some(err) = app.export.waiting_errors.pop_front()
     {
         show_error(app, err);
     }
 }
 
-/// Shows `err`, or keeps it for later when another message is showing.
+/// Shows `err`, or keeps it for later while a dialog is open (a message,
+/// the export dialog or the link editor, whose work a message would end).
 fn show_error(app: &mut ReasonCraftApp, err: ExportError) {
-    if app.modal.is_some() {
+    if app.dialog_open() {
         app.export.waiting_errors.push_back(err);
         return;
     }

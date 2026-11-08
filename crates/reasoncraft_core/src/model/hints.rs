@@ -1,6 +1,7 @@
 //! Hints the author chose to ignore, kept in the document.
 
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
 use crate::checks::Issue;
 use crate::edit::EditError;
@@ -16,6 +17,9 @@ pub struct IgnoredHint {
     pub item: Item,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub terms: Vec<String>,
+    /// Unknown fields, kept so files roundtrip.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }
 
 impl IgnoredHint {
@@ -35,6 +39,7 @@ impl From<&Issue> for IgnoredHint {
             kind: issue.kind.key().to_owned(),
             item: issue.item,
             terms: issue.terms.clone(),
+            extra: Map::new(),
         }
     }
 }

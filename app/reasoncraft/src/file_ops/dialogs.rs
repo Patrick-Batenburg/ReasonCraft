@@ -1,8 +1,9 @@
 //! Native file pickers behind a trait, and fakes for tests.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 use super::EXTENSION;
 use crate::export::ExportFormat;
@@ -27,43 +28,86 @@ pub trait FileDialogs {
     /// file name, extension included. The caller adds the extension when
     /// the chosen name lacks it.
     fn pick_export(&self, format: ExportFormat, suggested: &str) -> Option<PathBuf>;
+    /// Whether the last dialog could not be shown at all, so the app says
+    /// what to install instead of doing nothing (see [`RfdDialogs`]);
+    /// asking clears it.
+    fn take_unavailable(&self) -> bool {
+        false
+    }
 }
 
 /// The platform's own dialogs, filtered to `.rcraft` files (or images).
-pub struct RfdDialogs;
+///
+/// On Linux and the BSDs rfd asks the desktop portal and, when that
+/// fails, runs zenity; with neither it returns no file at once, as if
+/// cancelled. A dialog that comes back empty sooner than anyone
+/// could cancel it counts as not shown.
+#[derive(Default)]
+pub struct RfdDialogs {
+    unavailable: Cell<bool>,
+}
+
+/// Sooner than this, an empty answer means no dialog was shown.
+const NO_DIALOG_WITHIN: Duration = Duration::from_millis(200);
+
+/// Whether a dialog that answered `empty` after `took` was never shown.
+pub(crate) fn came_back_at_once(empty: bool, took: Duration) -> bool {
+    empty && took < NO_DIALOG_WITHIN
+}
 
 impl RfdDialogs {
     fn dialog() -> rfd::FileDialog {
         rfd::FileDialog::new().add_filter(t("file.filter"), &[EXTENSION])
     }
+
+    /// Runs `pick`, noting whether its dialog was never shown (only where
+    /// rfd's dialogs can be missing).
+    fn run(&self, pick: impl FnOnce() -> Option<PathBuf>) -> Option<PathBuf> {
+        let start = Instant::now();
+        let path = pick();
+        let missing = cfg!(all(unix, not(target_os = "macos")))
+            && came_back_at_once(path.is_none(), start.elapsed());
+        self.unavailable.set(missing);
+        path
+    }
 }
 
 impl FileDialogs for RfdDialogs {
     fn pick_open(&self) -> Option<PathBuf> {
-        Self::dialog().pick_file()
+        self.run(|| Self::dialog().pick_file())
     }
 
     fn pick_save(&self, suggested: &str) -> Option<PathBuf> {
-        Self::dialog().set_file_name(suggested).save_file()
+        self.run(|| Self::dialog().set_file_name(suggested).save_file())
     }
 
     fn pick_import(&self) -> Option<PathBuf> {
-        rfd::FileDialog::new()
-            .add_filter(t("file.argdown"), ARGDOWN_EXTENSIONS)
-            .pick_file()
+        self.run(|| {
+            rfd::FileDialog::new()
+                .add_filter(t("file.argdown"), ARGDOWN_EXTENSIONS)
+                .pick_file()
+        })
     }
 
     fn pick_image(&self) -> Option<PathBuf> {
-        rfd::FileDialog::new()
-            .add_filter(t("file.images"), IMAGE_EXTENSIONS)
-            .pick_file()
+        self.run(|| {
+            rfd::FileDialog::new()
+                .add_filter(t("file.images"), IMAGE_EXTENSIONS)
+                .pick_file()
+        })
     }
 
     fn pick_export(&self, format: ExportFormat, suggested: &str) -> Option<PathBuf> {
-        rfd::FileDialog::new()
-            .add_filter(t(format.name_key()), &[format.extension()])
-            .set_file_name(suggested)
-            .save_file()
+        self.run(|| {
+            rfd::FileDialog::new()
+                .add_filter(t(format.name_key()), &[format.extension()])
+                .set_file_name(suggested)
+                .save_file()
+        })
+    }
+
+    fn take_unavailable(&self) -> bool {
+        self.unavailable.take()
     }
 }
 
@@ -80,6 +124,8 @@ pub struct FakeDialogs {
     pub export: Rc<RefCell<Option<PathBuf>>>,
     /// The format and suggested name of the last export dialog.
     pub last_export: Rc<RefCell<Option<(ExportFormat, String)>>>,
+    /// Set: the next dialog counts as not shown (no portal, no zenity).
+    pub unavailable: Rc<Cell<bool>>,
 }
 
 impl FakeDialogs {
@@ -125,5 +171,47 @@ impl FileDialogs for FakeDialogs {
         self.last_export
             .replace(Some((format, suggested.to_owned())));
         self.export.take()
+    }
+
+    fn take_unavailable(&self) -> bool {
+        self.unavailable.take()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Nobody cancels a dialog within 200 ms: an empty answer that soon
+    /// means no dialog was shown; a file, or a later empty answer, is the
+    /// user's.
+    #[test]
+    fn an_empty_answer_at_once_means_no_dialog() {
+        assert!(came_back_at_once(true, Duration::from_millis(5)));
+        assert!(!came_back_at_once(true, Duration::from_millis(900)));
+        assert!(!came_back_at_once(false, Duration::from_millis(5)));
+    }
+
+    /// A dialog that was never shown (Open, Import, Save As, an image)
+    /// says what to install; a cancelled one says nothing.
+    #[test]
+    fn a_missing_dialog_says_what_to_install() {
+        use crate::actions::{Action, apply};
+        use crate::app::ReasonCraftApp;
+        use crate::file_ops::Modal;
+        let title = |app: &ReasonCraftApp| match &app.modal {
+            Some(Modal::Error { title, .. }) => Some(title.clone()),
+            _ => None,
+        };
+        let dialogs = FakeDialogs::default();
+        let mut app = ReasonCraftApp::new_for_test_with(Box::new(dialogs.clone()));
+        apply(&mut app, Action::Open);
+        assert_eq!(title(&app), None, "cancelled");
+        for action in [Action::Open, Action::ImportArgdown, Action::SaveAs] {
+            dialogs.unavailable.set(true);
+            apply(&mut app, action.clone());
+            assert_eq!(title(&app), Some(t("error.no_dialog.title")), "{action:?}");
+            app.modal = None;
+        }
     }
 }

@@ -19,13 +19,13 @@ The Essay tab stays a placeholder until step 4.
 
 **Tech Stack:** unchanged from step 2 (Rust 1.99.1 pinned, egui/eframe/egui_kittest 0.37, serde, indexmap, uuid, image, zip, sha2, open, fluent-bundle). No new dependencies.
 
-**Spec:** `docs/superpowers/specs/2026-10-25-reasoncraft-design.md`. This step covers:
+**Spec:** `docs/dev/specs/2026-10-25-reasoncraft-design.md`. This step covers:
 - §6, the Text panel: the Outline, Check and Snippets tabs;
 - §7, Checks 1–8;
 - §8, the bottom-up workflow;
 - §4, document language in DocMeta.
 
-It also covers the step-2 carry-over items in `docs/todo.md`.
+It also covers the step-2 carry-over items in `docs/dev/todo-history.md`.
 
 ## Global Constraints
 
@@ -351,7 +351,7 @@ app/reasoncraft/src/
 ### Task 10: End-to-end verification and docs
 
 **Files:**
-- Modify: `app/reasoncraft/tests/e2e.rs`, `README.md`, `docs/todo.md`, `docs/rulings.md`
+- Modify: `app/reasoncraft/tests/e2e.rs`, `README.md`, `docs/dev/todo-history.md`, `docs/rulings.md`
 
 - [ ] **Step 1: Extend e2e.** Through actions:
   - add two snippets, one with a source;
@@ -368,7 +368,7 @@ app/reasoncraft/src/
   - Resolve check issues by clicking.
   - Switch language.
 
-  Take dark and light screenshots and look at them. Record the step-3 review in `docs/todo.md` and tick the step-3 carry-over items done in Task 1.
+  Take dark and light screenshots and look at them. Record the step-3 review in `docs/dev/todo-history.md` and tick the step-3 carry-over items done in Task 1.
 - [ ] **Step 4: README.** Text panel overview, and any new shortcuts in the tables (exactly matching `key_to_action`).
 - [ ] **Step 5: Commit** `docs: step 3 verification and usage notes`.
 

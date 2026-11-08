@@ -1,6 +1,6 @@
 #!/bin/sh
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/linux/postinst.sh at
-# aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: this header only.
+# aadb077), used under MIT OR Apache-2.0; changed: this header only.
 #
 # deb/rpm post-install and post-remove: refresh the desktop, MIME and icon caches.
 # Every tool is optional; missing ones are skipped.

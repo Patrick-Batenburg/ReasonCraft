@@ -1,0 +1,60 @@
+name: Bug report
+description: Something in ReasonCraft does not work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Security problems go in private instead: see SECURITY.md.
+        Please leave out personal data; if you attach a map, use one you are happy to share.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What `reasoncraft --version` prints, or File → About in the app.
+      placeholder: ReasonCraft 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: Name and version, and the processor type if you know it.
+      placeholder: Windows 11 24H2 x64, macOS 15 on Apple silicon, Ubuntu 24.04 (Wayland)
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you installed ReasonCraft
+      options:
+        - Windows installer (.msi)
+        - Windows portable (.zip)
+        - Linux .deb
+        - Linux .rpm
+        - Linux AppImage
+        - Linux Flatpak
+        - Linux .tar.gz
+        - macOS (.dmg)
+        - Built from source
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, step by step, what you expected, and what happened instead.
+      placeholder: |
+        1. Open a new reasoning map.
+        2. ...
+        Expected: ...
+        Instead: ...
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Error messages, screenshots, or a small map file that shows the problem (zip it to attach a .rcraft file).
+    validations:
+      required: false

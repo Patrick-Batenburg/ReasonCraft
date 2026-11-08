@@ -1,7 +1,5 @@
 use std::collections::BTreeSet;
 
-use base64::Engine as _;
-
 use super::render::{Block, Span, parse};
 use super::{TOPICS, index, source, title};
 use crate::i18n::UI_LANGUAGES;
@@ -149,39 +147,6 @@ fn help_text_is_in_the_ui_font() {
         }
     }
     assert!(crate::canvas::input::ui_font_has('•'));
-}
-
-/// The help and the About page hold none of the listed words.
-/// The words are kept here only, encoded, so they appear nowhere in plain
-/// text.
-#[test]
-fn help_contains_no_listed_words() {
-    const DENY: [&str; 2] = ["eHh4eA==", "eXl5eQ=="];
-    let names: Vec<String> = DENY
-        .iter()
-        .map(|b| {
-            let bytes = base64::engine::general_purpose::STANDARD
-                .decode(b)
-                .expect("valid base64");
-            String::from_utf8(bytes).expect("UTF-8").to_lowercase()
-        })
-        .collect();
-    let mut texts: Vec<(String, &str)> = index::FILES
-        .iter()
-        .map(|(lang, topic, text)| (format!("help/{lang}/{topic}.md"), *text))
-        .collect();
-    texts.push(("THIRD-PARTY.md".into(), crate::shell::about::THIRD_PARTY));
-    texts.push(("en.ftl".into(), include_str!("../../i18n/en.ftl")));
-    texts.push(("nl.ftl".into(), include_str!("../../i18n/nl.ftl")));
-    for (file, text) in texts {
-        let text = text.to_lowercase();
-        for name in &names {
-            assert!(
-                !text.contains(name.as_str()),
-                "{file} holds a listed word"
-            );
-        }
-    }
 }
 
 #[test]

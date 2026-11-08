@@ -116,13 +116,13 @@ fn place(app: &mut ReasonCraftApp, i: usize, node: NodeId, image: PreparedImage)
     // Only ever "png": the bytes were re-encoded as PNG.
     let asset = tab.assets.insert("png", image.png);
     let aspect = image.aspect;
-    tab.edit(|d| d.set_image(node, Some(ImageRef { asset, aspect })));
+    tab.edit(|d| d.set_image(node, Some(ImageRef::new(asset, aspect))));
 }
 
-/// An error message for `failure`, or a status note when another message
-/// is showing.
+/// An error message for `failure`, or a status note while a dialog is
+/// open (a message, the export dialog or the link editor).
 fn show_failure(app: &mut ReasonCraftApp, failure: &ImageFailure) {
-    if app.modal.is_some() {
+    if app.dialog_open() {
         app.status_note = Some(format!("{}: {}", failure.title(), failure.message()));
         return;
     }

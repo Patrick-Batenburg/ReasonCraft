@@ -1,5 +1,5 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/test-install-policy.ps1
-# at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: only ReasonCraft's WiX variables
+# at aadb077), used under MIT OR Apache-2.0; changed: only ReasonCraft's WiX variables
 # and payloads (no models, fonts, CLI or custom dialog bitmaps); it does not run
 # test-packaging-script.ps1, which needs a built app; it runs Windows Installer's ICE validation.
 

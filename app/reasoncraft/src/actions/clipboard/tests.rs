@@ -105,15 +105,7 @@ fn paste_into_another_tab_brings_the_images() {
     let (mut a, _, a1) = app();
     let key = a.tabs[0].assets.insert("png", vec![1, 2, 3]);
     a.tabs[0]
-        .edit(|d| {
-            d.set_image(
-                a1,
-                Some(ImageRef {
-                    asset: key.clone(),
-                    aspect: 1.0,
-                }),
-            )
-        })
+        .edit(|d| d.set_image(a1, Some(ImageRef::new(key.clone(), 1.0))))
         .unwrap();
     select(&mut a, Item::Box(a1));
     apply(&mut a, Action::Copy);
@@ -163,8 +155,8 @@ fn foreign_text_pastes_as_a_box() {
 }
 
 /// An item without text still puts text on the system clipboard: egui
-/// sends no paste for an empty clipboard, so Ctrl+V would do nothing
-/// (APP-R4). Pasting that text brings the item back.
+/// sends no paste for an empty clipboard, so Ctrl+V would do nothing.
+/// Pasting that text brings the item back.
 #[test]
 fn an_empty_item_copies_marker_text_and_pastes_back() {
     let (mut a, _, a1) = app();

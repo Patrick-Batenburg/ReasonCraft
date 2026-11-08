@@ -50,10 +50,11 @@ unknown-git = "deny"
 # user's to replace). An ignored advisory names its reason.
 unmaintained = "workspace"
 ignore = [
-    # zip 8 under docx-rs 0.4.22 (the latest): the three concern
+    # zip 8 under docx-rs 0.4.22 (the latest): the four concern
     # ZipArchive::extract, which docx-rs never calls and we only write
     # .docx files with it. Our own zip is 9.
     { id = "RUSTSEC-2026-0367", reason = "zip::extract is not used (docx-rs only writes)" },
     { id = "RUSTSEC-2026-0368", reason = "zip::extract is not used (docx-rs only writes)" },
     { id = "RUSTSEC-2026-0369", reason = "zip::extract is not used (docx-rs only writes)" },
+    { id = "RUSTSEC-2026-0429", reason = "zip::extract is not used (docx-rs only writes)" },
 ]

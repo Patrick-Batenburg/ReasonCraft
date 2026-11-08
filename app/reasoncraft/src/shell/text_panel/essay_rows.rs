@@ -74,7 +74,7 @@ pub(super) fn parts<'a>(doc: &'a Document, view: &'a EssayView) -> Vec<Part<'a>>
     if !doc.essay.unplaced.is_empty() {
         parts.push(Part::UnplacedHeading);
         let notes = doc.essay.unplaced.iter().enumerate();
-        parts.extend(notes.map(|(i, (label, text))| Part::Unplaced(i, label, text)));
+        parts.extend(notes.map(|(i, u)| Part::Unplaced(i, &u.label, &u.text)));
     }
     parts
 }

@@ -53,6 +53,8 @@ pub enum Action {
     ResolveReplace(bool),
     /// Close the error message.
     DismissModal,
+    /// Close the link editor without a change (Cancel, Esc).
+    CloseLinkEdit,
     Undo,
     Redo,
     AddReason,
@@ -385,6 +387,8 @@ pub enum Action {
     OpenTemplate(Template),
     /// Open a map from the recent-files list; one that is gone leaves it.
     OpenRecent(PathBuf),
+    /// Open the maps a later launch handed over (see [`crate::instance`]).
+    OpenFiles(Vec<PathBuf>),
     /// Open the built-in sample map in a new tab (debug builds only).
     #[cfg(debug_assertions)]
     LoadSampleMap,

@@ -1,4 +1,4 @@
-//! Step 4 end to end: write the essay (introduction and two sections),
+//! End to end: write the essay (introduction and two sections),
 //! delete a branch with text and undo it, export the map, the outline and
 //! the essay in every file format through the app's own commands, check
 //! that each file is valid, then save, reopen and compare the essay.
@@ -176,7 +176,7 @@ fn e2e_essay_exports_save_reopen() {
     assert!(!doc.boxes.contains_key(&weak));
     assert_eq!(
         doc.essay.unplaced,
-        [(
+        [reasoncraft_core::UnplacedNote::new(
             "Fewer accidents on the way".to_owned(),
             "Rested drivers crash less.".to_owned()
         )]

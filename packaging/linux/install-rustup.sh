@@ -31,4 +31,6 @@ curl --proto '=https' --tlsv1.2 -fsSL -o "$work/rustup-init" \
   "https://static.rust-lang.org/rustup/archive/$RUSTUP_VERSION/$target/rustup-init"
 printf '%s  %s\n' "$sha256" "$work/rustup-init" | sha256sum -c -
 chmod 755 "$work/rustup-init"
-"$work/rustup-init" -y --no-modify-path --profile minimal --default-toolchain none
+# In a container job the runner sets HOME=/github/home while running as root, whose home is
+# /root: rustup-init then takes it for sudo and prints errors, though it goes on.
+RUSTUP_INIT_SKIP_SUDO_CHECK=yes "$work/rustup-init" -y --no-modify-path --profile minimal --default-toolchain none

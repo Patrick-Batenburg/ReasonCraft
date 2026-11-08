@@ -55,20 +55,23 @@ fn wix_package_identity() {
             let component = element(&doc, "Component", Some(id));
             assert_eq!(component.attribute("Guid"), guid.as_str(), "{id}");
         }
-        // Our own name and folder only, and no web addresses.
+        // Our own name and folder only. The only web addresses are the
+        // repository's, as the Apps & features links.
+        let repo = env!("CARGO_PKG_REPOSITORY");
+        let property = |id: &str| element(&doc, "Property", Some(id)).attribute("Value");
+        assert_eq!(property("ARPURLINFOABOUT"), Some(repo));
+        assert_eq!(
+            property("ARPHELPLINK"),
+            Some(format!("{repo}/issues").as_str())
+        );
         for attr in doc.descendants().flat_map(|n| n.attributes()) {
             let value = attr.value();
+            assert!(!value.contains("ArtCraft"), "{value}");
             assert!(
-                !value.contains("ArtCraft") && !value.contains("http"),
+                !value.contains("http") || value.starts_with(repo),
                 "{value}"
             );
         }
-        assert!(
-            !doc.descendants().any(|n| n
-                .attribute("Id")
-                .is_some_and(|id| id.starts_with("ARPURL") || id == "ARPHELPLINK")),
-            "no ARP URLs"
-        );
 
         let folder = element(&doc, "Directory", Some("INSTALLFOLDER"));
         assert_eq!(folder.attribute("Name"), Some("ReasonCraft"));

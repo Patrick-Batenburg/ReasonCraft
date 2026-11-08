@@ -196,12 +196,19 @@ replace-confirm = Replace
 replace-cancel = Cancel
 error-open-title = Could not open { $file }
 error-save-title = Could not save { $file }
+error-no_dialog-title = No file dialog
+error-no_dialog = The file dialog could not be shown. On Linux, ReasonCraft needs the desktop portal (xdg-desktop-portal with a backend such as xdg-desktop-portal-gtk) or zenity: install one of them and try again.
 error-open-not_a_file = This is not a ReasonCraft map.
 error-open-missing_document = This ReasonCraft file has no map inside.
 error-open-malformed = This ReasonCraft file is damaged and cannot be read. ({ $detail })
 error-open-newer_version = This map was made with a newer version of ReasonCraft (file version { $found }; this version reads up to version { $supported }). Update ReasonCraft to open it.
+error-open-denied = You do not have permission to open this file, or another program is using it.
+error-open-not_found = This file does not exist. It may have been moved, renamed or deleted.
 error-open-io = The file could not be read: { $detail }
+error-save-read_only = The file is read-only or another program is using it, so it was not saved. Use { $save_as } to save the map under another name. Your changes are still open and unsaved.
+error-save-disk_full = The disk is full, so the file was not saved. Make room or use { $save_as } to save the map somewhere else. Your changes are still open and unsaved.
 error-save-io = The file could not be written: { $detail }. Your changes are still open and unsaved.
+error-save-too_much_text = This map holds { $chars } characters of text, more than ReasonCraft opens from one file ({ $max }), so it was not saved: it would be cut the next time it is opened. Move part of it to another map or shorten some texts. Your changes are still open and unsaved.
 error-save-other = The map could not be saved: { $detail }. Your changes are still open and unsaved.
 
 ## Argdown import
@@ -677,7 +684,7 @@ status-saving = Saving…
 # programs get it; Paste with it brings the item back).
 clipboard-empty_item = (empty)
 status-text_cut = Text was cut to 50 000 characters.
-status-open_cut = Some of this file was too large or unsafe: long texts were shortened and the rest left out.
+status-open_cut = Some of this file was too large, damaged or unsafe: long texts were shortened and the rest left out. It is open as an unsaved copy, so the file itself stays as it was.
 status-open_too_deep = Parts of this map were nested more than { $max } levels deep; they are in the parking area.
 status-too_deep = That would nest the map more than { $max } levels deep.
 status-jobs-exports = { $count ->
@@ -703,6 +710,8 @@ help-contents-concepts = Concepts
 help-contents-howto = How to
 help-check_link = Help on { $kind }
 help-keyboard-table = The shortcuts on this computer
+help-key-reason = Add a reason to the selected box or card
+help-key-objection = Add an objection to the selected box or card
 help-key-co_premise = Add a co-premise to the selected card
 help-key-whole_card_reason = Add a reason for the whole card
 help-key-whole_card_objection = Add an objection to the whole card
@@ -774,3 +783,14 @@ a11y-resize_text = Resize the Text panel
 startup-failed-title = ReasonCraft could not start
 startup-failed-body = ReasonCraft could not open its window. The graphics driver of this computer may be missing or out of date; updating it usually helps.
 startup-failed-details = Technical details: { $details }
+
+## Ribbon tooltips: why an add command is greyed out
+ribbon-why-add_card = Select a claim or a premise to add a reason or an objection.
+ribbon-why-claim_has_categories = A claim with categories takes no reasons or objections.
+ribbon-why-add_co_premise = Select a premise to add a co-premise.
+ribbon-why-add_category = Select a claim or a category to add a category.
+ribbon-why-claim_has_cards = A claim with reasons or objections takes no categories.
+ribbon-why-add_note = Select a box that is not a note to add a note.
+ribbon-why-comment = Select a box to add a comment.
+ribbon-why-whole_card = Select a premise to add a reason or an objection to its whole card.
+ribbon-why-add_source = Select a claim or a premise to add a source to it, or nothing to put it in the parking area.

@@ -13,6 +13,21 @@ use crate::i18n::{FluentArgs, t_lang, t_lang_args};
 /// The renderers to try, in order.
 pub const RENDERERS: [Renderer; 2] = [Renderer::Wgpu, Renderer::Glow];
 
+/// wgpu's settings. On DirectX 12, shaders are compiled with FXC (part of
+/// Windows) rather than DXC, which wgpu would otherwise look for as
+/// `dxcompiler.dll`, a DLL Windows does not ship (see `dll_search`).
+pub fn wgpu_options() -> eframe::egui_wgpu::WgpuConfiguration {
+    let mut options = eframe::egui_wgpu::WgpuConfiguration::default();
+    if let eframe::egui_wgpu::WgpuSetup::CreateNew(setup) = &mut options.wgpu_setup {
+        setup
+            .instance_descriptor
+            .backend_options
+            .dx12
+            .shader_compiler = eframe::wgpu::Dx12Compiler::Fxc;
+    }
+    options
+}
+
 /// Why the app stopped with an error.
 #[derive(Debug, PartialEq, Eq)]
 pub enum StartError<E> {
@@ -94,6 +109,22 @@ mod tests {
             }
         });
         (outcome, tried)
+    }
+
+    #[test]
+    fn dx12_shaders_compile_with_fxc() {
+        let eframe::egui_wgpu::WgpuSetup::CreateNew(setup) = wgpu_options().wgpu_setup else {
+            panic!("a new wgpu instance");
+        };
+        let compiler = &setup
+            .instance_descriptor
+            .backend_options
+            .dx12
+            .shader_compiler;
+        assert!(
+            matches!(compiler, eframe::wgpu::Dx12Compiler::Fxc),
+            "{compiler:?}"
+        );
     }
 
     #[test]

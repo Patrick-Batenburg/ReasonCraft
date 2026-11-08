@@ -31,7 +31,7 @@ fn click_at(h: &mut Harness<'static, ReasonCraftApp>, pos: egui::Pos2) {
     h.run();
 }
 
-// ---- Task 10: editing interactions ----
+// ---- Editing interactions ----
 
 fn selected_text(h: &Harness<'static, ReasonCraftApp>) -> String {
     let tab = &h.state().tabs[0];

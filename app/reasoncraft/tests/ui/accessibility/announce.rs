@@ -1,6 +1,6 @@
 //! What changes without the focus moving is read out: the find count,
 //! status notes, "Saving…", the Move to… hint, and the misspelled word
-//! (said in words, not only by colour) (ROB-12).
+//! (said in words, not only by colour).
 
 use super::*;
 use egui_kittest::Node;

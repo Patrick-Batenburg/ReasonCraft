@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-const APP_ID: &str = "io.github.Patrick_Batenburg.ReasonCraft";
+use reasoncraft::settings_store::APP_ID;
 
 fn linux_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packaging/linux")
@@ -49,13 +49,6 @@ fn desktop_entry_matches_app_id() {
     // Wayland compositors match the window to its entry by the app ID.
     let wm_class = desktop_value(&desktop, "StartupWMClass");
     assert_eq!(wm_class, APP_ID);
-    let main =
-        std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/main.rs"))
-            .unwrap();
-    assert!(
-        main.contains(&format!("with_app_id(\"{wm_class}\")")),
-        "main.rs sets the app ID {wm_class}"
-    );
 
     assert_eq!(desktop_value(&desktop, "Exec"), "reasoncraft %F");
     assert_eq!(desktop_value(&desktop, "TryExec"), "reasoncraft");
@@ -101,6 +94,16 @@ fn mime_and_metainfo_declare_rcraft() {
     assert_eq!(text("launchable"), [format!("{APP_ID}.desktop").as_str()]);
     assert_eq!(text("mediatype"), ["application/x-reasoncraft"]);
     assert_eq!(text("binary"), ["reasoncraft"]);
+    let repo = env!("CARGO_PKG_REPOSITORY");
+    let url = |kind: &str| -> Vec<&str> {
+        metainfo
+            .descendants()
+            .filter(|n| n.has_tag_name("url") && n.attribute("type") == Some(kind))
+            .filter_map(|n| n.text())
+            .collect()
+    };
+    assert_eq!(url("homepage"), [repo]);
+    assert_eq!(url("bugtracker"), [format!("{repo}/issues").as_str()]);
     assert!(
         metainfo
             .descendants()
@@ -153,7 +156,17 @@ fn packages_name_their_runtime_libraries() {
         ],
         "ruling S6-T13-3: no libxrandr2"
     );
-    assert_eq!(deb_recommends, ["xdg-desktop-portal"]);
+    // rfd's file dialogs: the portal with a backend that shows them (a
+    // desktop's own backend will do), and zenity, which rfd runs when the
+    // portal fails; with neither, Open and Save show nothing.
+    assert_eq!(
+        deb_recommends,
+        [
+            "xdg-desktop-portal",
+            "xdg-desktop-portal-gtk | xdg-desktop-portal-backend",
+            "zenity",
+        ]
+    );
 
     // The rpm names the libraries by soname, which every rpm distribution
     // provides under its own package names (Fedora `libxkbcommon`,
@@ -174,6 +187,8 @@ fn packages_name_their_runtime_libraries() {
             "libwayland-client.so.0()(64bit)",
             "libwayland-egl.so.1()(64bit)",
             "xdg-desktop-portal",
+            "(xdg-desktop-portal-gtk or xdg-desktop-portal-gnome or xdg-desktop-portal-kde)",
+            "zenity",
         ]
     );
 }
@@ -187,4 +202,78 @@ fn nfpm_takes_the_version_as_semver() {
     let yaml = read("nfpm.yaml");
     assert!(yaml.lines().any(|l| l == "version_schema: semver"));
     assert!(yaml.lines().any(|l| l == "version: ${VERSION}"));
+    let homepage = format!("homepage: {}", env!("CARGO_PKG_REPOSITORY"));
+    assert!(yaml.lines().any(|l| l == homepage), "{homepage}");
+}
+
+/// The metainfo's screenshots are the README's, in `docs/images/`, as
+/// GitHub serves them from `main`; the first is the default.
+#[test]
+fn metainfo_screenshots_are_in_the_repository() {
+    let metainfo = read(&format!("{APP_ID}.metainfo.xml.in"));
+    let doc = roxmltree::Document::parse(&metainfo).unwrap();
+    let raw = "https://raw.githubusercontent.com/Patrick-Batenburg/ReasonCraft/main/";
+    let shots: Vec<_> = doc
+        .descendants()
+        .filter(|n| n.has_tag_name("screenshot"))
+        .collect();
+    assert!(!shots.is_empty(), "the metainfo shows screenshots");
+    assert_eq!(shots[0].attribute("type"), Some("default"));
+    let readme = std::fs::read_to_string(linux_dir().join("../../README.md")).unwrap();
+    for shot in shots {
+        let image = shot.children().find(|n| n.has_tag_name("image")).unwrap();
+        let url = image.text().unwrap();
+        let path = url.strip_prefix(raw).unwrap_or_else(|| panic!("{url}"));
+        assert!(path.starts_with("docs/images/"), "{url}");
+        assert!(linux_dir().join("../..").join(path).is_file(), "{path}");
+        assert!(
+            readme.contains(&format!("]({path})")),
+            "README shows {path}"
+        );
+        let caption = shot.children().find(|n| n.has_tag_name("caption"));
+        assert!(
+            caption.and_then(|c| c.text()).is_some(),
+            "{path} has a caption"
+        );
+    }
+}
+
+/// With the homepage in the metainfo, `appstreamcli validate` runs without
+/// lowering any check (ruling RR-8 retired PK-13's override).
+#[test]
+fn appstream_is_validated_without_overrides() {
+    let root = linux_dir().join("../..");
+    for file in [
+        "packaging/linux/package.sh",
+        ".github/workflows/packaging-lint.yml",
+    ] {
+        let text = std::fs::read_to_string(root.join(file)).unwrap();
+        assert!(!text.contains("--override"), "{file} lowers a check");
+    }
+}
+
+/// The Dutch texts of the desktop entry and the AppStream metadata use
+/// the app's term for a claim, "bewering" (ruling J3); "stelling"
+/// stays only as a search keyword.
+#[test]
+fn dutch_package_texts_use_the_glossary_terms() {
+    let desktop = read(&format!("{APP_ID}.desktop"));
+    let comment = desktop_value(&desktop, "Comment[nl]");
+    assert!(comment.contains("beweringen"), "{comment}");
+    let keywords = desktop_value(&desktop, "Keywords[nl]");
+    assert!(keywords.split(';').any(|k| k == "bewering"), "{keywords}");
+
+    let metainfo = read(&format!("{APP_ID}.metainfo.xml.in"));
+    let doc = roxmltree::Document::parse(&metainfo).unwrap();
+    let dutch: Vec<String> = doc
+        .descendants()
+        .filter(|n| n.attribute(("http://www.w3.org/XML/1998/namespace", "lang")) == Some("nl"))
+        .map(|n| n.text().unwrap_or_default().to_owned())
+        .collect();
+    assert!(dutch.len() >= 2, "a Dutch summary and description");
+    for text in &dutch {
+        assert!(!text.to_lowercase().contains("stelling"), "{text}");
+    }
+    assert!(dutch.iter().any(|t| t.contains("bewering")));
+    assert!(!comment.to_lowercase().contains("stelling"), "{comment}");
 }

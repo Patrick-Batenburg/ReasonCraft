@@ -21,7 +21,7 @@
 - Dictionaries: `dictionary-en` 4.0.0 (MIT AND BSD) and `dictionary-nl` 2.0.0 (BSD-3-Clause OR CC-BY-3.0; BSD chosen), both from github.com/wooorm/dictionaries.
 - `File::try_lock` (std, stable since 1.89) for recovery session locks.
 
-**Spec:** `docs/superpowers/specs/2026-10-25-reasoncraft-design.md`. The relevant sections are §4, §5 (connectors, layout direction), §6 (View/Home/File ribbons, Search commands, minimap), §8 (find/replace, spellcheck, autosave), §9 (Argdown, exports) and §10 (settings).
+**Spec:** `docs/dev/specs/2026-10-25-reasoncraft-design.md`. The relevant sections are §4, §5 (connectors, layout direction), §6 (View/Home/File ribbons, Search commands, minimap), §8 (find/replace, spellcheck, autosave), §9 (Argdown, exports) and §10 (settings).
 
 ## Global Constraints
 
@@ -80,7 +80,7 @@
 | Argdown (T12–T13) | `core/argdown/{mod,write,lex,parse,import,report}.rs`, `docs/argdown.md`, `app/actions/argdown.rs` |
 | Checks (T14) | `core/checks.rs`, `core/checks/tokens.rs`, `core/model.rs` (`IgnoredHint`), `shell/text_panel/check.rs` |
 | Export/panels (T15) | `app/export/svg.rs` (bold), `app/export/assets.rs` (non-PNG), `shell/text_panel/{essay,check}.rs` (virtualised) |
-| E2E/docs (T16) | `app/reasoncraft/tests/e2e/interchange.rs`, `README.md`, `docs/todo.md`, `docs/rulings.md`, `THIRD-PARTY.md` |
+| E2E/docs (T16) | `app/reasoncraft/tests/e2e/interchange.rs`, `README.md`, `docs/dev/todo-history.md`, `docs/rulings.md`, `THIRD-PARTY.md` |
 
 ---
 
@@ -756,7 +756,7 @@ The carry-overs:
 
 ### Task 16: End-to-end verification and docs
 
-**Files:** create `app/reasoncraft/tests/e2e/interchange.rs` (registered in `tests/e2e/main.rs`); modify `README.md`, `docs/todo.md`, `docs/rulings.md`, `docs/argdown.md` and `THIRD-PARTY.md`.
+**Files:** create `app/reasoncraft/tests/e2e/interchange.rs` (registered in `tests/e2e/main.rs`); modify `README.md`, `docs/dev/todo-history.md`, `docs/rulings.md`, `docs/argdown.md` and `THIRD-PARTY.md`.
 
 - [ ] **Step 1: E2E test `interchange_round_trip`.** Using actions and `FakeDialogs` only:
   1. Build a Dutch map with a claim, a two-premise reason with a source, an objection on one premise, a whole-card rebuttal and a parked note.
@@ -771,7 +771,7 @@ The carry-overs:
   - Capture the window (PrintWindow, with the file passed on the command line) showing the minimap, the find bar and the numbering.
 - [ ] **Step 3: Docs.**
   - README: a features section (Argdown, directions, connector styles, minimap, numbering, find/replace, spellcheck, autosave and recovery with the recovery folder location per OS, Search commands), and the shortcut table matching `SHORTCUTS` (the Task 3 test enforces this).
-  - `docs/todo.md`: tick step 5, and add a Review section with test counts and known limitations.
+  - `docs/dev/todo-history.md`: tick step 5, and add a Review section with test counts and known limitations.
   - `docs/rulings.md`: add the step 5 rulings.
 - [ ] **Step 4:** Run the full gate, plus `cargo build --release -p reasoncraft` and `cargo test --workspace --release -- --ignored`.
 - [ ] **Step 5:** Commit: `test: step 5 end-to-end interchange; docs`.

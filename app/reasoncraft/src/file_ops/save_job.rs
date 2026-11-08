@@ -19,8 +19,32 @@ use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
 use crate::jobs::{Hold, Job, JobState, Queue};
 
-/// What writing a file gave: its modification time, when it can be read.
-type WriteResult = Result<Option<SystemTime>, FileError>;
+/// What a save may replace.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Overwrite {
+    /// Whatever is there: a new file, or one the user chose to replace.
+    Any,
+    /// The tab's own file, only while it still has this modification time
+    /// (the one the tab opened or last saved), or is gone: else someone
+    /// else changed it since, and the user is asked first. The worker
+    /// looks, as a slow disk (a network share) must not freeze the window.
+    IfUnchanged(Option<SystemTime>),
+}
+
+/// How a write ended, short of an error.
+#[derive(Debug)]
+pub(super) enum Written {
+    /// The file was written: its modification time and its resolved path,
+    /// when they can be read.
+    Saved {
+        mtime: Option<SystemTime>,
+        resolved: Option<PathBuf>,
+    },
+    /// Nothing was written: the file changed on disk (see [`Overwrite`]).
+    ChangedOnDisk,
+}
+
+type WriteResult = Result<Written, FileError>;
 
 struct Running {
     /// The tab's [`DocTab::recovery_key`]: tabs may close or move meanwhile.
@@ -37,6 +61,8 @@ struct Running {
 enum Next {
     Then(Uuid, AfterSave),
     Failed(PathBuf, FileError),
+    /// The tab's file changed on disk: ask before replacing it.
+    Changed(Uuid, PathBuf, AfterSave),
 }
 
 /// How long a close waits on the UI thread for the saves being written
@@ -61,6 +87,17 @@ impl SaveJobs {
         !self.running.is_empty()
     }
 
+    /// Whether a save being written, or what one left to do, carries on a
+    /// window close.
+    pub(super) fn part_of_window_close(&self) -> bool {
+        let closes = |then: &AfterSave| *then == AfterSave::ContinueWindowClose;
+        self.running.iter().any(|r| closes(&r.then))
+            || self.next.iter().any(|n| match n {
+                Next::Then(_, then) | Next::Changed(_, _, then) => closes(then),
+                Next::Failed(..) => false,
+            })
+    }
+
     /// Where the last save of `tab` that is still being written goes: a
     /// Save meanwhile writes there too, not to the tab's old file.
     pub fn pending_path(&self, tab: &DocTab) -> Option<&Path> {
@@ -69,12 +106,18 @@ impl SaveJobs {
             .map(|r| r.path.as_path())
     }
 
-    /// Start writing `tab` as it is now to `path`; `then` carries on once
-    /// it is written.
-    pub(super) fn start(&mut self, tab: &DocTab, path: PathBuf, then: AfterSave) {
+    /// Start writing `tab` as it is now to `path`, replacing what
+    /// `overwrite` allows; `then` carries on once it is written.
+    pub(super) fn start(
+        &mut self,
+        tab: &DocTab,
+        path: PathBuf,
+        overwrite: Overwrite,
+        then: AfterSave,
+    ) {
         let pkg = snapshot(tab);
         let to = path.clone();
-        let job = (self.queue).push(self.hold.clone(), move || write(&pkg, &to));
+        let job = (self.queue).push(self.hold.clone(), move || write(&pkg, &to, overwrite));
         self.running.push(Running {
             tab: tab.recovery_key,
             path,
@@ -115,13 +158,23 @@ pub(super) fn snapshot(tab: &DocTab) -> Package {
         other_entries: tab.other_entries.clone(),
         cut_on_open: false,
         parked_on_open: false,
+        generator: None,
     }
 }
 
-/// Write `pkg` to `path` (on the worker).
-pub(super) fn write(pkg: &Package, path: &std::path::Path) -> WriteResult {
+/// Write `pkg` to `path`, unless `overwrite` forbids it (on the worker).
+pub(super) fn write(pkg: &Package, path: &Path, overwrite: Overwrite) -> WriteResult {
+    if let Overwrite::IfUnchanged(known) = overwrite
+        && path.exists()
+        && crate::recovery::file_mtime(path) != known
+    {
+        return Ok(Written::ChangedOnDisk);
+    }
     file::save_package(pkg, path)?;
-    Ok(crate::recovery::file_mtime(path))
+    Ok(Written::Saved {
+        mtime: crate::recovery::file_mtime(path),
+        resolved: path.canonicalize().ok(),
+    })
 }
 
 /// `tab`, snapshotted at `revision`, was written to `path`: it takes the
@@ -132,6 +185,7 @@ pub(super) fn mark_written(
     path: PathBuf,
     revision: u64,
     mtime: Option<SystemTime>,
+    resolved: Option<PathBuf>,
 ) {
     if tab.revision() == revision {
         tab.history.mark_saved();
@@ -140,6 +194,7 @@ pub(super) fn mark_written(
     }
     tab.disk_mtime = mtime;
     tab.path = Some(path);
+    tab.resolved_path = resolved;
     tab.recovered_from = None;
 }
 
@@ -154,12 +209,16 @@ pub fn poll_saves(app: &mut ReasonCraftApp) {
             continue;
         };
         match result {
-            Ok(mtime) => {
-                mark_written(&mut app.tabs[i], r.path, r.revision, mtime);
+            Ok(Written::Saved { mtime, resolved }) => {
+                mark_written(&mut app.tabs[i], r.path, r.revision, mtime, resolved);
                 super::save::note_saved(app, i);
+                super::release_other_tabs(app, r.tab);
                 if r.then != AfterSave::Nothing {
                     app.saves.next.push_back(Next::Then(r.tab, r.then));
                 }
+            }
+            Ok(Written::ChangedOnDisk) => {
+                (app.saves.next).push_back(Next::Changed(r.tab, r.path, r.then));
             }
             Err(err) => app.saves.next.push_back(Next::Failed(r.path, err)),
         }
@@ -170,6 +229,11 @@ pub fn poll_saves(app: &mut ReasonCraftApp) {
         match next {
             Next::Then(tab, then) => after_save(app, tab, then),
             Next::Failed(path, err) => show_error(app, FileOp::Save, &path, &err),
+            Next::Changed(tab, path, then) => {
+                if let Some(i) = tab_index(app, tab) {
+                    super::save::ask_replace(app, i, path, then, true);
+                }
+            }
         }
     }
 }

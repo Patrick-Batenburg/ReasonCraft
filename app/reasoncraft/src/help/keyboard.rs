@@ -32,6 +32,8 @@ pub fn rows(os: Os) -> Vec<(String, String)> {
 fn description(action: &Action) -> Option<&'static str> {
     use Action as A;
     Some(match action {
+        A::AddReason => "help.key.reason",
+        A::AddObjection => "help.key.objection",
         A::AddCoPremise => "help.key.co_premise",
         A::TargetWholeCard(CardKind::Reason) => "help.key.whole_card_reason",
         A::TargetWholeCard(CardKind::Objection) => "help.key.whole_card_objection",

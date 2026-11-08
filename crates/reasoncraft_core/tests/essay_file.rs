@@ -1,7 +1,7 @@
 //! The essay in the file format: paragraphs whose item is missing.
 
 use reasoncraft_core::file::{open, save};
-use reasoncraft_core::{Document, EssaySlot};
+use reasoncraft_core::{Document, EssaySlot, UnplacedNote};
 
 #[test]
 fn orphan_paragraphs_become_unplaced_on_open() {
@@ -21,8 +21,8 @@ fn orphan_paragraphs_become_unplaced_on_open() {
 
     let opened = open(&a).unwrap();
     let unplaced = vec![
-        (String::new(), "Orphan card text".to_owned()),
-        (String::new(), "Orphan box text".to_owned()),
+        UnplacedNote::new(String::new(), "Orphan card text".to_owned()),
+        UnplacedNote::new(String::new(), "Orphan box text".to_owned()),
     ];
     assert_eq!(opened.essay.unplaced, unplaced);
     assert_eq!(opened.essay.text(EssaySlot::Intro), Some("Intro text"));

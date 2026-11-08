@@ -26,17 +26,35 @@ pub(super) fn entry_width(compact: bool) -> f32 {
     if compact { 44.0 } else { 220.0 }
 }
 
-/// The entries down the left; `compact` shows their icons only, each
-/// label then in its tooltip (and still its accessible name).
-pub(super) fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Page, compact: bool) {
+/// How many entries there are, and the space between two.
+const COUNT: usize = 12;
+const GAP: f32 = 4.0;
+
+/// The height of an entry when the entries have `height` points: 40, or
+/// less so that all of them fit (a short window), down to 24; below that
+/// they scroll.
+pub(super) fn entry_height(height: f32) -> f32 {
+    ((height + GAP) / COUNT as f32 - GAP).clamp(24.0, 40.0)
+}
+
+/// The entries down the left, each `row_h` high (see [`entry_height`]);
+/// `compact` shows their icons only, each label then in its tooltip (and
+/// still its accessible name).
+pub(super) fn entries(
+    ui: &mut egui::Ui,
+    app: &mut ReasonCraftApp,
+    page: &mut Page,
+    compact: bool,
+    row_h: f32,
+) {
     let tk = app.tokens;
-    ui.spacing_mut().item_spacing.y = 4.0;
+    ui.spacing_mut().item_spacing.y = GAP;
     // File commands take their label and action from the registry.
     let command = |icon, id| {
         let cmd = commands::get(id);
         (icon, cmd.label, Entry::Command(Some(cmd.action.clone())))
     };
-    let items = [
+    let items: [_; COUNT] = [
         (Icon::Back, "backstage.back", Entry::Command(None)),
         (
             Icon::New,
@@ -69,7 +87,7 @@ pub(super) fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Pa
     for (icon, key, entry) in items {
         let label = t(key);
         let on = matches!(entry, Entry::Page(p) if p == *page);
-        let size = Vec2::new(entry_width(compact), 40.0);
+        let size = Vec2::new(entry_width(compact), row_h);
         let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
         resp.widget_info(|| WidgetInfo::selected(Role::Button, true, on, &label));
         if resp.hovered() || on {
@@ -109,5 +127,18 @@ pub(super) fn entries(ui: &mut egui::Ui, app: &mut ReasonCraftApp, page: &mut Pa
             }
             ui.ctx().request_repaint();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn entries_shrink_to_fit_a_short_window_then_scroll() {
+        assert_eq!(entry_height(1000.0), 40.0);
+        let fits = entry_height(340.0);
+        assert!(fits < 40.0 && fits * COUNT as f32 + GAP * (COUNT - 1) as f32 <= 340.0 + 0.01);
+        assert_eq!(entry_height(100.0), 24.0);
     }
 }

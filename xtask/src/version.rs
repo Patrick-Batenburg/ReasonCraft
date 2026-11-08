@@ -1,5 +1,5 @@
 // Adapted from WordCraft (https://github.com/storytold/wordcraft, xtask/src/version.rs at aadb077),
-// MIT OR Apache-2.0, used under Apache-2.0; changed: runs cargo without WordCraft's helpers,
+// used under MIT OR Apache-2.0; changed: runs cargo without WordCraft's helpers,
 // formatting.
 
 //! `cargo xtask version [set X.Y.Z[-pre]]`: the workspace version, the single source of truth.

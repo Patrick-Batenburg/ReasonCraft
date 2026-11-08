@@ -1,14 +1,13 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/linux/nfpm.yaml at
-# aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: one binary, ReasonCraft's
-# identity, no homepage, and the dependency lists below.
+# aadb077), used under MIT OR Apache-2.0; changed: one binary, ReasonCraft's
+# identity, the repository as homepage, and the dependency lists below.
 #
 # .deb and .rpm packages (nfpm: https://nfpm.goreleaser.com). Run by package.sh, which stages
 # the file tree, substitutes its path for ${STAGE} (nfpm doesn't expand env vars in `src`) and
 # exports VERSION, NFPM_ARCH and REASONCRAFT_MAINTAINER.
 #
-# No `homepage`: there is no public homepage yet (owner's decision 2026-10-28), and both fields
-# are optional. The maintainer has no e-mail address for the same reason; lintian would flag
-# that, dpkg and rpm accept it. Which address to publish is an open question in docs/todo.md.
+# The maintainer has no e-mail address (owner's decision 2026-10-28; issues go to the repository's
+# issue tracker); lintian would flag that, dpkg and rpm accept it.
 name: reasoncraft
 arch: ${NFPM_ARCH}
 platform: linux
@@ -21,6 +20,7 @@ priority: optional
 maintainer: ${REASONCRAFT_MAINTAINER}
 vendor: ReasonCraft contributors
 license: MIT OR Apache-2.0
+homepage: https://github.com/Patrick-Batenburg/ReasonCraft
 description: |-
   Map out arguments: claims, reasons and objections.
   ReasonCraft is a free, open-source app for argument maps and grouping maps.
@@ -31,8 +31,10 @@ description: |-
 # The binary links only glibc and libgcc_s. winit, wgpu and glow open the windowing (X11,
 # Wayland, xkbcommon) and graphics (EGL, GL) libraries at run time, so they are not ELF NEEDED
 # entries and the packages have to name them. No libxrandr2: the binary never opens it (ruling
-# S6-T13-3). The file dialogs go through the XDG desktop portal (rfd 0.17), hence the
-# recommendation.
+# S6-T13-3). The file dialogs go through the XDG desktop portal (rfd 0.17), which shows them
+# with a backend (the desktop's own, or the GTK one); when the portal fails, rfd runs zenity
+# instead. With neither, Open and Save show nothing, hence the three recommendations;
+# rpm takes the backend as a rich dependency (rpm 4.13 and later).
 #
 # The rpm names the libraries by soname, as rpm's own dependency generator would: package names
 # differ between rpm distributions (Fedora's libxkbcommon is openSUSE's libxkbcommon0), the
@@ -61,6 +63,8 @@ overrides:
       - libgl1
     recommends:
       - xdg-desktop-portal
+      - xdg-desktop-portal-gtk | xdg-desktop-portal-backend
+      - zenity
   rpm:
     depends:
       - libc.so.6(GLIBC_2.35)(64bit)
@@ -75,6 +79,8 @@ overrides:
       - libwayland-client.so.0()(64bit)
       - libwayland-egl.so.1()(64bit)
       - xdg-desktop-portal
+      - (xdg-desktop-portal-gtk or xdg-desktop-portal-gnome or xdg-desktop-portal-kde)
+      - zenity
 
 contents:
   - src: ${STAGE}/usr/bin/reasoncraft

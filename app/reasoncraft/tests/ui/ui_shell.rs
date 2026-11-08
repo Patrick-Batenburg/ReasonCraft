@@ -186,7 +186,8 @@ fn settings_from_old_storage_fill_defaults() {
         }
     );
     let d = Settings::default();
-    assert_eq!(d.theme, ThemeChoice::Dark);
+    // The first run follows the OS's theme (owner decision D3).
+    assert_eq!(d.theme, ThemeChoice::System);
     assert!(d.author.is_empty() && d.show_markers && d.eval_shading);
 
     // The whole struct round-trips.

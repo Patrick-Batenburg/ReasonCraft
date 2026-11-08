@@ -37,7 +37,10 @@ pub const SCHEMA_VERSION: u32 = 1;
 /// longer text.
 pub const MAX_BOX_CHARS: usize = 50_000;
 
-/// What a box represents.
+/// What a box represents. Unlike the structs, a kind keeps no unknown
+/// fields: a newer build that adds one to a kind, or a new kind, raises
+/// [`SCHEMA_VERSION`], so older builds say "newer version" instead of
+/// dropping it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum BoxKind {
@@ -93,6 +96,9 @@ pub struct Comment {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub verdict: Option<Verdict>,
     pub created: String,
+    /// Unknown fields, kept so files roundtrip.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }
 
 /// A reference to an image asset stored beside the document.
@@ -101,6 +107,20 @@ pub struct Comment {
 pub struct ImageRef {
     pub asset: String,
     pub aspect: f32,
+    /// Unknown fields, kept so files roundtrip.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+impl ImageRef {
+    /// Asset key `asset` shown at `aspect` (height divided by width).
+    pub fn new(asset: String, aspect: f32) -> Self {
+        Self {
+            asset,
+            aspect,
+            extra: Map::new(),
+        }
+    }
 }
 
 /// A box in the map.
@@ -195,6 +215,9 @@ pub struct DocMeta {
     pub created: String,
     pub modified: String,
     pub language: String,
+    /// Unknown fields, kept so files roundtrip.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }
 
 /// The kind of map, judged from the root's children.
@@ -259,6 +282,7 @@ impl Document {
                 created: now.clone(),
                 modified: now,
                 language: "en".to_owned(),
+                extra: Map::new(),
             },
             root,
             boxes,

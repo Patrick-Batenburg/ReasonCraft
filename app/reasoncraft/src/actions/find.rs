@@ -1,12 +1,11 @@
 //! Find and replace: the find bar's commands. A replacement never leaves
-//! a box longer than [`MAX_BOX_CHARS`]: the box is cut in the same
-//! history step, with the `status.text_cut` note.
+//! a box longer than [`MAX_BOX_CHARS`](reasoncraft_core::MAX_BOX_CHARS):
+//! the core cuts it, and the app adds the `status.text_cut` note.
 
 use std::collections::HashMap;
 
-use reasoncraft_core::caps::capped;
 use reasoncraft_core::find::search_order;
-use reasoncraft_core::{Document, EditError, FindHit, FindOptions, Item, MAX_BOX_CHARS, NodeId};
+use reasoncraft_core::{Document, EditError, FindHit, FindOptions, Item, NodeId};
 
 use super::Action;
 use crate::app::ReasonCraftApp;
@@ -141,23 +140,10 @@ pub(super) fn step(tab: &mut DocTab, forward: bool) {
     go_to(tab, Some(hit));
 }
 
-/// Cut box `node` to [`MAX_BOX_CHARS`] characters; true when it was cut.
-pub(crate) fn cap_box(d: &mut Document, node: NodeId) -> bool {
-    let Some(text) = d.boxes.get(&node).map(|b| &b.text) else {
-        return false;
-    };
-    let kept = capped(text, MAX_BOX_CHARS);
-    if kept.len() == text.len() {
-        return false;
-    }
-    let kept = kept.to_owned();
-    d.set_text(node, &kept).is_ok()
-}
-
 /// Replace the current hit as one history step (none when the text is
 /// already the replacement) and go to the first hit after the inserted
 /// text, so a replacement containing the query is not found again.
-/// Returns whether the box had to be cut to [`MAX_BOX_CHARS`].
+/// Returns whether the box had to be cut.
 fn replace_current(tab: &mut DocTab) -> bool {
     let Some(at) = tab.find_position() else {
         step(tab, true);
@@ -168,10 +154,7 @@ fn replace_current(tab: &mut DocTab) -> bool {
     let same = tab.doc.boxes[&hit.node].text[hit.range.clone()] == with;
     let mut cut = false;
     if !same {
-        let done = tab.edit(|d| {
-            d.replace_range(hit.node, hit.range.clone(), &with)?;
-            Ok(cap_box(d, hit.node))
-        });
+        let done = tab.edit(|d| d.replace_range(hit.node, hit.range.clone(), &with));
         match done {
             Some(c) => cut = c,
             None => return false,
@@ -192,7 +175,7 @@ fn replace_current(tab: &mut DocTab) -> bool {
 /// Replace every hit as one history step (none when nothing changes).
 /// Returns how many hits changed, which leaves out hits that already read
 /// as the replacement ([`Document::replace_all`] counts every hit), and
-/// whether a box had to be cut to [`MAX_BOX_CHARS`].
+/// whether a box had to be cut.
 fn replace_all(tab: &mut DocTab) -> (usize, bool) {
     let (query, opts) = (tab.find.query.clone(), tab.find.opts);
     let with = tab.find.replacement.clone();
@@ -203,12 +186,9 @@ fn replace_all(tab: &mut DocTab) -> (usize, bool) {
     if changes == 0 {
         return (0, false);
     }
-    // Hits are grouped by box, so this leaves each box once.
-    let mut nodes: Vec<NodeId> = hits.iter().map(|h| h.node).collect();
-    nodes.dedup();
     let cut = tab.edit(|d| match d.replace_all(&query, &with, opts) {
-        0 => Err(EditError::NotFound),
-        _ => Ok(nodes.into_iter().fold(false, |cut, n| cap_box(d, n) | cut)),
+        done if done.count == 0 => Err(EditError::NotFound),
+        done => Ok(done.cut),
     });
     (changes, cut.unwrap_or(false))
 }

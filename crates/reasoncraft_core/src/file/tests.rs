@@ -176,10 +176,7 @@ fn entry_names(path: &Path) -> Vec<String> {
 fn doc_with_image(key: &str) -> Document {
     let mut d = Document::new("C");
     let root = d.root;
-    d.boxes[&root].image = Some(crate::ImageRef {
-        asset: key.into(),
-        aspect: 0.5,
-    });
+    d.boxes[&root].image = Some(crate::ImageRef::new(key.into(), 0.5));
     d
 }
 
@@ -198,19 +195,19 @@ fn package_roundtrip_keeps_ratings_comments_links() {
         text: "T".into(),
         verdict: Some(crate::Verdict::Problem),
         created: "2026-01-01T00:00:00Z".into(),
+        extra: Default::default(),
     });
     let mut assets = Assets::default();
     let key = assets.insert("png", vec![1, 2, 3, 4]);
-    d.boxes[&root].image = Some(crate::ImageRef {
-        asset: key,
-        aspect: 0.75,
-    });
+    d.boxes[&root].image = Some(crate::ImageRef::new(key, 0.75));
     let pkg = Package {
         doc: d,
         assets,
         other_entries: vec![("extra/x.bin".into(), vec![7; 10].into())],
         cut_on_open: false,
         parked_on_open: false,
+        // What a reopened file says.
+        generator: Some(GENERATOR.into()),
     };
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("m.rcraft");
@@ -268,10 +265,7 @@ fn unreferenced_assets_not_written() {
     assert_eq!(open_package(&p).unwrap().assets.len(), 0);
     // Referenced ones are written.
     let root = pkg.doc.root;
-    pkg.doc.boxes[&root].image = Some(crate::ImageRef {
-        asset: key.clone(),
-        aspect: 1.0,
-    });
+    pkg.doc.boxes[&root].image = Some(crate::ImageRef::new(key.clone(), 1.0));
     save_package(&pkg, &p).unwrap();
     assert!(entry_names(&p).contains(&format!("images/{key}")));
 }
@@ -281,12 +275,10 @@ fn image_entries_are_stored_uncompressed() {
     let mut pkg = Package::new(Document::new("C"));
     let key = pkg.assets.insert("png", vec![0; 4096]);
     let root = pkg.doc.root;
-    pkg.doc.boxes[&root].image = Some(crate::ImageRef {
-        asset: key.clone(),
-        aspect: 1.0,
-    });
+    pkg.doc.boxes[&root].image = Some(crate::ImageRef::new(key.clone(), 1.0));
     pkg.other_entries
         .push(("extra.bin".into(), vec![0; 4096].into()));
+    pkg.generator = Some(GENERATOR.into());
     let dir = tempfile::tempdir().unwrap();
     let p = dir.path().join("x.rcraft");
     save_package(&pkg, &p).unwrap();

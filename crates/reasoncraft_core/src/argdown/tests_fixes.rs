@@ -153,8 +153,7 @@ fn import_caps_long_text_with_note() {
 
 /// Texts the import takes from data and frontmatter (comments, a title,
 /// an author, a too-long link) keep the caps a file's open applies, so a
-/// map saved as Argdown and imported again is not cut on its next open
-/// (CORE-R2).
+/// map saved as Argdown and imported again is not cut on its next open.
 #[test]
 fn import_caps_comments_frontmatter_and_links() {
     use crate::caps::{MAX_COMMENT_CHARS, MAX_LINK_CHARS, MAX_META_CHARS};

@@ -5,6 +5,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 mod testing;
+mod window;
+pub use window::{FIRST_SIZE, MIN_WINDOW, min_window_size};
 
 use crate::actions::{self, Action, LinkOpener, SystemOpener};
 use crate::canvas::images::{ImageCache, ImageJobs};
@@ -20,20 +22,6 @@ use crate::shell::link_modal::LinkEdit;
 use crate::spell::SpellService;
 use crate::theme::{self, Tokens};
 use eframe::egui;
-
-/// The smallest window at 100 % interface size, in screen points.
-pub const MIN_WINDOW: [f32; 2] = [800.0, 500.0];
-
-/// The smallest window, in the interface's own points: [`MIN_WINDOW`], so
-/// a larger interface keeps the room it is laid out for, but never more
-/// than 90 % of the `monitor` (when known). egui-winit turns these points
-/// into pixels with the interface size (egui's zoom factor times the
-/// display scale) and gives the monitor's size in the same points, so no
-/// scale is applied here.
-pub fn min_window_size(monitor: Option<egui::Vec2>) -> egui::Vec2 {
-    let base = egui::Vec2::from(MIN_WINDOW);
-    monitor.map_or(base, |m| base.min(m * 0.9))
-}
 
 /// Which ribbon tab is showing. `File` shows the backstage instead of the map.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -117,11 +105,19 @@ pub struct ReasonCraftApp {
     /// The egui context of the running frame.
     pub(crate) egui_ctx: Option<egui::Context>,
     applied: Option<Tokens>,
-    window_title: String,
+    pub(super) window_title: String,
     /// Every unsaved-changes question was answered: let the window close.
     close_confirmed: bool,
     /// Send the close command at the end of this frame.
     close_now: bool,
+    /// The first run: maximise the window if it does not fit (see
+    /// [`window`]).
+    fit_window: bool,
+    /// Files later launches handed over (see [`crate::instance`]).
+    pub(crate) incoming: crate::instance::Incoming,
+    /// The settings file eframe writes, when known (see
+    /// [`crate::settings_store::save`]).
+    settings_file: Option<PathBuf>,
     /// Show the source icon preview window.
     #[cfg(debug_assertions)]
     pub show_source_icons: bool,
@@ -138,7 +134,8 @@ impl ReasonCraftApp {
         let app = Self {
             tabs: vec![DocTab::with_language(settings.new_doc_language(os_locale))],
             active: 0,
-            tokens: theme::resolve(settings.theme, true),
+            // The first frame resolves System with the OS's theme.
+            tokens: theme::resolve(settings.theme, theme::os_dark(None)),
             spell: SpellService::new(&settings.spell_words),
             settings,
             os_locale,
@@ -171,6 +168,9 @@ impl ReasonCraftApp {
             window_title: String::new(),
             close_confirmed: false,
             close_now: false,
+            fit_window: false,
+            incoming: crate::instance::Incoming::default(),
+            settings_file: None,
             #[cfg(debug_assertions)]
             show_source_icons: false,
         };
@@ -203,10 +203,11 @@ impl ReasonCraftApp {
         let mut app = Self::with_settings(
             settings,
             os_locale,
-            Box::new(RfdDialogs),
+            Box::new(RfdDialogs::default()),
             Box::new(SystemOpener),
             Arc::new(Mutex::new(SystemClipboard::default())),
         );
+        app.fit_window = !crate::settings_store::storage_has_window(cc.storage);
         app.start_recovery(recovery_dir);
         app
     }
@@ -222,6 +223,12 @@ impl ReasonCraftApp {
             }
             _ => self.status_note = Some(crate::i18n::t("recovery.unavailable")),
         }
+    }
+
+    /// The settings are kept in `file` (eframe writes it): saving them
+    /// keeps what another copy of the app added there meanwhile.
+    pub fn keep_settings_in(&mut self, file: Option<PathBuf>) {
+        self.settings_file = file;
     }
 
     /// Whether a dialog is open: a message or prompt, the export dialog
@@ -280,9 +287,11 @@ impl ReasonCraftApp {
         actions::poll_images(self);
         crate::file_ops::poll_saves(self);
         crate::spell::poll(self);
+        crate::instance::poll(self);
         shell::statusbar::expire_notes(&ctx, self);
         self.sync_theme(&ctx);
         self.sync_ui_scale(&ctx);
+        self.fit_first_window(&ctx);
         self.sync_window_title(&ctx);
         // The OS (or the title bar on macOS) asks to close, or Cmd+Q on
         // macOS: ask about unsaved changes first.
@@ -348,55 +357,14 @@ impl ReasonCraftApp {
         }
     }
 
-    /// Takes Cmd+Q out of the input on macOS: quitting closes the window
-    /// (the app menu, which would quit at once, is off; see `main.rs`).
-    fn quit_key(&self, ctx: &egui::Context) -> bool {
-        let quit = |i: &mut egui::InputState| i.consume_key(egui::Modifiers::MAC_CMD, egui::Key::Q);
-        self.os == Os::Mac && ctx.input_mut(quit)
-    }
-
     fn sync_theme(&mut self, ctx: &egui::Context) {
-        let os_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
+        let os_dark = theme::os_dark(ctx.system_theme());
         self.tokens = theme::resolve(self.settings.theme, os_dark);
         if self.applied != Some(self.tokens) {
             // Ctrl+=/-/0 zoom the map, not the whole interface.
             ctx.options_mut(|o| o.zoom_with_keyboard = false);
             theme::apply(ctx, &self.tokens);
             self.applied = Some(self.tokens);
-        }
-    }
-
-    /// The whole interface at the size the settings ask for (egui's zoom
-    /// factor). The map's zoom works in points, so it comes on top. The
-    /// window's minimum size, in these points, grows with it on screen
-    /// (see [`min_window_size`]), once the screen's size is known.
-    fn sync_ui_scale(&self, ctx: &egui::Context) {
-        let scale = self.settings.ui_scale_factor();
-        if ctx.zoom_factor() != scale {
-            ctx.set_zoom_factor(scale);
-        }
-        let Some(monitor) = ctx.input(|i| i.viewport().monitor_size) else {
-            return;
-        };
-        // Sent again once the interface size changes (egui applies a new
-        // zoom factor from the next pass on, and egui-winit turns the
-        // points into pixels with the zoom factor in force).
-        let min = (min_window_size(Some(monitor)), ctx.zoom_factor());
-        let sent = egui::Id::unique("min_window_sent");
-        if ctx.data(|d| d.get_temp::<(egui::Vec2, f32)>(sent)) != Some(min) {
-            ctx.data_mut(|d| d.insert_temp(sent, min));
-            ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min.0));
-        }
-    }
-
-    fn sync_window_title(&mut self, ctx: &egui::Context) {
-        let mut args = crate::i18n::FluentArgs::new();
-        args.set("doc", self.active_tab().title());
-        args.set("app", crate::i18n::t("app.name"));
-        let title = crate::i18n::t_args("window.title", &args);
-        if title != self.window_title {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
-            self.window_title = title;
         }
     }
 }
@@ -407,7 +375,8 @@ impl eframe::App for ReasonCraftApp {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, SETTINGS_KEY, &self.settings);
+        let file = self.settings_file.as_deref();
+        crate::settings_store::save(&mut self.settings, file, storage);
     }
 
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {

@@ -9,7 +9,7 @@
 //! galley cache: a measured galley is dropped at once. egui's cache keeps
 //! every galley laid out in a frame until the next one, and the layout
 //! measures every box of a map at once, so a map full of long texts would
-//! hold gigabytes of galleys (SEC-R1). Only the boxes on screen are laid
+//! hold gigabytes of galleys. Only the boxes on screen are laid
 //! out for painting.
 
 use std::cell::RefCell;

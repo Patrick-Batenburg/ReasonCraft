@@ -49,7 +49,7 @@ The Dutch term choices are listed in [glossary-nl.md](glossary-nl.md).
 
 ## Settings
 
-File → Settings holds the theme (light, dark or the system's), the interface size (80 % to 200 %), the interface language, the language of new maps, your name for comments, autosave, spellcheck and the checks.
+File → Settings holds the theme (light, dark or the system's, which is where it starts), the interface size (80 % to 200 %), the interface language, the language of new maps, your name for comments, autosave, spellcheck and the checks.
 **Reset to defaults** puts every setting back as at the first start, but keeps your recent maps and your personal dictionary.
 
 ## Getting it

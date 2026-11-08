@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use reasoncraft_core::file::FileError;
 
-use super::save_job::{mark_written, snapshot, write};
+use super::save_job::{Overwrite, Written, mark_written, snapshot, write};
 use super::{AfterSave, EXTENSION, FileDialogs, Modal, SaveOutcome, with_rcraft_extension};
 use crate::app::ReasonCraftApp;
 use crate::doc_tab::DocTab;
@@ -19,32 +19,38 @@ pub fn save_tab(
     dialogs: &dyn FileDialogs,
     save_as: bool,
 ) -> Result<SaveOutcome, FileError> {
-    let path = match target(tab, dialogs, save_as, None) {
-        Ok(path) => path,
+    let (path, overwrite) = match target(tab, dialogs, save_as, None) {
+        Ok(target) => target,
         Err(outcome) => return Ok(outcome),
     };
-    let mtime = write(&snapshot(tab), &path)?;
-    let revision = tab.revision();
-    mark_written(tab, path, revision, mtime);
-    Ok(SaveOutcome::Saved)
+    match write(&snapshot(tab), &path, overwrite)? {
+        Written::Saved { mtime, resolved } => {
+            let revision = tab.revision();
+            mark_written(tab, path, revision, mtime, resolved);
+            Ok(SaveOutcome::Saved)
+        }
+        Written::ChangedOnDisk => Ok(SaveOutcome::OriginalChanged(path)),
+    }
 }
 
 /// Where a save of `tab` writes, after ending its edit session: its path,
-/// or one asked for when it has none or `save_as` is set. Otherwise how
-/// the save ends before writing (cancelled, or a replace to confirm).
-/// `pending`: where the last save of the tab still being written goes. A
-/// Save writes there too (after a Save As, not to the old file), and that
-/// file changing on disk is that save's doing.
+/// or one asked for when it has none or `save_as` is set; and whether the
+/// write must first make sure the tab's file did not change on disk (the
+/// worker looks, see [`Overwrite`]). Otherwise how the save ends before
+/// writing (cancelled, or a replace to confirm). `pending`: where the last
+/// save of the tab still being written goes. A Save writes there too
+/// (after a Save As, not to the old file), and that file changing on disk
+/// is that save's doing.
 fn target(
     tab: &mut DocTab,
     dialogs: &dyn FileDialogs,
     save_as: bool,
     pending: Option<&Path>,
-) -> Result<PathBuf, SaveOutcome> {
+) -> Result<(PathBuf, Overwrite), SaveOutcome> {
     tab.commit_session();
     let path = match (pending.or(tab.path.as_deref()), save_as) {
-        (Some(path), false) if pending.is_none() && changed_on_disk(tab, path) => {
-            return Err(SaveOutcome::OriginalChanged(path.to_path_buf()));
+        (Some(path), false) if pending.is_none() => {
+            return Ok((path.to_path_buf(), Overwrite::IfUnchanged(tab.disk_mtime)));
         }
         (Some(path), false) => path.to_path_buf(),
         _ => {
@@ -60,14 +66,7 @@ fn target(
             path
         }
     };
-    Ok(path)
-}
-
-/// Whether saving `tab` to its file `path` would overwrite changes made
-/// there since the tab opened or last saved it (or, for a restored tab,
-/// since the crashed app did): by someone else, or another app.
-fn changed_on_disk(tab: &DocTab, path: &Path) -> bool {
-    path.exists() && crate::recovery::file_mtime(path) != tab.disk_mtime
+    Ok((path, Overwrite::Any))
 }
 
 /// Save tab `i`: start writing it (`then` carries on once it is written,
@@ -80,7 +79,7 @@ pub(super) fn save_and_report(app: &mut ReasonCraftApp, i: usize, save_as: bool,
     };
     let pending = app.saves.pending_path(tab).map(Path::to_path_buf);
     match target(tab, &*app.dialogs, save_as, pending.as_deref()) {
-        Ok(path) => app.saves.start(tab, path, then),
+        Ok((path, overwrite)) => app.saves.start(tab, path, overwrite, then),
         Err(SaveOutcome::NeedsReplaceConfirm(path)) => ask_replace(app, i, path, then, false),
         Err(SaveOutcome::OriginalChanged(path)) => ask_replace(app, i, path, then, true),
         Err(SaveOutcome::Cancelled | SaveOutcome::Saved) => {}
@@ -88,7 +87,7 @@ pub(super) fn save_and_report(app: &mut ReasonCraftApp, i: usize, save_as: bool,
 }
 
 /// Ask before tab `tab`'s save replaces `path`.
-fn ask_replace(
+pub(super) fn ask_replace(
     app: &mut ReasonCraftApp,
     tab: usize,
     path: PathBuf,
@@ -123,7 +122,7 @@ pub fn resolve_replace(app: &mut ReasonCraftApp, replace: bool) {
     else {
         return;
     };
-    app.saves.start(doc_tab, path, then);
+    app.saves.start(doc_tab, path, Overwrite::Any, then);
 }
 
 /// Tab `i` was just saved: its file goes first in the recent files.

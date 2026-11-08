@@ -1,4 +1,4 @@
-//! Step 6 end to end, driven by actions (and F1): a Dutch user opens the
+//! End to end, driven by actions (and F1): a Dutch user opens the
 //! Dutch example, turns the map English while the interface stays Dutch,
 //! saves an edited template into the recent files, resets the settings
 //! (keeping them), opens the help with F1 and exports an English SVG;

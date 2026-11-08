@@ -1,5 +1,4 @@
-//! Sources under their premise and uncrossed connectors (step 5, Task 5,
-//! ruling T4-3).
+//! Sources under their premise and uncrossed connectors (ruling T4-3).
 
 use emath::{Pos2, Rect, pos2};
 use reasoncraft_core::fixtures::{FixedMeasure, sample_iot_like};

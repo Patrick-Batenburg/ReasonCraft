@@ -42,10 +42,7 @@ fn export_worker_uses_document_language() {
     doc.set_card_strength(card, Some(CardStrength::Strong))
         .unwrap();
     // An image whose asset is gone: the worker draws its placeholder.
-    doc.boxes.get_mut(&alpha).unwrap().image = Some(ImageRef {
-        asset: "gone".into(),
-        aspect: 2.0,
-    });
+    doc.boxes.get_mut(&alpha).unwrap().image = Some(ImageRef::new("gone".into(), 2.0));
     let file = dir.path().join("map.svg");
     fakes.dialogs.set_export(file.clone());
     let options = ExportOptions {
@@ -168,10 +165,7 @@ fn export_argdown_via_ribbon() {
     assert_eq!(h.state().status_note, None, "no images, no notice");
 
     // A map with an image says the image is left out.
-    let image = ImageRef {
-        asset: "0000.png".into(),
-        aspect: 0.5,
-    };
+    let image = ImageRef::new("0000.png".into(), 0.5);
     h.state_mut().tabs[0]
         .doc
         .set_image(alpha, Some(image))

@@ -100,3 +100,17 @@ fn load_speed() {
         );
     }
 }
+
+#[test]
+fn no_suggestions_for_words_past_hunspells_length() {
+    // Suggesting takes time superlinear in the length (346 characters
+    // took 28 s, uncancellable): past MAX_SUGGEST_CHARS there are none.
+    let s = Speller::load("nl").unwrap();
+    let long = "ziekenhuisparkeerplaats".repeat(15) + "q";
+    let start = std::time::Instant::now();
+    assert!(s.suggest(&long, 5).is_empty());
+    assert!(start.elapsed().as_secs() < 2, "{:?}", start.elapsed());
+    let at_cap = "x".repeat(MAX_SUGGEST_CHARS + 1);
+    assert!(s.suggest(&at_cap, 5).is_empty());
+    assert!(!s.suggest("ziekenhuisparkeerplaatz", 5).is_empty());
+}

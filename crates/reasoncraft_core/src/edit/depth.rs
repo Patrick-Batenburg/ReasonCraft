@@ -1,7 +1,7 @@
 //! How deep a map nests. Every edit that places an item keeps the map
 //! within [`MAX_DEPTH`] levels, and opening a file or importing Argdown
 //! moves what lies deeper to the parking area, so outlines, numbers and
-//! layouts never grow with an unbounded depth (SEC-R4).
+//! layouts never grow with an unbounded depth.
 
 use std::collections::HashSet;
 

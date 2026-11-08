@@ -368,7 +368,7 @@ fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
 
 /// The startup prompt has the keyboard focus on Restore all, so Enter
 /// restores (the finding: Enter did nothing and Tab landed on "Decide
-/// later") (ROB-7).
+/// later").
 #[test]
 fn recovery_prompt_enter_restores() {
     let rec = tempfile::tempdir().unwrap();

@@ -1,4 +1,4 @@
-//! Layout directions (step 5, Task 5).
+//! Layout directions.
 
 use reasoncraft_core::fixtures::{FixedMeasure, sample_iot_like};
 use reasoncraft_core::layout::{Layout, LayoutParams, layout};

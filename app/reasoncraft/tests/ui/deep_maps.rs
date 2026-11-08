@@ -1,4 +1,4 @@
-//! Maps nested as deep as they go (SEC-R4): a file holding deeper
+//! Maps nested as deep as they go: a file holding deeper
 //! branches opens with them parked, and an edit that would nest deeper
 //! is refused, with a note in the status bar either way.
 
@@ -34,7 +34,7 @@ fn a_file_nested_too_deep_opens_with_its_deep_branches_parked() {
 }
 
 /// A paste that would nest the map deeper than it goes is refused, and
-/// the status bar says why (SEC-R4).
+/// the status bar says why.
 #[test]
 fn a_paste_too_deep_is_refused_with_a_note() {
     let (mut d, premises) = deep_chain(MAX_DEPTH);
@@ -59,7 +59,7 @@ fn a_paste_too_deep_is_refused_with_a_note() {
 }
 
 /// A chain of whole-card objections too deep for the map opens parked and
-/// then rests (SEC-R5): once its note has gone, a frame asks for no other
+/// then rests: once its note has gone, a frame asks for no other
 /// (not at once, not later). Its layout used to take time quadratic in its
 /// size (10 s a frame at 30,000 levels), and Windows, taking the window
 /// for hung, kept sending it events: it never rested.

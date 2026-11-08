@@ -81,7 +81,7 @@ impl ExportError {
     pub fn detail(&self) -> String {
         match self {
             Self::TooLarge { w, h } | Self::ClipboardTooLarge { w, h } => format!("{w} × {h}"),
-            Self::Io(e) => e.to_string(),
+            Self::Io(e) => crate::file_ops::io_detail(e),
             Self::Render(s) | Self::Clipboard(s) | Self::Pdf(s) | Self::Open(s) => s.clone(),
             Self::Stopped => String::new(),
         }

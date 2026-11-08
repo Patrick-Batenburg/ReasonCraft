@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/env.sh at aadb077),
-# MIT OR Apache-2.0, used under Apache-2.0; changed: REASONCRAFT_VERSION, CARGO_BUILD_JOBS, no
+# used under MIT OR Apache-2.0; changed: REASONCRAFT_VERSION, CARGO_BUILD_JOBS, no
 # build SHA or date, no craft-fonts licences, and copy_docs takes ReasonCraft's documents.
 #
 # Shared setup for the packaging scripts. Source it: `. "$(dirname "$0")/../env.sh"`.

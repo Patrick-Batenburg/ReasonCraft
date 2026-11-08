@@ -1,5 +1,5 @@
 //! The keyboard walks the title bar in the order it is drawn, left to
-//! right (ROB-14).
+//! right.
 
 use super::*;
 

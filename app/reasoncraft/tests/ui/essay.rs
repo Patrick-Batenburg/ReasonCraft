@@ -271,7 +271,10 @@ fn deleting_branch_shows_unplaced_note() {
     let doc = &h.state().tabs[0].doc;
     assert_eq!(
         doc.essay.unplaced,
-        [("Weak reason".to_owned(), "Written for it".to_owned())]
+        [reasoncraft_core::UnplacedNote::new(
+            "Weak reason".to_owned(),
+            "Written for it".to_owned()
+        )]
     );
     h.get_by_label(&t("essay.unplaced"));
     h.get_by_label("Written for it");
@@ -359,7 +362,10 @@ fn deleting_branch_during_typing_keeps_the_typed_text() {
     let doc = &h.state().tabs[0].doc;
     assert_eq!(
         doc.essay.unplaced,
-        [("Weak reason".to_owned(), "Typed just now".to_owned())]
+        [reasoncraft_core::UnplacedNote::new(
+            "Weak reason".to_owned(),
+            "Typed just now".to_owned()
+        )]
     );
     h.get_by_label("Typed just now");
 
