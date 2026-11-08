@@ -60,7 +60,8 @@ try {
   Push-Location $configDir
   try {
     foreach ($name in $Extensions) {
-      $scope = if ($ProjectDirectory) { @() } else { @('-g') }
+      # Always an array: an `if` would return '-g' as a string, which @scope splats per character.
+      $scope = @(if (-not $ProjectDirectory) { '-g' })
       & $wix extension add @scope "WixToolset.$name.wixext/$Version"
       if ($LASTEXITCODE -ne 0) { throw "WiX extension $name installation failed." }
     }
