@@ -50,6 +50,7 @@ mod packaging_windows;
 mod panel_rows;
 mod ribbon_collapsed;
 mod ribbon_overflow;
+mod ribbon_tips;
 mod settings_enums;
 mod shell_polish;
 mod single_instance;

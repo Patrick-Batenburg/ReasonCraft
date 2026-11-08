@@ -21,6 +21,7 @@ mod help;
 mod home;
 mod insert;
 mod overflow;
+mod tips;
 mod view;
 
 use groups::{group, keeps_open, menu_item, menu_popup, small_column};
@@ -44,6 +45,7 @@ const TABS: [(RibbonTab, &str); 7] = [
 
 pub fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
     let tk = app.tokens;
+    tips::prepare(ui.ctx(), app.os, app.active_tab());
     let shown = egui::Panel::top("ribbon")
         .frame(
             Frame::new()
@@ -108,8 +110,8 @@ fn tab_strip(ui: &mut Ui, app: &mut ReasonCraftApp) {
     });
 }
 
-/// A large button for the registry command `id` (its label and action);
-/// a click queues the action.
+/// A large button for the registry command `id` (its label, action and
+/// tooltip, see [`tips`]); a click queues the action.
 fn command(
     ui: &mut Ui,
     tk: &Tokens,
@@ -120,6 +122,7 @@ fn command(
 ) -> Response {
     let cmd = commands::get(id);
     let resp = large(ui, tk, cmd.ribbon_icon(), &t(cmd.label), enabled, selected);
+    let resp = tips::command(resp, cmd, enabled);
     if resp.clicked() {
         out.push(cmd.action.clone());
         close_drop_down(ui, &cmd.action);
@@ -144,7 +147,9 @@ fn small_command(
     out: &mut Vec<Action>,
 ) -> Response {
     let cmd = commands::get(id);
+    // The tooltip also names the button when it is compact (icon only).
     let resp = small(ui, tk, cmd.ribbon_icon(), &t(cmd.label), enabled);
+    let resp = tips::command(resp, cmd, enabled);
     if resp.clicked() {
         out.push(cmd.action.clone());
         close_drop_down(ui, &cmd.action);
@@ -277,10 +282,5 @@ fn small(ui: &mut Ui, tk: &Tokens, icon: Icon, label: &str, enabled: bool) -> Re
             ui.painter().galley(text_pos, galley, colour);
         }
     }
-    // Compact, the label is only in the tooltip.
-    if compact {
-        resp.on_hover_text(label)
-    } else {
-        resp
-    }
+    resp
 }

@@ -5,7 +5,7 @@ use eframe::egui::{Button, Ui};
 use reasoncraft_core::{BoxKind, CardKind, Item, SourceType};
 
 use super::{
-    command, group, large, large_menu, menu_item, menu_popup, small_column, small_command,
+    command, group, large, large_menu, menu_item, menu_popup, small_column, small_command, tips,
 };
 use crate::actions::{Action, can_run, is_enabled, selected_card};
 use crate::app::ReasonCraftApp;
@@ -61,7 +61,8 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
         let label = t(connect.label);
         let on = tab.connect_mode.is_some();
         let can = is_enabled(tab, &connect.action) || on;
-        if large(ui, &tk, connect.ribbon_icon(), &label, can, on).clicked() {
+        let resp = large(ui, &tk, connect.ribbon_icon(), &label, can, on);
+        if tips::command(resp, connect, can).clicked() {
             out.push(if on {
                 Action::CancelConnect
             } else {
@@ -89,7 +90,10 @@ pub(super) fn show(ui: &mut Ui, app: &mut ReasonCraftApp) {
 pub(super) fn source_menu(ui: &mut Ui, tk: &Tokens, tab: &DocTab, out: &mut Vec<Action>) {
     let generic = Action::AddSource(SourceType::Source);
     let label = t("action.add_source");
-    let resp = large_menu(ui, tk, Icon::Source, &label, is_enabled(tab, &generic));
+    let enabled = is_enabled(tab, &generic);
+    let resp = large_menu(ui, tk, Icon::Source, &label, enabled);
+    let tip = tips::text(&resp.ctx, &label, &generic, enabled);
+    let resp = resp.on_hover_text(tip);
     menu_popup(ui, &resp, |ui| {
         for st in SourceType::ALL {
             let cmd = commands::get(&commands::add_source_id(&st));

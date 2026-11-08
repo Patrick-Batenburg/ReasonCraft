@@ -779,3 +779,14 @@ a11y-resize_text = Resize the Text panel
 startup-failed-title = ReasonCraft could not start
 startup-failed-body = ReasonCraft could not open its window. The graphics driver of this computer may be missing or out of date; updating it usually helps.
 startup-failed-details = Technical details: { $details }
+
+## Ribbon tooltips: why an add command is greyed out
+ribbon-why-add_card = Select a claim or a premise to add a reason or an objection.
+ribbon-why-claim_has_categories = A claim with categories takes no reasons or objections.
+ribbon-why-add_co_premise = Select a premise to add a co-premise.
+ribbon-why-add_category = Select a claim or a category to add a category.
+ribbon-why-claim_has_cards = A claim with reasons or objections takes no categories.
+ribbon-why-add_note = Select a box that is not a note to add a note.
+ribbon-why-comment = Select a box to add a comment.
+ribbon-why-whole_card = Select a premise to add a reason or an objection to its whole card.
+ribbon-why-add_source = Select a claim or a premise to add a source to it, or nothing to put it in the parking area.
