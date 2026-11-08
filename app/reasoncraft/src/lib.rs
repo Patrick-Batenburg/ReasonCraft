@@ -16,6 +16,7 @@ pub mod export;
 pub mod file_ops;
 pub mod help;
 pub mod i18n;
+pub mod instance;
 pub mod jobs;
 pub mod memo;
 pub mod profile;

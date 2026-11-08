@@ -51,6 +51,7 @@ mod ribbon_collapsed;
 mod ribbon_overflow;
 mod settings_enums;
 mod shell_polish;
+mod single_instance;
 mod snippet_drag;
 mod snippets;
 mod spelling;

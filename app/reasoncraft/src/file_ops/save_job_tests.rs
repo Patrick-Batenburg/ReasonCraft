@@ -1,6 +1,10 @@
 //! Saves written on a worker: the window goes on meanwhile, the tab counts
 //! as saved only for what was written, and a close waits for the result.
 
+use std::path::Path;
+
+use reasoncraft_core::file;
+
 use super::*;
 use crate::actions::{Action, apply};
 use crate::jobs::Hold;

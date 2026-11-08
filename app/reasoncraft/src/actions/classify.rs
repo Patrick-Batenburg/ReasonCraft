@@ -228,7 +228,8 @@ impl Action {
             | Action::ResolveRecovery(_)
             | Action::OpenExample(_)
             | Action::OpenTemplate(_)
-            | Action::OpenRecent(_) => CHANGES,
+            | Action::OpenRecent(_)
+            | Action::OpenFiles(_) => CHANGES,
             #[cfg(debug_assertions)]
             Action::LoadSampleMap | Action::ToggleSourceIcons => CHANGES,
         }

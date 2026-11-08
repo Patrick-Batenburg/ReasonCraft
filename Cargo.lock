@@ -2934,6 +2934,7 @@ dependencies = [
  "fluent-bundle",
  "fluent-syntax",
  "image",
+ "libc",
  "miniz_oxide 0.8.9",
  "open",
  "pdf-writer",

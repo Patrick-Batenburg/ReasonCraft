@@ -93,6 +93,8 @@ Downloads are named `reasoncraft-<version>-<os>-<architecture>`, and `SHA256SUMS
 
   The deb, rpm and Flatpak add ReasonCraft to the app menu, and double-clicking a `.rcraft` file then opens it.
 
+ReasonCraft runs as one window per user: opening a map while it runs (by double-clicking it, or `reasoncraft map.rcraft`) opens it in a tab of the running window, or brings that tab forward when the map is open already.
+
 How the installers are built and checked is described in [docs/release.md](docs/release.md). Changes per version are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Build and run
@@ -115,7 +117,7 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-it
 
 ### Separate profile (portable use and testing)
 
-Set the environment variable `REASONCRAFT_PROFILE_DIR` to an absolute folder to keep the settings file (`app.ron`) and the recovery folder there instead of in your user profile. This is useful for running from a USB stick or for trying things out without touching your own settings, for example in PowerShell: `$env:REASONCRAFT_PROFILE_DIR = "$env:TEMP\rc-test"; reasoncraft`. An empty or relative value is ignored (with a warning on stderr).
+Set the environment variable `REASONCRAFT_PROFILE_DIR` to an absolute folder to keep the settings file (`app.ron`) and the recovery folder there instead of in your user profile. This is useful for running from a USB stick or for trying things out without touching your own settings, for example in PowerShell: `$env:REASONCRAFT_PROFILE_DIR = "$env:TEMP\rc-test"; reasoncraft`. An empty or relative value is ignored (with a warning on stderr). A copy started with another profile folder runs in a window of its own.
 
 A debug build (`cargo run -p reasoncraft`) adds **View → Load sample map (debug)**, which opens a generated map of 117 boxes.
 

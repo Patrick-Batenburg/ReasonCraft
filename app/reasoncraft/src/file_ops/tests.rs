@@ -1,3 +1,7 @@
+use std::path::Path;
+
+use reasoncraft_core::file::{self, FileError};
+
 use super::*;
 use crate::actions::{Action, apply, is_enabled, wait_for_images};
 use reasoncraft_core::{CardKind, NodeId, Package, Parent};

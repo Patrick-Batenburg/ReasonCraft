@@ -37,6 +37,7 @@ The first release.
 - `.rcraft` files (a zip with the map, the essay, the snippets and the images); files from newer versions keep the parts this version does not know.
 - Autosave to a recovery folder and recovery after a crash.
 - `REASONCRAFT_PROFILE_DIR` keeps the settings and the recovery folder in one folder of your choice (portable use, testing).
+- One window per user: a map opened while ReasonCraft runs opens in a tab of the running window.
 - Export as PNG, SVG or PDF (with page setup and print), copy as image, the outline and the essay as Markdown, plain text or Word, and Argdown export and import.
 - Recent files, two example maps and four templates (Blank reasoning map, Blank grouping map, Essay plan, Peer review).
 

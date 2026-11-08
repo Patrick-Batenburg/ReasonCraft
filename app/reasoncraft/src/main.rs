@@ -6,7 +6,7 @@
 use std::process::ExitCode;
 
 use eframe::egui;
-use reasoncraft::{ReasonCraftApp, startup};
+use reasoncraft::{ReasonCraftApp, instance, startup};
 
 const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
@@ -22,6 +22,16 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     let profile = reasoncraft::profile::Profile::from_env();
+    // One window per user and profile: a later launch hands its files to
+    // the running copy and exits (see `reasoncraft::instance`).
+    let paths: Vec<std::path::PathBuf> = args.iter().map(Into::into).collect();
+    let scope = instance::scope(profile.settings_file.as_deref());
+    let inbox = match instance::claim(&scope, &paths, instance::TIMEOUTS) {
+        instance::Claim::Forwarded => return ExitCode::SUCCESS,
+        instance::Claim::First(listener) => Some(listener.start(instance::TIMEOUTS)),
+        instance::Claim::Alone => None,
+    };
+    let inbox = std::cell::Cell::new(inbox);
     let settings_file = reasoncraft::settings_store::settings_file(profile.settings_file.clone());
     // The first run (no window place kept yet) opens centred.
     let first_run = !(settings_file.as_deref())
@@ -35,6 +45,10 @@ fn main() -> ExitCode {
                 started.set(true);
                 let recovery_dir = profile.recovery_dir.clone();
                 let mut app = ReasonCraftApp::new(cc, recovery_dir, sys_locale::get_locale);
+                app.keep_settings_in(settings_file.clone());
+                if let Some(inbox) = inbox.take() {
+                    instance::attach(&mut app, inbox, &cc.egui_ctx);
+                }
                 // Files given on the command line (this is also how a
                 // double-clicked `.rcraft` file arrives on Windows and Linux).
                 reasoncraft::file_ops::open_paths(&mut app, args.iter().cloned());

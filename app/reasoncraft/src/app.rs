@@ -113,6 +113,11 @@ pub struct ReasonCraftApp {
     /// The first run: maximise the window if it does not fit (see
     /// [`window`]).
     fit_window: bool,
+    /// Files later launches handed over (see [`crate::instance`]).
+    pub(crate) incoming: crate::instance::Incoming,
+    /// The settings file eframe writes, when known (see
+    /// [`crate::settings_store::save`]).
+    settings_file: Option<PathBuf>,
     /// Show the source icon preview window.
     #[cfg(debug_assertions)]
     pub show_source_icons: bool,
@@ -163,6 +168,8 @@ impl ReasonCraftApp {
             close_confirmed: false,
             close_now: false,
             fit_window: false,
+            incoming: crate::instance::Incoming::default(),
+            settings_file: None,
             #[cfg(debug_assertions)]
             show_source_icons: false,
         };
@@ -215,6 +222,12 @@ impl ReasonCraftApp {
             }
             _ => self.status_note = Some(crate::i18n::t("recovery.unavailable")),
         }
+    }
+
+    /// The settings are kept in `file` (eframe writes it): saving them
+    /// keeps what another copy of the app added there meanwhile.
+    pub fn keep_settings_in(&mut self, file: Option<PathBuf>) {
+        self.settings_file = file;
     }
 
     /// Whether a dialog is open: a message or prompt, the export dialog
@@ -273,6 +286,7 @@ impl ReasonCraftApp {
         actions::poll_images(self);
         crate::file_ops::poll_saves(self);
         crate::spell::poll(self);
+        crate::instance::poll(self);
         shell::statusbar::expire_notes(&ctx, self);
         self.sync_theme(&ctx);
         self.sync_ui_scale(&ctx);
@@ -378,7 +392,8 @@ impl eframe::App for ReasonCraftApp {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, SETTINGS_KEY, &self.settings);
+        let file = self.settings_file.as_deref();
+        crate::settings_store::save(&mut self.settings, file, storage);
     }
 
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {

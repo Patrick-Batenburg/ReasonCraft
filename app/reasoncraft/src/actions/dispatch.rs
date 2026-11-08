@@ -90,6 +90,7 @@ pub(super) fn run(app: &mut ReasonCraftApp, action: Action) {
         Action::OpenExample(which) => examples::open_example(app, which),
         Action::OpenTemplate(which) => examples::open_template(app, which),
         Action::OpenRecent(path) => file_ops::open_recent(app, &path),
+        Action::OpenFiles(paths) => file_ops::open_handed_over(app, paths),
 
         // History and structure.
         Action::Undo => on_tab(app, DocTab::undo),
