@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/wordcraft.wxs
-     at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: ReasonCraft's identity, GUIDs
+     at aadb077), used under MIT OR Apache-2.0; changed: ReasonCraft's identity, GUIDs
      and .rcraft association (set as the default, as it is our own type), the install folder directly
      under Programs / Program Files, the repository as the ARP links, no CLI and no font licences.
 

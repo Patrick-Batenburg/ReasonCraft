@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/linux/package.sh at
-# aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: one binary (no CLI), no
+# aadb077), used under MIT OR Apache-2.0; changed: one binary (no CLI), no
 # cross-compiling, icons staged from app/reasoncraft/assets, REASONCRAFT_MAINTAINER, update
 # information and .zsync only for builds in GitHub Actions, and the --version smoke run on a
 # throw-away profile.

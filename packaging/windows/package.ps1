@@ -1,5 +1,5 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/package.ps1 at aadb077),
-# MIT OR Apache-2.0, used under Apache-2.0; changed: one app exe (no CLI and no CLI smoke run), no
+# used under MIT OR Apache-2.0; changed: one app exe (no CLI and no CLI smoke run), no
 # craft-fonts, PE checks in pe-checks.ps1 (also the C runtime imports), the licence RTF from
 # `cargo xtask licence-rtf`, REASONCRAFT_VERSION, rustup target add, CARGO_BUILD_JOBS.
 

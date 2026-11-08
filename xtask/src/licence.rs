@@ -1,7 +1,7 @@
 //! `cargo xtask licence-rtf <out.rtf>`: the Windows installer's licence page.
 //!
 //! Adapted from WordCraft (<https://github.com/storytold/wordcraft>, packaging/windows/package.ps1's
-//! `ConvertTo-RtfText` at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: ported to
+//! `ConvertTo-RtfText` at aadb077), used under MIT OR Apache-2.0; changed: ported to
 //! Rust, ReasonCraft's title and sentence.
 
 use std::path::Path;

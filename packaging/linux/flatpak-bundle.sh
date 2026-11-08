@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/linux/flatpak-bundle.sh
-# at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: one binary (no CLI), the smoke
+# at aadb077), used under MIT OR Apache-2.0; changed: one binary (no CLI), the smoke
 # test runs the app's --version on a throw-away profile.
 #
 # Repackage a ReasonCraft Linux tarball as a single-file Flatpak bundle:

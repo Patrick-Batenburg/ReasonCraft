@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Adapted from craft-launcher (https://github.com/storytold/craft-launcher, packaging/macos/verify.sh
-# at deccd0a), MIT OR Apache-2.0, used under Apache-2.0; changed: PKG=reasoncraft,
+# at deccd0a), used under MIT OR Apache-2.0; changed: PKG=reasoncraft,
 # APP_NAME=ReasonCraft, and no LSUIElement check.
 #
 # Check the macOS release artifact exactly as users download it:

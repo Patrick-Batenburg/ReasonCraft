@@ -12,7 +12,8 @@
 //! or scale changes.
 //!
 //! Adapted from WordCraft (github.com/storytold/wordcraft), Copyright (c)
-//! 2026 ArtCraft Team and the WordCraft contributors, Apache-2.0.
+//! 2026 ArtCraft Team and the WordCraft contributors, used under MIT OR
+//! Apache-2.0; changed: fitted to ReasonCraft's ribbon groups and theme.
 
 use std::collections::HashMap;
 

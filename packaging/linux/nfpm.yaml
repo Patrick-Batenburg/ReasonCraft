@@ -1,5 +1,5 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/linux/nfpm.yaml at
-# aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: one binary, ReasonCraft's
+# aadb077), used under MIT OR Apache-2.0; changed: one binary, ReasonCraft's
 # identity, the repository as homepage, and the dependency lists below.
 #
 # .deb and .rpm packages (nfpm: https://nfpm.goreleaser.com). Run by package.sh, which stages

@@ -5,7 +5,7 @@
 #
 # The windows-install-policy job is adapted from WordCraft
 # (https://github.com/storytold/wordcraft, .github/workflows/packaging-lint.yml
-# at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: the
+# at aadb077), used under MIT OR Apache-2.0; changed: the
 # folder names, comments and the checkout pin. The lint job is
 # ReasonCraft's own.
 # Actions are pinned to commit SHAs (the tag they had is in the comment).

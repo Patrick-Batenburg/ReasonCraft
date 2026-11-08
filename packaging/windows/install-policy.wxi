@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/install-policy.wxi
-     at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: Software\ReasonCraft and
+     at aadb077), used under MIT OR Apache-2.0; changed: Software\ReasonCraft and
      reasoncraft.exe, the default folders directly under Programs / Program Files, the scope page's
      wording, and the HKLM searches repeated in the other registry view. -->
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">

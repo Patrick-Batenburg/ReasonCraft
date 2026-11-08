@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/macos/import-cert.sh at
-# aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: ReasonCraft's file names.
+# aadb077), used under MIT OR Apache-2.0; changed: ReasonCraft's file names.
 #
 # CI only: import the Developer ID certificate into a temporary keychain so codesign can use it.
 # The release workflow runs it after the build (package.sh --build-only), so no build script or

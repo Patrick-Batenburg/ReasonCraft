@@ -1,5 +1,5 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/sign.ps1 at aadb077),
-# MIT OR Apache-2.0, used under Apache-2.0; changed: signs as ReasonCraft, with the repository as the /du
+# used under MIT OR Apache-2.0; changed: signs as ReasonCraft, with the repository as the /du
 # link unless REASONCRAFT_SIGN_URL names another.
 
 <#

@@ -1,5 +1,5 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/test-packaging-script.ps1
-# at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: the PE checks, sign.ps1's handling
+# at aadb077), used under MIT OR Apache-2.0; changed: the PE checks, sign.ps1's handling
 # of missing and partly configured secrets, and the MSI version of a pre-release are checked too.
 
 <#

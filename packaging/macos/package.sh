@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/macos/package.sh at
-# aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: one app (no CLI zip), a plain DMG
+# aadb077), used under MIT OR Apache-2.0; changed: one app (no CLI zip), a plain DMG
 # (no background or .DS_Store), rustup target add, the icon from app/reasoncraft/assets, and the
 # --version smoke run on a throw-away profile with a time limit.
 #

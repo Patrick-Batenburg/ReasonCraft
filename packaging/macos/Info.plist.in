@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/macos/Info.plist.in
-     at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: ReasonCraft's identity,
+     at aadb077), used under MIT OR Apache-2.0; changed: ReasonCraft's identity,
      copyright and category, English and Dutch localizations, no build commit, and the .rcraft
      type exported and owned.
 
