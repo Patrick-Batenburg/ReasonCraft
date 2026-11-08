@@ -86,8 +86,11 @@ pub fn shortcuts(os: Os) -> &'static [(Shortcut, ActionCtor)] {
 
 /// The Windows and Linux table.
 const SHORTCUTS: &[(Shortcut, ActionCtor)] = &[
-    // Display only: `key_to_action` takes Ctrl+Enter (with or without
-    // Shift, editing or not) among its context keys before the table.
+    // Display only: `key_to_action` takes Tab, Shift+Tab and Ctrl+Enter
+    // (with or without Shift), editing or not, among its context keys
+    // before the table.
+    (Shortcut::new(Key::Tab, NONE), || Action::AddReason),
+    (Shortcut::new(Key::Tab, SHIFT), || Action::AddObjection),
     (Shortcut::new(Key::Enter, CMD), || Action::AddCoPremise),
     (Shortcut::new(Key::R, CMD_SHIFT), || {
         Action::TargetWholeCard(CardKind::Reason)

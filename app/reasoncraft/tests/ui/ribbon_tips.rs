@@ -51,6 +51,8 @@ fn ribbon_commands_show_their_shortcut() {
         ("action.cut", "Cut (Ctrl+X)"),
         ("action.undo", "Undo (Ctrl+Z)"),
         ("action.connect", "Move to… (Ctrl+Shift+K)"),
+        ("action.add_reason", "Reason (Tab)"),
+        ("action.add_objection", "Objection (Shift+Tab)"),
     ] {
         assert_eq!(tip(&mut h, &t(key)).as_deref(), Some(want));
     }
@@ -79,8 +81,8 @@ fn a_greyed_out_add_command_says_why() {
     let why = format!("\n{}", t("ribbon.why.claim_has_cards"));
     assert!(shown.ends_with(&why), "{shown:?}");
     // An enabled add command gives no reason.
-    let shown = tip(&mut h, &t("action.add_reason")).unwrap_or_default();
-    assert!(!shown.contains('\n'), "{shown:?}");
+    let reason = t("action.add_reason");
+    assert_eq!(tip(&mut h, &reason), Some(format!("{reason} (Tab)")));
 }
 
 /// In a window too narrow for the Home tab, the right-hand groups drop

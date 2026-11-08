@@ -149,8 +149,8 @@ macOS has its own column: there Cmd takes the place of Ctrl and Option of Alt, a
 
 | Windows / Linux | macOS | Action |
 | --- | --- | --- |
-| Tab | Tab | Add a reason (context) |
-| Shift+Tab | Shift+Tab | Add an objection (context) |
+| Tab | Tab | Add a reason |
+| Shift+Tab | Shift+Tab | Add an objection |
 | Ctrl+Enter | Cmd+Enter | Add a co-premise |
 | Ctrl+Shift+R | Shift+Cmd+R | Add a reason for the whole card (of the selected card or premise) |
 | Ctrl+Shift+O | Shift+Cmd+O | Add an objection to the whole card (of the selected card or premise) |
