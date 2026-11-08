@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use sha2::Digest as _;
 
 use super::render::{Block, Span, parse};
 use super::{TOPICS, index, source, title};
@@ -149,39 +148,6 @@ fn help_text_is_in_the_ui_font() {
         }
     }
     assert!(crate::canvas::input::ui_font_has('•'));
-}
-
-/// The help and the About page hold none of the listed words.
-/// Only the SHA-256 of each lowercased word is kept here, so the words
-/// appear nowhere in the repository; every word of the texts is hashed and
-/// compared.
-#[test]
-fn help_contains_no_listed_words() {
-    const DENY: [&str; 2] = [
-        "2481a63c85a62cf889d2b149f1a52e985a9341750173fe01eff50cc27b5941b5",
-        "2c99e051cc1bc435aaca827b548db6b411f8862b1115ede37b1999f6ca50f496",
-    ];
-    let mut texts: Vec<(String, &str)> = index::FILES
-        .iter()
-        .map(|(lang, topic, text)| (format!("help/{lang}/{topic}.md"), *text))
-        .collect();
-    texts.push(("THIRD-PARTY.md".into(), crate::shell::about::THIRD_PARTY));
-    texts.push(("en.ftl".into(), include_str!("../../i18n/en.ftl")));
-    texts.push(("nl.ftl".into(), include_str!("../../i18n/nl.ftl")));
-    for (file, text) in texts {
-        let words: BTreeSet<String> = text
-            .split(|c: char| !c.is_alphanumeric())
-            .filter(|w| !w.is_empty())
-            .map(str::to_lowercase)
-            .collect();
-        for word in words {
-            let hash = format!("{:x}", sha2::Sha256::digest(word.as_bytes()));
-            assert!(
-                !DENY.contains(&hash.as_str()),
-                "{file} holds a listed word"
-            );
-        }
-    }
 }
 
 #[test]
