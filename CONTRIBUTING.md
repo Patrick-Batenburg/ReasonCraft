@@ -36,6 +36,7 @@ cargo test --workspace -j 4
 - UI tests drive the app through actions and `egui_kittest`, never through the real keyboard, mouse or clipboard. After anything that starts background work, wait with `common::settle` (or `common::step_until`) instead of a fixed number of frames; to keep a worker from finishing too early, give it a `jobs::Hold` and release it when the test is ready.
 - A test that starts the real executable sets `REASONCRAFT_PROFILE_DIR` (`reasoncraft::profile::PROFILE_DIR_VAR`) to a temporary folder and kills the process on a timeout, so it never touches your settings or recovery files.
 - Tests that measure speed are marked `#[ignore = "timing: run in release"]`. Run them with `cargo test --workspace --release -j 4 -- --ignored`.
+- The single-instance test starts the app twice with real windows, which take the keyboard focus, so it is marked `#[ignore = "opens app windows: run with --ignored"]`. CI runs it on every platform; run it yourself with `cargo test -p reasoncraft --test ui -j 4 single_instance -- --ignored` (it skips itself where no window can open).
 - `-j 4` keeps the parallel link of the many test binaries within memory on Windows.
 
 To try the app without touching your own settings, start it with `REASONCRAFT_PROFILE_DIR` set to an absolute folder (see README, "Separate profile").

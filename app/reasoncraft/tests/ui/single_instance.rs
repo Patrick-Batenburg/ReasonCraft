@@ -3,7 +3,8 @@
 //! first opens it. Debug builds only: the first copy notes what it opens
 //! in a file (`REASONCRAFT_DEBUG_OPENED_LOG`), as a test cannot look
 //! inside its window. Where no window can open (a headless machine) the
-//! test is skipped.
+//! test is skipped. It opens real windows, which take the focus, so a
+//! plain `cargo test` leaves it out: CI runs it with `--ignored`.
 #![cfg(debug_assertions)]
 
 use std::path::{Path, PathBuf};
@@ -51,6 +52,7 @@ fn map(dir: &Path, name: &str) -> PathBuf {
 }
 
 #[test]
+#[ignore = "opens app windows: run with --ignored"]
 fn a_second_launch_hands_its_file_to_the_first() {
     let profile = tempfile::tempdir().unwrap();
     let maps = tempfile::tempdir().unwrap();

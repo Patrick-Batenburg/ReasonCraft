@@ -62,6 +62,12 @@ jobs:
       - name: Tests
         run: cargo test --workspace -j 4
 
+      # Two launches of the built app with real windows (ignored in a plain
+      # `cargo test`, as the windows take the focus); skipped where no
+      # window can open, as on the Linux runner.
+      - name: Single-instance test
+        run: cargo test -p reasoncraft --test ui -j 4 single_instance -- --ignored
+
       # Debug-only code (cfg(debug_assertions)) must not leak into release
       # builds, tests included.
       - name: Release build check
