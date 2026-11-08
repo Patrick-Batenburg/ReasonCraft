@@ -105,7 +105,7 @@ pub struct ReasonCraftApp {
     /// The egui context of the running frame.
     pub(crate) egui_ctx: Option<egui::Context>,
     applied: Option<Tokens>,
-    window_title: String,
+    pub(super) window_title: String,
     /// Every unsaved-changes question was answered: let the window close.
     close_confirmed: bool,
     /// Send the close command at the end of this frame.
@@ -357,13 +357,6 @@ impl ReasonCraftApp {
         }
     }
 
-    /// Takes Cmd+Q out of the input on macOS: quitting closes the window
-    /// (the app menu, which would quit at once, is off; see `main.rs`).
-    fn quit_key(&self, ctx: &egui::Context) -> bool {
-        let quit = |i: &mut egui::InputState| i.consume_key(egui::Modifiers::MAC_CMD, egui::Key::Q);
-        self.os == Os::Mac && ctx.input_mut(quit)
-    }
-
     fn sync_theme(&mut self, ctx: &egui::Context) {
         let os_dark = theme::os_dark(ctx.system_theme());
         self.tokens = theme::resolve(self.settings.theme, os_dark);
@@ -372,17 +365,6 @@ impl ReasonCraftApp {
             ctx.options_mut(|o| o.zoom_with_keyboard = false);
             theme::apply(ctx, &self.tokens);
             self.applied = Some(self.tokens);
-        }
-    }
-
-    fn sync_window_title(&mut self, ctx: &egui::Context) {
-        let mut args = crate::i18n::FluentArgs::new();
-        args.set("doc", self.active_tab().title());
-        args.set("app", crate::i18n::t("app.name"));
-        let title = crate::i18n::t_args("window.title", &args);
-        if title != self.window_title {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
-            self.window_title = title;
         }
     }
 }

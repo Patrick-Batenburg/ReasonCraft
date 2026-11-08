@@ -272,4 +272,6 @@ impl Document {
 }
 
 #[cfg(test)]
+mod output_tests;
+#[cfg(test)]
 mod tests;

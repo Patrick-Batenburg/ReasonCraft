@@ -255,6 +255,8 @@ pub fn resolve_unsaved(app: &mut ReasonCraftApp, choice: UnsavedChoice) {
 }
 
 #[cfg(test)]
+mod image_tests;
+#[cfg(test)]
 mod open_tests;
 #[cfg(test)]
 mod save_job_tests;

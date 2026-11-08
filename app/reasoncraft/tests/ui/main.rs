@@ -52,6 +52,7 @@ mod ribbon_tips;
 mod settings_enums;
 mod shell_polish;
 mod single_instance;
+mod small_window_panels;
 mod snippet_drag;
 mod snippets;
 mod spelling;

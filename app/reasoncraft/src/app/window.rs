@@ -1,4 +1,5 @@
-//! The window's sizes: the smallest one, and the first. On the
+//! The window: its title, the quit key on macOS, and its sizes: the
+//! smallest one, and the first. On the
 //! first run the window opens at [`FIRST_SIZE`], centred (see `main.rs`),
 //! and is maximised when that leaves too little room around it (a
 //! 1366 × 768 laptop, or 1920 × 1080 at 150 %), so the status bar never
@@ -8,6 +9,7 @@
 use eframe::egui;
 
 use super::ReasonCraftApp;
+use crate::canvas::input::Os;
 
 /// The smallest window at 100 % interface size, in screen points.
 pub const MIN_WINDOW: [f32; 2] = [800.0, 500.0];
@@ -37,6 +39,25 @@ pub fn fits_on(window: egui::Vec2, monitor: egui::Vec2) -> bool {
 }
 
 impl ReasonCraftApp {
+    /// Takes Cmd+Q out of the input on macOS: quitting closes the window
+    /// (the app menu, which would quit at once, is off; see `main.rs`).
+    pub(super) fn quit_key(&self, ctx: &egui::Context) -> bool {
+        let quit = |i: &mut egui::InputState| i.consume_key(egui::Modifiers::MAC_CMD, egui::Key::Q);
+        self.os == Os::Mac && ctx.input_mut(quit)
+    }
+
+    /// The window's title: the active map's, and the app's name.
+    pub(super) fn sync_window_title(&mut self, ctx: &egui::Context) {
+        let mut args = crate::i18n::FluentArgs::new();
+        args.set("doc", self.active_tab().title());
+        args.set("app", crate::i18n::t("app.name"));
+        let title = crate::i18n::t_args("window.title", &args);
+        if title != self.window_title {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
+            self.window_title = title;
+        }
+    }
+
     /// The whole interface at the size the settings ask for (egui's zoom
     /// factor). The map's zoom works in points, so it comes on top. The
     /// window's minimum size, in these points, grows with it on screen

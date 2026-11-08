@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-
 use super::render::{Block, Span, parse};
 use super::{TOPICS, index, source, title};
 use crate::i18n::UI_LANGUAGES;
