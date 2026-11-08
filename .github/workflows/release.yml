@@ -5,8 +5,10 @@
 # ever published; a maintainer reviews the draft and publishes it (see
 # docs/release.md).
 #
-# No step that runs cargo has a signing secret in its environment: each
-# platform builds in a step of its own and signs in the next.
+# Windows and macOS build in jobs without secrets and sign and package in
+# jobs of their own (the `release` environment, a fresh checkout), which
+# never run cargo or anything the build made; the shipped programs run in
+# a third job, again without secrets.
 # Signing runs when the secrets exist (the `release` environment on the
 # `release` branch); without them each script warns and ships unsigned
 # (ruling L3), and a partly configured set fails on `release` (PK-16). Each
@@ -98,17 +100,24 @@ jobs:
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
           echo "ReasonCraft $version (pre-release: $prerelease)"
 
-  windows:
-    name: windows (${{ matrix.arch }})
+  # Builds the exe and the installer's licence page, without any secret
+  # and outside the `release` environment; the windows job signs them.
+  windows-build:
+    name: windows (${{ matrix.arch }}, build)
     needs: version
     strategy:
       fail-fast: false
       matrix:
-        arch: [x64, x86, arm64]
+        include:
+          - arch: x64
+            target: x86_64-pc-windows-msvc
+          - arch: x86
+            target: i686-pc-windows-msvc
+          - arch: arm64
+            target: aarch64-pc-windows-msvc
     runs-on: windows-latest
     # A release build; x64 also a debug build for test-packaging-script.ps1.
     timeout-minutes: 90
-    environment: ${{ github.ref == 'refs/heads/release' && 'release' || '' }}
     defaults:
       run:
         shell: pwsh
@@ -127,6 +136,68 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: cargo xtask version set $env:VERSION
 
+      - name: Build the exe and the licence page
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -BuildOnly
+
+      # WiX 5.0.2 exactly (MS-RL; later versions come with another licence),
+      # its packages checked against pinned SHA-256s. Here only for the
+      # packaging script's own checks, which build a test MSI.
+      - name: Install WiX
+        if: matrix.arch == 'x64'
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'wix'
+          ./packaging/windows/install-wix.ps1 -ToolPath $tools -Extensions UI, Util
+          $tools >> $env:GITHUB_PATH
+
+      # The packaging script's own checks: the build apart from the signing,
+      # the policy check before signing, the PE checks on the release exe
+      # (passes) and the debug exe (fails the C runtime check), signing
+      # without secrets, and a pre-release's MSI version. They need the x64
+      # release exe from the step above and a debug build.
+      - name: Check the packaging script
+        if: matrix.arch == 'x64'
+        run: |
+          cargo build -p reasoncraft
+          if ($LASTEXITCODE -ne 0) { throw 'The debug build failed.' }
+          ./packaging/windows/test-packaging-script.ps1
+
+      # reasoncraft.exe and licence.rtf, at the artifact's top level.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-windows-${{ matrix.arch }}
+          path: |
+            target/${{ matrix.target }}/release/reasoncraft.exe
+            target/${{ matrix.target }}/release/licence.rtf
+          if-no-files-found: error
+          overwrite: true
+
+  # Signs and packages what windows-build made, from a fresh checkout: no
+  # cargo, and nothing the build made runs here, where the secrets are.
+  windows:
+    name: windows (${{ matrix.arch }})
+    needs: [version, windows-build]
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, x86, arm64]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    environment: ${{ github.ref == 'refs/heads/release' && 'release' || '' }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      REASONCRAFT_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: build-windows-${{ matrix.arch }}
+          path: ${{ runner.temp }}/bin
+
       # WiX 5.0.2 exactly (MS-RL; later versions come with another licence),
       # its packages checked against pinned SHA-256s.
       - name: Install WiX
@@ -134,11 +205,6 @@ jobs:
           $tools = Join-Path $env:RUNNER_TEMP 'wix'
           ./packaging/windows/install-wix.ps1 -ToolPath $tools -Extensions UI, Util
           $tools >> $env:GITHUB_PATH
-
-      # Without the signing secrets: no build script or proc macro sees them.
-      # Also builds the xtask the next step runs, so that step compiles nothing.
-      - name: Build the exe
-        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -BuildOnly
 
       - name: Sign and package the MSI and the portable zip
         env:
@@ -150,28 +216,7 @@ jobs:
           AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
           AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
           AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
-        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -SkipBuild
-
-      # The exe as shipped, from the zip (arm64: the windows-arm64-run job).
-      - name: Run the shipped exe
-        if: matrix.arch != 'arm64'
-        env:
-          VERSION: ${{ needs.version.outputs.version }}
-          ARCH: ${{ matrix.arch }}
-        run: ./packaging/windows/run-from-zip.ps1 -Zip "dist/release/reasoncraft-$env:VERSION-windows-$env:ARCH-portable.zip" -Version $env:VERSION
-
-      # The packaging script's own checks: the build apart from the signing,
-      # the policy check before signing,
-      # the PE checks on the release exe (passes) and the debug exe (fails
-      # the C runtime check), signing without secrets, and a pre-release's
-      # MSI version. They need the x64 release exe from the step above and a
-      # debug build.
-      - name: Check the packaging script
-        if: matrix.arch == 'x64'
-        run: |
-          cargo build -p reasoncraft
-          if ($LASTEXITCODE -ne 0) { throw 'The debug build failed.' }
-          ./packaging/windows/test-packaging-script.ps1
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -SkipBuild -BinDir "$env:RUNNER_TEMP/bin"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -180,12 +225,23 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
-  # The arm64 exe as shipped, on Windows on Arm (GitHub's windows-11-arm
-  # runner, free for public repositories).
-  windows-arm64-run:
-    name: windows (arm64, run)
+  # The exe as shipped, from each portable zip, in a job without secrets;
+  # arm64 on Windows on Arm (GitHub's windows-11-arm runner, free for
+  # public repositories).
+  windows-run:
+    name: windows (${{ matrix.arch }}, run)
     needs: [version, windows]
-    runs-on: windows-11-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+          - arch: x86
+            runner: windows-latest
+          - arch: arm64
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     defaults:
       run:
@@ -197,23 +253,23 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: release-windows-arm64
-          path: ${{ runner.temp }}/arm64
+          name: release-windows-${{ matrix.arch }}
+          path: ${{ runner.temp }}/release
 
       - name: Run the shipped exe
         env:
           VERSION: ${{ needs.version.outputs.version }}
-        run: ./packaging/windows/run-from-zip.ps1 -Zip "$env:RUNNER_TEMP/arm64/reasoncraft-$env:VERSION-windows-arm64-portable.zip" -Version $env:VERSION
+          ARCH: ${{ matrix.arch }}
+        run: ./packaging/windows/run-from-zip.ps1 -Zip "$env:RUNNER_TEMP/release/reasoncraft-$env:VERSION-windows-$env:ARCH-portable.zip" -Version $env:VERSION
 
-  macos:
-    name: macos (universal)
+  # Builds both macOS binaries, without any secret and outside the
+  # `release` environment; the macos job signs and packages them.
+  macos-build:
+    name: macos (universal, build)
     needs: version
     runs-on: macos-latest
-    # Two release builds and two notarizations, which usually take minutes each
-    # (notarytool would wait up to an hour); a slow Apple service can end the
-    # job, which then runs again.
-    timeout-minutes: 90
-    environment: ${{ github.ref == 'refs/heads/release' && 'release' || '' }}
+    # Two release builds.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -229,10 +285,42 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: cargo xtask version set "$VERSION"
 
-      # Without the signing secrets, and before the certificate is imported:
-      # no build script or proc macro sees them or the unlocked keychain.
       - name: Build the binaries
         run: packaging/macos/package.sh --arch universal --build-only
+
+      # <target>/release/reasoncraft for both targets, as package.sh --bin-dir reads them.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-macos
+          path: |
+            target/aarch64-apple-darwin/release/reasoncraft
+            target/x86_64-apple-darwin/release/reasoncraft
+          if-no-files-found: error
+          overwrite: true
+
+  # Signs, notarizes and packages what macos-build made, from a fresh
+  # checkout: no cargo, and nothing the build made runs here, where the
+  # secrets and the unlocked keychain are.
+  macos:
+    name: macos (universal)
+    needs: [version, macos-build]
+    runs-on: macos-latest
+    # Two notarizations, which usually take minutes each (notarytool would
+    # wait up to an hour); a slow Apple service can end the job, which then
+    # runs again.
+    timeout-minutes: 90
+    environment: ${{ github.ref == 'refs/heads/release' && 'release' || '' }}
+    env:
+      REASONCRAFT_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: build-macos
+          path: ${{ runner.temp }}/bin
 
       # Without APPLE_CERTIFICATE: a warning, and package.sh signs ad hoc.
       # The notarization credentials are passed only to check that the
@@ -253,7 +341,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: packaging/macos/package.sh --arch universal --skip-build
+        run: packaging/macos/package.sh --arch universal --skip-build --bin-dir "$RUNNER_TEMP/bin"
 
       # Strict only when signing and notarization credentials are all set.
       - name: Verify the DMG
@@ -276,6 +364,27 @@ jobs:
           if [ -n "${MACOS_KEYCHAIN:-}" ]; then
             security delete-keychain "$MACOS_KEYCHAIN" || true
           fi
+
+  # The app as shipped, from the DMG, in a job without secrets.
+  macos-run:
+    name: macos (universal, run)
+    needs: [version, macos]
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-macos
+          path: ${{ runner.temp }}/release
+
+      - name: Run the shipped app
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: packaging/macos/run-from-dmg.sh "$RUNNER_TEMP/release/reasoncraft-$VERSION-macos-universal.dmg" "$VERSION"
 
   linux:
     name: linux (${{ matrix.arch }})
@@ -413,7 +522,7 @@ jobs:
   # cancelled job stops it.
   draft:
     name: checksums and draft release
-    needs: [version, windows, windows-arm64-run, macos, linux, flatpak]
+    needs: [version, windows-build, windows, windows-run, macos-build, macos, macos-run, linux, flatpak]
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

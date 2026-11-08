@@ -56,11 +56,11 @@ pwsh packaging/windows/package.ps1 -Arch x64     # also x86 and arm64
 
 The script builds the exe with a static C runtime (`+crt-static`), checks it, signs it (see [Signing](#signing)), builds the licence page (`cargo xtask licence-rtf`) and the MSI (`wix build`), checks the MSI's install policy, signs the MSI and writes the portable zip (`reasoncraft.exe`, `README.md`, the licences and `THIRD-PARTY.md`).
 Before packaging, `pe-checks.ps1` refuses an exe whose PE machine is not the `-Arch` asked for, whose subsystem is not GUI, or that imports the C runtime (`vcruntime*`, `msvcp*`, `api-ms-win-crt-*`), so the zip needs no Visual C++ redistributable, or whose `DependentLoadFlags` lack `0x800` (System32 only, set by `app/reasoncraft/build.rs`): with `SetDefaultDllDirectories` at the start of `main`, no DLL planted in the folder of an opened file or of the exe is ever loaded.
-`-BuildOnly` builds the exe (and the xtask that writes the licence page) and stops; `-SkipBuild` packages the exe already built and compiles nothing.
-The release workflow runs the two as separate steps and gives the signing secrets only to the second, so no build script or proc macro of any dependency runs with them in its environment.
-`packaging/windows/run-from-zip.ps1 -Zip <zip> -Version <v>` unpacks a portable zip and checks that its `reasoncraft.exe --version` prints `ReasonCraft <v>` (the workflow runs it on every zip, arm64 on a `windows-11-arm` runner).
-`packaging/windows/test-packaging-script.ps1` checks the script itself: `-BuildOnly` stops before anything is signed and only it runs a cargo build, the policy check comes before the MSI's single signing, the PE checks pass the release exe and refuse the debug exe, `sign.ps1` without secrets warns and exits 0 and with partly configured secrets warns or (on `release`) fails, versions beyond the MSI limits are refused, and a `0.2.0-rc.1` MSI has ProductVersion `0.2.0`.
-It needs the x64 release exe (run `package.ps1 -Arch x64` first) and a debug build (`cargo build -p reasoncraft`).
+`-BuildOnly` builds the exe, writes the licence page (`licence.rtf`) next to it and stops; `-SkipBuild` packages that build and runs no cargo, nor anything the build made; `-BinDir <folder>` (with `-SkipBuild`) takes `reasoncraft.exe` and `licence.rtf` from another folder.
+The release workflow builds in one job without the signing secrets, uploads the exe and `licence.rtf`, and signs and packages them in another job (`-SkipBuild -BinDir`, from a fresh checkout), so no build script, proc macro or built program ever runs where the secrets are.
+`packaging/windows/run-from-zip.ps1 -Zip <zip> -Version <v>` unpacks a portable zip and checks that its `reasoncraft.exe --version` prints `ReasonCraft <v>` (the workflow runs it on every zip in a job of its own, without secrets, arm64 on a `windows-11-arm` runner).
+`packaging/windows/test-packaging-script.ps1` checks the script itself: `-BuildOnly` stops before anything is signed and only it runs cargo, `-BinDir` goes only with `-SkipBuild`, the policy check comes before the MSI's single signing, the PE checks pass the release exe and refuse the debug exe, `sign.ps1` without secrets warns and exits 0 and with partly configured secrets warns or (on `release`) fails, versions beyond the MSI limits are refused, and a `0.2.0-rc.1` MSI, packaged with `-SkipBuild -BinDir`, has ProductVersion `0.2.0`.
+It needs the x64 release exe (run `package.ps1 -Arch x64 -BuildOnly` first) and a debug build (`cargo build -p reasoncraft`).
 
 The MSI (`packaging/windows/reasoncraft.wxs`, English UI):
 - is one package for both scopes: for the current user by default, without administrator rights, into `%LOCALAPPDATA%\Programs\ReasonCraft`, or for everyone into `Program Files\ReasonCraft` when "Everyone on this computer" is chosen (or `ALLUSERS=1` on the msiexec command line); the app's own data, such as the recovery folder, lives apart in `%LOCALAPPDATA%\ReasonCraft`;
@@ -92,11 +92,12 @@ The upgrade check needs an older MSI built from the same exe, so take the exe ou
 ```powershell
 $v = '0.1.0'
 Expand-Archive target\draft\reasoncraft-$v-windows-x64-portable.zip target\draft\zip
-New-Item -ItemType Directory -Force target\x86_64-pc-windows-msvc\release | Out-Null
-Copy-Item target\draft\zip\reasoncraft-$v-windows-x64-portable\reasoncraft.exe target\x86_64-pc-windows-msvc\release\
+New-Item -ItemType Directory -Force target\vm-old-bin | Out-Null
+Copy-Item target\draft\zip\reasoncraft-$v-windows-x64-portable\reasoncraft.exe target\vm-old-bin\
+cargo xtask licence-rtf target\vm-old-bin\licence.rtf
 cargo xtask sample-map target\sample.rcraft
 $env:REASONCRAFT_VERSION = '0.0.1'; $env:DIST = 'target\vm-old'
-pwsh packaging/windows/package.ps1 -Arch x64 -SkipBuild
+pwsh packaging/windows/package.ps1 -Arch x64 -SkipBuild -BinDir target\vm-old-bin
 Remove-Item Env:REASONCRAFT_VERSION, Env:DIST
 .\packaging\windows\verify-in-vm.ps1 -Msi target\draft\reasoncraft-$v-windows-x64.msi `
     -OlderMsi target\vm-old\reasoncraft-0.0.1-windows-x64.msi -Sample target\sample.rcraft -OutDir target\vm-check
@@ -134,7 +135,9 @@ Without a signing identity it signs ad hoc: the app then runs on the Mac that bu
 With a Developer ID identity and all three Apple credentials it also notarizes the DMG and staples the ticket; with the identity alone it signs and warns that it did not notarize.
 `verify.sh` checks the DMG as users download it: strictly when the identity and the notarization credentials are all set, and otherwise only the signature's integrity, with warnings.
 `import-cert.sh` (CI only) imports the certificate into a temporary keychain, which locks itself after 90 minutes unused.
-`--build-only` builds the binaries and stops, and `--skip-build` packages them without compiling: the release workflow builds first, then imports the certificate, then signs and packages with the secrets, so no build script or proc macro runs with the secrets in its environment or the keychain unlocked.
+`--build-only` builds the binaries and stops, and `--skip-build` packages them without compiling; `--bin-dir <folder>` (with `--skip-build`) takes them from `<folder>/<target>/release/reasoncraft` and leaves out the closing `--version` run.
+The release workflow builds in one job without secrets and uploads the two binaries; another job, from a fresh checkout, imports the certificate and signs, notarizes and packages them (`--skip-build --bin-dir`), so no build script, proc macro or built program runs with the secrets in its environment or the keychain unlocked.
+`run-from-dmg.sh <dmg> <version>` mounts a DMG and checks that its app's `--version` prints `ReasonCraft <version>`, on a throw-away profile and with a time limit: `package.sh` runs it on the DMG it made (unless `--bin-dir`), and the workflow in a job of its own, without secrets.
 
 There is no Mac to build or test on yet: the release workflow builds on `macos-latest`, and a check on a real Mac is part of the release checklist.
 Known gap: macOS hands a double-clicked document to an app through an Apple Event, not on the command line, and the app does not handle that event yet (ruling S6-T11-2).
@@ -202,7 +205,7 @@ Elsewhere such a set gives a warning naming the missing secrets (never a value).
 Every job's summary says how its files came out: signed and with what, notarized or not, or unsigned and why.
 The release workflow takes the secrets from the GitHub environment `release`, which only the `release` branch uses; create it as [First-time GitHub setup](#first-time-github-setup) says, with the secrets below and, if wanted, required reviewers.
 Keep them there only, never as repository secrets: a repository secret reaches every workflow on every branch.
-In the workflow, a secret is only in the environment of the step that signs; the build runs a step earlier without it (`package.ps1 -BuildOnly`, `package.sh --build-only`, then `-SkipBuild` / `--skip-build`), so no build script or proc macro of a dependency can read it.
+In the workflow, a secret is only in the environment of the step that signs, in a job that runs no cargo and nothing the build made: the build is a job of its own without secrets (`package.ps1 -BuildOnly`, `package.sh --build-only`), whose binaries the signing job takes as artifacts (`-SkipBuild -BinDir` / `--skip-build --bin-dir`), and the shipped programs run in a third job, so no build script, proc macro or built program can read a secret or change what the signing job runs.
 
 | Secret | Used by |
 |---|---|
@@ -224,7 +227,7 @@ Once, before the first push to `release`, on github.com:
    Optionally a tag ruleset on `v*` that blocks deleting and moving release tags; GitHub still creates the tag when you publish a draft.
 5. Settings → Security → Advanced Security (Code security): enable **Private vulnerability reporting**, so that a security problem can be reported in private (the repository's Security tab → "Report a vulnerability"), as [SECURITY.md](../SECURITY.md) tells reporters to.
 6. A dry run on `main` first: Actions → Release → Run workflow on `main` (no version input).
-   Check that all 11 jobs succeed (`version`; `windows (x64)`, `(x86)` and `(arm64)`; `windows (arm64, run)`; `macos (universal)`; `linux (x86_64)` and `(aarch64)`; `flatpak (x86_64)` and `(aarch64)`; `checksums and draft release`), that the run has 9 artifacts (`release-windows-x64`, `-x86`, `-arm64`, `release-macos`, `release-linux-x86_64`, `-aarch64`, `release-flatpak-x86_64`, `-aarch64` and `checksums`), that `checksums` holds `SHA256SUMS.txt` with 19 files (three MSIs and three zips, the DMG, two each of tar.gz, deb, rpm, AppImage, `.zsync` and Flatpak), and that each job's summary says how it signed.
+   Check that all 18 jobs succeed (`version`; `windows (x64, build)`, `(x86, build)` and `(arm64, build)`; `windows (x64)`, `(x86)` and `(arm64)`; `windows (x64, run)`, `(x86, run)` and `(arm64, run)`; `macos (universal, build)`, `macos (universal)` and `macos (universal, run)`; `linux (x86_64)` and `(aarch64)`; `flatpak (x86_64)` and `(aarch64)`; `checksums and draft release`), that the run has 13 artifacts (the unsigned builds `build-windows-x64`, `-x86`, `-arm64` and `build-macos`; `release-windows-x64`, `-x86`, `-arm64`, `release-macos`, `release-linux-x86_64`, `-aarch64`, `release-flatpak-x86_64`, `-aarch64` and `checksums`), that `checksums` holds `SHA256SUMS.txt` with 19 files (three MSIs and three zips, the DMG, two each of tar.gz, deb, rpm, AppImage, `.zsync` and Flatpak), and that each job's summary says how it signed.
    Only then start the first release: `git push origin main:release`.
 
 ## The release flow
@@ -250,18 +253,18 @@ Users can check where a published file was built: `gh attestation verify <file> 
   Run by hand, it also runs the timing tests: the `#[ignore]`d tests, in a release build (`cargo test --workspace --release -j 4 -- --ignored`).
   The tests marked `#[ignore = "manual: …"]` write sample files for looking at by eye when their environment variable is set, and do nothing otherwise.
 - `.github/workflows/packaging-lint.yml` runs when the workflows, `packaging/` or the icons change: actionlint (1.7.12, checked by SHA-256), shellcheck on `packaging/**/*.sh`, xmllint on the WiX, plist and Linux XML files, `desktop-file-validate`, `appstreamcli validate` on the metainfo, `check-version-order.sh` (nfpm 2.47.0, checked by SHA-256), a PowerShell parse of `packaging/windows/*.ps1`, a check that no WiX GUID is used twice, and, on Windows, `test-install-policy.ps1`.
-- `.github/workflows/release.yml` is described [above](#the-release-flow). Its jobs: `version` (the input or Cargo.toml's version, checked, and on `release` not published yet), `windows` (x64, x86 and arm64; each builds, then signs and packages; x64 and x86 run the exe from their zip, x64 also runs `test-packaging-script.ps1`), `windows-arm64-run` (the arm64 zip's exe, on `windows-11-arm`), `macos`, `linux` (x86_64 on `ubuntu-24.04`, aarch64 on `ubuntu-24.04-arm`, both inside an `ubuntu:22.04` container pinned by the same digest as `packaging/linux/Dockerfile`, so the binaries need only glibc 2.35), `flatpak` (both architectures, on Ubuntu 24.04) and `draft` (checksums; on `release` the build provenance and the draft).
+- `.github/workflows/release.yml` is described [above](#the-release-flow). Its jobs: `version` (the input or Cargo.toml's version, checked, and on `release` not published yet), `windows-build` (x64, x86 and arm64, without secrets; x64 also runs `test-packaging-script.ps1`), `windows` (signs and packages each build, in the `release` environment on `release`), `windows-run` (each zip's exe; arm64 on `windows-11-arm`), `macos-build`, `macos` (signs, notarizes and packages) and `macos-run` (the DMG's app), `linux` (x86_64 on `ubuntu-24.04`, aarch64 on `ubuntu-24.04-arm`, both inside an `ubuntu:22.04` container pinned by the same digest as `packaging/linux/Dockerfile`, so the binaries need only glibc 2.35), `flatpak` (both architectures, on Ubuntu 24.04) and `draft` (checksums; on `release` the build provenance and the draft).
   Every job has a time limit, and every checkout leaves no credentials behind (`persist-credentials: false`).
 
 The workflows are self-contained: they use no reusable workflow and nothing outside this repository.
-Every release job has a time limit (`timeout-minutes`; macOS 90 minutes, for two builds and two notarizations), and the draft is made only when every job succeeded.
+Every release job has a time limit (`timeout-minutes`; the macOS signing job 90 minutes, for two notarizations), and the draft is made only when every job succeeded.
 Their actions are pinned to commit SHAs, with the release tag in a comment; to upgrade one, look up the new tag's commit (`gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`).
 
 ### Compatibility with the Craft suite's reusable workflow
 
 The scripts keep to the interface of the Craft suite's reusable release workflow (`storytold/craft-common-actions`, `.github/workflows/release.yml`), so `release.yml` could later become a short caller of it without changing a script:
 - the caller passes `app-name: reasoncraft`, `app-title: ReasonCraft`, `craft-fonts-ref: ''`, and `has-web`, `has-riscv64`, `has-freebsd` and `has-arch` all `false`;
-- every script path, argument and platform artifact name above already matches (`-BuildOnly` and `--build-only` are additions it does not call; the checksums artifact is ReasonCraft's own);
+- every script path, argument and platform artifact name above already matches (`-BuildOnly`, `-BinDir`, `--build-only` and `--bin-dir` are additions it does not call, and the `build-*` artifacts and the split into build, signing and run jobs are ReasonCraft's own; the checksums artifact is ReasonCraft's own);
 - `cargo xtask version set` and `packaging/env.sh` serve its `version` job;
 - it sets no `REASONCRAFT_*` variable, which is not needed: the version comes from Cargo.toml after `version set`;
 - its `git-sources` gate passes: there are no git dependencies, and `.cargo/config.toml` holds only the `xtask` alias;
@@ -315,7 +318,7 @@ The packaging scripts build from the workspace, so the installers are unaffected
 2. `THIRD-PARTY.md` and the crates' licence texts (`cargo xtask notices`, see [Licence notices](#licence-notices)) are current: running it leaves no change to commit.
 3. `CHANGELOG.md` has the version's section with the release date in its heading (in place of "Unreleased"; the day you plan to publish) and the version's link at the bottom (`[X.Y.Z]: https://github.com/Patrick-Batenburg/ReasonCraft/releases/tag/vX.Y.Z`).
 4. The GitHub settings are still as [First-time GitHub setup](#first-time-github-setup) left them: the `release` environment's deployment branches are only `release`, the signing secrets are in that environment and none at repository level (Settings → Secrets and variables → Actions lists no repository secret), and `main` and `release` are protected.
-5. Merge into `release` and wait for the draft release; every job is green (11 jobs) and the draft holds the files of the table at the top (three MSIs and zips, the DMG, two each of tar.gz, deb, rpm, AppImage, `.zsync` and Flatpak: 19) and `SHA256SUMS.txt`, and `sha256sum -c SHA256SUMS.txt` passes on the downloads.
+5. Merge into `release` and wait for the draft release; every job is green (18 jobs) and the draft holds the files of the table at the top (three MSIs and zips, the DMG, two each of tar.gz, deb, rpm, AppImage, `.zsync` and Flatpak: 19) and `SHA256SUMS.txt`, and `sha256sum -c SHA256SUMS.txt` passes on the downloads.
    The run's summary says, per job, how the files were signed; it is what was intended (signed and notarized once the secrets exist, otherwise unsigned).
    The build provenance holds: `gh attestation verify <file> --repo Patrick-Batenburg/ReasonCraft` passes for a download of each platform (it works on a draft's files too, the attestation is made in the run).
    Once signing secrets exist, check the downloads themselves: on Windows `Get-AuthenticodeSignature reasoncraft-<v>-windows-x64.msi` (and the exe inside the zip) shows `Valid` with the expected signer and a timestamp; on a Mac `spctl --assess --type open --context context:primary-signature -vv reasoncraft-<v>-macos-universal.dmg` says `source=Notarized Developer ID`, and `xcrun stapler validate` passes on the DMG.
@@ -332,7 +335,7 @@ The packaging scripts build from the workspace, so the installers are unaffected
    - check that Quit with unsaved changes asks first;
    - check the known gap: double-clicking a `.rcraft` file starts the app without opening the file.
 
-   Without a Mac, the macOS job's own checks are all there is (`codesign --verify` of the app and the DMG, `verify.sh`, and `ReasonCraft --version` from the bundle): ask someone with a Mac to go through the steps above with the draft's DMG before publishing, or else say in the release notes that the macOS build has not been tried on a Mac yet.
+   Without a Mac, the macOS jobs' own checks are all there is (`codesign --verify` of the app and the DMG, `verify.sh`, and `ReasonCraft --version` from the DMG in `macos (universal, run)`): ask someone with a Mac to go through the steps above with the draft's DMG before publishing, or else say in the release notes that the macOS build has not been tried on a Mac yet.
 8. Linux, on a desktop (X11 and Wayland if possible):
    - install the `.deb` with `sudo apt install ./reasoncraft-<v>-linux-x86_64.deb` and start ReasonCraft from the app menu;
    - install the `.rpm` on Fedora (`sudo dnf install ./reasoncraft-<v>-linux-x86_64.rpm`) and on openSUSE (`sudo zypper install ./reasoncraft-<v>-linux-x86_64.rpm`), and start it;

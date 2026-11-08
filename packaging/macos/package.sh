@@ -8,11 +8,15 @@
 #
 #   $DIST/reasoncraft-<version>-macos-<arch>.dmg   ReasonCraft.app on a drag-to-Applications DMG
 #
-# Usage: packaging/macos/package.sh [--arch universal|aarch64|x86_64] [--skip-build | --build-only]
+# Usage: packaging/macos/package.sh [--arch universal|aarch64|x86_64]
+#                                   [--skip-build [--bin-dir DIR] | --build-only]
 #
 # --build-only builds the binaries and stops; --skip-build then packages that build without
-# compiling anything. The release workflow runs them as two steps and imports the certificate
-# between them, so that no build script or proc macro runs with the signing secrets around.
+# compiling anything. --bin-dir takes the binaries from DIR/<target>/release/reasoncraft instead of
+# the build's own folder, and leaves out the closing `--version` run (run-from-dmg.sh does it
+# elsewhere). The release workflow builds in a job without the signing secrets, uploads the
+# binaries, and signs and packages them in another job with --skip-build --bin-dir, so that no
+# build script, proc macro or built program runs where the secrets or the unlocked keychain are.
 #
 # Signing (env):
 #   MACOS_SIGN_IDENTITY   codesign identity (name or SHA-1). Default "-" = ad hoc (local testing;
@@ -30,12 +34,14 @@ HERE="$ROOT/packaging/macos"
 ARCH=universal
 SKIP_BUILD=0
 BUILD_ONLY=0
+BIN_DIR=
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --arch) ARCH="$2"; shift 2 ;;
     --skip-build) SKIP_BUILD=1; shift ;;
     --build-only) BUILD_ONLY=1; shift ;;
-    -h | --help) sed -n '7,22p' "$0"; exit 0 ;;
+    --bin-dir) BIN_DIR="$2"; shift 2 ;;
+    -h | --help) sed -n '7,28p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -47,6 +53,10 @@ case "$ARCH" in
 esac
 if [[ "$SKIP_BUILD" = 1 && "$BUILD_ONLY" = 1 ]]; then
   echo "--skip-build and --build-only exclude each other" >&2
+  exit 2
+fi
+if [[ -n "$BIN_DIR" && "$SKIP_BUILD" = 0 ]]; then
+  echo "--bin-dir goes with --skip-build: it packages a build made elsewhere" >&2
   exit 2
 fi
 
@@ -98,8 +108,10 @@ echo "==> packaging ReasonCraft $VERSION for macOS ($ARCH), identity: $IDENTITY,
 rm -rf "$WORK"
 mkdir -p "$WORK/bin"
 inputs=()
-for t in "${TARGETS[@]}"; do inputs+=("$CARGO_TARGET_DIR/$t/release/reasoncraft"); done
+for t in "${TARGETS[@]}"; do inputs+=("${BIN_DIR:-$CARGO_TARGET_DIR}/$t/release/reasoncraft"); done
 lipo -create -output "$WORK/bin/reasoncraft" "${inputs[@]}"
+# A workflow artifact does not keep the executable bit.
+chmod 755 "$WORK/bin/reasoncraft"
 lipo -info "$WORK/bin/reasoncraft"
 
 # ---- signing helpers ---------------------------------------------------------------------------
@@ -242,22 +254,11 @@ if [[ "$NOTARIZE" = 1 ]]; then
   spctl --assess --type open --context context:primary-signature -vvv "$DMG"
 fi
 
-# Smoke run. Should `--version` ever open the window, it does so on a throw-away profile and is
-# stopped after a minute (macOS has no `timeout`), never touching the real settings.
-PROFILE="$(mktemp -d)"
-REASONCRAFT_PROFILE_DIR="$PROFILE" "$APP/Contents/MacOS/ReasonCraft" --version </dev/null &
-pid=$!
-for _ in $(seq 60); do
-  kill -0 "$pid" 2>/dev/null || break
-  sleep 1
-done
-if kill -0 "$pid" 2>/dev/null; then
-  kill "$pid"
-  echo "error: ReasonCraft --version did not exit (it opened the window?)" >&2
-  exit 1
+# Smoke run of the app in the finished DMG, unless the binaries came from elsewhere (--bin-dir):
+# the release workflow runs it in a job of its own, away from the signing secrets.
+if [[ -z "$BIN_DIR" ]]; then
+  "$HERE/run-from-dmg.sh" "$DMG" "$VERSION"
 fi
-wait "$pid"
-rm -rf "$PROFILE"
 summary "- macOS \`$(basename "$DMG")\`: $OUTCOME"
 echo "==> done"
 ls -lh "$DMG"
