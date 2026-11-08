@@ -5,6 +5,8 @@
 # ever published; a maintainer reviews the draft and publishes it (see
 # docs/release.md).
 #
+# No step that runs cargo has a signing secret in its environment: each
+# platform builds in a step of its own and signs in the next (SEC-2).
 # Signing runs when the secrets exist (the `release` environment on the
 # `release` branch); without them each script warns and ships unsigned
 # (ruling L3), and a partly configured set fails on `release` (PK-16). Each
@@ -12,6 +14,7 @@
 # workflow. The script paths, arguments and artifact names keep to the
 # interface of the Craft suite's reusable release workflow, so a later
 # switch only changes this file (docs/release.md, "Compatibility").
+# On `release` the draft job also attests the files' build provenance.
 # Actions are pinned to commit SHAs (the tag they had is in the comment).
 name: Release
 
@@ -51,14 +54,19 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
+      # Also fails on `release` when v<version> is published already, before
+      # anything is built (the draft job checks again before it touches the
+      # release); elsewhere that is only a warning.
       - name: Read and check the version
         id: version
         env:
           INPUT_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           . packaging/env.sh
           input="${INPUT_VERSION#v}"
@@ -76,6 +84,13 @@ jobs:
           if [[ ! "$version" =~ $semver ]]; then
             echo "::error::'$version' is not X.Y.Z or X.Y.Z-pre"
             exit 1
+          fi
+          if published="$(gh release view "v$version" --json isDraft --jq '.isDraft | not' 2>/dev/null)"             && [[ "$published" == true ]]; then
+            if [[ "$GITHUB_REF" == refs/heads/release ]]; then
+              echo "::error::v$version is already published; bump the version on main first"
+              exit 1
+            fi
+            echo "::warning::v$version is already published; this dry run cannot become its release"
           fi
           prerelease=false
           if [[ "$version" == *-* ]]; then prerelease=true; fi
@@ -98,7 +113,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -120,7 +135,12 @@ jobs:
           ./packaging/windows/install-wix.ps1 -ToolPath $tools -Extensions UI, Util
           $tools >> $env:GITHUB_PATH
 
-      - name: Build the MSI and the portable zip
+      # Without the signing secrets: no build script or proc macro sees them.
+      # Also builds the xtask the next step runs, so that step compiles nothing.
+      - name: Build the exe
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -BuildOnly
+
+      - name: Sign and package the MSI and the portable zip
         env:
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
@@ -130,9 +150,18 @@ jobs:
           AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
           AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
           AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
-        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }}
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -SkipBuild
 
-      # The packaging script's own checks: the policy check before signing,
+      # The exe as shipped, from the zip (arm64: the windows-arm64-run job).
+      - name: Run the shipped exe
+        if: matrix.arch != 'arm64'
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: ./packaging/windows/run-from-zip.ps1 -Zip "dist/release/reasoncraft-$env:VERSION-windows-$env:ARCH-portable.zip" -Version $env:VERSION
+
+      # The packaging script's own checks: the build apart from the signing,
+      # the policy check before signing,
       # the PE checks on the release exe (passes) and the debug exe (fails
       # the C runtime check), signing without secrets, and a pre-release's
       # MSI version. They need the x64 release exe from the step above and a
@@ -144,11 +173,37 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The debug build failed.' }
           ./packaging/windows/test-packaging-script.ps1
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-windows-${{ matrix.arch }}
           path: dist/release/*
           if-no-files-found: error
+          overwrite: true
+
+  # The arm64 exe as shipped, on Windows on Arm (GitHub's windows-11-arm
+  # runner, free for public repositories).
+  windows-arm64-run:
+    name: windows (arm64, run)
+    needs: [version, windows]
+    runs-on: windows-11-arm
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-windows-arm64
+          path: ${{ runner.temp }}/arm64
+
+      - name: Run the shipped exe
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: ./packaging/windows/run-from-zip.ps1 -Zip "$env:RUNNER_TEMP/arm64/reasoncraft-$env:VERSION-windows-arm64-portable.zip" -Version $env:VERSION
 
   macos:
     name: macos (universal)
@@ -160,7 +215,7 @@ jobs:
     timeout-minutes: 90
     environment: ${{ github.ref == 'refs/heads/release' && 'release' || '' }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -173,6 +228,11 @@ jobs:
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: cargo xtask version set "$VERSION"
+
+      # Without the signing secrets, and before the certificate is imported:
+      # no build script or proc macro sees them or the unlocked keychain.
+      - name: Build the binaries
+        run: packaging/macos/package.sh --arch universal --build-only
 
       # Without APPLE_CERTIFICATE: a warning, and package.sh signs ad hoc.
       # The notarization credentials are passed only to check that the
@@ -188,12 +248,12 @@ jobs:
         run: packaging/macos/import-cert.sh
 
       # Notarized only with a real identity and all three Apple credentials.
-      - name: Build the DMG
+      - name: Sign and package the DMG
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: packaging/macos/package.sh --arch universal
+        run: packaging/macos/package.sh --arch universal --skip-build
 
       # Strict only when signing and notarization credentials are all set.
       - name: Verify the DMG
@@ -203,11 +263,12 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: packaging/macos/verify.sh --arch universal
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-macos
           path: dist/release/*
           if-no-files-found: error
+          overwrite: true
 
       - name: Remove the signing keychain
         if: always()
@@ -223,35 +284,39 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu 22.04 (glibc 2.35), as packaging/linux/Dockerfile: the
-          # binary runs on that and every newer distro.
           - arch: x86_64
-            runner: ubuntu-22.04
+            runner: ubuntu-24.04
             nfpm-arch: x86_64
             nfpm-sha256: 0660ca602b2d2d2ae4781a06c692b3eeb9d437ffea05b831d76e41f4a3188783
           - arch: aarch64
-            runner: ubuntu-22.04-arm
+            runner: ubuntu-24.04-arm
             nfpm-arch: arm64
             nfpm-sha256: 1c0f5f2999b9a974bfb04fdb0cc3306096de530ac5dbb25d739cc5f5219c919c
     runs-on: ${{ matrix.runner }}
+    # Built in Ubuntu 22.04 (glibc 2.35), the image packaging/linux/Dockerfile
+    # starts from, pinned by the same digest: the binary runs on that and
+    # every newer distro. The job runs as root in it, so nothing needs sudo.
+    container:
+      image: ubuntu:22.04@sha256:e0f80c829509ef4df9e76bd8944eb7b8ec25cbb379b112a7f9448b2c77a77c9b
     timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEBIAN_FRONTEND: noninteractive
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
-
-      # The same packages as packaging/linux/Dockerfile: egui's system
-      # libraries, the validators package.sh runs, and zsyncmake for the
-      # AppImage's .zsync.
+      # The same packages as packaging/linux/Dockerfile (git first, so that
+      # the checkout is a git one).
       - name: Install Linux dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          apt-get update
+          apt-get install -y --no-install-recommends \
             build-essential ca-certificates curl file git \
-            pkg-config libxkbcommon-dev libgtk-3-dev \
-            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
-            libssl-dev \
             desktop-file-utils appstream zsync rpm
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # nfpm 2.47.0, checked against the SHA-256 from its release's checksums.txt.
       - name: Install nfpm
@@ -263,18 +328,16 @@ jobs:
           curl --proto '=https' -fsSL -o "$RUNNER_TEMP/$file" \
             "https://github.com/goreleaser/nfpm/releases/download/v2.47.0/$file"
           echo "$NFPM_SHA256  $RUNNER_TEMP/$file" | sha256sum -c -
-          sudo tar -xzf "$RUNNER_TEMP/$file" -C /usr/local/bin nfpm
+          tar -xzf "$RUNNER_TEMP/$file" -C /usr/local/bin nfpm
           nfpm --version
 
-      # rustup, if the image lacks it (rustup-init checked against its
-      # pinned SHA-256), then the toolchain pinned in rust-toolchain.toml.
+      # rustup (rustup-init checked against its pinned SHA-256), then the
+      # toolchain pinned in rust-toolchain.toml.
       - name: Install the toolchain
         run: |
-          if ! command -v rustup >/dev/null; then
-            packaging/linux/install-rustup.sh
-            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-            export PATH="$HOME/.cargo/bin:$PATH"
-          fi
+          packaging/linux/install-rustup.sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
           rustup toolchain install
 
       - name: Set the version
@@ -288,11 +351,12 @@ jobs:
       - name: Build the Linux packages
         run: packaging/linux/package.sh
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-linux-${{ matrix.arch }}
           path: dist/release/*
           if-no-files-found: error
+          overwrite: true
 
   # The Flatpak bundle, repackaged from the linux job's tarball.
   flatpak:
@@ -311,11 +375,11 @@ jobs:
     env:
       REASONCRAFT_VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-linux-${{ matrix.arch }}
           path: ${{ runner.temp }}/linux
@@ -337,24 +401,30 @@ jobs:
           dbus-run-session -- packaging/linux/flatpak-bundle.sh \
             "$RUNNER_TEMP/linux/reasoncraft-$REASONCRAFT_VERSION-linux-$ARCH.tar.gz"
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-flatpak-${{ matrix.arch }}
           path: dist/release/*.flatpak
           if-no-files-found: error
+          overwrite: true
 
-  # SHA256SUMS.txt over every artifact, and on the release branch a draft
-  # release with them. A failed, timed-out or cancelled job stops it.
+  # SHA256SUMS.txt over every artifact, and on the release branch their
+  # build provenance and a draft release with them. A failed, timed-out or
+  # cancelled job stops it.
   draft:
     name: checksums and draft release
-    needs: [version, windows, macos, linux, flatpak]
+    needs: [version, windows, windows-arm64-run, macos, linux, flatpak]
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write
+      contents: write # the draft release
+      id-token: write # build provenance: the token Sigstore certifies
+      attestations: write # build provenance: storing the attestation
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      # Every release-* artifact (the checksums artifact is named apart, so a
+      # re-run never sums an old SHA256SUMS.txt).
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-*
           merge-multiple: true
@@ -369,11 +439,20 @@ jobs:
           sha256sum -- "${files[@]}" > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: release-checksums
+          name: checksums
           path: dist/SHA256SUMS.txt
           if-no-files-found: error
+          overwrite: true
+
+      # A signed statement that GitHub Actions built each file from this
+      # commit with this workflow; users check it with `gh attestation verify`.
+      - name: Attest the build provenance
+        if: github.ref == 'refs/heads/release'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: dist/SHA256SUMS.txt
 
       # Creates the draft, or refreshes its files and target commit. A
       # release already published under that tag is never touched.
@@ -399,6 +478,6 @@ jobs:
           else
             gh release create "$tag" --draft --title "$title" --target "$GITHUB_SHA" \
               --prerelease="$PRERELEASE" \
-              --notes "See CHANGELOG.md for what changed. Check a download against SHA256SUMS.txt." \
+              --notes "See CHANGELOG.md for what changed. Check a download against SHA256SUMS.txt, or where it was built with \`gh attestation verify <file> --repo $GH_REPO\`." \
               -- *
           fi
