@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
+description = "The document model, editing, layout and file format of ReasonCraft, without a UI."
+# Not published to crates.io: it only serves the app.
+publish = false
 rust-version.workspace = true
 
 [dependencies]
