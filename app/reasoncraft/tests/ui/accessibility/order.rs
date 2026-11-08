@@ -13,7 +13,8 @@ fn focused_name(h: &H) -> Option<String> {
 }
 
 /// From the quick Save button, Tab goes on to Undo, Redo, the command
-/// search, then Minimize, Maximize and Close; Shift+Tab comes back.
+/// search, then Minimize, Maximize and Close (not on macOS, which draws
+/// its own); Shift+Tab comes back.
 #[test]
 fn title_bar_tab_order_is_left_to_right() {
     let (d, reason) = sample();
@@ -25,15 +26,19 @@ fn title_bar_tab_order_is_left_to_right() {
     act(&mut h, Action::Undo);
     let mut args = FluentArgs::new();
     args.set("keys", "Alt+Q");
-    let order = [
+    let mut order = vec![
         t("action.save"),
         t("action.undo"),
         t("action.redo"),
         t_args("titlebar.search", &args),
-        t("window.minimize"),
-        t("window.maximize"),
-        t("window.close"),
     ];
+    if !cfg!(target_os = "macos") {
+        order.extend([
+            t("window.minimize"),
+            t("window.maximize"),
+            t("window.close"),
+        ]);
+    }
     h.query_all_by_label(&order[0])
         .min_by(|a, b| a.rect().top().total_cmp(&b.rect().top()))
         .unwrap()
