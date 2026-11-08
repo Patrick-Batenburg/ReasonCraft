@@ -19,6 +19,10 @@
   imports the C runtime. Signing is delegated to sign.ps1 (skipped with a warning when no signing
   secrets are set).
 
+  -BuildOnly builds the exe (and the xtask the packaging runs) and stops; -SkipBuild then packages
+  that build without compiling anything. The release workflow runs them as two steps, so that no
+  build script or proc macro ever runs with the signing secrets in its environment.
+
   Environment: REASONCRAFT_VERSION (default: [workspace.package] version in Cargo.toml), DIST,
   CARGO_TARGET_DIR, CARGO_BUILD_JOBS (default 4).
 
@@ -30,13 +34,16 @@
 .EXAMPLE
   pwsh packaging/windows/package.ps1 -Arch x64
   pwsh packaging/windows/package.ps1 -Arch x86 -SkipBuild
+  pwsh packaging/windows/package.ps1 -Arch x64 -BuildOnly    # then -SkipBuild with the secrets
   pwsh packaging/windows/package.ps1 -Arch arm64     # cross-compiled; needs the MSVC ARM64 build tools
 #>
 param(
   [ValidateSet('x64', 'x86', 'arm64')] [string] $Arch = 'x64',
-  [switch] $SkipBuild
+  [switch] $SkipBuild,
+  [switch] $BuildOnly
 )
 $ErrorActionPreference = 'Stop'
+if ($SkipBuild -and $BuildOnly) { throw '-SkipBuild and -BuildOnly exclude each other.' }
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $PSScriptRoot 'pe-checks.ps1')
 
@@ -91,10 +98,16 @@ try {
     [Environment]::SetEnvironmentVariable($flagVar, '-C target-feature=+crt-static')
     try { Invoke-Native "cargo build ($Target)" { cargo build --release --locked -p reasoncraft --target $Target } }
     finally { [Environment]::SetEnvironmentVariable($flagVar, $oldFlags) }
+    # The xtask that writes the licence page below, so that `cargo xtask` then compiles nothing.
+    Invoke-Native 'cargo build (xtask)' { cargo build --locked -p xtask }
   }
 
   $Bin = Join-Path $TargetDir "$Target\release"
   Assert-ReleaseExe (Join-Path $Bin 'reasoncraft.exe') $Arch
+  if ($BuildOnly) {
+    Write-Output "Built $(Join-Path $Bin 'reasoncraft.exe'); package it with -SkipBuild."
+    return
+  }
 
   $Stage = Join-Path $TargetDir "windows-package\$Arch"
   Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue

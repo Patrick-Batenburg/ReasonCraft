@@ -6,7 +6,9 @@
 .SYNOPSIS
   Check the real packaging script without installing anything.
 .DESCRIPTION
-  1. package.ps1 runs one policy check on the MSI, before it signs that MSI once (read from its syntax tree).
+  1. package.ps1 runs one policy check on the MSI, before it signs that MSI once (read from its syntax tree);
+     -BuildOnly builds the exe and the xtask and returns before anything is signed, and outside that
+     build only `cargo xtask` runs cargo, so -SkipBuild compiles nothing.
   2. Assert-ReleaseExe accepts the x64 release exe, refuses it labelled arm64 ("machine"), refuses
      the debug exe, which imports the C runtime, and a copy without DependentLoadFlags 0x800.
   3. sign.ps1 without signing secrets warns, leaves the file unsigned and exits 0, also on the
@@ -54,6 +56,33 @@ $signs = @($commands | Where-Object {
 if ($signs.Count -ne 1) { throw 'Expected the MSI to be signed exactly once.' }
 if ($checks[0].Extent.StartOffset -ge $signs[0].Extent.StartOffset) { throw 'The MSI must pass the policy check before it is signed.' }
 Write-Output 'PASS the MSI is policy-checked before it is signed.'
+
+# ---- 1b. the build apart from the signing ---------------------------------------------------------
+# The release workflow builds with -BuildOnly in a step without the signing secrets and packages with
+# -SkipBuild in the step that has them (SEC-2): only `cargo xtask`, built by -BuildOnly, may run
+# cargo outside the build block, and -BuildOnly stops before anything is signed.
+$ifs = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.IfStatementAst] }, $true))
+function Get-IfBody([string] $Condition) {
+  $found = @($ifs | Where-Object { $_.Clauses.Count -eq 1 -and $_.Clauses[0].Item1.Extent.Text -eq $Condition })
+  if ($found.Count -ne 1) { throw "Expected one 'if ($Condition)' in the packaging script." }
+  $found[0].Clauses[0].Item2
+}
+$buildBody = Get-IfBody '-not $SkipBuild'
+foreach ($cargo in @($commands | Where-Object { $_.CommandElements[0].Extent.Text -eq 'cargo' })) {
+  $inBuild = $cargo.Extent.StartOffset -ge $buildBody.Extent.StartOffset -and $cargo.Extent.EndOffset -le $buildBody.Extent.EndOffset
+  if (-not $inBuild -and $cargo.CommandElements[1].Extent.Text -ne 'xtask') { throw "cargo runs outside the build block: $($cargo.Extent.Text)" }
+}
+if (-not @($commands | Where-Object { $_.Extent.Text -match '^cargo build --locked -p xtask$' -and $_.Extent.StartOffset -ge $buildBody.Extent.StartOffset -and $_.Extent.EndOffset -le $buildBody.Extent.EndOffset }).Count) {
+  throw 'The build block must build the xtask, so that -SkipBuild compiles nothing.'
+}
+$stopBody = Get-IfBody '$BuildOnly'
+if (-not @($stopBody.FindAll({ param($node) $node -is [Management.Automation.Language.ReturnStatementAst] }, $true)).Count) { throw '-BuildOnly must return.' }
+foreach ($sign in @($commands | Where-Object { @($_.CommandElements | Where-Object { $_.Extent.Text -match 'sign.ps1' }).Count })) {
+  if ($stopBody.Extent.StartOffset -ge $sign.Extent.StartOffset) { throw '-BuildOnly must stop before anything is signed.' }
+}
+$out = & $Shell -NoProfile -ExecutionPolicy Bypass -File $script -Arch x64 -SkipBuild -BuildOnly 2>&1 | Out-String
+if ($LASTEXITCODE -eq 0 -or $out -notmatch 'exclude each other') { throw "package.ps1 took -SkipBuild with -BuildOnly: $out" }
+Write-Output 'PASS -BuildOnly builds the exe and the xtask and stops before signing; -SkipBuild runs no cargo build.'
 
 # ---- 2. the PE checks -----------------------------------------------------------------------------
 . (Join-Path $PSScriptRoot 'pe-checks.ps1')

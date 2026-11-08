@@ -8,7 +8,11 @@
 #
 #   $DIST/reasoncraft-<version>-macos-<arch>.dmg   ReasonCraft.app on a drag-to-Applications DMG
 #
-# Usage: packaging/macos/package.sh [--arch universal|aarch64|x86_64] [--skip-build]
+# Usage: packaging/macos/package.sh [--arch universal|aarch64|x86_64] [--skip-build | --build-only]
+#
+# --build-only builds the binaries and stops; --skip-build then packages that build without
+# compiling anything. The release workflow runs them as two steps and imports the certificate
+# between them, so that no build script or proc macro runs with the signing secrets around.
 #
 # Signing (env):
 #   MACOS_SIGN_IDENTITY   codesign identity (name or SHA-1). Default "-" = ad hoc (local testing;
@@ -25,11 +29,13 @@ HERE="$ROOT/packaging/macos"
 
 ARCH=universal
 SKIP_BUILD=0
+BUILD_ONLY=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --arch) ARCH="$2"; shift 2 ;;
     --skip-build) SKIP_BUILD=1; shift ;;
-    -h | --help) sed -n '7,18p' "$0"; exit 0 ;;
+    --build-only) BUILD_ONLY=1; shift ;;
+    -h | --help) sed -n '7,22p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -39,34 +45,42 @@ case "$ARCH" in
   x86_64) TARGETS=(x86_64-apple-darwin) ;;
   *) echo "unknown --arch $ARCH" >&2; exit 2 ;;
 esac
+if [[ "$SKIP_BUILD" = 1 && "$BUILD_ONLY" = 1 ]]; then
+  echo "--skip-build and --build-only exclude each other" >&2
+  exit 2
+fi
 
 # Keep in sync with LSMinimumSystemVersion in Info.plist.in (a test checks it).
 export MACOSX_DEPLOYMENT_TARGET=11.0
-# "-" (ad hoc) counts as no identity.
-if [[ "${MACOS_SIGN_IDENTITY:-}" == "-" ]]; then unset MACOS_SIGN_IDENTITY; fi
-signing_set_complete "macOS signing" MACOS_SIGN_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID || exit 1
-IDENTITY="${MACOS_SIGN_IDENTITY:--}"
 SHORT_VERSION="${VERSION%%-*}"
 WORK="$CARGO_TARGET_DIR/macos-package"
 APP="$WORK/ReasonCraft.app"
 DMG="$DIST/reasoncraft-$VERSION-macos-$ARCH.dmg"
 
-NOTARIZE=0
-if [[ "$IDENTITY" = "-" ]]; then
-  warn "macOS: ad hoc signing (no MACOS_SIGN_IDENTITY); the DMG is not notarized"
-  OUTCOME="**ad hoc signed, not notarized** (no signing secrets; Gatekeeper blocks it on other Macs)"
-elif [[ -n "${APPLE_ID:-}" ]] && [[ -n "${APPLE_PASSWORD:-}" ]] && [[ -n "${APPLE_TEAM_ID:-}" ]]; then
-  NOTARIZE=1
-  OUTCOME="Developer ID signed (hardened runtime), notarized, ticket stapled to the app and the DMG"
-else
-  warn "macOS: APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID incomplete; signed but not notarized"
-  OUTCOME="Developer ID signed, **not notarized** (notarization credentials incomplete)"
-fi
+# The signing settings, checked before the build, so that a partly configured set fails at once.
+if [[ "$BUILD_ONLY" = 0 ]]; then
+  # "-" (ad hoc) counts as no identity.
+  if [[ "${MACOS_SIGN_IDENTITY:-}" == "-" ]]; then unset MACOS_SIGN_IDENTITY; fi
+  signing_set_complete "macOS signing" MACOS_SIGN_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID || exit 1
+  IDENTITY="${MACOS_SIGN_IDENTITY:--}"
 
-echo "==> ReasonCraft $VERSION for macOS ($ARCH), identity: $IDENTITY, notarize: $NOTARIZE"
+  NOTARIZE=0
+  if [[ "$IDENTITY" = "-" ]]; then
+    warn "macOS: ad hoc signing (no MACOS_SIGN_IDENTITY); the DMG is not notarized"
+    # How users open it: README.md, "Install".
+    OUTCOME="**ad hoc signed, not notarized** (no signing secrets; Gatekeeper blocks it on other Macs until the user allows it: on macOS 15 and later System Settings → Privacy & Security → Open Anyway, on macOS 11 to 14 right-click → Open)"
+  elif [[ -n "${APPLE_ID:-}" ]] && [[ -n "${APPLE_PASSWORD:-}" ]] && [[ -n "${APPLE_TEAM_ID:-}" ]]; then
+    NOTARIZE=1
+    OUTCOME="Developer ID signed (hardened runtime), notarized, ticket stapled to the app and the DMG"
+  else
+    warn "macOS: APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID incomplete; signed but not notarized"
+    OUTCOME="Developer ID signed, **not notarized** (notarization credentials incomplete)"
+  fi
+fi
 
 # ---- build -------------------------------------------------------------------------------------
 if [[ "$SKIP_BUILD" = 0 ]]; then
+  echo "==> building ReasonCraft $VERSION for macOS ($ARCH)"
   args=()
   for t in "${TARGETS[@]}"; do
     # A caller may only have installed targets for `stable`, not for the pinned toolchain.
@@ -75,6 +89,11 @@ if [[ "$SKIP_BUILD" = 0 ]]; then
   done
   (cd "$ROOT" && cargo build --release --locked -p reasoncraft "${args[@]}")
 fi
+if [[ "$BUILD_ONLY" = 1 ]]; then
+  echo "==> built; package it with --skip-build"
+  exit 0
+fi
+echo "==> packaging ReasonCraft $VERSION for macOS ($ARCH), identity: $IDENTITY, notarize: $NOTARIZE"
 
 rm -rf "$WORK"
 mkdir -p "$WORK/bin"

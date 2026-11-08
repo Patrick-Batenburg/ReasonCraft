@@ -3,6 +3,8 @@
 # aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: ReasonCraft's file names.
 #
 # CI only: import the Developer ID certificate into a temporary keychain so codesign can use it.
+# The release workflow runs it after the build (package.sh --build-only), so no build script or
+# proc macro runs while the keychain is unlocked.
 #
 # Inputs (env): APPLE_CERTIFICATE (base64 .p12), APPLE_CERTIFICATE_PASSWORD, KEYCHAIN_PASSWORD
 # (optional; random if unset), RUNNER_TEMP (or TMPDIR).
@@ -47,7 +49,8 @@ cleanup() {
 trap cleanup EXIT
 printf '%s' "$APPLE_CERTIFICATE" | base64 --decode >"$CERT"
 security create-keychain -p "$KC_PASS" "$KEYCHAIN"
-security set-keychain-settings -lut 21600 "$KEYCHAIN"
+# Locks itself after 90 minutes unused, the macOS job's time limit.
+security set-keychain-settings -lut 5400 "$KEYCHAIN"
 security unlock-keychain -p "$KC_PASS" "$KEYCHAIN"
 security import "$CERT" -P "${APPLE_CERTIFICATE_PASSWORD:-}" -T /usr/bin/codesign -T /usr/bin/security -t cert -f pkcs12 -k "$KEYCHAIN"
 rm -f "$CERT"

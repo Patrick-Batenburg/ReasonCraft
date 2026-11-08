@@ -92,7 +92,11 @@ has() { local item="$1"; case " $FORMATS " in *" $item "*) return 0 ;; *) return
 if has tar; then
   mkdir -p "$WORK/tar"
   cp -R "$STAGE/usr" "$WORK/tar/$BASENAME"
-  tar -C "$WORK/tar" -czf "$DIST/$BASENAME.tar.gz" "$BASENAME"
+  # Owned by root and writable only by the owner in the archive, whatever the build user and its
+  # umask: unpacked as root, the files would otherwise belong to whoever has the build user's uid
+  # (1001 on GitHub's runners), with group-writable folders.
+  tar -C "$WORK/tar" --owner=0 --group=0 --numeric-owner --mode=u+rwX,go+rX,go-w \
+    -czf "$DIST/$BASENAME.tar.gz" "$BASENAME"
   echo "wrote $DIST/$BASENAME.tar.gz"
 fi
 
