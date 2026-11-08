@@ -93,6 +93,8 @@ Downloads are named `reasoncraft-<version>-<os>-<architecture>`, and `SHA256SUMS
 
   The deb, rpm and Flatpak add ReasonCraft to the app menu, and double-clicking a `.rcraft` file then opens it.
 
+  The Open and Save dialogs come from the desktop portal (`xdg-desktop-portal` with a backend such as `xdg-desktop-portal-gtk`, `-gnome` or `-kde`) or, without one, from `zenity`. The deb and rpm recommend them; with the AppImage or the `.tar.gz`, or when recommended packages are left out, install one of them if ReasonCraft says it cannot show the file dialog.
+
 ReasonCraft runs as one window per user: opening a map while it runs (by double-clicking it, or `reasoncraft map.rcraft`) opens it in a tab of the running window, or brings that tab forward when the map is open already.
 
 How the installers are built and checked is described in [docs/release.md](docs/release.md). Changes per version are in [CHANGELOG.md](CHANGELOG.md).

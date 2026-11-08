@@ -153,7 +153,17 @@ fn packages_name_their_runtime_libraries() {
         ],
         "ruling S6-T13-3: no libxrandr2"
     );
-    assert_eq!(deb_recommends, ["xdg-desktop-portal"]);
+    // rfd's file dialogs: the portal with a backend that shows them (a
+    // desktop's own backend will do), and zenity, which rfd runs when the
+    // portal fails; with neither, Open and Save show nothing (UX-6).
+    assert_eq!(
+        deb_recommends,
+        [
+            "xdg-desktop-portal",
+            "xdg-desktop-portal-gtk | xdg-desktop-portal-backend",
+            "zenity",
+        ]
+    );
 
     // The rpm names the libraries by soname, which every rpm distribution
     // provides under its own package names (Fedora `libxkbcommon`,
@@ -174,6 +184,8 @@ fn packages_name_their_runtime_libraries() {
             "libwayland-client.so.0()(64bit)",
             "libwayland-egl.so.1()(64bit)",
             "xdg-desktop-portal",
+            "(xdg-desktop-portal-gtk or xdg-desktop-portal-gnome or xdg-desktop-portal-kde)",
+            "zenity",
         ]
     );
 }
