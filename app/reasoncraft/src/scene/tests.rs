@@ -364,7 +364,7 @@ fn numbers_never_overlap_text() {
 }
 
 /// A source box is edged, so it shows on the light canvas (a white box
-/// on a near-white canvas was 1.03:1) (ROB-16).
+/// on a near-white canvas was 1.03:1).
 #[test]
 fn source_boxes_have_an_edge() {
     let mut doc = Document::new("Claim");

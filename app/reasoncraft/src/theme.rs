@@ -280,7 +280,7 @@ mod tests {
 
     /// Non-text contrast (WCAG 1.4.11, 3:1): the edges of text fields and
     /// source boxes and the attachment lines on every surface; muted text
-    /// on a highlighted row (Search commands) still 4.5:1 (ROB-16).
+    /// on a highlighted row (Search commands) still 4.5:1.
     #[test]
     fn edges_lines_and_highlighted_rows_contrast() {
         for t in [Tokens::dark(), Tokens::light()] {

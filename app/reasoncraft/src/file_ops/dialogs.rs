@@ -40,7 +40,7 @@ pub trait FileDialogs {
 ///
 /// On Linux and the BSDs rfd asks the desktop portal and, when that
 /// fails, runs zenity; with neither it returns no file at once, as if
-/// cancelled (UX-6). A dialog that comes back empty sooner than anyone
+/// cancelled. A dialog that comes back empty sooner than anyone
 /// could cancel it counts as not shown.
 #[derive(Default)]
 pub struct RfdDialogs {

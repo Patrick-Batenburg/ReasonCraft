@@ -1,4 +1,4 @@
-//! Messages that end in the background wait for an open dialog (APP-3):
+//! Messages that end in the background wait for an open dialog:
 //! an export or image error never shows over the link editor, and
 //! closing a message leaves the link editor alone.
 

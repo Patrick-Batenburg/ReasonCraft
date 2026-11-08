@@ -1,4 +1,4 @@
-//! Layout time grows with the map, not faster (SEC-R5): a chain of
+//! Layout time grows with the map, not faster: a chain of
 //! whole-card objections, each against the card before it, lays out about
 //! as fast as a chain of reasons of the same size. Its whole-card ports
 //! used to be merged into their premise's group one `shift_remove` at a

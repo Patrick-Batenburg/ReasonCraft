@@ -138,7 +138,7 @@ fn open_reuses_untouched_tab_else_adds() {
     assert!(matches!(app.modal, Some(Modal::Error { .. })));
 }
 
-/// UX-8: a missing file (or a folder) on the command line says so.
+/// A missing file (or a folder) on the command line says so.
 #[test]
 fn command_line_reports_missing_files_and_bad_ones() {
     let dir = tempfile::tempdir().unwrap();

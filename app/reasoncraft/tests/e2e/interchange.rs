@@ -1,4 +1,4 @@
-//! Step 5 end to end: a Dutch map laid out left to right with tapered
+//! End to end: a Dutch map laid out left to right with tapered
 //! connectors and numbers, find and replace (one undo step), the spelling
 //! pass, an Argdown round trip into a new tab, the same SVG from both
 //! tabs, and autosave restored after a crash.

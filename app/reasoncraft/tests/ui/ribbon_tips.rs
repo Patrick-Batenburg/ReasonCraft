@@ -1,4 +1,4 @@
-//! Ribbon tooltips (UX-2): every command shows "label (shortcut)" as
+//! Ribbon tooltips: every command shows "label (shortcut)" as
 //! Search commands writes it, a greyed-out add command also says why,
 //! and an icon-only (compact) button keeps its tooltip.
 

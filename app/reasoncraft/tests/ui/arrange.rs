@@ -286,7 +286,7 @@ fn connect_from_ribbon_while_editing_stays_on() {
 }
 
 /// A connected card moves by keyboard: Ctrl+Shift+K on its premise, pick
-/// another premise, Enter (ROB-5).
+/// another premise, Enter.
 #[test]
 fn move_to_moves_a_connected_card_by_keyboard() {
     let (d, [ca, _, cc]) = three_cards();

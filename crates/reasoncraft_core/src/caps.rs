@@ -11,13 +11,13 @@ pub const MAX_META_CHARS: usize = 1_000;
 /// The most characters all of a document's texts keep together when it
 /// is opened (box texts, comments, snippets, citations and essay
 /// paragraphs, in that order): about 1,600 pages. A longer file is cut,
-/// so laying it out and painting it stay bounded (SEC-R1).
+/// so laying it out and painting it stay bounded.
 pub const MAX_DOCUMENT_CHARS: usize = 8_000_000;
 /// The deepest indent of text written for other programs (the clipboard
 /// text of Copy, the outline as text or Markdown), in levels, and the
 /// most parts an outline number shows: deeper lines stay at that indent
 /// and their numbers keep their last parts after an ellipsis, so such a
-/// text grows with its line count, not its square (SEC-R2, SEC-R4).
+/// text grows with its line count, not its square.
 pub const MAX_INDENT: usize = 32;
 /// The longest link kept, in characters. A longer link is refused, not
 /// cut: a cut link would lead somewhere else.

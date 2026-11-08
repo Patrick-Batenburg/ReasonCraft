@@ -1,4 +1,4 @@
-//! Course-rule check tests for wording (step 3, task 4): key terms,
+//! Course-rule check tests for wording: key terms,
 //! compound statements and the document language.
 
 use reasoncraft_core::checks::{CheckKind, CheckSet, Issue, run_checks};

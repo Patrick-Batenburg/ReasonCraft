@@ -71,7 +71,7 @@ fn empty_author_shown_translated() {
     let mut doc = Document::new("Claim");
     let root = doc.root;
     doc.add_comment(root, "", "New style", None).unwrap();
-    // Files from before step 6 hold the English word: kept as it is.
+    // Older files hold the English word: kept as it is.
     doc.add_comment(root, "Anonymous", "Old style", None)
         .unwrap();
     doc.add_comment(root, "Ann", "Named", None).unwrap();

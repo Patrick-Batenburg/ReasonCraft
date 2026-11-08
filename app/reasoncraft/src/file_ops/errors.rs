@@ -129,7 +129,7 @@ mod tests {
         FileError::Io(io::Error::new(kind, "detail"))
     }
 
-    /// UX-3: the usual reasons get a message of their own, in the UI's
+    /// The usual reasons get a message of their own, in the UI's
     /// language, with what to do.
     #[test]
     fn common_io_errors_are_explained() {

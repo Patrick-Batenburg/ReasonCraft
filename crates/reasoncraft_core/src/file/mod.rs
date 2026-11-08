@@ -38,7 +38,7 @@ const MAX_EXTRA_BYTES: usize = 1 << 20;
 /// Most JSON values (objects, arrays, numbers, strings, ...) a
 /// `document.json` may hold: parsed, each takes far more memory than its
 /// bytes, so a "newer version" field holding a huge array of tiny values
-/// is refused before it is parsed (SEC-R3). A map of 10,000 boxes holds
+/// is refused before it is parsed. A map of 10,000 boxes holds
 /// about 400,000.
 const MAX_JSON_VALUES: usize = 2_000_000;
 /// Largest single image asset (32 MiB).

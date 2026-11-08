@@ -1,7 +1,7 @@
 //! The map for screen readers: the canvas says what is selected, has a
 //! node per box and card on screen with the selection as its active
 //! descendant, describes "Move to…", and the inline editor is named by
-//! the box it edits (ROB-1).
+//! the box it edits.
 
 use super::*;
 use reasoncraft_core::Acceptance;

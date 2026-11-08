@@ -196,7 +196,7 @@ fn document_limit_is_modest() {
 /// All of a document's texts together keep at most
 /// [`crate::caps::MAX_DOCUMENT_CHARS`] characters: a file of many full
 /// boxes is cut on open (in document order), so laying it out and
-/// painting it stay bounded (SEC-R1).
+/// painting it stay bounded.
 #[test]
 fn a_documents_total_text_is_cut_on_open() {
     use crate::caps::MAX_DOCUMENT_CHARS;
@@ -234,7 +234,7 @@ fn a_documents_total_text_is_cut_on_open() {
 
 /// A document of millions of tiny JSON values (an unknown field from a
 /// "newer version" holding a huge array) is refused before it is parsed,
-/// as each value would take far more memory than its bytes (SEC-R3).
+/// as each value would take far more memory than its bytes.
 #[test]
 fn a_flood_of_json_values_is_refused() {
     let mut json = serde_json::to_value(Document::new("c")).unwrap();

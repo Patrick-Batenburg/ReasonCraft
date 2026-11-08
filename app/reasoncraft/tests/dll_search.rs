@@ -1,4 +1,4 @@
-//! DLL planting (SEC-1): a DLL in the current folder must never load. Its
+//! DLL planting: a DLL in the current folder must never load. Its
 //! own test binary, as it changes the process's current folder and DLL
 //! search order.
 #![cfg(windows)]

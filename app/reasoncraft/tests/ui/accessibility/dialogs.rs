@@ -1,5 +1,5 @@
 //! Dialogs take the keyboard focus on their default button, are named
-//! after their heading, and Enter answers with the default (ROB-7).
+//! after their heading, and Enter answers with the default.
 
 use super::*;
 

@@ -112,8 +112,9 @@ mod tests {
         std::fs::write(path, text).unwrap();
     }
 
-    /// APP-1, defence in depth: a copy that writes its settings keeps the
-    /// words another copy added to the personal dictionary meanwhile.
+    /// Defence in depth for the single instance (ruling RR-2): a copy
+    /// that writes its settings keeps the words another copy added to the
+    /// personal dictionary meanwhile.
     #[test]
     fn saving_keeps_words_another_copy_added() {
         let dir = tempfile::tempdir().unwrap();

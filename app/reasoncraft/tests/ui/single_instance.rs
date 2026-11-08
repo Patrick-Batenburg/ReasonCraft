@@ -1,4 +1,4 @@
-//! APP-1 (owner decision D2): two launches of the built app with one
+//! One running copy (ruling RR-2): two launches of the built app with one
 //! profile folder. The second hands its file to the first and exits; the
 //! first opens it. Debug builds only: the first copy notes what it opens
 //! in a file (`REASONCRAFT_DEBUG_OPENED_LOG`), as a test cannot look

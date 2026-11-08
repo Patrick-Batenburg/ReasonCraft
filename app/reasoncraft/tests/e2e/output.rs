@@ -1,4 +1,4 @@
-//! Step 4 end to end: write the essay (introduction and two sections),
+//! End to end: write the essay (introduction and two sections),
 //! delete a branch with text and undo it, export the map, the outline and
 //! the essay in every file format through the app's own commands, check
 //! that each file is valid, then save, reopen and compare the essay.

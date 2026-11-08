@@ -1,4 +1,4 @@
-//! Course-rule check tests (step 3, task 4).
+//! Course-rule check tests.
 
 use std::collections::HashSet;
 use std::time::Instant;

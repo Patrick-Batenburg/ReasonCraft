@@ -1,4 +1,4 @@
-//! The window's sizes: the smallest one, and the first (APP-4). On the
+//! The window's sizes: the smallest one, and the first. On the
 //! first run the window opens at [`FIRST_SIZE`], centred (see `main.rs`),
 //! and is maximised when that leaves too little room around it (a
 //! 1366 × 768 laptop, or 1920 × 1080 at 150 %), so the status bar never

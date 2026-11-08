@@ -155,8 +155,8 @@ fn foreign_text_pastes_as_a_box() {
 }
 
 /// An item without text still puts text on the system clipboard: egui
-/// sends no paste for an empty clipboard, so Ctrl+V would do nothing
-/// (APP-R4). Pasting that text brings the item back.
+/// sends no paste for an empty clipboard, so Ctrl+V would do nothing.
+/// Pasting that text brings the item back.
 #[test]
 fn an_empty_item_copies_marker_text_and_pastes_back() {
     let (mut a, _, a1) = app();

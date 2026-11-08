@@ -108,7 +108,7 @@ const ELLIPSIS: char = '…';
 
 /// `prefix.part`, keeping at most [`MAX_INDENT`] parts: past that the
 /// first part goes and an ellipsis leads, so a number never grows with
-/// the depth (SEC-R4).
+/// the depth.
 fn join(prefix: &str, part: &str) -> String {
     if prefix.is_empty() {
         return part.to_owned();

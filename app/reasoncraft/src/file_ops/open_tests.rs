@@ -94,7 +94,7 @@ fn a_map_too_long_to_open_whole_stays_unsaved() {
     assert_eq!(tab.path, Some(path));
 }
 
-/// UX-9: whether the file changed on disk is asked with the write, on the
+/// Whether the file changed on disk is asked with the write, on the
 /// worker, not on the UI thread before it (a slow network share would
 /// freeze the window).
 #[test]
@@ -151,7 +151,7 @@ fn shown_text(app: &ReasonCraftApp) -> String {
     doc.boxes[&doc.root].text.clone()
 }
 
-/// APP-2: Save As onto the file another tab shows leaves one tab with that
+/// Save As onto the file another tab shows leaves one tab with that
 /// path: the other one closes when it has no unsaved work.
 #[test]
 fn save_as_onto_a_file_open_in_a_clean_tab_closes_that_tab() {

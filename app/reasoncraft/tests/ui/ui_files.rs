@@ -12,7 +12,7 @@ fn type_text(h: &mut Harness<'static, ReasonCraftApp>, text: &str) {
     h.run();
 }
 
-// ---- Task 11: file operations ----
+// ---- File operations ----
 
 fn file_harness() -> (Harness<'static, ReasonCraftApp>, FakeDialogs) {
     let fake = FakeDialogs::default();

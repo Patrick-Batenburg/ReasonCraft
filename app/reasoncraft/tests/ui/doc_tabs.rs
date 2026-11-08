@@ -2,7 +2,7 @@
 //! row shows the tabs around the active one with a menu of all of them;
 //! the active tab and "+" always show. Ctrl+Tab, Ctrl+Shift+Tab,
 //! Ctrl+PgDn, Ctrl+PgUp, Ctrl+W and Ctrl+F4 work the tabs, and Search
-//! commands finds them (ROB-2, APP-2).
+//! commands finds them.
 
 use crate::common::H;
 use eframe::egui::{self, Key, Modifiers, accesskit::Role};
@@ -125,7 +125,7 @@ fn search_commands_finds_the_tab_commands() {
     }
 }
 
-/// A chip too narrow for its title shows it whole in a tooltip (ROB-R2).
+/// A chip too narrow for its title shows it whole in a tooltip.
 #[test]
 fn a_narrowed_chip_shows_its_title_on_hover() {
     let mut h = tabs(7, 800.0);

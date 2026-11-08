@@ -69,7 +69,7 @@ fn version_flag_prints_version() {
     );
 }
 
-/// UX-7: `--version` with nowhere to print (stdout closed, as when the
+/// `--version` with nowhere to print (stdout closed, as when the
 /// reader went away) exits quietly instead of panicking.
 #[test]
 fn version_flag_survives_a_closed_stdout() {

@@ -147,7 +147,7 @@ mod tests {
     }
 
     /// A source's citation keeps the cap a file's open applies, and a link
-    /// too long to keep is refused, not cut (CORE-R2).
+    /// too long to keep is refused, not cut.
     #[test]
     fn snippet_source_texts_are_capped() {
         use crate::caps::MAX_LINK_CHARS;

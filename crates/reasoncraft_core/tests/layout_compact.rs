@@ -1,4 +1,4 @@
-//! Compact contour-packed layout (step 5, Tasks 4 and 5).
+//! Compact contour-packed layout.
 
 use emath::{Pos2, Rect, pos2};
 use reasoncraft_core::fixtures::{FixedMeasure, sample_iot_like};

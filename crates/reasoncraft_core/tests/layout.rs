@@ -1,4 +1,4 @@
-//! Layout tests (spec: Task 6).
+//! Layout tests.
 
 use std::time::{Duration, Instant};
 

@@ -1,4 +1,4 @@
-//! The backstage in an 800×500 window (UX-5): every entry down the left
+//! The backstage in an 800×500 window: every entry down the left
 //! is on screen, above the status bar, and a mouse click on a page's
 //! entry opens that page (before, About and the entries above it ran past
 //! the window's bottom).

@@ -211,7 +211,7 @@ fn glyph_click_never_opens_unsafe_stored_links() {
 
 /// The keyboard opens the selected box's link: Ctrl+Shift+L on the map,
 /// "Open link" in Search commands and on the Insert tab, through the
-/// same opener as the glyph (here a fake that only records) (ROB-15).
+/// same opener as the glyph (here a fake that only records).
 #[test]
 fn open_link_by_keyboard_search_and_ribbon() {
     use egui::{Key, Modifiers};

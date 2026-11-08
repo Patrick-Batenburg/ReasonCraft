@@ -1,4 +1,4 @@
-//! Outline Markdown tests (step 4, task 6).
+//! Outline Markdown tests.
 
 use reasoncraft_core::outline::{OutlineOptions, build_outline};
 use reasoncraft_core::outline_md::{outline_markdown, outline_plain_text_lang};

@@ -1,4 +1,4 @@
-//! The find bar in a narrow window (UX-1): with both side panels open,
+//! The find bar in a narrow window: with both side panels open,
 //! every control of the bar stays inside the map area, and a real mouse
 //! click on each one does what it says (before, the buttons on the right
 //! sat under the Text panel and a click landed there).

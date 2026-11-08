@@ -1,4 +1,4 @@
-//! Step 3 end to end: snippets (one tagged with a source), a selection
+//! End to end: snippets (one tagged with a source), a selection
 //! dropped onto a premise, the document language and the outline
 //! switches, through actions only; then save, reopen, and compare the
 //! document, the outline text and the issues.

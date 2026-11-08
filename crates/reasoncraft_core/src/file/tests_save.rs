@@ -133,7 +133,7 @@ fn a_map_too_long_to_open_whole_is_not_saved() {
 }
 
 /// A save to a symbolic link updates the file it points to and keeps the
-/// link (CORE-6). Windows needs a privilege to make links: skipped there
+/// link. Windows needs a privilege to make links: skipped there
 /// without it.
 #[test]
 fn saving_through_a_link_keeps_the_link() {
@@ -160,7 +160,7 @@ fn saving_through_a_link_keeps_the_link() {
     assert_eq!(names(dir.path()), ["link.rcraft", "real.rcraft"]);
 }
 
-/// UX-3: a read-only file is not replaced, on any OS (on Unix a rename
+/// A read-only file is not replaced, on any OS (on Unix a rename
 /// would replace it, and keep it read-only); the save fails as "permission
 /// denied" and leaves the file as it was.
 #[test]

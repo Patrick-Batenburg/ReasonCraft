@@ -158,7 +158,7 @@ fn packages_name_their_runtime_libraries() {
     );
     // rfd's file dialogs: the portal with a backend that shows them (a
     // desktop's own backend will do), and zenity, which rfd runs when the
-    // portal fails; with neither, Open and Save show nothing (UX-6).
+    // portal fails; with neither, Open and Save show nothing.
     assert_eq!(
         deb_recommends,
         [
@@ -221,7 +221,7 @@ fn appstream_is_validated_without_overrides() {
 }
 
 /// The Dutch texts of the desktop entry and the AppStream metadata use
-/// the app's term for a claim, "bewering" (ruling J3, UX-10); "stelling"
+/// the app's term for a claim, "bewering" (ruling J3); "stelling"
 /// stays only as a search keyword.
 #[test]
 fn dutch_package_texts_use_the_glossary_terms() {

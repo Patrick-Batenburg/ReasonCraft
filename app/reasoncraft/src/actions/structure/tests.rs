@@ -165,7 +165,7 @@ fn connect_mode_starts_for_parked_items_and_ends_on_move() {
         .unwrap();
     let mut a = app_with(d);
     // Every item but the root (a premise moves its card), connected or
-    // not, at the top of the parking area or deeper (ROB-5).
+    // not, at the top of the parking area or deeper.
     for (sel, ok) in [
         (Item::Box(root), false),
         (Item::Card(ca), true),
@@ -337,7 +337,7 @@ fn stop_editing_keeps_connect_mode() {
 
 /// "Move to…" moves a connected card by keyboard: Enter on another box
 /// moves it there as one step; its own branch is refused (no cycle).
-/// "Move to parking" parks the selection (ROB-5).
+/// "Move to parking" parks the selection.
 #[test]
 fn move_to_works_for_connected_items_and_park_parks() {
     let (d, [ca, cb, _]) = three_cards();

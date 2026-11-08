@@ -225,7 +225,7 @@ fn alt_q_while_editing_keeps_the_text() {
 
 /// While arrowing, the field (which keeps the focus) names the
 /// highlighted row as its active descendant, so a screen reader reads
-/// it; the field also says it controls the list (ROB-13).
+/// it; the field also says it controls the list.
 #[test]
 fn highlighted_row_is_the_active_descendant() {
     let mut h = harness();

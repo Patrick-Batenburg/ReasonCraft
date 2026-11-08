@@ -331,7 +331,7 @@ fn compact_backstage_entry_shows_its_label_on_focus() {
 
 /// At 200 % the ribbon's tabs do not fit 800 px: the tab row scrolls,
 /// so the last tab (Help) is reached with the keyboard and the right
-/// chevron, and comes into view when chosen (ROB-9).
+/// chevron, and comes into view when chosen.
 #[test]
 fn ribbon_tabs_scroll_when_they_do_not_fit() {
     let mut h = harness(2.0);
@@ -356,11 +356,11 @@ fn ribbon_tabs_scroll_when_they_do_not_fit() {
 
 /// The window's minimum size is 800 × 500 interface points, so the
 /// smallest window still holds the room the layout is made for at every
-/// interface size (ROB-9). egui-winit turns points into pixels with the
+/// interface size. egui-winit turns points into pixels with the
 /// interface size (egui's zoom factor) and gives the screen's size in
 /// those points, so the size is sent as it is, and sent again when the
 /// interface size changes (the same points are then more pixels). It is
-/// never more than 90 % of the screen (ROB-R1).
+/// never more than 90 % of the screen.
 #[test]
 fn minimum_window_size_follows_the_interface_size() {
     let app = ReasonCraftApp::new_for_test();
