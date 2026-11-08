@@ -75,6 +75,8 @@ miniz_oxide = "0.8"
 # Parses the .ftl files in the translation parity tests.
 fluent-syntax = "0.12"
 roxmltree = "0.20"
+# Hashes words in a help test.
+sha2.workspace = true
 
 # The exe's icon and version information (Windows only).
 [target.'cfg(windows)'.build-dependencies]

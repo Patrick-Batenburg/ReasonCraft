@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use base64::Engine as _;
+use sha2::Digest as _;
 
 use super::render::{Block, Span, parse};
 use super::{TOPICS, index, source, title};
@@ -152,20 +152,15 @@ fn help_text_is_in_the_ui_font() {
 }
 
 /// The help and the About page hold none of the listed words.
-/// The words are kept here only, encoded, so they appear nowhere in plain
-/// text.
+/// Only the SHA-256 of each lowercased word is kept here, so the words
+/// appear nowhere in the repository; every word of the texts is hashed and
+/// compared.
 #[test]
 fn help_contains_no_listed_words() {
-    const DENY: [&str; 2] = ["eHh4eA==", "eXl5eQ=="];
-    let names: Vec<String> = DENY
-        .iter()
-        .map(|b| {
-            let bytes = base64::engine::general_purpose::STANDARD
-                .decode(b)
-                .expect("valid base64");
-            String::from_utf8(bytes).expect("UTF-8").to_lowercase()
-        })
-        .collect();
+    const DENY: [&str; 2] = [
+        "2481a63c85a62cf889d2b149f1a52e985a9341750173fe01eff50cc27b5941b5",
+        "2c99e051cc1bc435aaca827b548db6b411f8862b1115ede37b1999f6ca50f496",
+    ];
     let mut texts: Vec<(String, &str)> = index::FILES
         .iter()
         .map(|(lang, topic, text)| (format!("help/{lang}/{topic}.md"), *text))
@@ -174,10 +169,15 @@ fn help_contains_no_listed_words() {
     texts.push(("en.ftl".into(), include_str!("../../i18n/en.ftl")));
     texts.push(("nl.ftl".into(), include_str!("../../i18n/nl.ftl")));
     for (file, text) in texts {
-        let text = text.to_lowercase();
-        for name in &names {
+        let words: BTreeSet<String> = text
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|w| !w.is_empty())
+            .map(str::to_lowercase)
+            .collect();
+        for word in words {
+            let hash = format!("{:x}", sha2::Sha256::digest(word.as_bytes()));
             assert!(
-                !text.contains(name.as_str()),
+                !DENY.contains(&hash.as_str()),
                 "{file} holds a listed word"
             );
         }
