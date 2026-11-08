@@ -203,7 +203,7 @@ impl ReasonCraftApp {
         let mut app = Self::with_settings(
             settings,
             os_locale,
-            Box::new(RfdDialogs),
+            Box::new(RfdDialogs::default()),
             Box::new(SystemOpener),
             Arc::new(Mutex::new(SystemClipboard::default())),
         );

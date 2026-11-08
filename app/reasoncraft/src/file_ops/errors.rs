@@ -6,7 +6,7 @@ use reasoncraft_core::file::FileError;
 
 use super::{FileOp, Modal};
 use crate::app::ReasonCraftApp;
-use crate::i18n::{FluentArgs, t_args};
+use crate::i18n::{FluentArgs, t, t_args};
 
 /// Why reading or writing a file failed, as far as a message tells apart.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -104,6 +104,18 @@ pub(crate) fn show_error(app: &mut ReasonCraftApp, op: FileOp, path: &Path, err:
         title: t_args(title_key, &args),
         message: error_text(op, err),
     });
+}
+
+/// When the last file dialog could not be shown at all (Linux without
+/// a desktop portal backend or zenity, see [`super::RfdDialogs`]), say
+/// what to install, unless another message is up already.
+pub(crate) fn explain_missing_dialog(app: &mut ReasonCraftApp) {
+    if app.dialogs.take_unavailable() && app.modal.is_none() {
+        app.modal = Some(Modal::Error {
+            title: t("error.no_dialog.title"),
+            message: t("error.no_dialog"),
+        });
+    }
 }
 
 #[cfg(test)]

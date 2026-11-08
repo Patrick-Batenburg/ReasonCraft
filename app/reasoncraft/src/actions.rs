@@ -69,6 +69,7 @@ pub fn apply(app: &mut ReasonCraftApp, action: Action) {
         }
     }
     dispatch::run(app, action);
+    crate::file_ops::explain_missing_dialog(app);
     if let Some(tab) = app.tabs.get_mut(app.active)
         && std::mem::take(&mut tab.refused_too_deep)
     {
