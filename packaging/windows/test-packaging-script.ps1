@@ -170,6 +170,7 @@ try {
   Assert-Sign 'a certificate signs (stub signtool) and the summary says so' @{ WINDOWS_CERTIFICATE = $fakePfx; WINDOWS_CERTIFICATE_PASSWORD = 'secret-value'; REASONCRAFT_REFUSE_PARTIAL_SIGNING = '1' } 0 'Signing with WINDOWS_CERTIFICATE' 'signed with a certificate file'
   $log = Get-Content -Raw -LiteralPath (Join-Path $work 'signtool.log')
   if ($log -notmatch '(?m)^signtool-stub sign .*/f .*reasoncraft\.exe' -or $log -notmatch '(?m)^signtool-stub verify /pa') { throw "Unexpected signtool calls: $log" }
+  if ($log -notmatch '(?m)^signtool-stub sign .*/du https://github\.com/Patrick-Batenburg/ReasonCraft ') { throw "The signature has no link to the repository: $log" }
   if ((Get-AuthenticodeSignature -LiteralPath $copy).Status -eq 'Valid') { throw 'The stub signed the file.' }
   foreach ($name in $signVars) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
   # The test MSI below must not add a line to the real job summary (the finally block restores it).

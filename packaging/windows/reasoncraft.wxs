@@ -2,7 +2,7 @@
 <!-- Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/windows/wordcraft.wxs
      at aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: ReasonCraft's identity, GUIDs
      and .rcraft association (set as the default, as it is our own type), the install folder directly
-     under Programs / Program Files, no ARP URLs, no CLI and no font licences.
+     under Programs / Program Files, the repository as the ARP links, no CLI and no font licences.
 
      One dual-scope package: per user by default into %LOCALAPPDATA%\Programs\ReasonCraft, per
      machine ("Everyone") into Program Files\ReasonCraft. install-policy.wxi chooses the scope and
@@ -21,6 +21,9 @@
 
     <Icon Id="ReasonCraftIcon.ico" SourceFile="$(var.IconPath)" />
     <Property Id="ARPPRODUCTICON" Value="ReasonCraftIcon.ico" />
+    <!-- Apps & features: the "more information" and "help" links. -->
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Patrick-Batenburg/ReasonCraft" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/Patrick-Batenburg/ReasonCraft/issues" />
 
     <!-- Installer UI: WixUI_Minimal is welcome + licence, progress, then a finish page. Its dialogs
          and bitmaps are WiX's own (WixToolset.UI.wixext); `cargo xtask licence-rtf` builds the

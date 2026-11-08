@@ -5,6 +5,8 @@ members = ["crates/reasoncraft_core", "crates/reasoncraft_spell", "app/reasoncra
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/Patrick-Batenburg/ReasonCraft"
+homepage = "https://github.com/Patrick-Batenburg/ReasonCraft"
 rust-version = "1.95"
 version = "0.1.0"
 

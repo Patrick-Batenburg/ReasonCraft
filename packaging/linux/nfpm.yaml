@@ -1,14 +1,13 @@
 # Adapted from WordCraft (https://github.com/storytold/wordcraft, packaging/linux/nfpm.yaml at
 # aadb077), MIT OR Apache-2.0, used under Apache-2.0; changed: one binary, ReasonCraft's
-# identity, no homepage, and the dependency lists below.
+# identity, the repository as homepage, and the dependency lists below.
 #
 # .deb and .rpm packages (nfpm: https://nfpm.goreleaser.com). Run by package.sh, which stages
 # the file tree, substitutes its path for ${STAGE} (nfpm doesn't expand env vars in `src`) and
 # exports VERSION, NFPM_ARCH and REASONCRAFT_MAINTAINER.
 #
-# No `homepage`: there is no public homepage yet (owner's decision 2026-10-28), and both fields
-# are optional. The maintainer has no e-mail address for the same reason; lintian would flag
-# that, dpkg and rpm accept it. Which address to publish is an open question in docs/todo.md.
+# The maintainer has no e-mail address (owner's decision 2026-10-28; issues go to the repository's
+# issue tracker); lintian would flag that, dpkg and rpm accept it.
 name: reasoncraft
 arch: ${NFPM_ARCH}
 platform: linux
@@ -21,6 +20,7 @@ priority: optional
 maintainer: ${REASONCRAFT_MAINTAINER}
 vendor: ReasonCraft contributors
 license: MIT OR Apache-2.0
+homepage: https://github.com/Patrick-Batenburg/ReasonCraft
 description: |-
   Map out arguments: claims, reasons and objections.
   ReasonCraft is a free, open-source app for argument maps and grouping maps.

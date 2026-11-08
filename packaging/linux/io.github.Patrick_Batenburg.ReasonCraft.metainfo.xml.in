@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Adapted from WordCraft (https://github.com/storytold/wordcraft,
      packaging/linux/ai.storyteller.wordcraft.metainfo.xml.in at aadb077), MIT OR Apache-2.0, used
-     under Apache-2.0; changed: ReasonCraft's identity, text and document type; no URLs and no
-     screenshots (there is no public homepage yet).
+     under Apache-2.0; changed: ReasonCraft's identity, text and document type; the repository's
+     URLs (no `vcs-browser`: it equals the homepage, and AppStream 0.15 on the Ubuntu 22.04 build
+     image fails the file for that type).
 
      AppStream metadata (software centres). Template: package.sh substitutes @VERSION@ and @DATE@
      from Cargo.toml and the build date. -->
@@ -16,6 +17,8 @@
   <developer id="io.github.patrick_batenburg">
     <name>ReasonCraft contributors</name>
   </developer>
+  <url type="homepage">https://github.com/Patrick-Batenburg/ReasonCraft</url>
+  <url type="bugtracker">https://github.com/Patrick-Batenburg/ReasonCraft/issues</url>
   <description>
     <p>
       ReasonCraft is a free, open-source app for argument maps and grouping maps. Lay out a claim with the reasons for it and the objections against it, rate them, write an essay along the map, and export it as an image or a PDF. It works fully offline.

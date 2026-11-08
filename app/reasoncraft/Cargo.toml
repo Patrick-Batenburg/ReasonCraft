@@ -3,6 +3,8 @@ name = "reasoncraft"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 rust-version.workspace = true
 description = "Map out arguments: claims, reasons and objections."
 # Not published to crates.io: the About page embeds the workspace's

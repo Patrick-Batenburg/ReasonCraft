@@ -94,6 +94,16 @@ fn mime_and_metainfo_declare_rcraft() {
     assert_eq!(text("launchable"), [format!("{APP_ID}.desktop").as_str()]);
     assert_eq!(text("mediatype"), ["application/x-reasoncraft"]);
     assert_eq!(text("binary"), ["reasoncraft"]);
+    let repo = env!("CARGO_PKG_REPOSITORY");
+    let url = |kind: &str| -> Vec<&str> {
+        metainfo
+            .descendants()
+            .filter(|n| n.has_tag_name("url") && n.attribute("type") == Some(kind))
+            .filter_map(|n| n.text())
+            .collect()
+    };
+    assert_eq!(url("homepage"), [repo]);
+    assert_eq!(url("bugtracker"), [format!("{repo}/issues").as_str()]);
     assert!(
         metainfo
             .descendants()
@@ -192,6 +202,22 @@ fn nfpm_takes_the_version_as_semver() {
     let yaml = read("nfpm.yaml");
     assert!(yaml.lines().any(|l| l == "version_schema: semver"));
     assert!(yaml.lines().any(|l| l == "version: ${VERSION}"));
+    let homepage = format!("homepage: {}", env!("CARGO_PKG_REPOSITORY"));
+    assert!(yaml.lines().any(|l| l == homepage), "{homepage}");
+}
+
+/// With the homepage in the metainfo, `appstreamcli validate` runs without
+/// lowering any check (ruling RR-8 retired PK-13's override).
+#[test]
+fn appstream_is_validated_without_overrides() {
+    let root = linux_dir().join("../..");
+    for file in [
+        "packaging/linux/package.sh",
+        ".github/workflows/packaging-lint.yml",
+    ] {
+        let text = std::fs::read_to_string(root.join(file)).unwrap();
+        assert!(!text.contains("--override"), "{file} lowers a check");
+    }
 }
 
 /// The Dutch texts of the desktop entry and the AppStream metadata use

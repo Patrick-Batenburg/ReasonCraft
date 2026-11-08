@@ -211,7 +211,7 @@ In the workflow, a secret is only in the environment of the step that signs; the
 | `APPLE_CERTIFICATE` (base64 .p12), `APPLE_CERTIFICATE_PASSWORD`, `KEYCHAIN_PASSWORD` | `import-cert.sh`: the Developer ID identity |
 | `APPLE_ID`, `APPLE_PASSWORD` (app-specific), `APPLE_TEAM_ID` | `package.sh` and `verify.sh`: notarization |
 
-`sign.ps1` signs the exe and the MSI with the description "ReasonCraft"; `REASONCRAFT_SIGN_URL` adds a "more information" link (`/du`), which is left out until there is a homepage.
+`sign.ps1` signs the exe and the MSI with the description "ReasonCraft"; its "more information" link (`/du`) is the repository, https://github.com/Patrick-Batenburg/ReasonCraft, unless `REASONCRAFT_SIGN_URL` names another.
 
 ## First-time GitHub setup
 
